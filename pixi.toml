@@ -1,0 +1,24 @@
+[project]
+name = "WaterSchadeSchatter en SlachtofferModule"
+channels = ["conda-forge"]
+platforms = ["win-64"]
+
+[tasks]
+test-cov = "pytest --cov=src/waterrasters --cov-report=term-missing"
+
+[dependencies]
+gdal = "*"
+geopandas = "*"
+ipykernel = "*"
+mypy = "*"
+pip = "*"
+pydantic = ">=2"
+pydantic-settings = "*"
+python = "3.13.*"
+pytest= "*"
+pytest-cov = "*"
+rasterio = "*"
+ruff = "*"
+
+[pypi-dependencies]
+waterrasters = { path = ".", editable = true }
