@@ -1,5 +1,7 @@
 # %%
+import io
 import logging
+import zipfile
 from pathlib import Path
 from typing import Literal
 
@@ -10,32 +12,34 @@ import requests
 from osgeo import gdal
 from rasterio.enums import Resampling
 from rasterio.io import MemoryFile
+from requests.models import Response
 from shapely.geometry import Polygon
 
 from waterrasters import settings
-from waterrasters.api_config import (
-    AHN_CELL_SIZE_TYPE,
-    AHN_MODEL_TYPE,
-    AHN_SEVICE_TYPE,
-    AHN_VERSION_TYPE,
-    AHNService,
-)
+from waterrasters.api_config import AHNService
 
 logger = logging.getLogger(__name__)
 gdal.UseExceptions()
+
+
+def _is_zipfile(response: Response) -> bool:
+    """Check if response is zip-file"""
+    return ("zip" in response.headers.get("Content-Type", "")) | response.url.endswith(
+        "zip"
+    )
 
 
 def get_tiles_gdf(
     ahn_service: AHNService,
     poly_mask: Polygon | None = None,
     select_indices: list[str] | None = None,
-    model_type: AHN_MODEL_TYPE = "dtm",
-    cell_size: AHN_CELL_SIZE_TYPE = "05",
-    ahn_version: AHN_VERSION_TYPE = 4,
+    model: Literal["dtm", "dsm"] = "dtm",
+    cell_size: Literal["05", "5"] = "05",
+    ahn_version: Literal[3, 4, 5, 6] = 4,
 ):
     # get AHN tiles in a GeoDataFrame
     gdf = ahn_service.get_tiles(
-        ahn_version=ahn_version, model_type=model_type, cell_size=cell_size
+        ahn_version=ahn_version, model=model, cell_size=cell_size
     )
 
     # clip gdf
@@ -115,9 +119,9 @@ def array_float_m_to_cm_int(
 
 def create_download_dir(
     root_dir: Path,
-    model_type: AHN_MODEL_TYPE = "dtm",
-    cell_size: AHN_CELL_SIZE_TYPE = "05",
-    ahn_version: AHN_SEVICE_TYPE = 4,
+    model: Literal["dtm", "dsm"] = "dtm",
+    cell_size: Literal["05", "5"] = "05",
+    ahn_version: Literal[3, 4, 5, 6] = 4,
 ) -> Path:
     """Create a logic/unique download_dir as sub-directory of root_dir
 
@@ -125,7 +129,7 @@ def create_download_dir(
     ----------
     root_dir : Path
         Root directory to create sub-directory for
-    model_type : Literal[&quot;dtm&quot;, &quot;dsm&quot;], optional
+    model : Literal[&quot;dtm&quot;, &quot;dsm&quot;], optional
         ahn model-type, by default "dtm"
     cell_size : Literal[&quot;05&quot;, &quot;5&quot;], optional
         ahn cell_size, by default "05"
@@ -138,7 +142,7 @@ def create_download_dir(
         ahn_directory
     """
     root_dir = Path(root_dir)
-    download_dir = root_dir / f"AHN{ahn_version}_{model_type.upper()}_{cell_size}m"
+    download_dir = root_dir / f"AHN{ahn_version}_{model.upper()}_{cell_size}m"
     download_dir.mkdir(exist_ok=True, parents=True)
     return download_dir
 
@@ -147,9 +151,9 @@ def get_ahn_rasters(
     download_dir: Path,
     poly_mask: Polygon | None = None,
     select_indices: list[str] | None = None,
-    model_type: AHN_MODEL_TYPE = "dtm",
-    cell_size: AHN_CELL_SIZE_TYPE = "05",
-    ahn_version: AHN_VERSION_TYPE = 4,
+    model: Literal["dtm", "dsm"] = "dtm",
+    cell_size: Literal["05", "5"] = "05",
+    ahn_version: Literal[3, 4, 5, 6] = 4,
     service: Literal["ahn_pdok", "ahn_datastroom"] = "ahn_pdok",
     missing_only: bool = True,
     create_vrt: bool = True,
@@ -192,7 +196,7 @@ def get_ahn_rasters(
         poly_mask=poly_mask,
         select_indices=select_indices,
         ahn_service=ahn_service,
-        model_type=model_type,
+        model=model,
         cell_size=cell_size,
         ahn_version=ahn_version,
     )
@@ -203,7 +207,7 @@ def get_ahn_rasters(
 
     # save index tiles
     if save_tiles_index:
-        tiles_gdf.to_file(download_dir / "ahn_index.gpkg")
+        tiles_gdf.to_file(download_dir / f"{download_dir.name}.gpkg")
 
     # iteratively download AHN-tiles
     for row in tiles_gdf.itertuples():
@@ -214,10 +218,19 @@ def get_ahn_rasters(
             logger.info(f"downloading {tile_index}")
 
             # dump existing file
-            file_path.unlink(missing_ok=True)
+            try:
+                file_path.unlink(missing_ok=True)
+            except PermissionError as e:
+                logger.error(e)
+                continue
 
             # get file
-            url = getattr(row, ahn_service.download_url_field())
+            url = getattr(
+                row,
+                ahn_service.download_url_field(
+                    model=model, cell_size=cell_size, ahn_version=ahn_version
+                ),
+            )
             response = requests.get(url)
             try:
                 response.raise_for_status()
@@ -227,7 +240,26 @@ def get_ahn_rasters(
 
             # read tif in memory
             logger.info(f"writing {file_path}")
-            with MemoryFile(response.content) as memfile:
+            data_bytes = response.content
+
+            # unzip if is zip_file
+            if _is_zipfile(response):
+                try:
+                    with zipfile.ZipFile(io.BytesIO(response.content)) as zf:
+                        tif_names = [
+                            name
+                            for name in zf.namelist()
+                            if name.lower().endswith(".tif")
+                        ]
+                        if not tif_names:
+                            logger.error(f"No tif found in zip for {tile_index}")
+                            continue
+                        data_bytes = zf.read(tif_names[0])
+                except Exception as e:
+                    logger.error(f"Failed to read zip for {tile_index}: {e}")
+                    continue
+
+            with MemoryFile(data_bytes) as memfile:
                 with memfile.open() as src:
                     # Read the data
                     data = src.read(1)  # Read first band; use read() for all bands
@@ -267,5 +299,3 @@ def get_ahn_rasters(
                     dst.update_tags(ns="rio_overview", resampling="average")
     if create_vrt:
         create_vrt_file(download_dir)
-
-    return download_dir
