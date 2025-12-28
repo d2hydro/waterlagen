@@ -18,6 +18,7 @@ from waterrasters.bgt import get_bgt_featuretypes
 cell_size = "05"
 model = "dtm"
 ahn_version = 5
+ahn_indices = ["M_19BZ1"]
 
 
 download_dir = create_download_dir(
@@ -29,7 +30,7 @@ download_dir = create_download_dir(
 
 get_ahn_rasters(
     download_dir=download_dir,
-    select_indices=["M_19BZ1"],
+    select_indices=ahn_indices,
     model=model,
     service="ahn_datastroom",
     ahn_version=ahn_version,
@@ -43,11 +44,12 @@ get_ahn_rasters(
 # %% [markdown]
 #
 # ## Download BGT
+# Specificeer (BGT) `featuretypes`. Deze worden weggeschreven naar GeoPackages in download_dir
+# We gebruiken hier de extent van de gedownloade AHN-tegel(s) als mask
 
-
-poly_mask = get_tiles_gdf(select_indeices=["M_19BZ1"])
+poly_mask = get_tiles_gdf(select_indices=ahn_indices)
 get_bgt_featuretypes(
-    featuretypes=["waterdeel", "pand"],
+    featuretypes=["waterdeel", "wegdeel", "pand"],
     poly_mask=poly_mask,
     download_dir=settings.bgt_dir,
 )
