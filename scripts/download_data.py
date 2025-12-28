@@ -1,6 +1,7 @@
 # %%
 from waterrasters import settings
-from waterrasters.ahn import create_download_dir, get_ahn_rasters
+from waterrasters.ahn import create_download_dir, get_ahn_rasters, get_tiles_gdf
+from waterrasters.bgt import get_bgt_featuretypes
 
 # %% [markdown]
 #
@@ -17,6 +18,7 @@ from waterrasters.ahn import create_download_dir, get_ahn_rasters
 cell_size = "05"
 model = "dtm"
 ahn_version = 5
+
 
 download_dir = create_download_dir(
     root_dir=settings.ahn_dir,
@@ -35,4 +37,17 @@ get_ahn_rasters(
     missing_only=False,
     create_vrt=True,
     save_tiles_index=True,
+)
+
+
+# %% [markdown]
+#
+# ## Download BGT
+
+
+poly_mask = get_tiles_gdf(select_indeices=["M_19BZ1"])
+get_bgt_featuretypes(
+    featuretypes=["waterdeel", "pand"],
+    poly_mask=poly_mask,
+    download_dir=settings.bgt_dir,
 )

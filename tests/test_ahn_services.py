@@ -1,5 +1,5 @@
 # %%
-from waterrasters.api_config import AHNService
+from waterrasters.ahn_api_config import AHNService
 
 SAMPLE_INDICES = ["M_19BZ1", "M_25BN2", "M_14EN1", "M_14EZ1"]
 

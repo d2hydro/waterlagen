@@ -16,7 +16,7 @@ from requests.models import Response
 from shapely.geometry import Polygon
 
 from waterrasters import settings
-from waterrasters.api_config import AHNService
+from waterrasters.ahn_api_config import AHNService
 
 logger = logging.getLogger(__name__)
 gdal.UseExceptions()
@@ -79,7 +79,7 @@ def create_vrt_file(download_dir: Path):
             )
             ds.FlushCache()
         else:
-            logging.warning(f"No vrt-file created as no files exist in {download_dir}")
+            logger.warning(f"No vrt-file created as no files exist in {download_dir}")
 
 
 def array_float_m_to_cm_int(

@@ -25,5 +25,12 @@ class Settings(BaseSettings):
         ahn_dir.mkdir(exist_ok=True, parents=True)
         return ahn_dir
 
+    @computed_field
+    @property
+    def bgt_dir(self) -> Path:
+        bgt_dir = self.source_data_dir / "bgt"
+        bgt_dir.mkdir(exist_ok=True, parents=True)
+        return bgt_dir
+
 
 settings = Settings()

@@ -1,169 +1,37 @@
 # %%
-import io
-import os
-import tempfile
-import time
-import zipfile
-from pathlib import Path
-from typing import Iterable, Optional
-
 import geopandas as gpd
-import requests
-from shapely.geometry import Polygon, box, shape
+from shapely.geometry import box
 
-from waterrasters import settings
-from waterrasters.ahn import get_tiles_gdf
+from waterrasters.bgt import get_bgt_featuretypes
 
-ROOT_URL = "https://api.pdok.nl"
-
-# from waterrasters.bgt import get_bgt_layers
-
-tiles = ["M_19BZ1", "M_25BN2", "M_14EN1", "M_14EZ1"]
-tiles = ["M_19BZ1"]
-tiles_gdf = get_tiles_gdf(select_indices=tiles)
+POLY_MASK = box(111900, 515300, 114300, 517300)
 
 
-# get_bgt(
-#     download_dir=settings.bgt_dir,
-#     poly_mask=tiles_gdf.union_all(),
-#     featuretypes=["waterdeel", "pand"],
-# )
+def test_download_bgt(bgt_dir):
+    """test if BGT-downloader works."""
 
-
-poly_mask = tiles_gdf.union_all()
-featuretypes = ["waterdeel", "pand"]
-
-
-def request_download(featuretypes: Iterable[str], poly_mask: Optional[shape]) -> str:
-    """Make a request for a BGT download. Will respond a download request id that can be used for download
-
-    Parameters
-    ----------
-    featuretypes : Iterable[str]
-        BGT feature-types, by default ["waterdeel", "pand"]
-    poly_mask : shape | None, optional
-        Optional polygon-mask to use as geofilter. If not Polygon, shape-bounding box will be used.
-        By default None
-
-    Returns
-    -------
-    str
-        BGT downloadRequestId
-    """
-    url = f"{ROOT_URL}/lv/bgt/download/v1_0/full/custom"
-    body = {
-        "featuretypes": featuretypes,
-        "format": "citygml",
-    }
-
-    # add poly-mask
-    if poly_mask is not None:
-        if not isinstance(poly_mask, Polygon):
-            poly_mask = box(*poly_mask.bounds)
-        body["geofilter"] = poly_mask.wkt
-
-    # post download request
-    response = requests.post(url, json=body)
-    response.raise_for_status()
-
-    # return download request-id
-    return response.json()["downloadRequestId"]
-
-
-# %%
-def poll_downloadstatus(
-    download_request_id: str,
-    poll_interval_s: int = 5,
-) -> str:
-    """Poll bgt download status
-
-    Parameters
-    ----------
-    download_request_id : str
-        BGT downloadRequestId as response from`request_bgt_download()`
-    poll_interval_s : int, optional
-        Interval to poll status (seconds), by default 5
-
-    Returns
-    -------
-    str
-        BGT download URL
-    """
-    status_url = (
-        f"{ROOT_URL}/lv/bgt/download/v1_0/full/custom/{download_request_id}/status"
+    """download some data"""
+    download_dir = get_bgt_featuretypes(
+        featuretypes=["waterdeel", "pand"],
+        poly_mask=POLY_MASK,
+        download_dir=bgt_dir,
     )
+    assert download_dir.exists()
 
-    waiting = True
+    # assert if waterdeel exists and is not empty
+    waterdeel_gpkg = download_dir / "bgt_waterdeel.gpkg"
+    assert waterdeel_gpkg.exists()
+    gdf = gpd.read_file(waterdeel_gpkg)
+    assert not gdf.empty
 
-    while waiting:
-        response = requests.get(status_url, timeout=60)
-        response.raise_for_status()
+    # assert if waterdeel only contains polygons
+    assert list(gdf.geom_type.unique()) == ["Polygon"]
 
-        data = response.json()
-        status = data["status"]
-        if status == "COMPLETED":
-            waiting = False
-            download_url = f"{ROOT_URL}{data['_links']['download']['href']}"
-            print(f"{status}. Download at: {download_url}")
-        else:
-            print(f"{status}. Progress: {data['progress']}")
-            time.sleep(poll_interval_s)
+    # assert if pand exists and is not empty
+    pand_gpkg = download_dir / "bgt_pand.gpkg"
+    assert pand_gpkg.exists()
+    gdf = gpd.read_file(pand_gpkg)
+    assert not gdf.empty
 
-    return download_url
-
-
-# %%
-def download_to_geopackage(
-    download_url: str, download_dir: Path, crs: int = 28992
-) -> Path:
-    # 0) make sure download-dir exists
-    download_dir = Path(download_dir)
-    download_dir.mkdir(exist_ok=True, parents=True)
-
-    # 1) download content
-    response = requests.get(download_url)
-    response.raise_for_status()
-    zip_bytes = response.content
-
-    with zipfile.ZipFile(io.BytesIO(zip_bytes)) as zf:
-        gml_names = [n for n in zf.namelist() if n.lower().endswith(".gml")]
-        if not gml_names:
-            raise ValueError("No GMLs in download")
-
-        for gml_name in gml_names:
-            gml_bytes = zf.read(gml_name)
-
-            # Windows-safe temp file: close it before reading with GDAL
-            tmp_path = None
-            try:
-                fd, tmp_path = tempfile.mkstemp(suffix=".gml")
-                with os.fdopen(fd, "wb") as f:
-                    f.write(gml_bytes)
-
-                gdf = gpd.read_file(tmp_path)
-
-                if gdf.crs is None and crs is not None:
-                    gdf = gdf.set_crs(crs)
-
-                layer = Path(gml_name).stem
-
-                out_one = download_dir / f"{layer}.gpkg"
-                gdf.to_file(out_one, driver="GPKG")
-                print(f"Wrote {out_one}")
-
-            finally:
-                if tmp_path and os.path.exists(tmp_path):
-                    os.remove(tmp_path)
-
-    return download_dir
-
-
-# %%
-
-download_request_id = request_download(featuretypes=featuretypes, poly_mask=poly_mask)
-
-download_url = poll_downloadstatus(download_request_id=download_request_id)
-
-download_dir = settings.source_data_dir / "bgt"
-
-download_to_geopackage(download_url=download_url, download_dir=download_dir)
+    # assert if pand only contains polygons
+    assert list(gdf.geom_type.unique()) == ["Point", "MultiPolygon"]
