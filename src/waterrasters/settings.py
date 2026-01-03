@@ -1,3 +1,4 @@
+# %%
 from pathlib import Path
 
 from pydantic import computed_field, field_validator
@@ -31,6 +32,13 @@ class Settings(BaseSettings):
         bgt_dir = self.source_data_dir / "bgt"
         bgt_dir.mkdir(exist_ok=True, parents=True)
         return bgt_dir
+
+    @computed_field
+    @property
+    def bag_dir(self) -> Path:
+        bag_dir = self.source_data_dir / "bag"
+        bag_dir.mkdir(exist_ok=True, parents=True)
+        return bag_dir
 
 
 settings = Settings()

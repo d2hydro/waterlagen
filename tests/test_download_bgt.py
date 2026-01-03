@@ -2,7 +2,7 @@
 import geopandas as gpd
 from shapely.geometry import box
 
-from waterrasters.bgt import get_bgt_featuretypes
+from waterrasters.bgt import get_bgt_features
 
 POLY_MASK = box(111900, 515300, 114300, 517300)
 
@@ -11,7 +11,7 @@ def test_download_bgt(bgt_dir):
     """test if BGT-downloader works."""
 
     """download some data"""
-    download_dir = get_bgt_featuretypes(
+    download_dir = get_bgt_features(
         featuretypes=["waterdeel", "pand"],
         poly_mask=POLY_MASK,
         download_dir=bgt_dir,

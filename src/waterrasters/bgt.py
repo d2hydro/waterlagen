@@ -156,10 +156,10 @@ def download_to_geopackage(
     return download_dir
 
 
-def get_bgt_featuretypes(
+def get_bgt_features(
     featuretypes: Iterable[str], poly_mask: Optional[shape], download_dir: Path
 ) -> Path:
-    """Download BGT feature-types in GeoPackages
+    """Download BGT features in GeoPackages
 
     Parameters
     ----------

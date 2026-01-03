@@ -1,7 +1,9 @@
 # %%
 from waterrasters import settings
 from waterrasters.ahn import create_download_dir, get_ahn_rasters, get_tiles_gdf
-from waterrasters.bgt import get_bgt_featuretypes
+from waterrasters.ahn_api_config import AHNService
+from waterrasters.bag import download_bag_light, get_bag_panden
+from waterrasters.bgt import get_bgt_features
 
 # %% [markdown]
 #
@@ -47,9 +49,19 @@ get_ahn_rasters(
 # Specificeer (BGT) `featuretypes`. Deze worden weggeschreven naar GeoPackages in download_dir
 # We gebruiken hier de extent van de gedownloade AHN-tegel(s) als mask
 
-poly_mask = get_tiles_gdf(select_indices=ahn_indices)
-get_bgt_featuretypes(
+poly_mask = get_tiles_gdf(
+    ahn_service=AHNService(service="ahn_datastroom"), select_indices=ahn_indices
+).union_all()
+bgt_dir = get_bgt_features(
     featuretypes=["waterdeel", "wegdeel", "pand"],
     poly_mask=poly_mask,
     download_dir=settings.bgt_dir,
 )
+
+# %% [markdown]
+#
+# ## Download BAG
+# Specificeer bounding-box op basis van poly_mask
+
+bag_gpkg = get_bag_panden(download_dir=settings.bag_dir)
+bag_light_gpkg = download_bag_light(bag_dir=settings.bag_dir)
