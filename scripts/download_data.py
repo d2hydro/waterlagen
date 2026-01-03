@@ -68,8 +68,7 @@ DOWNLOAD_BAG_NL = False
 
 bag_dir = get_bag_features(
     download_dir=settings.bag_dir,
-    # bbox=poly_mask.bounds,
-    bbox=(84000, 446620, 84215, 446920),
+    bbox=poly_mask.bounds,
     typenames=["bag:verblijfsobject", "bag:pand"],
 )
 if DOWNLOAD_BAG_NL:

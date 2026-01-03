@@ -47,6 +47,7 @@ def get_bag_features(
 
     # specify request url and params
     url = f"{ROOT_URL}/wfs/v2_0"
+    page_num = 1
     for typename in typenames:
         params = {
             "service": "WFS",
@@ -62,7 +63,6 @@ def get_bag_features(
         # init iter
         features = []
         start_index = 0
-        page_num = 1
         features_sum = 0
 
         while True:
