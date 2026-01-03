@@ -2,7 +2,7 @@
 from waterrasters import settings
 from waterrasters.ahn import create_download_dir, get_ahn_rasters, get_tiles_gdf
 from waterrasters.ahn_api_config import AHNService
-from waterrasters.bag import download_bag_light, get_bag_panden
+from waterrasters.bag import download_bag, get_bag_features
 from waterrasters.bgt import get_bgt_features
 
 # %% [markdown]
@@ -63,5 +63,16 @@ bgt_dir = get_bgt_features(
 # ## Download BAG
 # Specificeer bounding-box op basis van poly_mask
 
-bag_gpkg = get_bag_panden(download_dir=settings.bag_dir)
-bag_light_gpkg = download_bag_light(bag_dir=settings.bag_dir)
+
+DOWNLOAD_BAG_NL = False
+
+bag_dir = get_bag_features(
+    download_dir=settings.bag_dir,
+    # bbox=poly_mask.bounds,
+    bbox=(84000, 446620, 84215, 446920),
+    typenames=["bag:verblijfsobject", "bag:pand"],
+)
+if DOWNLOAD_BAG_NL:
+    bag_gpkg = download_bag(bag_dir=settings.bag_dir)
+
+# %%

@@ -13,9 +13,14 @@ MAX_WFS_FEATURES = 50000
 WFS_COUNT = 1000
 
 
-def get_bag_panden(
+def get_bag_features(
     download_dir: Path,
     bbox: tuple[float, float, float, float],
+    typenames: list[str] = [
+        "bag:pand",
+        "bag:verblijfsobject",
+    ],
+    crs: int = 28992,
 ) -> Path:
     """Download BAG for an extent via WFS
 
@@ -23,8 +28,12 @@ def get_bag_panden(
     ----------
     download_dir : Path
         Download dir to store GeoPackages
+    typenames: list[str], optional
+        List of WFS typenames (layers) to download. Default is ["bag:pand","bag:verblijfsobject"]
     bbox : tuple[float, float, float, float] | None, optional
         Extent with (xmin, ymin, xmax, ymax). BAG will be downloaded for this extent only.
+    crs: int, optional
+        Download CRS EPSG-code, by default 28992
 
     Returns
     -------
@@ -38,58 +47,68 @@ def get_bag_panden(
 
     # specify request url and params
     url = f"{ROOT_URL}/wfs/v2_0"
-    params = {
-        "service": "WFS",
-        "version": "2.0.0",
-        "request": "GetFeature",
-        "typeNames": "bag:pand",
-        "srsName": "EPSG:28992",
-        "bbox": ",".join(map(str, (*bbox, "EPSG:28992"))),
-        "count": WFS_COUNT,
-        "outputFormat": "application/json",
-    }
+    for typename in typenames:
+        params = {
+            "service": "WFS",
+            "version": "2.0.0",
+            "request": "GetFeature",
+            "typeNames": typename,
+            "srsName": f"EPSG:{crs}",
+            "bbox": ",".join(map(str, (*bbox, f"EPSG:{crs}"))),
+            "count": WFS_COUNT,
+            "outputFormat": "application/json",
+        }
 
-    # init iter
-    features = []
-    start_index = 0
-    page_num = 1
-    features_sum = 0
+        # init iter
+        features = []
+        start_index = 0
+        page_num = 1
+        features_sum = 0
 
-    while True:
-        logger.debug(f"page {page_num}")
-        print(f"page {page_num}")
-        params["startIndex"] = start_index
-        r = requests.get(url, params=params)
-        r.raise_for_status()
+        while True:
+            # echo page number to console
+            msg = f"Page: {page_num}"
+            sys.stdout.write("\r" + msg)
+            sys.stdout.flush()
 
-        gdf_page = gpd.read_file(io.BytesIO(r.content))
+            # request by start-index
+            params["startIndex"] = start_index
+            response = requests.get(url, params=params)
+            response.raise_for_status()
 
-        if gdf_page.empty:
-            break
+            # read to GeoPackage
+            gdf_page = gpd.read_file(io.BytesIO(response.content))
 
-        features.append(gdf_page)
-        features_sum += len(gdf_page)
-        if features_sum >= MAX_WFS_FEATURES:
-            logger.warning(f"you can't request for more than {MAX_WFS_FEATURES}")
-            break
+            if gdf_page.empty:
+                break
 
-        # next page
-        start_index += len(gdf_page)
-        page_num += 1
-        if len(gdf_page) < WFS_COUNT:
-            break
+            # append to list
+            features.append(gdf_page)
+            features_sum += len(gdf_page)
+            if features_sum >= MAX_WFS_FEATURES:
+                logger.warning(f"you can't request for more than {MAX_WFS_FEATURES}")
+                break
 
-    if not features:
-        return gpd.GeoDataFrame(geometry=[], crs="EPSG:28992")
+            # next page
+            start_index += len(gdf_page)
+            page_num += 1
+            if len(gdf_page) < WFS_COUNT:
+                break
 
-    # concat and set CRS
-    gdf = gpd.pd.concat(features, ignore_index=True)
-    gdf = gdf.set_crs(28992)
+        if not features:
+            return gpd.GeoDataFrame(geometry=[], crs=crs)
 
-    bag_pand_gpkg = download_dir / "bag_pand.gpkg"
-    gdf.to_file(bag_pand_gpkg)
+        # concat features and set CRS
+        gdf = gpd.pd.concat(features, ignore_index=True)
+        gdf = gdf.set_crs(crs)
 
-    return bag_pand_gpkg
+        for layer in set(gdf.id.str.split(".").str[0]):
+            bag_gpkg = download_dir / f"bag_{layer}.gpkg"
+            logger.info(f"writing {bag_gpkg}")
+            mask = gdf.id.str.startswith(layer)
+            gdf.loc[mask].to_file(bag_gpkg)
+
+    return download_dir
 
 
 def download_bag(download_dir: Path):
