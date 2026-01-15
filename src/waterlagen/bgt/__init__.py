@@ -1,3 +1,3 @@
-from .bgt import get_bgt_features
+from .download import get_bgt_features
 
 __all__ = ["get_bgt_features"]

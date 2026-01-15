@@ -203,5 +203,3 @@ with rasterio.open(dem_raster) as raster_src:
         )
         dst.scales = raster_src.scales
         dst.write(data, band)
-
-
