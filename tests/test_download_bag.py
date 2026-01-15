@@ -4,12 +4,12 @@ import geopandas as gpd
 from waterlagen.bag import get_bag_features
 
 
-def test_download_bgt(bag_dir):
+def test_download_bag(bag_dir):
     """test if BGT-downloader works."""
 
     """download some data"""
     download_dir = get_bag_features(
-        typenames=["bag:verblijfsobject", "bag:pand"],
+        type_names=["bag:verblijfsobject", "bag:pand"],
         bbox=(111900, 515300, 114300, 517300),
         download_dir=bag_dir,
     )
@@ -32,4 +32,3 @@ def test_download_bgt(bag_dir):
 
     # assert if pand only contains polygons
     assert list(gdf.geom_type.unique()) == ["Point"]
-

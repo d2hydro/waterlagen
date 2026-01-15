@@ -14,22 +14,21 @@ WFS_COUNT = 1000
 
 
 def get_bag_features(
-    download_dir: Path,
     bbox: tuple[float, float, float, float],
-    typenames: list[str] = [
+    type_names: list[str] = [
         "bag:pand",
         "bag:verblijfsobject",
     ],
     crs: int = 28992,
-) -> Path:
-    """Download BAG for an extent via WFS
+) -> gpd.GeoDataFrame:
+    """Download BAG for an extent via WFS to a GeoDataFrame
 
     Parameters
     ----------
     download_dir : Path
         Download dir to store GeoPackages
-    typenames: list[str], optional
-        List of WFS typenames (layers) to download. Default is ["bag:pand","bag:verblijfsobject"]
+    type_names: list[str], optional
+        List of WFS type_names (layers) to download. Default is ["bag:pand","bag:verblijfsobject"]
     bbox : tuple[float, float, float, float] | None, optional
         Extent with (xmin, ymin, xmax, ymax). BAG will be downloaded for this extent only.
     crs: int, optional
@@ -37,23 +36,19 @@ def get_bag_features(
 
     Returns
     -------
-    Path
-        Path to GeoPackage
+    GeoDataFrame
+        GeoDataFrame with BAG features
     """
-
-    # make dir
-    download_dir = Path(download_dir)
-    download_dir.mkdir(exist_ok=True, parents=True)
 
     # specify request url and params
     url = f"{ROOT_URL}/wfs/v2_0"
     page_num = 1
-    for typename in typenames:
+    for type_name in type_names:
         params = {
             "service": "WFS",
             "version": "2.0.0",
             "request": "GetFeature",
-            "typeNames": typename,
+            "typeNames": type_name,
             "srsName": f"EPSG:{crs}",
             "bbox": ",".join(map(str, (*bbox, f"EPSG:{crs}"))),
             "count": WFS_COUNT,
@@ -64,10 +59,12 @@ def get_bag_features(
         features = []
         start_index = 0
         features_sum = 0
-
+        logger.info(
+            "Start downloading BAG using WFS, {WFS_COUNT} features per page (download)"
+        )
         while True:
             # echo page number to console
-            msg = f"Page: {page_num}"
+            msg = f"Downloading WFS page: {page_num:02d}"
             sys.stdout.write("\r" + msg)
             sys.stdout.flush()
 
@@ -86,7 +83,9 @@ def get_bag_features(
             features.append(gdf_page)
             features_sum += len(gdf_page)
             if features_sum >= MAX_WFS_FEATURES:
-                logger.warning(f"you can't request for more than {MAX_WFS_FEATURES}")
+                logger.warning(
+                    f"Your download is incomplete!. Requested features more than {MAX_WFS_FEATURES}. Use a smaller bbox of use `download_bag_nl()` to download BAG for The Netherlands"
+                )
                 break
 
             # next page
@@ -102,22 +101,23 @@ def get_bag_features(
         gdf = gpd.pd.concat(features, ignore_index=True)
         gdf = gdf.set_crs(crs)
 
-        for layer in set(gdf.id.str.split(".").str[0]):
-            bag_gpkg = download_dir / f"bag_{layer}.gpkg"
-            logger.info(f"writing {bag_gpkg}")
-            mask = gdf.id.str.startswith(layer)
-            gdf.loc[mask].to_file(bag_gpkg)
-
-    return download_dir
+    return gdf
 
 
-def download_bag(download_dir: Path):
+def download_bag_nl(download_dir: Path, overwrite: bool = True) -> Path:
     """Download BAG for The Netherlands
 
     Parameters
     ----------
     download_dir : Path
         Download dir to store GeoPackages
+    overwrite : bool, optional
+        If not True BAG will only be downloaded if not existing. Default is True
+
+    Returns
+    -------
+    Path
+        Path to BAG GeoPackage
     """
     # make dir to GPKG
     download_dir = Path(download_dir)
@@ -127,29 +127,35 @@ def download_bag(download_dir: Path):
     url = f"{ROOT_URL}/atom/downloads/bag-light.gpkg"
     chunk_size: int = 1024 * 1024
     bag_gpkg = download_dir / Path(url).name
-    downloaded = 0
+    if (not bag_gpkg.exists()) or overwrite:
+        downloaded = 0
 
-    # stream chuncks to output file
-    with requests.get(url, stream=True, allow_redirects=True, timeout=30) as response:
-        response.raise_for_status()
+        # stream chuncks to output file
+        logger.info("Start downloading BAG {url} to {bag_gpkg}")
+        with requests.get(
+            url, stream=True, allow_redirects=True, timeout=30
+        ) as response:
+            response.raise_for_status()
 
-        # get file-size for logging
-        total = response.headers.get("Content-Length")
-        total = int(total) if total is not None else None
+            # get file-size for logging
+            total = response.headers.get("Content-Length")
+            total = int(total) if total is not None else None
 
-        # open GPKG for chunked writing
-        with open(bag_gpkg, "wb") as f:
-            for chunk in response.iter_content(chunk_size=chunk_size):
-                if chunk:
-                    # write chunck
-                    f.write(chunk)
+            # open GPKG for chunked writing
+            with open(bag_gpkg, "wb") as f:
+                for chunk in response.iter_content(chunk_size=chunk_size):
+                    if chunk:
+                        # write chunck
+                        f.write(chunk)
 
-                    # echo progress in console
-                    downloaded += len(chunk)
-                    if total is not None:
-                        percent = downloaded / total * 100
-                        msg = f"{downloaded / 1024 / 1024:.1f} / {total / 1024 / 1024:.1f} MB ({percent:.1f}%)"
-                    else:
-                        msg = f"{downloaded / 1024 / 1024:.1f} MB"
-                    sys.stdout.write("\r" + msg)
-                    sys.stdout.flush()
+                        # echo progress in console
+                        downloaded += len(chunk)
+                        if total is not None:
+                            percent = downloaded / total * 100
+                            msg = f"{downloaded / 1024 / 1024:.1f} / {total / 1024 / 1024:.1f} MB ({percent:.1f}%)"
+                        else:
+                            msg = f"{downloaded / 1024 / 1024:.1f} MB"
+                        sys.stdout.write("\r" + msg)
+                        sys.stdout.flush()
+
+    return bag_gpkg

@@ -29,7 +29,7 @@ def _is_zipfile(response: Response) -> bool:
     )
 
 
-def get_tiles_gdf(
+def get_tiles_features(
     ahn_service: AHNService,
     poly_mask: Polygon | None = None,
     select_indices: list[str] | None = None,
@@ -192,7 +192,7 @@ def get_ahn_rasters(
     ahn_service = AHNService(service=service)
     ahn_service._validate_inputs(cell_size=cell_size, ahn_version=ahn_version)
     # get AHN tiles as gdf
-    tiles_gdf = get_tiles_gdf(
+    tiles_gdf = get_tiles_features(
         poly_mask=poly_mask,
         select_indices=select_indices,
         ahn_service=ahn_service,
@@ -299,5 +299,3 @@ def get_ahn_rasters(
                     dst.update_tags(ns="rio_overview", resampling="average")
     if create_vrt:
         create_vrt_file(download_dir)
-
-
