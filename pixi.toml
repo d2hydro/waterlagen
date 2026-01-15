@@ -4,7 +4,7 @@ channels = ["conda-forge"]
 platforms = ["win-64"]
 
 [tasks]
-test-cov = "pytest --cov=src/waterrasters --cov-report=term-missing"
+test-cov = "pytest --cov=src/waterlagen --cov-report=term-missing"
 
 [dependencies]
 gdal = "*"
@@ -14,11 +14,11 @@ mypy = "*"
 pip = "*"
 pydantic = ">=2"
 pydantic-settings = "*"
-python = "3.13.*"
+python = "==3.13.7"
 pytest= "*"
 pytest-cov = "*"
 rasterio = "*"
 ruff = "*"
 
 [pypi-dependencies]
-waterrasters = { path = ".", editable = true }
+waterlagen = { path = ".", editable = true }

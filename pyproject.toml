@@ -3,8 +3,8 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "waterrasters"
-description = "Rasters die bruikbaar zijn voor waterbeheer. Primair voor de WaterSchadeSchatter en SlachtofferModule (WSS-SM) afgeleid"
+name = "waterlagen"
+description = "GIS-lagen waterbeheer."
 readme = "README.md"
 authors = [
     { name = "Daniel Tollenaar", email = "daniel@d2hydro.nl" },
@@ -14,11 +14,11 @@ license = { text = "MIT" }
 
 requires-python = ">=3.13"
 dependencies = [
-	"gdal",
+    "gdal",
     "geopandas",
-	"pydantic",
-	"pydantic-settings",
-	"rasterio"
+    "pydantic",
+    "pydantic-settings",
+    "rasterio"
 ]
 dynamic = ["version"]
 
@@ -26,4 +26,5 @@ dynamic = ["version"]
 tests = ["pytest"]
 
 [tool.hatch.version]
-path = "src/waterrasters/__init__.py"
+path = "src/waterlagen/__init__.py"
+

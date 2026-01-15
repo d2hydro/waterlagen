@@ -1,9 +1,9 @@
 # %%
-from waterrasters import settings
-from waterrasters.ahn import create_download_dir, get_ahn_rasters, get_tiles_gdf
-from waterrasters.ahn_api_config import AHNService
-from waterrasters.bag import download_bag, get_bag_features
-from waterrasters.bgt import get_bgt_features
+from waterlagen import settings
+from waterlagen.ahn import create_download_dir, get_ahn_rasters, get_tiles_gdf
+from waterlagen.ahn.api_config import AHNService
+from waterlagen.bag import download_bag, get_bag_features
+from waterlagen.bgt import get_bgt_features
 
 # %% [markdown]
 #
@@ -90,7 +90,7 @@ dem_raster = ahn_download_dir / "AHN5_DTM_05m.vrt"
 bag_gpkg = bag_dir / "bag_pand.gpkg"
 bag_gdf = gpd.read_file(bag_gpkg, fid_as_index=True)
 bag_pand_tif = bag_gpkg.with_name("pand_elev.tif")
-
+print(bag_pand_tif)
 # %%
 buffer_step_m = 1
 band = 1
@@ -154,6 +154,8 @@ def buffered_elevation_search(
         Buffer increment to find values, by default 1
     percentile : int, optional
         Percentile-value to find, by default 75
+    elevation_offset: float, optional
+        Elevation offset above elevation found from
     band : int, optional
         Raster-band, by default 1
     max_iters : int, optional
@@ -173,6 +175,8 @@ def buffered_elevation_search(
             return value
 
 
+elevation_offset: float = 5
+
 with rasterio.open(dem_raster) as raster_src:
     bag_gdf["vloerpeil"] = [
         buffered_elevation_search(
@@ -183,7 +187,7 @@ with rasterio.open(dem_raster) as raster_src:
 
     shapes = (
         (mapping(geom), int(val))
-        for geom, val in zip(bag_gdf.geometry, bag_gdf["vloerpeil"] + 5)
+        for geom, val in zip(bag_gdf.geometry, bag_gdf["vloerpeil"] + elevation_offset)
     )
 
     profile = raster_src.profile
@@ -199,4 +203,5 @@ with rasterio.open(dem_raster) as raster_src:
         )
         dst.scales = raster_src.scales
         dst.write(data, band)
-# %%
+
+

@@ -1,7 +1,7 @@
 # %%
 import geopandas as gpd
 
-from waterrasters.bag import get_bag_features
+from waterlagen.bag import get_bag_features
 
 
 def test_download_bgt(bag_dir):
@@ -32,3 +32,4 @@ def test_download_bgt(bag_dir):
 
     # assert if pand only contains polygons
     assert list(gdf.geom_type.unique()) == ["Point"]
+

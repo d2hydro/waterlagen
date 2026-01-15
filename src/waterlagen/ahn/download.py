@@ -15,8 +15,8 @@ from rasterio.io import MemoryFile
 from requests.models import Response
 from shapely.geometry import Polygon
 
-from waterrasters import settings
-from waterrasters.ahn_api_config import AHNService
+from waterlagen import settings
+from waterlagen.ahn.api_config import AHNService
 
 logger = logging.getLogger(__name__)
 gdal.UseExceptions()
@@ -299,3 +299,5 @@ def get_ahn_rasters(
                     dst.update_tags(ns="rio_overview", resampling="average")
     if create_vrt:
         create_vrt_file(download_dir)
+
+

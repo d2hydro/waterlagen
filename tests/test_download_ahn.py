@@ -1,5 +1,5 @@
 # %%
-from waterrasters.ahn import create_download_dir, get_ahn_rasters
+from waterlagen.ahn import create_download_dir, get_ahn_rasters
 
 
 def test_download_ahn4_pdok(ahn_dir):
@@ -103,3 +103,4 @@ def test_download_ahn6_datastroom(ahn_dir):
     assert download_dir.joinpath(vrt_file).exists()
     index_file = f"{download_dir.name}.gpkg"
     assert download_dir.joinpath(index_file).exists()
+

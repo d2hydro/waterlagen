@@ -2,7 +2,7 @@
 import geopandas as gpd
 from shapely.geometry import box
 
-from waterrasters.bgt import get_bgt_features
+from waterlagen.bgt import get_bgt_features
 
 POLY_MASK = box(111900, 515300, 114300, 517300)
 
@@ -35,3 +35,4 @@ def test_download_bgt(bgt_dir):
 
     # assert if pand only contains polygons
     assert list(gdf.geom_type.unique()) == ["Point", "MultiPolygon"]
+
