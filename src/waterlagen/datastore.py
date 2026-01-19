@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 
-from pydantic import computed_field, field_validator
+from pydantic import ValidationInfo, computed_field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 default_data_path = Path(os.getcwd()) / "data"
@@ -9,13 +9,18 @@ default_data_path = Path(os.getcwd()) / "data"
 
 class DataStore(BaseSettings):
     data_dir: Path = default_data_path
-    source_data_dir: Path = default_data_path / "source_data"
-    processed_data_dir: Path = default_data_path / "processed_data"
+    source_data_dir: Path | None = None
+    processed_data_dir: Path | None = None
     model_config = SettingsConfigDict(env_file=(".datastore"))
-    m_to_cm: bool = True
 
     @field_validator("source_data_dir", "processed_data_dir", mode="after")
-    def ensure_directory_exists(cls, v: Path) -> Path:
+    def ensure_directory_exists(cls, v: Path | None, info: ValidationInfo) -> Path:
+        if v is None:
+            data_dir = info.data.get("data_dir") or default_data_path
+            if info.field_name == "source_data_dir":
+                v = Path(data_dir) / "source_data"
+            else:
+                v = Path(data_dir) / "processed_data"
         v.mkdir(parents=True, exist_ok=True)
         return v
 
@@ -41,4 +46,4 @@ class DataStore(BaseSettings):
         return bag_dir
 
 
-settings = DataStore()
+datastore = DataStore()

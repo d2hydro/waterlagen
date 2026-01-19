@@ -1,34 +1,37 @@
 # %%
-import geopandas as gpd
 
-from waterlagen.bag import get_bag_features
+from waterlagen.bag import get_bag_features_from_wfs
 
 
-def test_download_bag(bag_dir):
-    """test if BGT-downloader works."""
+def test_download_bag_pand():
+    """test BAG pand feature download"""
 
     """download some data"""
-    download_dir = get_bag_features(
-        type_names=["bag:verblijfsobject", "bag:pand"],
+    gdf = get_bag_features_from_wfs(
+        type_name="bag:pand",
         bbox=(111900, 515300, 114300, 517300),
-        download_dir=bag_dir,
     )
-    assert download_dir.exists()
-
-    # assert if pand exists and is not empty
-    pand_gpkg = download_dir / "bag_pand.gpkg"
-    assert pand_gpkg.exists()
-    gdf = gpd.read_file(pand_gpkg)
     assert not gdf.empty
 
     # assert if pand only contains polygons
     assert list(gdf.geom_type.unique()) == ["Polygon"]
 
-    # assert if pand exists and is not empty
-    verblijfsobject_gpkg = download_dir / "bag_verblijfsobject.gpkg"
-    assert verblijfsobject_gpkg.exists()
-    gdf = gpd.read_file(verblijfsobject_gpkg)
+    # assert if id starts with pand
+    assert gdf.id.str.startswith("pand").all()
+
+
+def test_download_bag_verblijfsobject():
+    """test BAG verblijfsobject feature download"""
+
+    """download some data"""
+    gdf = get_bag_features_from_wfs(
+        type_name="bag:verblijfsobject",
+        bbox=(111900, 515300, 114300, 517300),
+    )
     assert not gdf.empty
 
-    # assert if pand only contains polygons
+    # assert if pand only contains points
     assert list(gdf.geom_type.unique()) == ["Point"]
+
+    # assert if id starts with pand
+    assert gdf.id.str.startswith("verblijfsobject").all()

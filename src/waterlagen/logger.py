@@ -168,7 +168,7 @@ def get_logger(name: Optional[str] = None) -> logging.Logger:
 
 
 def init_logger(
-    name: str, log_file: Path | None = None, debug: bool = True
+    name: str, log_file: Path | None = None, debug: bool = False
 ) -> logging.Logger:
     """Initialise logging and return logger in app.py
 
@@ -179,7 +179,7 @@ def init_logger(
     name : str, optional
         Logger name, by default "app"
     debug : bool, optional
-        Debug-flag. Toggle between debug and info, by default True
+        Debug-flag. Toggle between debug and info, by default False
 
     Returns
     -------

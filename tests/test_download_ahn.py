@@ -103,4 +103,3 @@ def test_download_ahn6_datastroom(ahn_dir):
     assert download_dir.joinpath(vrt_file).exists()
     index_file = f"{download_dir.name}.gpkg"
     assert download_dir.joinpath(index_file).exists()
-

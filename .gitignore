@@ -209,3 +209,5 @@ __marimo__/
 # Data(store)
 /data
 .datatore
+scripts/.datastore
+.datastore

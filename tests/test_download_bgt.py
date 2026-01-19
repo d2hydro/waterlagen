@@ -35,4 +35,3 @@ def test_download_bgt(bgt_dir):
 
     # assert if pand only contains polygons
     assert list(gdf.geom_type.unique()) == ["Point", "MultiPolygon"]
-

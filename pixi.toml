@@ -9,12 +9,11 @@ test-cov = "pytest --cov=src/waterlagen --cov-report=term-missing"
 [dependencies]
 gdal = "*"
 geopandas = "*"
-ipykernel = "*"
 mypy = "*"
 pip = "*"
 pydantic = ">=2"
 pydantic-settings = "*"
-python = "==3.13.7"
+python = "==3.13.8"
 pytest= "*"
 pytest-cov = "*"
 rasterio = "*"
@@ -22,3 +21,4 @@ ruff = "*"
 
 [pypi-dependencies]
 waterlagen = { path = ".", editable = true }
+ipykernel = "*"
