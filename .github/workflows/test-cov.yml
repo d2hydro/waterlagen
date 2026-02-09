@@ -22,7 +22,7 @@ jobs:
           cache: true
 
       - name: Run tests with coverage
-        run: pixi run --environment default test-cov -- --cov-report=xml:coverage.xml
+        run: pixi run --environment default pytest --cov=src/waterlagen --cov-report=term-missing --cov-report=xml:coverage.xml
 
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v4
