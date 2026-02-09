@@ -1,0 +1,36 @@
+site_name: Waterlagen
+repo_url: https://github.com/d2hydro/waterlagen
+repo_name: d2hydro/waterlagen
+
+theme:
+  name: material
+  features:
+    - navigation.tabs
+    - content.code.copy
+
+nav:
+  - Home: index.md
+  - API: api.md
+  - Notebooks:
+      - Example: notebooks/example.ipynb
+
+plugins:
+  - search
+  - mkdocs-jupyter:
+      execute: false
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            show_source: false
+            docstring_style: numpy
+
+markdown_extensions:
+  - admonition
+  - pymdownx.superfences
+  - pymdownx.details
+  - pymdownx.highlight
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.tabbed:
+      alternate_style: true
