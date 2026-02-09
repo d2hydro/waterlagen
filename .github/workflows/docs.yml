@@ -5,13 +5,7 @@ on:
     branches: [main]
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: "pages"
-  cancel-in-progress: true
+  contents: write
 
 jobs:
   build:
@@ -25,24 +19,5 @@ jobs:
           pixi-version: v0.63.2
           cache: true
 
-      - name: Build docs (Pixi docs env)
-        run: pixi run --environment docs docs-build
-
-      - name: Configure Pages
-        uses: actions/configure-pages@v5
-
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: site
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Deploy docs to gh-pages (Pixi docs env)
+        run: pixi run --environment docs docs-deploy

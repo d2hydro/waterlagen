@@ -1,15 +1,14 @@
 # %%
 
-from waterlagen.bag import get_bag_features_from_wfs
+from waterlagen.bag import get_bag_features
 
 
 def test_download_bag_pand():
     """test BAG pand feature download"""
 
     """download some data"""
-    gdf = get_bag_features_from_wfs(
-        type_name="bag:pand",
-        bbox=(111900, 515300, 114300, 517300),
+    gdf = get_bag_features(
+        layer="pand", bbox=(111900, 515300, 114300, 517300), source="wfs"
     )
     assert not gdf.empty
 
@@ -24,9 +23,10 @@ def test_download_bag_verblijfsobject():
     """test BAG verblijfsobject feature download"""
 
     """download some data"""
-    gdf = get_bag_features_from_wfs(
-        type_name="bag:verblijfsobject",
+    gdf = get_bag_features(
+        layer="verblijfsobject",
         bbox=(111900, 515300, 114300, 517300),
+        source="wfs",
     )
     assert not gdf.empty
 
