@@ -3,11 +3,13 @@ name: Tests (Coverage)
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - docs/coverage.svg
   pull_request:
     branches: [main]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   test-cov:
@@ -29,6 +31,19 @@ jobs:
         with:
           name: coverage-xml
           path: coverage.xml
+
+      - name: Install genbadge
+        run: pixi run --environment default python -m pip install genbadge
+
+      - name: Generate coverage badge
+        run: pixi run --environment default python -m genbadge coverage -i coverage.xml -o docs/coverage.svg
+
+      - name: Commit coverage badge
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "Update coverage badge"
+          file_pattern: docs/coverage.svg
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4

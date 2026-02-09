@@ -1,7 +1,7 @@
 # Waterlagen
 Deze module is bedoeld om alle GIS basislagen (rasters en features) te `downloaden` en te `bewerken` voor typische water-toepassingen.
 
-[![test](https://github.com/d2hydro/waterlagen/actions/workflows/python-package-conda.yml/badge.svg)](https://github.com/d2hydro/waterlagen/actions/workflows/python-package-conda.yml)
+[![test](https://github.com/d2hydro/waterlagen/actions/workflows/test-cov.yml/badge.svg)](https://github.com/d2hydro/waterlagen/actions/workflows/python-package-conda.yml)
 [![Coverage](https://img.shields.io/codecov/c/github/d2hydro/waterlagen)](https://app.codecov.io/github/d2hydro/waterlagen)
 [![Ruff Styling/Linting](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![Release: latest](https://img.shields.io/github/v/release/d2hydro/waterlagen)](https://pypi.org/project/waterlagen)
