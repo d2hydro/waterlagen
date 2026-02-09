@@ -212,3 +212,6 @@ __marimo__/
 scripts/.datastore
 .datastore
 scripts/data/*
+
+# Misc extensions
+*.cmd
