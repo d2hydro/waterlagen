@@ -1,3 +1,4 @@
+# %%
 import re
 import subprocess
 from datetime import date
@@ -38,26 +39,26 @@ def get_current_version(text: str) -> tuple[int, int, int]:
 
 
 def main() -> int:
+    # get all inputs
     text = INIT_PY.read_text(encoding="utf-8")
-    current = get_current_version(text)
+    current_version = get_current_version(text)
     latest_tag = get_latest_tag_version()
-
-    # Pick the highest known version between tag and current
-    base = max([v for v in [latest_tag, current] if v is not None])
-
     today = date.today()
-    if (base[0], base[1]) == (today.year, today.month):
-        next_version = (today.year, today.month, base[2] + 1)
+
+    # get expected version from latest_tag if we aren't in a new month
+    if latest_tag is None:
+        expected_version = (today.year, today.month, 0)
+    elif latest_tag[:2] != (today.year, today.month):
+        expected_version = (today.year, today.month, 0)
     else:
-        next_version = (today.year, today.month, 0)
+        expected_version = (*latest_tag[:2], latest_tag[2] + 1)
 
-    new_version = f'{next_version[0]}.{next_version[1]}.{next_version[2]}'
-    if f'__version__ = "{new_version}"' in text:
-        return 0
-
-    new_text = VERSION_RE.sub(f'__version__ = "{new_version}"', text, count=1)
-    INIT_PY.write_text(new_text, encoding="utf-8")
-    print(f"Updated __version__ to {new_version}")
+    # update __init__ if expected_version != current_version
+    if expected_version != current_version:
+        new_version = ".".join((str(i) for i in expected_version))
+        new_text = VERSION_RE.sub(f'__version__ = "{new_version}"', text, count=1)
+        INIT_PY.write_text(new_text, encoding="utf-8")
+        print(f"Updated __version__ to {new_version}")
     return 0
 
 

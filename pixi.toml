@@ -16,15 +16,16 @@ shapely = "*"
 affine = "*"
 
 [feature.dev.dependencies]
-ipykernel = "*"
 mypy = "*"
 pip = "*"
+pre-commit = "*"
 pytest = "*"
 pytest-cov = "*"
 ruff = "*"
 
 [feature.dev.tasks]
 test-cov = "pytest --cov=src/waterlagen --cov-report=term-missing"
+pre-commit-install = "pre-commit install"
 
 [feature.docs.dependencies]
 mkdocs = "*"
@@ -43,6 +44,7 @@ docs-deploy = "mkdocs gh-deploy --force"
 
 [pypi-dependencies]
 waterlagen = { path = ".", editable = true }
+# let this be handled by VSCode as the Jupyter IDE doesn't seem to like pre-installed ipykernel: ipykernel = "*"
 
 [environments]
 default = ["dev"]
