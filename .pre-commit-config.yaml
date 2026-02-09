@@ -3,6 +3,6 @@ repos:
     hooks:
       - id: bump-version
         name: bump version (YYYY.MM.PATCH)
-        entry: python scripts/bump_version.py
+        entry: pixi run python scripts/bump_version.py
         language: system
         pass_filenames: false

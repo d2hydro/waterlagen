@@ -21,7 +21,8 @@ Het ondersteunen van de volgende lagen vanaf [PDOK](https://www.pdok.nl/) en [AH
 * BGT
 
 ## Bewerken
-De volgende bewerkingen zijn beschikbaar
+De volgende bewerkingen zijn beschikbaar:
+
 * Dichtinterpoleren van AHN DTM
 * Branden van BAG-panden op basis van AHN-hoogte
 
