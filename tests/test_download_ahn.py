@@ -1,5 +1,5 @@
 # %%
-from waterrasters.ahn import create_download_dir, get_ahn_rasters
+from waterlagen.ahn import create_download_dir, get_ahn_rasters
 
 
 def test_download_ahn4_pdok(ahn_dir):

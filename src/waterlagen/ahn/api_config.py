@@ -1,4 +1,3 @@
-# %%
 import io
 import warnings
 from typing import Literal
@@ -6,8 +5,6 @@ from typing import Literal
 import geopandas as gpd
 import requests
 from pydantic import BaseModel
-
-warnings.filterwarnings("ignore", ".*non conformant file extension.*", RuntimeWarning)
 
 
 class AHNService(BaseModel):
@@ -97,12 +94,24 @@ class AHNService(BaseModel):
             gdf.set_index("kaartbladNr", inplace=True)
         elif self.service == "ahn_datastroom":
             if ahn_version < 6:
-                gdf = gpd.read_file(io.BytesIO(response.content))
+                with warnings.catch_warnings():
+                    warnings.filterwarnings(
+                        "ignore",
+                        ".*non conformant file extension.*",
+                        RuntimeWarning,
+                    )
+                    gdf = gpd.read_file(io.BytesIO(response.content))
                 gdf.index = "M_" + gdf.AHN
             else:
-                gdf = gpd.read_file(
-                    io.BytesIO(response.content), layer="bladindeling_aoi"
-                )
+                with warnings.catch_warnings():
+                    warnings.filterwarnings(
+                        "ignore",
+                        ".*non conformant file extension.*",
+                        RuntimeWarning,
+                    )
+                    gdf = gpd.read_file(
+                        io.BytesIO(response.content), layer="bladindeling_aoi"
+                    )
                 root_url = "https://fsn1.your-objectstorage.com/hwh-ahn/AHN6/"
                 gdf["dtm_05"] = (
                     root_url

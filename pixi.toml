@@ -1,24 +1,45 @@
 [workspace]
-name = "WaterSchadeSchatter en SlachtofferModule"
+name = "Waterlagen"
 channels = ["conda-forge"]
-platforms = ["win-64"]
-
-[tasks]
-test-cov = "pytest --cov=src/waterrasters --cov-report=term-missing"
+platforms = ["win-64", "linux-64"]
 
 [dependencies]
+python = ">=3.11"
 gdal = "*"
 geopandas = "*"
+pydantic = ">=2"
+pydantic-settings = "*"
+rasterio = "*"
+
+[feature.dev.dependencies]
 ipykernel = "*"
 mypy = "*"
 pip = "*"
-pydantic = ">=2"
-pydantic-settings = "*"
-python = "3.13.*"
-pytest= "*"
+pytest = "*"
 pytest-cov = "*"
-rasterio = "*"
 ruff = "*"
 
+[feature.dev.tasks]
+test-cov = "pytest --cov=src/waterlagen --cov-report=term-missing"
+
+[feature.docs.dependencies]
+mkdocs = "*"
+mkdocs-material = "*"
+mkdocs-jupyter = "*"
+pymdown-extensions = "*"
+# mkdocstrings: installeer met python handler
+# (conda-forge heeft vaak mkdocstrings-python als aparte pkg)
+mkdocstrings = "*"
+mkdocstrings-python = "*"
+
+[feature.docs.tasks]
+docs-serve = "mkdocs serve --livereload"
+docs-build = "mkdocs build --strict"
+docs-deploy = "mkdocs gh-deploy --force"
+
 [pypi-dependencies]
-waterrasters = { path = ".", editable = true }
+waterlagen = { path = ".", editable = true }
+
+[environments]
+default = ["dev"]
+docs = ["docs", "dev"]

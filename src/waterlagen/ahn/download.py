@@ -1,6 +1,5 @@
 # %%
 import io
-import logging
 import zipfile
 from pathlib import Path
 from typing import Literal
@@ -15,10 +14,11 @@ from rasterio.io import MemoryFile
 from requests.models import Response
 from shapely.geometry import Polygon
 
-from waterrasters import settings
-from waterrasters.ahn_api_config import AHNService
+from waterlagen import datastore, settings
+from waterlagen.ahn.api_config import AHNService
+from waterlagen.logger import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 gdal.UseExceptions()
 
 
@@ -29,7 +29,7 @@ def _is_zipfile(response: Response) -> bool:
     )
 
 
-def get_tiles_gdf(
+def get_tiles_features(
     ahn_service: AHNService,
     poly_mask: Polygon | None = None,
     select_indices: list[str] | None = None,
@@ -62,7 +62,7 @@ def create_vrt_file(download_dir: Path):
         ]
         if len(tif_files) > 0:
             # Output VRT filename
-            vrt_filename = download_dir / f"{download_dir.name}.vrt"
+            vrt_file = download_dir / f"{download_dir.name}.vrt"
 
             # Build VRT
             vrt_options = gdal.BuildVRTOptions(
@@ -73,13 +73,15 @@ def create_vrt_file(download_dir: Path):
             )
 
             ds = gdal.BuildVRT(
-                destName=vrt_filename.as_posix(),
+                destName=vrt_file.as_posix(),
                 srcDSOrSrcDSTab=tif_files,
                 options=vrt_options,
             )
             ds.FlushCache()
         else:
             logger.warning(f"No vrt-file created as no files exist in {download_dir}")
+
+    return vrt_file
 
 
 def array_float_m_to_cm_int(
@@ -148,7 +150,7 @@ def create_download_dir(
 
 
 def get_ahn_rasters(
-    download_dir: Path,
+    ahn_dir: Path = datastore.ahn_dir,
     poly_mask: Polygon | None = None,
     select_indices: list[str] | None = None,
     model: Literal["dtm", "dsm"] = "dtm",
@@ -158,21 +160,19 @@ def get_ahn_rasters(
     missing_only: bool = True,
     create_vrt: bool = True,
     save_tiles_index: bool = False,
-):
+) -> Path:
     """Downloads AHN rasters
 
     Downloads ahn DTM or DSM rasters on 0.5m or 5m resolution
 
     Parameters
     ----------
-    download_dir : Path
-        Directory to store ahn-files.
+    ahn_dir : Path, optional
+        Directory to store ahn-files. Defaults to datastore.ahn_dir
     poly_mask : Polygon | None, optional
         Mask to select ahn-tiles, by default None
     select_indices : list[str] | None, optional
         Indices to select, by default None
-    ahn_type : Literal["dtm_05m", "dsm_05m"], optional
-        Download dtm, dsm, 0.5m or 5m, by default "dtm_05m"
     service : Literal["ahn_pdok", "ahn_datastroom"], optional
         Switch for using pdok.nl or ahn.nl for downloading ahn_data
     missing_only : bool, optional
@@ -185,14 +185,14 @@ def get_ahn_rasters(
     Returns
     -------
     Path
-        Path to download dir, being a sub-directory of ahn_root_dir
+        Path to download dir or vrt_file, being a sub-directory of ahn_root_dir
     """
 
     # int service
     ahn_service = AHNService(service=service)
     ahn_service._validate_inputs(cell_size=cell_size, ahn_version=ahn_version)
     # get AHN tiles as gdf
-    tiles_gdf = get_tiles_gdf(
+    tiles_gdf = get_tiles_features(
         poly_mask=poly_mask,
         select_indices=select_indices,
         ahn_service=ahn_service,
@@ -202,7 +202,7 @@ def get_ahn_rasters(
     )
 
     # make download dir if not existing
-    download_dir = Path(download_dir)
+    download_dir = Path(ahn_dir).joinpath(f"{model}_{cell_size}")
     download_dir.mkdir(exist_ok=True, parents=True)
 
     # save index tiles
@@ -210,92 +210,98 @@ def get_ahn_rasters(
         tiles_gdf.to_file(download_dir / f"{download_dir.name}.gpkg")
 
     # iteratively download AHN-tiles
-    for row in tiles_gdf.itertuples():
-        tile_index = row.Index
-        file_path = download_dir / f"{tile_index}.tif"
+    with rasterio.Env():
+        for idx, row in enumerate(tiles_gdf.itertuples()):
+            tile_index = row.Index
+            file_path = download_dir / f"{tile_index}.tif"
 
-        if (not missing_only) or (not file_path.exists()):
-            logger.info(f"downloading {tile_index}")
-
-            # dump existing file
-            try:
-                file_path.unlink(missing_ok=True)
-            except PermissionError as e:
-                logger.error(e)
-                continue
-
-            # get file
-            url = getattr(
-                row,
-                ahn_service.download_url_field(
-                    model=model, cell_size=cell_size, ahn_version=ahn_version
-                ),
-            )
-            response = requests.get(url)
-            try:
-                response.raise_for_status()
-            except Exception as e:
-                logger.error(e)
-                continue
-
-            # read tif in memory
-            logger.info(f"writing {file_path}")
-            data_bytes = response.content
-
-            # unzip if is zip_file
-            if _is_zipfile(response):
-                try:
-                    with zipfile.ZipFile(io.BytesIO(response.content)) as zf:
-                        tif_names = [
-                            name
-                            for name in zf.namelist()
-                            if name.lower().endswith(".tif")
-                        ]
-                        if not tif_names:
-                            logger.error(f"No tif found in zip for {tile_index}")
-                            continue
-                        data_bytes = zf.read(tif_names[0])
-                except Exception as e:
-                    logger.error(f"Failed to read zip for {tile_index}: {e}")
-                    continue
-
-            with MemoryFile(data_bytes) as memfile:
-                with memfile.open() as src:
-                    # Read the data
-                    data = src.read(1)  # Read first band; use read() for all bands
-                    profile = src.profile.copy()
-
-                # make it integer if user specified
-                if settings.m_to_cm:
-                    data, nodata = array_float_m_to_cm_int(data, nodata=src.nodata)
-                    # update scales
-                    scales = (0.01,)
-                    profile.update(
-                        dtype=np.int16,
-                        nodata=nodata,
-                    )
-                else:
-                    scales = (1.0,)
-
-                # compression
-                profile.update(
-                    compress="deflate",
-                    predictor=2,
-                    tiled=True,
+            if (not missing_only) or (not file_path.exists()):
+                logger.info(
+                    f"downloading {tile_index} ({idx + 1}/{len(tiles_gdf)}) to {file_path}"
                 )
 
-                # write it to disc
-                with rasterio.open(file_path, "w", **profile) as dst:
-                    raster_cell_size = abs(dst.res[0])
-                    dst.scales = scales
-                    dst.write(data, 1)
-                    # create overviews
-                    factors = [
-                        int(size / raster_cell_size)
-                        for size in [5, 25]
-                        if size > raster_cell_size
-                    ]
-                    dst.build_overviews(factors, Resampling.average)
-                    dst.update_tags(ns="rio_overview", resampling="average")
+                # dump existing file
+                try:
+                    file_path.unlink(missing_ok=True)
+                except PermissionError as e:
+                    logger.error(e)
+                    continue
+
+                # get file
+                url = getattr(
+                    row,
+                    ahn_service.download_url_field(
+                        model=model, cell_size=cell_size, ahn_version=ahn_version
+                    ),
+                )
+                response = requests.get(url)
+                try:
+                    response.raise_for_status()
+                except Exception as e:
+                    logger.error(e)
+                    continue
+
+                # read tif in memory
+                logger.info(f"writing {file_path}")
+                data_bytes = response.content
+
+                # unzip if is zip_file
+                if _is_zipfile(response):
+                    try:
+                        with zipfile.ZipFile(io.BytesIO(response.content)) as zf:
+                            tif_names = [
+                                name
+                                for name in zf.namelist()
+                                if name.lower().endswith(".tif")
+                            ]
+                            if not tif_names:
+                                logger.error(f"No tif found in zip for {tile_index}")
+                                continue
+                            data_bytes = zf.read(tif_names[0])
+                    except Exception as e:
+                        logger.error(f"Failed to read zip for {tile_index}: {e}")
+                        continue
+
+                with MemoryFile(data_bytes) as memfile:
+                    with memfile.open() as src:
+                        # Read the data
+                        data = src.read(1)  # Read first band; use read() for all bands
+                        profile = src.profile.copy()
+
+                    # make it integer if user specified
+                    if settings.m_to_cm:
+                        data, nodata = array_float_m_to_cm_int(data, nodata=src.nodata)
+                        # update scales
+                        scales = (0.01,)
+                        profile.update(
+                            dtype=np.int16,
+                            nodata=nodata,
+                        )
+                    else:
+                        scales = (1.0,)
+
+                    # compression
+                    profile.update(
+                        compress="deflate",
+                        predictor=2,
+                        tiled=True,
+                    )
+
+                    # write it to disc
+                    with rasterio.open(file_path, "w", **profile) as dst:
+                        raster_cell_size = abs(dst.res[0])
+                        dst.scales = scales
+                        dst.write(data, 1)
+                        # create overviews
+                        factors = [
+                            int(size / raster_cell_size)
+                            for size in [5, 25]
+                            if size > raster_cell_size
+                        ]
+                        dst.build_overviews(factors, Resampling.average)
+                        dst.update_tags(ns="rio_overview", resampling="average")
     if create_vrt:
-        create_vrt_file(download_dir)
+        vrt_file = create_vrt_file(download_dir)
+        return vrt_file
+    else:
+        return download_dir
