@@ -33,7 +33,7 @@ mkdocstrings = "*"
 mkdocstrings-python = "*"
 
 [feature.docs.tasks]
-docs-serve = "mkdocs serve"
+docs-serve = "mkdocs serve --livereload"
 docs-build = "mkdocs build --strict"
 docs-deploy = "mkdocs gh-deploy --force"
 

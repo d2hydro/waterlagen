@@ -4,15 +4,24 @@ repo_name: d2hydro/waterlagen
 
 theme:
   name: material
+  language: nl
+  logo: icons/logo/globe_only.png
+  favicon: icons/logo/favicon.png
+  highlightjs: true
   features:
     - navigation.tabs
     - content.code.copy
+  palette: 
+    primary: blue
 
 nav:
-  - Home: index.md
-  - API: api.md
-  - Notebooks:
-      - Example: notebooks/example.ipynb
+  - Home: 
+      - Algemeen: index.md
+      - DataStore: datastore.md
+  - Code Reference:
+      - AHN: reference/ahn.md
+  - Voorbeeld Notebooks:
+      - AHN: notebooks/ahn.ipynb
 
 plugins:
   - search
