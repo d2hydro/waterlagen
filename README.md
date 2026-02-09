@@ -4,7 +4,7 @@ Deze module is bedoeld om alle GIS basislagen (rasters en features) te `download
 [![test](https://github.com/d2hydro/waterlagen/actions/workflows/test-cov.yml/badge.svg)](https://github.com/d2hydro/waterlagen/actions/workflows/python-package-conda.yml)
 [![Coverage](https://img.shields.io/codecov/c/github/d2hydro/waterlagen)](https://app.codecov.io/github/d2hydro/waterlagen)
 [![Ruff Styling/Linting](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
-[![Release: latest](https://img.shields.io/github/v/release/d2hydro/waterlagen)](https://pypi.org/project/waterlagen)
+[![Release: latest](https://img.shields.io/github/v/release/d2hydro/waterlagen?include_prereleases)](https://pypi.org/project/waterlagen)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ---
@@ -26,4 +26,5 @@ De volgende bewerkingen zijn beschikbaar:
 * Dichtinterpoleren van AHN DTM
 * Branden van BAG-panden op basis van AHN-hoogte
 
-
+## Over de ontwikkelaars
+Waterlagen wordt ontwikkeld door [D2Hydro](https://d2hydro.nl/) en het [Hoogheemraadschap Hollands Noorderkwartier](https://www.hhnk.nl/)

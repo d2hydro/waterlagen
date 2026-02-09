@@ -4,8 +4,9 @@ build-backend = "hatchling.build"
 
 [project]
 name = "waterlagen"
-description = "Waterlagen: rasters en features voor toepassing in waterbeheer"
+description = "Waterlagen: rasters en features downloaden en bewerken voor toepassing in waterbeheer"
 readme = "README.md"
+keywords = ["hydrologie", "waterbeheer", "PDOK", "BAG", "BGT", "AHN"]
 authors = [
     { name = "Daniel Tollenaar", email = "daniel@d2hydro.nl" },
     { name = "Wouter van Esse", email = "w.vanesse@hhnk.nl" }
