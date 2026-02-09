@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "waterlagen"
-description = "GIS-lagen waterbeheer."
+description = "Waterlagen: rasters en features voor toepassing in waterbeheer"
 readme = "README.md"
 authors = [
     { name = "Daniel Tollenaar", email = "daniel@d2hydro.nl" },
@@ -12,13 +12,17 @@ authors = [
 ]
 license = { text = "MIT" }
 
-requires-python = ">=3.13"
+requires-python = ">=3.11"
 dependencies = [
     "gdal",
     "geopandas",
     "pydantic",
     "pydantic-settings",
-    "rasterio"
+    "rasterio",
+    "numpy",
+    "requests",
+    "shapely",
+    "affine"
 ]
 dynamic = ["version"]
 

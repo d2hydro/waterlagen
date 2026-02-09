@@ -6616,16 +6616,20 @@ packages:
   timestamp: 1763021840142
 - pypi: ./
   name: waterlagen
-  version: 2026.0.0
-  sha256: e3d150cd1d369a20897099bf1de0e8ee3adfdc4a0d8aa2ff3ec7a91359963605
+  version: 2026.1.0
+  sha256: 243cd93aa23fd3232fb229e1a69826f20daa05955d718e5da0d8670894900c5d
   requires_dist:
+  - affine
   - gdal
   - geopandas
+  - numpy
   - pydantic
   - pydantic-settings
   - rasterio
+  - requests
+  - shapely
   - pytest ; extra == 'tests'
-  requires_python: '>=3.13'
+  requires_python: '>=3.11'
 - conda: https://conda.anaconda.org/conda-forge/noarch/wcwidth-0.5.3-pyhd8ed1ab_0.conda
   sha256: 2395599ec9e37e6f21838bb26e7f2336fa03a4b1460ba10897ec856b21ac7d59
   md5: 36432484e9ce3b073a51bf138767a593

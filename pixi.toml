@@ -10,6 +10,10 @@ geopandas = "*"
 pydantic = ">=2"
 pydantic-settings = "*"
 rasterio = "*"
+numpy = "*"
+requests = "*"
+shapely = "*"
+affine = "*"
 
 [feature.dev.dependencies]
 ipykernel = "*"
