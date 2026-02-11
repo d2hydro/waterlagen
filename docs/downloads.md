@@ -32,6 +32,7 @@ bag_gdf = get_bag_features(bbox, layer="pand", source="wfs")
 # Of lezen uit bag-light
 bag_gdf = get_bag_features(bbox, layer="pand", source="bag-light")
 ```
+Voor alle opties zie de [code-referentie](reference/bag.md#waterlagen.bag.get_bag_features)
 
 ### BGT
 De BGT‑download werkt in drie stappen: request indienen, status pollen, en het resultaat als GeoPackages opslaan. Met `get_bgt_features` gebeurt dit in één call.
@@ -48,3 +49,5 @@ out_dir = get_bgt_features(
     download_dir=datastore.bgt_dir,
 )
 ```
+
+Voor alle opties zie de [code-referentie](reference/bgt.md#waterlagen.bgt.get_bgt_features)

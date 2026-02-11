@@ -17,33 +17,20 @@ filled_vrt_or_dir = interpolate_ahn_tiles(
 ```
 
 ### BAG
-BAG‑bewerkingen starten doorgaans vanuit een GeoDataFrame. Die haal je met één van de downloadopties op. Voor het ophalen van BAG-panden en het vekrijgen van `bag_gdf` zie [Downloads](downloads.md#bag)
+BAG‑bewerkingen starten doorgaans vanuit een GeoDataFrame. Die haal je met één van de downloadopties op. Voor het ophalen van BAG-panden en het vekrijgen van `bag_gdf` en de `vrt_file` zie [downloads](downloads.md)
 
 Rasterize (pand‑hoogtekaart) zet BAG‑polygons om naar een raster op basis van een DEM. Dit levert een GeoTIFF met vloerpeilen op.
 
 Aanroepen:
 ```python
 from waterlagen.bag.rasterize import rasterize_bag
-
-rasterize_bag(
-    dem_raster=dem_tif,
-    bag_gdf=bag_gdf,
-    bag_pand_tif=out_tif,
-    buffer_step_m=1,
-)
-```
-
-### BGT
-Voor BGT‑bewerkingen werk je met GeoPackages die per featuretype worden opgeslagen.
-
-Aanroepen:
-```python
-from waterlagen.bgt.download import get_bgt_features
 from waterlagen import datastore
 
-out_dir = get_bgt_features(
-    featuretypes=["waterdeel", "pand"],
-    poly_mask=my_polygon_or_bbox,
-    download_dir=datastore.bgt_dir,
+bag_pand_tif = datastore.processed_data_dir.joinpath("bag_pand.tif")
+rasterize_bag(
+    dem_raster=vrt_file,
+    bag_gdf=bag_gdf,
+    bag_pand_tif=bag_pand_tif,
+    buffer_step_m=1,
 )
 ```

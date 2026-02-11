@@ -25,8 +25,8 @@ nav:
       - BAG: reference/bag.md
       - BGT: reference/bgt.md
       - DataStore: reference/datastore.md
-  - Voorbeeld Notebooks:
-      - AHN: notebooks/ahn.ipynb
+  - Notebooks:
+      - DEM Alkmaar: notebooks/dem_alkmaar.ipynb
 
 plugins:
   - search
