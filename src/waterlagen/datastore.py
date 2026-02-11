@@ -8,6 +8,26 @@ default_data_path = Path(os.getcwd()) / "data"
 
 
 class DataStore(BaseSettings):
+    """DataStore to structurally store downloaded and processed data.
+
+    Input arguments `data_dir`, `processed_data_dir` and `processed_data_dir` can be set in an env-file `.datastore`:
+
+    ```
+    DATA_DIR=path/to/data/dir
+    SOURCE_DATA=path/to/source/data
+    PROCESSED_DATA=path/to/processed/data
+    ```
+
+    Parameters
+    ----------
+    data_dir : Path
+        The root for `source_data_dir` and `processed_data_dir`. Defaults to ./data.
+    source_data_dir : Path
+        A path for for source data, defaults to `data/source_data`
+    processed_data_dir : Path
+        A path for for processed data, defaults to `data/processed_data_dir`
+    """
+
     data_dir: Path = default_data_path
     source_data_dir: Path | None = None
     processed_data_dir: Path | None = None

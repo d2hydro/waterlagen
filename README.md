@@ -13,18 +13,32 @@ Deze module is bedoeld om alle GIS basislagen (rasters en features) te `download
 
 **Source Code**: [https://github.com/d2hydro/waterlagen](https://github.com/d2hydro/waterlagen)
 
-## Downloaden
+## Installeren
+De module `waterlagen` kan in elke omgeving die beschikt over `Python` (>=3.11) en `pip` met:
+
+```
+pip install waterlagen
+```
+
+## Aan de slag
+Wanneer de gebruiker eenmalig een `data_dir` opgeeft voor de `DataStore`, worden hier alle downloads, bewerkingen en logs opgeslagen. Lees meer over de DataStore in de [documentatie](https://d2hydro.github.io/waterlagen/datastore/) 
+
+### Downloaden
 Het ondersteunen van de volgende lagen vanaf [PDOK](https://www.pdok.nl/) en [AHN.nl](https://www.ahn.nl/) wordt ondersteund:
 
 * AHN 4 t/m 6
 * BAG
 * BGT
 
-## Bewerken
+Lees verder in de [documentatie](https://d2hydro.github.io/waterlagen/downloads/) 
+
+### Bewerken
 De volgende bewerkingen zijn beschikbaar:
 
 * Dichtinterpoleren van AHN DTM
 * Branden van BAG-panden op basis van AHN-hoogte
 
+Lees verder in de [documentatie](https://d2hydro.github.io/waterlagen/bewerkingen/) 
+
 ## Over de ontwikkelaars
-Waterlagen wordt ontwikkeld door [D2Hydro](https://d2hydro.nl/) en het [Hoogheemraadschap Hollands Noorderkwartier](https://www.hhnk.nl/)
+Waterlagen wordt ontwikkeld door [D2Hydro](https://d2hydro.nl/) en het [Hoogheemraadschap Hollands Noorderkwartier](https://www.hhnk.nl/) met als doel het gestandaardiseerd downloaden en bewerkingen van features en rasters via Python

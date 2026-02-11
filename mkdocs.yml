@@ -18,8 +18,13 @@ nav:
   - Home: 
       - Algemeen: index.md
       - DataStore: datastore.md
+      - Downloads: downloads.md
+      - Bewerkingen: bewerkingen.md
   - Code Reference:
       - AHN: reference/ahn.md
+      - BAG: reference/bag.md
+      - BGT: reference/bgt.md
+      - DataStore: reference/datastore.md
   - Voorbeeld Notebooks:
       - AHN: notebooks/ahn.ipynb
 

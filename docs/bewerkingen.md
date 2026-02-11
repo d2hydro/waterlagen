@@ -1,0 +1,49 @@
+## Bewerkingen
+
+### AHN
+Na een AHN‑download werk je verder met de lokale rastertegels (of de VRT). De downloadfunctie levert direct de data die je in bewerkingen nodig hebt. Voor het downloaden van het ahn, en het verkrijgen van de `vrt_file` hieronder zie [Downloads](downloads.md#ahn)
+
+Interpoleren (gaten opvullen) van AHN‑tegels kan direct op een VRT. Je krijgt een nieuwe set GeoTIFFs terug, optioneel weer als VRT.
+
+Aanroepen:
+```python
+from waterlagen.ahn.interpolate import interpolate_ahn_tiles
+
+filled_vrt_or_dir = interpolate_ahn_tiles(
+    ahn_vrt_file=vrt_file,
+    max_search_distance=100,
+    dir_name="ahn_filled",
+)
+```
+
+### BAG
+BAG‑bewerkingen starten doorgaans vanuit een GeoDataFrame. Die haal je met één van de downloadopties op. Voor het ophalen van BAG-panden en het vekrijgen van `bag_gdf` zie [Downloads](downloads.md#bag)
+
+Rasterize (pand‑hoogtekaart) zet BAG‑polygons om naar een raster op basis van een DEM. Dit levert een GeoTIFF met vloerpeilen op.
+
+Aanroepen:
+```python
+from waterlagen.bag.rasterize import rasterize_bag
+
+rasterize_bag(
+    dem_raster=dem_tif,
+    bag_gdf=bag_gdf,
+    bag_pand_tif=out_tif,
+    buffer_step_m=1,
+)
+```
+
+### BGT
+Voor BGT‑bewerkingen werk je met GeoPackages die per featuretype worden opgeslagen.
+
+Aanroepen:
+```python
+from waterlagen.bgt.download import get_bgt_features
+from waterlagen import datastore
+
+out_dir = get_bgt_features(
+    featuretypes=["waterdeel", "pand"],
+    poly_mask=my_polygon_or_bbox,
+    download_dir=datastore.bgt_dir,
+)
+```
