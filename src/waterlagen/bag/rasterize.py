@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import geopandas as gpd
 import numpy as np
 import rasterio
@@ -91,10 +93,13 @@ def rasterize_bag(
     bag_gdf: gpd.GeoDataFrame,
     bag_pand_tif: Path,
     buffer_step_m: float,
+    elevation_offset_m: float = 0.05,
 ):
-    elevation_offset: float = 5
-
     with rasterio.open(dem_raster) as raster_src:
+        if raster_src.scales[0] == 0.01:
+            elevation_offset = round((elevation_offset_m * 100))
+        else:
+            elevation_offset = elevation_offset_m
         bag_gdf["vloerpeil"] = [
             buffered_elevation_search(
                 polygon=geom, raster_src=raster_src, buffer_step_m=buffer_step_m
@@ -105,7 +110,8 @@ def rasterize_bag(
         shapes = (
             (mapping(geom), int(val))
             for geom, val in zip(
-                bag_gdf.geometry, bag_gdf["vloerpeil"] + elevation_offset
+                bag_gdf.geometry,
+                bag_gdf["vloerpeil"] + elevation_offset,
             )
         )
 

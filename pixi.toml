@@ -44,7 +44,7 @@ docs-deploy = "mkdocs gh-deploy --force"
 
 [pypi-dependencies]
 waterlagen = { path = ".", editable = true }
-# let this be handled by VSCode as the Jupyter IDE doesn't seem to like pre-installed ipykernel: ipykernel = "*"
+ipykernel = "*"
 
 [environments]
 default = ["dev"]

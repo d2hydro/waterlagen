@@ -65,7 +65,7 @@ def get_bag_features_from_wfs(
     start_index = 0
     features_sum = 0
     logger.info(
-        "Start downloading BAG {type_name} using WFS, {WFS_COUNT} features per page (download)"
+        f"Start downloading BAG {type_name} using WFS, {WFS_COUNT} features per page (download)"
     )
     while True:
         # echo page number to console
