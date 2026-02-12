@@ -3,6 +3,8 @@ name: Tests (Coverage)
 on:
   pull_request:
     branches: [main]
+    types: [ready_for_review]
+  workflow_dispatch:
 
 permissions:
   contents: read
