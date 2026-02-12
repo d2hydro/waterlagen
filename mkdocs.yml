@@ -5,14 +5,14 @@ repo_name: d2hydro/waterlagen
 theme:
   name: material
   language: nl
-  logo: icons/logo/globe_only.png
-  favicon: icons/logo/favicon.png
+  logo: icons/logo.png
+  favicon: icons/favicon.png
   highlightjs: true
   features:
     - navigation.tabs
     - content.code.copy
-  palette: 
-    primary: blue
+  palette:
+    primary: custom
 
 nav:
   - Home: 
@@ -20,7 +20,7 @@ nav:
       - DataStore: datastore.md
       - Downloads: downloads.md
       - Bewerkingen: bewerkingen.md
-  - Code Reference:
+  - Code:
       - AHN: reference/ahn.md
       - BAG: reference/bag.md
       - BGT: reference/bgt.md
@@ -48,3 +48,6 @@ markdown_extensions:
   - pymdownx.snippets
   - pymdownx.tabbed:
       alternate_style: true
+
+extra_css:
+  - stylesheets/extra.css
