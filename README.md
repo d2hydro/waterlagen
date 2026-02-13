@@ -40,5 +40,5 @@ De volgende bewerkingen zijn beschikbaar:
 
 Lees verder in de [documentatie](https://d2hydro.github.io/waterlagen/bewerkingen/) 
 
-## Over de ontwikkelaars
-Waterlagen wordt ontwikkeld door [D2Hydro](https://d2hydro.nl/) en het [Hoogheemraadschap Hollands Noorderkwartier](https://www.hhnk.nl/) met als doel het gestandaardiseerd downloaden en bewerkingen van features en rasters via Python
+## Ontwikkelaars
+Waterlagen wordt ontwikkeld door [D2Hydro](https://d2hydro.nl/) en het [Hoogheemraadschap Hollands Noorderkwartier](https://www.hhnk.nl/) met als doel het gestandaardiseerd downloaden en bewerkingen van features en rasters via Python voor toepassingen in het waterbeheer.

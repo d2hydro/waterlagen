@@ -3,12 +3,15 @@ name: Tests (Coverage)
 on:
   pull_request:
     branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
   test-cov:
+    if: ${{ github.event.pull_request.draft == false }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

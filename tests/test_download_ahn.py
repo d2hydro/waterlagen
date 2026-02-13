@@ -1,5 +1,23 @@
 # %%
+import rasterio
+
 from waterlagen.ahn import create_download_dir, get_ahn_rasters
+
+SAMPLE_COORDS = [
+    (111176.5, 516525.5),
+    (113197.0, 512656.5),
+    (111375.0, 513895.0),
+    (113682.5, 516729.5),
+    (112109.5, 512686.0),
+]
+
+EXPECTED_SAMPLES_AHN4 = [99.0, -381.0, -29.0, -99.0, -239.0]
+EXPECTED_SAMPLES_AHN5 = [96.0, -388.0, -33.0, -102.0, 89.0]
+
+
+def _sample_raster(vrt_file, coords):
+    with rasterio.open(vrt_file) as src:
+        return [float(v[0]) for v in src.sample(coords)]
 
 
 def test_download_ahn4_pdok(ahn_dir):
@@ -34,6 +52,7 @@ def test_download_ahn4_pdok(ahn_dir):
     assert vrt_file.exists()
     assert vrt_file.with_name("M_19BZ1.tif").exists()
     assert vrt_file.with_suffix(".gpkg").exists()
+    assert _sample_raster(vrt_file, SAMPLE_COORDS) == EXPECTED_SAMPLES_AHN4
 
 
 def test_download_ahn5_datastroom(ahn_dir):
@@ -66,6 +85,7 @@ def test_download_ahn5_datastroom(ahn_dir):
     assert vrt_file.exists()
     assert vrt_file.with_name("M_19BZ1.tif").exists()
     assert vrt_file.with_suffix(".gpkg").exists()
+    assert _sample_raster(vrt_file, SAMPLE_COORDS) == EXPECTED_SAMPLES_AHN5
 
 
 def test_download_ahn6_datastroom(ahn_dir):

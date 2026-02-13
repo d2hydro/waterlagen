@@ -7068,8 +7068,8 @@ packages:
   timestamp: 1763021840142
 - pypi: ./
   name: waterlagen
-  version: 2026.2.0
-  sha256: f615d63e0b11a5c95a9389e190910496bb4f9dd3615d672e2ab2e55e82dff993
+  version: 2026.2.2
+  sha256: 8bc54bd6422fb8966a4772043584685b684ebc20a6414cf5bfc9ccb90ec8c4ca
   requires_dist:
   - affine
   - gdal

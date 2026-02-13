@@ -13,6 +13,8 @@ authors = [
 ]
 license = { text = "MIT" }
 
+urls = { "Source" = "https://github.com/d2hydro/waterlagen", "Documentation" = "https://d2hydro.github.io/waterlagen/" }
+
 requires-python = ">=3.11"
 dependencies = [
     "gdal",
