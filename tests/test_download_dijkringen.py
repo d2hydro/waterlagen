@@ -13,8 +13,8 @@ from waterlagen._downloads import (
 )
 from waterlagen.dijkringen.download import (
     DEFAULT_FILENAME,
-    DIJKRINGEN_URL,
     DIJKRINGEN_MAPSERVER_URL,
+    DIJKRINGEN_URL,
     download_dijkringen_historie,
 )
 
