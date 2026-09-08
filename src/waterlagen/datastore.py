@@ -1,10 +1,19 @@
-import os
 from pathlib import Path
 
 from pydantic import ValidationInfo, computed_field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-default_data_path = Path(os.getcwd()) / "data"
+from waterlagen.logger import get_logger
+
+logger = get_logger(__name__)
+
+repo_root = Path(__file__).resolve().parents[2]
+default_data_path = repo_root / "data"
+
+
+def _datastore_env_files() -> tuple[Path, ...]:
+    """Return datastore config files from lowest to highest precedence."""
+    return repo_root / ".datastore", Path.cwd() / ".datastore"
 
 
 class DataStore(BaseSettings):
@@ -31,7 +40,11 @@ class DataStore(BaseSettings):
     data_dir: Path = default_data_path
     source_data_dir: Path | None = None
     processed_data_dir: Path | None = None
-    model_config = SettingsConfigDict(env_file=(".datastore"))
+    model_config = SettingsConfigDict(env_file=None)
+
+    def __init__(self, **values: object) -> None:
+        values.setdefault("_env_file", _datastore_env_files())
+        super().__init__(**values)
 
     @field_validator("source_data_dir", "processed_data_dir", mode="after")
     def ensure_directory_exists(cls, v: Path | None, info: ValidationInfo) -> Path:
@@ -88,3 +101,8 @@ class DataStore(BaseSettings):
 
 
 datastore = DataStore()
+logger.info(
+    "Initialized datastore with source_data_dir=%s and processed_data_dir=%s",
+    datastore.source_data_dir,
+    datastore.processed_data_dir,
+)

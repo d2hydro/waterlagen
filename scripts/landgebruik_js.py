@@ -22,16 +22,26 @@ import pandas as pd
 import rasterio as rio
 from rasterio import features
 
+from waterlagen import datastore
 from waterlagen.bag import download_bag_light
 from waterlagen.bgt import download_bgt
 from waterlagen.brp import download_brp
 from waterlagen.dijkringen import download_dijkringen
+from waterlagen.logger import init_logger
 from waterlagen.settings import settings
 
-SCRIPT_DIR = Path(__file__).resolve().parent
-SOURCE_DATA_DIR = SCRIPT_DIR / "data" / "source_data"
-PROCESSED_DATA_DIR = SCRIPT_DIR / "data" / "processed_data"
+SOURCE_DATA_DIR = datastore.source_data_dir
+PROCESSED_DATA_DIR = datastore.processed_data_dir
 
+logger = init_logger(
+    name="landgebruik_js",
+    log_file=datastore.data_dir / "landgebruik_js.log",
+)
+logger.info(
+    "Initialized datastore with source_data_dir=%s and processed_data_dir=%s",
+    SOURCE_DATA_DIR,
+    PROCESSED_DATA_DIR,
+)
 
 FUNCTIONEEL_GEBIED_CODES = {
     "sportparken": 91,

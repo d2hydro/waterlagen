@@ -17,6 +17,7 @@ from waterlagen.functioneel_landgebruik.build import (
     _validate_sources_exist,
     bouw_functioneel_landgebruik,
 )
+from waterlagen.datastore import DataStore
 from waterlagen.logger import get_logger
 from waterlagen.raster.config import RasterOutputConfig
 from waterlagen.raster.tiles import Tile, read_tiles, tile_filename
@@ -164,6 +165,7 @@ def bouw_functioneel_landgebruik_tiles(
     resolution_m: float = 0.5,
     crs: str = settings.crs,
     sources: FunctioneelLandgebruikSources | None = None,
+    data_store: DataStore | None = None,
     layers: FunctioneelLandgebruikLayers | None = None,
     output_config: RasterOutputConfig | None = None,
     download_missing_sources: bool = True,
@@ -173,7 +175,13 @@ def bouw_functioneel_landgebruik_tiles(
     worker_count = _resolve_workers(workers)
     target_dir = Path(target_dir)
     target_dir.mkdir(parents=True, exist_ok=True)
-    sources = sources or FunctioneelLandgebruikSources()
+    if sources is not None and data_store is not None:
+        raise ValueError("Pass either sources or data_store, not both")
+    sources = sources or (
+        FunctioneelLandgebruikSources.from_datastore(data_store)
+        if data_store is not None
+        else FunctioneelLandgebruikSources()
+    )
     layers = layers or FunctioneelLandgebruikLayers()
     output_config = output_config or RasterOutputConfig()
 
@@ -200,7 +208,9 @@ def bouw_functioneel_landgebruik_tiles(
     jobs_to_submit: list[FunctioneelLandgebruikTileJob] = []
     for job in jobs:
         if job.target_path.exists() and not overwrite:
-            logger.info("Skipping existing functioneel-landgebruik tile %s", job.tile_id)
+            logger.info(
+                "Skipping existing functioneel-landgebruik tile %s", job.tile_id
+            )
             results_by_tile_id[job.tile_id] = job.target_path
             continue
         jobs_to_submit.append(job)

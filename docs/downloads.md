@@ -4,6 +4,13 @@ Voor het downloaden van gegevens maken we gebruik van bekende (REST) services op
 ### AHN
 De AHN-download haalt DTM/DSM rastertegels binnen op 0.5m of 5m resolutie en zet die lokaal weg. Je krijgt standaard een VRT terug waarmee alle tegels als één raster te openen zijn.
 
+Voor de landelijke vooraf samengestelde BGT-download gebruikt `download_bgt()` standaard
+`datastore.bgt_dir / "bgt-gmllight-nl-nopbp.zip"` als lokale ZIP-cache. Een bestaande
+geldige ZIP wordt opnieuw gebruikt; een ontbrekende of corrupte ZIP wordt eerst naar
+een tijdelijk bestand gedownload en pas na validatie vervangen. `overwrite=False`
+blijft alleen gelden voor de doel-GeoPackage: als die al bestaat, wordt de ZIP-cache
+niet opnieuw gedownload.
+
 Aanroepen:
 ```python
 from waterlagen.ahn.download import get_ahn_rasters

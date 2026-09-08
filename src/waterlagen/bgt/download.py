@@ -6,7 +6,7 @@ import zipfile
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import Iterable, Optional
-from xml.etree import ElementTree
+from urllib.parse import unquote, urlparse
 
 import pyogrio
 import requests
@@ -23,6 +23,7 @@ from waterlagen._crs import (
 )
 from waterlagen._downloads import (
     DownloadPayloadError,
+    FileDownload,
     stream_download_to_temp,
     validate_geopackage,
 )
@@ -36,7 +37,12 @@ DEFAULT_FEATURETYPES = ("waterdeel", "pand")
 BGT_PREDEFINED_URL = (
     "https://api.pdok.nl/lv/bgt/download/v1_0/full/predefined/bgt-gmllight-nl-nopbp.zip"
 )
+DEFAULT_PREDEFINED_ARCHIVE = "bgt-gmllight-nl-nopbp.zip"
 DEFAULT_FILENAME = "bgt.gpkg"
+GML_OPEN_OPTIONS = [
+    "GML_ATTRIBUTES_TO_OGR_FIELDS=YES",
+    "EXPOSE_GML_ID=YES",
+]
 
 
 @dataclass(frozen=True)
@@ -54,6 +60,7 @@ class BgtDownload:
     """Metadata for the predefined national BGT download."""
 
     source_url: str
+    archive_path: Path
     target_path: Path
     downloaded_bytes: int
     layer_count: int
@@ -228,91 +235,6 @@ def _validate_zip(zip_path: Path) -> list[str]:
     return gml_names
 
 
-def _vsi_zip_member_path(zip_path: Path, member_name: str) -> str:
-    return f"/vsizip/{zip_path.resolve().as_posix()}/{member_name}"
-
-
-def _first_feature_member_sample(
-    zf: zipfile.ZipFile,
-    member_name: str,
-    *,
-    max_bytes: int = 64 * 1024 * 1024,
-    chunk_size: int = 1024 * 1024,
-) -> bytes | None:
-    feature_start_tag = b"<gml:featureMember"
-    feature_end_tag = b"</gml:featureMember>"
-    with zf.open(member_name) as member:
-        data = b""
-        while len(data) < max_bytes:
-            chunk = member.read(chunk_size)
-            if not chunk:
-                break
-            data += chunk
-            feature_start = data.find(feature_start_tag)
-            feature_end = data.find(feature_end_tag, feature_start)
-            if feature_start >= 0 and feature_end >= 0:
-                feature_end += len(feature_end_tag)
-                return (
-                    data[:feature_start]
-                    + data[feature_start:feature_end]
-                    + b"</gml:FeatureCollection>"
-                )
-    return None
-
-
-def _relax_gfs_template(gfs_text: str) -> str:
-    root = ElementTree.fromstring(gfs_text)
-    for feature_class in root.findall("GMLFeatureClass"):
-        dataset_info = feature_class.find("DatasetSpecificInfo")
-        if dataset_info is not None:
-            feature_class.remove(dataset_info)
-        for width in feature_class.findall("./PropertyDefn/Width"):
-            width.text = "0"
-    return ElementTree.tostring(root, encoding="unicode")
-
-
-def _write_gfs_template_from_zip_member(
-    zf: zipfile.ZipFile,
-    member_name: str,
-    gml_path: Path,
-    *,
-    source_crs: str | int,
-) -> None:
-    sample = _first_feature_member_sample(zf, member_name)
-    if sample is None:
-        return
-
-    sample_gml = gml_path.with_name(f".{gml_path.stem}.sample.gml")
-    sample_gpkg = gml_path.with_name(f".{gml_path.stem}.sample.gpkg")
-    sample_gml.write_bytes(sample)
-    try:
-        options = gdal.VectorTranslateOptions(
-            format="GPKG",
-            srcSRS=format_crs(source_crs),
-            dstSRS=format_crs(source_crs),
-            geometryType="CONVERT_TO_LINEAR",
-        )
-        with gdal.ExceptionMgr(useExceptions=True):
-            dataset = gdal.VectorTranslate(
-                str(sample_gpkg),
-                str(sample_gml),
-                options=options,
-            )
-        if dataset is None:
-            return
-        dataset = None
-        sample_gfs = sample_gml.with_suffix(".gfs")
-        if sample_gfs.exists():
-            gml_path.with_suffix(".gfs").write_text(
-                _relax_gfs_template(sample_gfs.read_text(encoding="utf-8")),
-                encoding="utf-8",
-            )
-    finally:
-        sample_gml.unlink(missing_ok=True)
-        sample_gml.with_suffix(".gfs").unlink(missing_ok=True)
-        sample_gpkg.unlink(missing_ok=True)
-
-
 def _gml_layer_source_crs(
     gml_path: Path,
     *,
@@ -366,13 +288,25 @@ def _translate_gml_layer_to_geopackage(
         dstSRS=format_crs(expected_crs),
         layerName=layer_name,
         geometryType="CONVERT_TO_LINEAR",
+        layerCreationOptions=["PRECISION=NO"],
+        transactionSize=100_000,
     )
 
     with gdal.ExceptionMgr(useExceptions=True):
-        dataset = gdal.VectorTranslate(str(target_path), str(gml_path), options=options)
+        source_dataset = gdal.OpenEx(
+            str(gml_path),
+            gdal.OF_VECTOR,
+            open_options=GML_OPEN_OPTIONS,
+        )
+        if source_dataset is None:
+            raise DownloadPayloadError(f"Could not open GML dataset {gml_path}")
+        dataset = gdal.VectorTranslate(
+            str(target_path), source_dataset, options=options
+        )
     if dataset is None:
         raise DownloadPayloadError(f"Could not convert {gml_path} to {target_path}")
     dataset = None
+    source_dataset = None
 
 
 def _validate_geopackage_spatial_crs(path: Path, *, expected_crs: str | int) -> None:
@@ -439,9 +373,9 @@ def _convert_bgt_zip_to_geopackage(
     feature_types: Iterable[str],
     *,
     expected_crs: str | int,
-    use_vsi_zip: bool = False,
 ) -> int:
     gml_names = _validate_zip(zip_path)
+    logger.info("Reading BGT archive %s", zip_path)
     feature_types = tuple(
         dict.fromkeys(str(feature_type) for feature_type in feature_types)
     )
@@ -460,9 +394,7 @@ def _convert_bgt_zip_to_geopackage(
             f"{feature_type} (expected bgt_{feature_type}.gml)"
             for feature_type in missing_feature_types
         )
-        logger.warning(
-            f"BGT ZIP is missing requested feature types: {missing_labels}"
-        )
+        logger.warning(f"BGT ZIP is missing requested feature types: {missing_labels}")
 
     selected_gml_names = [
         gml_names_by_feature_type[feature_type.lower()]
@@ -484,39 +416,28 @@ def _convert_bgt_zip_to_geopackage(
     tmp_gpkg.unlink(missing_ok=True)
 
     try:
-        with tempfile.TemporaryDirectory(dir=target_path.parent) as extract_dir:
-            extract_root = Path(extract_dir)
-            with zipfile.ZipFile(zip_path) as zf:
-                first_layer = True
-                for gml_name in selected_gml_names:
-                    layer_name = PurePosixPath(gml_name).stem
-                    zf.getinfo(gml_name)
-                    logger.info(
-                        f"Converting {gml_name} to layer {layer_name} "
-                        f"in {target_path}"
-                    )
-                    if use_vsi_zip:
-                        gml_path = _vsi_zip_member_path(zip_path, gml_name)
-                        logger.debug(f"Reading {gml_name} from ZIP as {gml_path}")
-                    else:
-                        gml_path = Path(zf.extract(gml_name, path=extract_root))
-                        logger.debug(f"Extracted {gml_name} to {gml_path}")
-                        _write_gfs_template_from_zip_member(
-                            zf,
-                            gml_name,
-                            gml_path,
-                            source_crs=expected_crs,
-                        )
-                    _translate_gml_layer_to_geopackage(
-                        gml_path,
-                        layer_name=layer_name,
-                        expected_crs=expected_crs,
-                        target_path=tmp_gpkg,
-                        append=not first_layer,
-                        source_crs=expected_crs,
-                    )
-                    first_layer = False
+        first_layer = True
+        for gml_name in selected_gml_names:
+            layer_name = PurePosixPath(gml_name).stem
+            gml_path = _vsizip_gml_path(zip_path, gml_name)
+            logger.info("Reading selected BGT GML %s from %s", gml_name, zip_path)
+            logger.info(
+                "Converting %s to layer %s in %s",
+                gml_name,
+                layer_name,
+                target_path,
+            )
+            _translate_gml_layer_to_geopackage(
+                gml_path,
+                layer_name=layer_name,
+                expected_crs=expected_crs,
+                target_path=tmp_gpkg,
+                append=not first_layer,
+                source_crs=expected_crs,
+            )
+            first_layer = False
 
+        logger.info("Validating final BGT GeoPackage %s", tmp_gpkg)
         _validate_geopackage_spatial_crs(tmp_gpkg, expected_crs=expected_crs)
         layer_count = len(read_layer_crs_info(tmp_gpkg))
         tmp_gpkg.replace(target_path)
@@ -531,6 +452,98 @@ def _geopackage_layer_count(path: Path) -> int:
     return len(read_layer_crs_info(path))
 
 
+def _vsizip_gml_path(zip_path: Path, gml_name: str) -> str:
+    """Build a GDAL /vsizip/ path for a GML member inside a ZIP archive."""
+    zip_path_label = zip_path.resolve().as_posix()
+    gml_name_label = PurePosixPath(gml_name).as_posix()
+    return f"/vsizip/{zip_path_label}/{gml_name_label}"
+
+
+def _archive_name_from_url(url: str) -> str:
+    if url == BGT_PREDEFINED_URL:
+        return DEFAULT_PREDEFINED_ARCHIVE
+
+    name = PurePosixPath(unquote(urlparse(url).path)).name
+    if not name.lower().endswith(".zip"):
+        raise ValueError(f"BGT download URL has no ZIP filename: {url}")
+    return name
+
+
+def _download_validated_zip_archive(
+    *,
+    url: str,
+    archive_path: Path,
+    description: str,
+    chunk_size: int,
+    timeout: int,
+    progress: bool,
+) -> FileDownload:
+    downloaded_file = stream_download_to_temp(
+        url=url,
+        target_path=archive_path,
+        suffix=".zip",
+        description=description,
+        chunk_size=chunk_size,
+        timeout=timeout,
+        logger=logger,
+        progress=progress,
+    )
+    try:
+        _validate_zip(downloaded_file.target_path)
+        logger.info("Replacing BGT archive %s", archive_path)
+        downloaded_file.target_path.replace(archive_path)
+        return FileDownload(
+            source_url=downloaded_file.source_url,
+            target_path=archive_path,
+            downloaded_bytes=downloaded_file.downloaded_bytes,
+            total_size_known=downloaded_file.total_size_known,
+            total_bytes=downloaded_file.total_bytes,
+            content_type=downloaded_file.content_type,
+        )
+    finally:
+        downloaded_file.target_path.unlink(missing_ok=True)
+
+
+def _ensure_bgt_archive(
+    *,
+    url: str,
+    archive_path: Path,
+    chunk_size: int,
+    timeout: int,
+    progress: bool,
+) -> FileDownload:
+    description = archive_path.name
+    if archive_path.exists():
+        logger.info("Inspecting existing BGT archive %s", archive_path)
+        try:
+            _validate_zip(archive_path)
+        except DownloadPayloadError as exc:
+            logger.info(
+                "Existing BGT archive %s is invalid; downloading replacement",
+                archive_path,
+            )
+            logger.debug("Invalid BGT archive %s: %s", archive_path, exc)
+        else:
+            logger.info("Reusing existing valid BGT archive %s", archive_path)
+            return FileDownload(
+                source_url=url,
+                target_path=archive_path,
+                downloaded_bytes=0,
+                total_size_known=False,
+            )
+    else:
+        logger.info("BGT archive %s is missing; downloading it", archive_path)
+
+    return _download_validated_zip_archive(
+        url=url,
+        archive_path=archive_path,
+        description=description,
+        chunk_size=chunk_size,
+        timeout=timeout,
+        progress=progress,
+    )
+
+
 def download_bgt(
     download_dir: Path = datastore.bgt_dir,
     *,
@@ -542,17 +555,27 @@ def download_bgt(
     chunk_size: int = 1024 * 1024,
     timeout: int = 30,
 ) -> BgtDownload:
-    """Download the predefined national BGT GML Light ZIP as one GeoPackage."""
+    """Download or reuse the national BGT GML Light ZIP and convert layers.
+
+    The predefined ZIP is treated as a local cache. A valid existing archive is
+    reused; missing or invalid archives are replaced only after a temporary
+    download has been validated as a readable ZIP containing GML files.
+    """
+    download_dir = Path(download_dir)
+    download_dir.mkdir(exist_ok=True, parents=True)
+    archive_path = download_dir / _archive_name_from_url(url)
     if target_path is None:
-        target_path = Path(download_dir) / DEFAULT_FILENAME
+        target_path = download_dir / DEFAULT_FILENAME
     else:
         target_path = Path(target_path)
     target_path.parent.mkdir(exist_ok=True, parents=True)
 
     if target_path.exists() and not overwrite:
+        logger.info("Reusing existing BGT GeoPackage %s", target_path)
         layer_count = _geopackage_layer_count(target_path)
         return BgtDownload(
             source_url=url,
+            archive_path=archive_path,
             target_path=target_path,
             downloaded_bytes=0,
             layer_count=layer_count,
@@ -560,36 +583,31 @@ def download_bgt(
             total_size_known=False,
         )
 
-    downloaded_file = None
-    try:
-        downloaded_file = stream_download_to_temp(
-            url=url,
-            target_path=target_path,
-            suffix=".zip",
-            chunk_size=chunk_size,
-            timeout=timeout,
-            logger=logger,
-            progress=progress,
-        )
-        layer_count = _convert_bgt_zip_to_geopackage(
-            downloaded_file.target_path,
-            target_path,
-            feature_types=featuretypes,
-            expected_crs=settings.crs,
-        )
-        return BgtDownload(
-            source_url=url,
-            target_path=target_path,
-            downloaded_bytes=downloaded_file.downloaded_bytes,
-            layer_count=layer_count,
-            final_crs=format_crs(settings.crs),
-            total_size_known=downloaded_file.total_size_known,
-            total_bytes=downloaded_file.total_bytes,
-            content_type=downloaded_file.content_type,
-        )
-    finally:
-        if downloaded_file is not None:
-            downloaded_file.target_path.unlink(missing_ok=True)
+    downloaded_file = _ensure_bgt_archive(
+        url=url,
+        archive_path=archive_path,
+        chunk_size=chunk_size,
+        timeout=timeout,
+        progress=progress,
+    )
+    layer_count = _convert_bgt_zip_to_geopackage(
+        archive_path,
+        target_path,
+        feature_types=featuretypes,
+        expected_crs=settings.crs,
+    )
+    logger.info("Completed BGT download workflow for %s", target_path)
+    return BgtDownload(
+        source_url=url,
+        archive_path=archive_path,
+        target_path=target_path,
+        downloaded_bytes=downloaded_file.downloaded_bytes,
+        layer_count=layer_count,
+        final_crs=format_crs(settings.crs),
+        total_size_known=downloaded_file.total_size_known,
+        total_bytes=downloaded_file.total_bytes,
+        content_type=downloaded_file.content_type,
+    )
 
 
 def bgt_custom_download(

@@ -12,10 +12,20 @@
 - Readability is more important than terseness.
 - Keep functions focused and easy to understand.
 - Prefer explicit code over clever code.
+- Prefer explicit, linear workflow code with named intermediate values.
 - Never use one-line `if` statements.
 - Do not introduce unnecessary abstractions.
 - Keep edits scoped to the requested behavior and the directly affected modules.
 - Preserve existing public APIs unless the user explicitly asks for a breaking change.
+
+## Design and Reuse
+
+- Before adding functionality, inspect existing shared helpers and reuse them where appropriate.
+- Put behavior shared by multiple downloaders in a common helper instead of duplicating it.
+- Keep domain-specific behavior in the domain module; keep generic download, validation, progress, and logging behavior in shared modules.
+- Use small private helpers for validation, cache or reuse decisions, and individual processing steps.
+- Make cache, reuse, and overwrite behavior explicit in the code and docstrings.
+- Avoid clever abstractions that hide important filesystem, download, or conversion behavior.
 
 ## Static Typing
 
@@ -57,12 +67,19 @@
 - Respect `overwrite=False` behavior. Avoid re-downloading or replacing large datasets unless explicitly requested or required by the change.
 - Keep generated data, large downloads, logs, caches, and local processing outputs out of commits.
 - Network-facing code should expose timeouts and raise clear errors for HTTP, malformed payloads, incomplete downloads, and invalid geospatial files.
+- Prefer shared helpers for streaming downloads, temporary files, payload validation, progress reporting, and atomic replacement.
+- Do not call `zipfile.ZipFile.testzip()` automatically for large archives or cache checks; it reads every member. Prefer structural ZIP validation and validate selected members while processing, unless a full CRC scan is explicitly required.
 
 ## Logging and Console Output
 
 - In package modules, use `waterlagen.logger.get_logger(__name__)` and avoid `print()`.
 - Scripts may use concise console output for workflow progress, especially where tests already assert it.
 - Download progress may write to stdout when the relevant function exposes a `progress` option.
+- Progress output must identify what is being downloaded; a percentage without a file or operation name is insufficient.
+- Log user-visible workflow steps at INFO level, including download, reuse or skip, extraction, conversion, validation, and completion.
+- Use DEBUG only for diagnostic details that are not needed to understand normal workflow progress.
+- Prefer structured logger arguments, for example `logger.info("Downloading %s to %s", description, target_path)`.
+- Put shared download progress and logging behavior in `_downloads.py` instead of implementing downloader-specific variants.
 - Do not configure logging at import time in library modules. Configure logging in scripts or application entry points.
 
 ## Documentation

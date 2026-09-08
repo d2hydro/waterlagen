@@ -1,6 +1,6 @@
 import os
 import tempfile
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import geopandas as gpd
@@ -9,11 +9,12 @@ import rasterio as rio
 from rasterio.enums import Resampling
 
 from waterlagen import _geopandas as wgpd
-from waterlagen import datastore
+from waterlagen import datastore as default_datastore
 from waterlagen.bag import download_bag_light
 from waterlagen.bgt import download_bgt
 from waterlagen.brp import download_brp
 from waterlagen.dijkringen import download_dijkringen
+from waterlagen.datastore import DataStore
 from waterlagen.functioneel_landgebruik.legend import COLORMAP
 from waterlagen.functioneel_landgebruik.rasterize import rasterize_features
 from waterlagen.functioneel_landgebruik.sources import (
@@ -32,11 +33,34 @@ from waterlagen.top10nl import download_top10nl
 
 @dataclass(frozen=True)
 class FunctioneelLandgebruikSources:
-    bgt_gpkg: Path = datastore.bgt_dir / "bgt.gpkg"
-    bag_gpkg: Path = datastore.bag_dir / "bag-light.gpkg"
-    brp_gpkg: Path = datastore.brp_dir / "brpgewaspercelen_definitief_2025.gpkg"
-    top10nl_gpkg: Path = datastore.top10nl_dir / "top10nl_Compleet.gpkg"
-    dijkringen_gpkg: Path = datastore.dijkringen_dir / "dijkringen_historie_2012.gpkg"
+    bgt_gpkg: Path = field(
+        default_factory=lambda: default_datastore.bgt_dir / "bgt.gpkg"
+    )
+    bag_gpkg: Path = field(
+        default_factory=lambda: default_datastore.bag_dir / "bag-light.gpkg"
+    )
+    brp_gpkg: Path = field(
+        default_factory=lambda: default_datastore.brp_dir
+        / "brpgewaspercelen_definitief_2025.gpkg"
+    )
+    top10nl_gpkg: Path = field(
+        default_factory=lambda: default_datastore.top10nl_dir / "top10nl_Compleet.gpkg"
+    )
+    dijkringen_gpkg: Path = field(
+        default_factory=lambda: default_datastore.dijkringen_dir
+        / "dijkringen_historie_2012.gpkg"
+    )
+
+    @classmethod
+    def from_datastore(cls, data_store: DataStore) -> "FunctioneelLandgebruikSources":
+        """Create source paths rooted in an explicitly supplied datastore."""
+        return cls(
+            bgt_gpkg=data_store.bgt_dir / "bgt.gpkg",
+            bag_gpkg=data_store.bag_dir / "bag-light.gpkg",
+            brp_gpkg=data_store.brp_dir / "brpgewaspercelen_definitief_2025.gpkg",
+            top10nl_gpkg=data_store.top10nl_dir / "top10nl_Compleet.gpkg",
+            dijkringen_gpkg=data_store.dijkringen_dir / "dijkringen_historie_2012.gpkg",
+        )
 
 
 @dataclass(frozen=True)
@@ -170,6 +194,7 @@ def bouw_functioneel_landgebruik(
     resolution_m: float = 0.5,
     crs: str = settings.crs,
     sources: FunctioneelLandgebruikSources | None = None,
+    data_store: DataStore | None = None,
     layers: FunctioneelLandgebruikLayers | None = None,
     download_missing_sources: bool | None = None,
     download_missing: bool | None = None,
@@ -178,11 +203,19 @@ def bouw_functioneel_landgebruik(
 ) -> Path:
     """Build the functional land-use GeoTIFF for a requested extent."""
     target_path = Path(target_path)
-    sources = sources or FunctioneelLandgebruikSources()
+    if sources is not None and data_store is not None:
+        raise ValueError("Pass either sources or data_store, not both")
+    sources = sources or (
+        FunctioneelLandgebruikSources.from_datastore(data_store)
+        if data_store is not None
+        else FunctioneelLandgebruikSources()
+    )
     layers = layers or FunctioneelLandgebruikLayers()
     output_config = output_config or RasterOutputConfig()
     if download_missing_sources is None:
-        download_missing_sources = True if download_missing is None else download_missing
+        download_missing_sources = (
+            True if download_missing is None else download_missing
+        )
 
     if target_path.exists() and not overwrite:
         return target_path

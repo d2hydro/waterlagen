@@ -4,7 +4,11 @@ import numpy as np
 import rasterio
 
 from waterlagen.functioneel_landgebruik import build as build_mod
-from waterlagen.functioneel_landgebruik import bouw_functioneel_landgebruik
+from waterlagen.functioneel_landgebruik import (
+    FunctioneelLandgebruikSources,
+    bouw_functioneel_landgebruik,
+)
+from waterlagen.datastore import DataStore
 from waterlagen.raster.config import RasterOutputConfig
 
 
@@ -16,6 +20,22 @@ def _patch_sources(monkeypatch, prepared_sources=()):
         build_mod,
         "_prepare_priority_sources",
         lambda *args, **kwargs: list(prepared_sources),
+    )
+
+
+def test_sources_are_derived_from_injected_datastore(tmp_path):
+    data_store = DataStore(data_dir=tmp_path / "data")
+
+    sources = FunctioneelLandgebruikSources.from_datastore(data_store)
+
+    assert sources.bgt_gpkg == data_store.bgt_dir / "bgt.gpkg"
+    assert sources.bag_gpkg == data_store.bag_dir / "bag-light.gpkg"
+    assert sources.brp_gpkg == (
+        data_store.brp_dir / "brpgewaspercelen_definitief_2025.gpkg"
+    )
+    assert sources.top10nl_gpkg == data_store.top10nl_dir / "top10nl_Compleet.gpkg"
+    assert sources.dijkringen_gpkg == (
+        data_store.dijkringen_dir / "dijkringen_historie_2012.gpkg"
     )
 
 

@@ -22,7 +22,8 @@ def test_landgebruik_script_builds_tiles_vrt_and_cog_in_order(
     landgebruik = _load_landgebruik_script()
     events = []
     processed_dir = tmp_path / "processed"
-    tiles_path = tmp_path / "tiles.gpkg"
+    data_dir_root = tmp_path / "data"
+    tiles_path = processed_dir / "tiles" / "tiles.gpkg"
     tile_files = [
         processed_dir / "functioneel_landgebruik" / "tiles" / "tile-a.tif",
         processed_dir / "functioneel_landgebruik" / "tiles" / "tile-b.tif",
@@ -47,9 +48,10 @@ def test_landgebruik_script_builds_tiles_vrt_and_cog_in_order(
     def fake_inspect_raster(path):
         events.append(("inspect_raster", path))
 
-    monkeypatch.setattr(landgebruik, "datastore", SimpleNamespace(
-        processed_data_dir=processed_dir
-    ))
+    data_store = SimpleNamespace(
+        data_dir=data_dir_root,
+        processed_data_dir=processed_dir,
+    )
     monkeypatch.setattr(landgebruik, "_safe_workers", lambda: 2)
     monkeypatch.setattr(landgebruik, "build_tiles", fake_build_tiles)
     monkeypatch.setattr(
@@ -61,7 +63,7 @@ def test_landgebruik_script_builds_tiles_vrt_and_cog_in_order(
     monkeypatch.setattr(landgebruik, "create_cog_file", fake_create_cog_file)
     monkeypatch.setattr(landgebruik, "inspect_raster", fake_inspect_raster)
 
-    result = landgebruik.main()
+    result = landgebruik.main(data_store=data_store)
 
     data_dir = processed_dir / "functioneel_landgebruik"
     tiles_dir = data_dir / "tiles"
@@ -75,10 +77,15 @@ def test_landgebruik_script_builds_tiles_vrt_and_cog_in_order(
         "create_cog_file",
         "inspect_raster",
     ]
-    assert events[0][1] == {"tile_size_m": 5000, "overwrite": False}
+    assert events[0][1] == {
+        "target_path": tiles_path,
+        "tile_size_m": 5000,
+        "overwrite": False,
+    }
     assert events[1][1]["target_dir"] == tiles_dir
     assert events[1][1]["tiles_path"] == tiles_path
     assert events[1][1]["workers"] == 2
+    assert events[1][1]["data_store"] is data_store
     assert events[1][1]["overwrite"] is False
     assert events[2][1] == {"vrt_file": vrt_file, "directory": tiles_dir}
     assert events[3][1] == {
