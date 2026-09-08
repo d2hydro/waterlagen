@@ -1,7 +1,9 @@
 import json
 import os
+import shutil
 import sys
 import tempfile
+import zipfile
 from dataclasses import dataclass
 from pathlib import Path
 from xml.etree import ElementTree
@@ -302,3 +304,184 @@ def download_geopackage(
         description=description,
         expected_crs=expected_crs,
     ).target_path
+
+
+def _temporary_path(target_path: Path, *, suffix: str) -> Path:
+    """Create an unused temporary path beside target_path."""
+    fd, tmp_name = tempfile.mkstemp(
+        prefix=f".{target_path.name}.",
+        suffix=suffix,
+        dir=target_path.parent,
+    )
+    os.close(fd)
+    tmp_path = Path(tmp_name)
+    tmp_path.unlink(missing_ok=True)
+    return tmp_path
+
+
+def _geopackage_member_from_zip(
+    archive: zipfile.ZipFile,
+    archive_path: Path,
+    *,
+    member_name: str | None,
+) -> zipfile.ZipInfo:
+    """Return the requested or sole GeoPackage member from a ZIP archive."""
+    if member_name is not None:
+        try:
+            member = archive.getinfo(member_name)
+        except KeyError as exc:
+            raise DownloadPayloadError(
+                f"{archive_path} does not contain GeoPackage member {member_name}"
+            ) from exc
+        if member.is_dir() or not member.filename.lower().endswith(".gpkg"):
+            raise DownloadPayloadError(
+                f"{archive_path} member {member_name} is not a GeoPackage"
+            )
+        return member
+
+    geopackage_members = [
+        member
+        for member in archive.infolist()
+        if not member.is_dir() and member.filename.lower().endswith(".gpkg")
+    ]
+    if not geopackage_members:
+        raise DownloadPayloadError(f"{archive_path} does not contain a GeoPackage")
+    if len(geopackage_members) > 1:
+        names = ", ".join(member.filename for member in geopackage_members)
+        raise DownloadPayloadError(
+            f"{archive_path} contains multiple GeoPackages; select one explicitly: {names}"
+        )
+    return geopackage_members[0]
+
+
+def download_geopackage_from_zip_with_metadata(
+    url: str,
+    target_path: Path,
+    *,
+    overwrite: bool = True,
+    member_name: str | None = None,
+    chunk_size: int = 1024 * 1024,
+    timeout: int = 30,
+    logger=None,
+    progress: bool = True,
+    description: str | None = None,
+    expected_crs: str | int | None = None,
+) -> GeoPackageDownload:
+    """Download a ZIP archive, validate its GeoPackage member, and replace target.
+
+    Parameters
+    ----------
+    url : str
+        URL of the ZIP archive.
+    target_path : Path
+        GeoPackage output path. The completed, validated member replaces this path
+        atomically.
+    overwrite : bool, optional
+        Whether to replace an existing target. When False, the existing target is
+        returned without making an HTTP request.
+    member_name : str, optional
+        Exact GeoPackage member in the archive. When omitted, the archive must
+        contain exactly one GeoPackage member.
+    chunk_size : int, optional
+        HTTP download chunk size in bytes.
+    timeout : int, optional
+        HTTP timeout in seconds.
+    logger : logging.Logger, optional
+        Logger for normal download, extraction, and validation progress.
+    progress : bool, optional
+        Whether to write named byte progress to stdout.
+    description : str, optional
+        Human-readable download label. Defaults to the target filename.
+    expected_crs : str | int, optional
+        CRS required for spatial layers. Layers with another defined CRS are
+        reprojected before the target is replaced.
+
+    Returns
+    -------
+    GeoPackageDownload
+        Metadata for the downloaded GeoPackage. Invalid ZIP files, invalid
+        GeoPackage members, and failed validation leave an existing target intact.
+    """
+    target_path = Path(target_path)
+    target_path.parent.mkdir(exist_ok=True, parents=True)
+    if target_path.exists() and not overwrite:
+        if logger is not None:
+            logger.info("Reusing existing GeoPackage %s", target_path)
+        return GeoPackageDownload(
+            source_url=url,
+            target_path=target_path,
+            downloaded_bytes=0,
+            total_size_known=False,
+        )
+
+    archive_path: Path | None = None
+    temporary_gpkg: Path | None = None
+    try:
+        downloaded_file = stream_download_to_temp(
+            url=url,
+            target_path=target_path,
+            suffix=".zip",
+            description=description,
+            chunk_size=chunk_size,
+            timeout=timeout,
+            logger=logger,
+            progress=progress,
+        )
+        archive_path = downloaded_file.target_path
+        temporary_gpkg = _temporary_path(target_path, suffix=".gpkg")
+
+        try:
+            with zipfile.ZipFile(archive_path) as archive:
+                member = _geopackage_member_from_zip(
+                    archive,
+                    archive_path,
+                    member_name=member_name,
+                )
+                if logger is not None:
+                    logger.info(
+                        "Extracting GeoPackage member %s from %s",
+                        member.filename,
+                        archive_path,
+                    )
+                with (
+                    archive.open(member) as source,
+                    temporary_gpkg.open("wb") as target,
+                ):
+                    shutil.copyfileobj(source, target, length=chunk_size)
+        except (OSError, zipfile.BadZipFile) as exc:
+            raise DownloadPayloadError(
+                f"{archive_path} is not a valid ZIP archive containing a GeoPackage"
+            ) from exc
+
+        if logger is not None:
+            logger.info("Validating extracted GeoPackage %s", temporary_gpkg)
+        validate_geopackage(temporary_gpkg)
+        if expected_crs is not None:
+            ensure_dataset_crs(
+                temporary_gpkg,
+                expected_crs=expected_crs,
+                logger=logger,
+            )
+            validate_geopackage(temporary_gpkg)
+
+        temporary_gpkg.replace(target_path)
+        temporary_gpkg = None
+        if logger is not None:
+            logger.info(
+                "Completed %s download to %s",
+                description or target_path.name,
+                target_path,
+            )
+        return GeoPackageDownload(
+            source_url=url,
+            target_path=target_path,
+            downloaded_bytes=downloaded_file.downloaded_bytes,
+            total_size_known=downloaded_file.total_size_known,
+            total_bytes=downloaded_file.total_bytes,
+            content_type=downloaded_file.content_type,
+        )
+    finally:
+        if archive_path is not None:
+            archive_path.unlink(missing_ok=True)
+        if temporary_gpkg is not None:
+            temporary_gpkg.unlink(missing_ok=True)

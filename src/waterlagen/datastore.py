@@ -99,6 +99,13 @@ class DataStore(BaseSettings):
         dijkringen_dir.mkdir(exist_ok=True, parents=True)
         return dijkringen_dir
 
+    @computed_field
+    @property
+    def hydamo_dir(self) -> Path:
+        hydamo_dir = self.source_data_dir / "hydamo"
+        hydamo_dir.mkdir(exist_ok=True, parents=True)
+        return hydamo_dir
+
 
 datastore = DataStore()
 logger.info(
