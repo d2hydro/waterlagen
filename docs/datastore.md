@@ -23,6 +23,9 @@ data
 └── logs
     └── ...
 ```
+Voor de GKW HYDAMO-download is `datastore.hydamo_dir` de standaardmap onder
+`source_data/hydamo`.
+
 ## Gebruik
 Zie de [code referentie](reference/datastore.md). Mocht u bijvoorbeeld willen weten waar de data_dir staat:
 

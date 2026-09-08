@@ -58,3 +58,17 @@ out_dir = get_bgt_features(
 ```
 
 Voor alle opties zie de [code-referentie](reference/bgt.md#waterlagen.bgt.get_bgt_features)
+
+### HYDAMO
+De landelijke GKW HYDAMO GeoPackage wordt als ZIP aangeboden. `download_hydamo()`
+downloadt het archief tijdelijk, valideert de GeoPackage daarin en schrijft het
+resultaat atomair naar `datastore.hydamo_dir / "hydamo.gpkg"`. Met
+`overwrite=False` wordt een bestaand doelbestand opnieuw gebruikt.
+
+```python
+from waterlagen.hydamo import download_hydamo
+
+hydamo = download_hydamo()
+```
+
+Voor alle opties zie de [code-referentie](reference/hydamo.md#waterlagen.hydamo.download_hydamo).

@@ -10,6 +10,13 @@ def test_default_data_path_is_repo_data_directory():
     assert default_data_path == Path(__file__).parents[1] / "data"
 
 
+def test_hydamo_dir_is_created_under_source_data(tmp_path):
+    datastore = DataStore(data_dir=tmp_path / "data")
+
+    assert datastore.hydamo_dir == tmp_path / "data" / "source_data" / "hydamo"
+    assert datastore.hydamo_dir.is_dir()
+
+
 def test_cwd_datastore_overrides_repo_datastore(tmp_path, monkeypatch):
     repo_root = tmp_path / "repo"
     monkeypatch.setattr(datastore_module, "repo_root", repo_root)
