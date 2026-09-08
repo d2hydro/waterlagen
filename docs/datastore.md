@@ -1,8 +1,8 @@
 ## Algemeen
-De datastore geeft structuur aan het opslaan van downloads en bewerkingen. Standaard wordt een map `data` aangemaakt relatief tot de huidige werk-map. De mappen `source_data` en `processed_data` zijn sub-mappen onder de `data` map.
+De datastore geeft structuur aan het opslaan van downloads en bewerkingen. Standaard wordt de map `data` in de repository-root gebruikt. De mappen `source_data` en `processed_data` zijn sub-mappen onder de `data` map.
 
 
- Optioneel kun je een bestand `.datastore` in de huidige werk-directory maken met daarin `DATA_DIR=pad\naar\mijn\data_store`. Op dezelfde manier kun je `source_data` hierin zetten met `SOURCE_DATA=pad\naar\mijn\brongegevens` even als `processed_data` met `PROCESSED_DATA=pad\naar\mijn\bewerkte\gegevens`.
+Optioneel kun je een bestand `.datastore` in de repository-root of huidige werk-directory maken met daarin `DATA_DIR=pad\naar\mijn\data_store`. Als beide bestanden bestaan, heeft het bestand in de huidige werk-directory voorrang. Op dezelfde manier kun je `source_data` hierin zetten met `SOURCE_DATA=pad\naar\mijn\brongegevens` evenals `processed_data` met `PROCESSED_DATA=pad\naar\mijn\bewerkte\gegevens`.
 
 De DataStore ziet er als volgt uit:
 

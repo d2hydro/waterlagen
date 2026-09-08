@@ -1,4 +1,5 @@
 import io
+import logging
 import zipfile
 from pathlib import Path
 
@@ -12,7 +13,9 @@ from waterlagen._crs import format_crs, read_layer_crs_info, same_crs
 from waterlagen._downloads import DownloadPayloadError, validate_geopackage
 from waterlagen.bgt.download import (
     BGT_PREDEFINED_URL,
-    _relax_gfs_template,
+    _check_target_replaceable_before_conversion,
+    _convert_bgt_zip_to_geopackage,
+    _replace_with_retry,
     _translate_gml_layer_to_geopackage,
     bgt_download,
     download_bgt,
@@ -66,7 +69,9 @@ def _mock_download(monkeypatch, response: FakeStreamResponse):
 
 
 def _mock_gml_reader(monkeypatch, crs_by_layer: dict[str, str | None]):
-    def fake_translate(gml_path, target_path, *, layer_name, expected_crs, append, **kwargs):
+    def fake_translate(
+        gml_path, target_path, *, layer_name, expected_crs, append, **kwargs
+    ):
         layer = Path(gml_path).stem
         crs = crs_by_layer[layer]
         if crs == "EPSG:4326":
@@ -117,6 +122,10 @@ def _temp_files_for(target: Path) -> list[Path]:
     return list(target.parent.glob(f".{target.name}.*"))
 
 
+def _temp_archives_for(archive: Path) -> list[Path]:
+    return list(archive.parent.glob(f".{archive.name}.*.zip"))
+
+
 def _spatial_crs_values(path: Path) -> dict[str, str | None]:
     return {
         info.layer: info.crs for info in read_layer_crs_info(path) if info.is_spatial
@@ -151,6 +160,7 @@ def test_gdal_translation_does_not_read_gml_into_geodataframe(monkeypatch, tmp_p
         calls.append((dest, src, kwargs))
         return object()
 
+    source_dataset = object()
     monkeypatch.setattr("geopandas.read_file", fail_read_file)
     monkeypatch.setattr(
         "waterlagen.bgt.download.pyogrio.read_info",
@@ -159,6 +169,10 @@ def test_gdal_translation_does_not_read_gml_into_geodataframe(monkeypatch, tmp_p
     monkeypatch.setattr(
         "waterlagen.bgt.download.gdal.VectorTranslate",
         fake_vector_translate,
+    )
+    monkeypatch.setattr(
+        "waterlagen.bgt.download.gdal.OpenEx",
+        lambda *args, **kwargs: source_dataset,
     )
 
     _translate_gml_layer_to_geopackage(
@@ -171,7 +185,58 @@ def test_gdal_translation_does_not_read_gml_into_geodataframe(monkeypatch, tmp_p
 
     assert len(calls) == 1
     assert calls[0][0] == str(tmp_path / "bgt.gpkg")
-    assert calls[0][1] == str(gml_path)
+    assert calls[0][1] is source_dataset
+
+
+def test_gdal_translation_preserves_fields_and_xml_attributes(tmp_path):
+    gml_path = tmp_path / "bgt_waterdeel.gml"
+    gml_path.write_text(
+        """<?xml version="1.0" encoding="UTF-8"?>
+<gml:FeatureCollection
+    xmlns:gml="http://www.opengis.net/gml"
+    xmlns:bgt="https://example.com/bgt">
+  <gml:featureMember>
+    <bgt:waterdeel gml:id="waterdeel.1">
+      <bgt:geometry>
+        <gml:Point srsName="urn:ogc:def:crs:EPSG::28992">
+          <gml:coordinates>100000,450000</gml:coordinates>
+        </gml:Point>
+      </bgt:geometry>
+      <bgt:naam status="bestaand">eerste</bgt:naam>
+    </bgt:waterdeel>
+  </gml:featureMember>
+  <gml:featureMember>
+    <bgt:waterdeel gml:id="waterdeel.2">
+      <bgt:geometry>
+        <gml:Point srsName="urn:ogc:def:crs:EPSG::28992">
+          <gml:coordinates>100001,450001</gml:coordinates>
+        </gml:Point>
+      </bgt:geometry>
+      <bgt:naam status="gepland">tweede</bgt:naam>
+      <bgt:laterVeld>alleen in tweede object</bgt:laterVeld>
+    </bgt:waterdeel>
+  </gml:featureMember>
+</gml:FeatureCollection>
+""",
+        encoding="utf-8",
+    )
+    target_path = tmp_path / "bgt.gpkg"
+
+    _translate_gml_layer_to_geopackage(
+        gml_path,
+        target_path,
+        layer_name="bgt_waterdeel",
+        expected_crs="EPSG:28992",
+        append=False,
+        source_crs="EPSG:28992",
+    )
+
+    result = pyogrio.read_dataframe(target_path, layer="bgt_waterdeel")
+    assert {"gml_id", "naam_status", "naam", "laterVeld"} <= set(result.columns)
+    assert result["gml_id"].tolist() == ["waterdeel.1", "waterdeel.2"]
+    assert result["naam_status"].tolist() == ["bestaand", "gepland"]
+    assert result["laterVeld"].isna().iloc[0]
+    assert result["laterVeld"].iloc[1] == "alleen in tweede object"
 
 
 def test_gdal_translation_formats_explicit_source_crs(monkeypatch, tmp_path):
@@ -189,6 +254,12 @@ def test_gdal_translation_formats_explicit_source_crs(monkeypatch, tmp_path):
         calls.append((dest, src, kwargs))
         return object()
 
+    open_calls = []
+
+    def fake_open_ex(*args, **kwargs):
+        open_calls.append((args, kwargs))
+        return object()
+
     monkeypatch.setattr(
         "waterlagen.bgt.download.pyogrio.read_info",
         fail_read_info,
@@ -201,6 +272,7 @@ def test_gdal_translation_formats_explicit_source_crs(monkeypatch, tmp_path):
         "waterlagen.bgt.download.gdal.VectorTranslate",
         fake_vector_translate,
     )
+    monkeypatch.setattr("waterlagen.bgt.download.gdal.OpenEx", fake_open_ex)
 
     _translate_gml_layer_to_geopackage(
         gml_path,
@@ -213,44 +285,90 @@ def test_gdal_translation_formats_explicit_source_crs(monkeypatch, tmp_path):
 
     assert calls[0][2]["options"]["srcSRS"] == "EPSG:28992"
     assert calls[0][2]["options"]["dstSRS"] == "EPSG:28992"
+    assert open_calls == [
+        (
+            (str(gml_path), bgt_download_module.gdal.OF_VECTOR),
+            {
+                "open_options": [
+                    "GML_ATTRIBUTES_TO_OGR_FIELDS=YES",
+                    "EXPOSE_GML_ID=YES",
+                ]
+            },
+        )
+    ]
+    assert calls[0][2]["options"]["layerCreationOptions"] == ["PRECISION=NO"]
+    assert calls[0][2]["options"]["transactionSize"] == 100_000
 
 
-def test_gfs_template_is_relaxed_for_full_bgt_file():
-    gfs = """<GMLFeatureClassList>
-  <GMLFeatureClass>
-    <Name>Waterdeel</Name>
-    <DatasetSpecificInfo><FeatureCount>1</FeatureCount></DatasetSpecificInfo>
-    <PropertyDefn>
-      <Name>bgt-type</Name>
-      <Type>String</Type>
-      <Width>9</Width>
-    </PropertyDefn>
-  </GMLFeatureClass>
-</GMLFeatureClassList>"""
+def test_gdal_translation_passes_vsizip_path_to_gdal(monkeypatch, tmp_path):
+    gml_path = (
+        f"/vsizip/{(tmp_path / 'bgt.zip').resolve().as_posix()}/bgt_waterdeel.gml"
+    )
+    open_calls = []
 
-    relaxed = _relax_gfs_template(gfs)
+    def fail_read_info(*args, **kwargs):
+        raise AssertionError("source_crs should skip GML CRS probing")
 
-    assert "DatasetSpecificInfo" not in relaxed
-    assert "<Width>0</Width>" in relaxed
+    def fake_open_ex(*args, **kwargs):
+        open_calls.append((args, kwargs))
+        return object()
+
+    monkeypatch.setattr(
+        "waterlagen.bgt.download.pyogrio.read_info",
+        fail_read_info,
+    )
+    monkeypatch.setattr(
+        "waterlagen.bgt.download.gdal.VectorTranslate",
+        lambda *args, **kwargs: object(),
+    )
+    monkeypatch.setattr("waterlagen.bgt.download.gdal.OpenEx", fake_open_ex)
+
+    _translate_gml_layer_to_geopackage(
+        gml_path,
+        tmp_path / "bgt.gpkg",
+        layer_name="bgt_waterdeel",
+        expected_crs=28992,
+        append=False,
+        source_crs=28992,
+    )
+
+    assert open_calls[0][0] == (gml_path, bgt_download_module.gdal.OF_VECTOR)
+    assert open_calls[0][1] == {
+        "open_options": [
+            "GML_ATTRIBUTES_TO_OGR_FIELDS=YES",
+            "EXPOSE_GML_ID=YES",
+        ]
+    }
 
 
 def test_successful_predefined_bgt_download(monkeypatch, tmp_path):
     payload = _zip_with_gml("bgt_waterdeel.gml")
-    _mock_download(
-        monkeypatch,
-        FakeStreamResponse(
+    calls = []
+
+    def fake_get(url, **kwargs):
+        calls.append((url, kwargs))
+        return FakeStreamResponse(
             payload,
             headers={
                 "Content-Length": str(len(payload)),
                 "Content-Type": "application/zip",
             },
-        ),
-    )
+        )
+
+    monkeypatch.setattr("waterlagen._downloads.requests.get", fake_get)
     _mock_gml_reader(monkeypatch, {"bgt_waterdeel": "EPSG:28992"})
 
     result = download_bgt(download_dir=tmp_path, progress=False)
 
+    assert calls == [
+        (
+            BGT_PREDEFINED_URL,
+            {"stream": True, "allow_redirects": True, "timeout": 30},
+        )
+    ]
     assert result.source_url == BGT_PREDEFINED_URL
+    assert result.archive_path == tmp_path / "bgt-gmllight-nl-nopbp.zip"
+    assert result.archive_path.read_bytes() == payload
     assert result.target_path == tmp_path / "bgt.gpkg"
     assert result.downloaded_bytes == len(payload)
     assert result.total_size_known is True
@@ -258,6 +376,69 @@ def test_successful_predefined_bgt_download(monkeypatch, tmp_path):
     assert result.final_crs == "EPSG:28992"
     validate_geopackage(result.target_path)
     assert _temp_files_for(result.target_path) == []
+    assert _temp_archives_for(result.archive_path) == []
+
+
+def test_valid_existing_predefined_archive_is_reused(monkeypatch, tmp_path):
+    payload = _zip_with_gml("bgt_waterdeel.gml")
+    archive = tmp_path / "bgt-gmllight-nl-nopbp.zip"
+    archive.write_bytes(payload)
+
+    def fake_get(url, **kwargs):
+        raise AssertionError("valid archive should be reused")
+
+    monkeypatch.setattr("waterlagen._downloads.requests.get", fake_get)
+    _mock_gml_reader(monkeypatch, {"bgt_waterdeel": "EPSG:28992"})
+
+    result = download_bgt(download_dir=tmp_path, progress=False)
+
+    assert result.archive_path == archive
+    assert result.archive_path.read_bytes() == payload
+    assert result.downloaded_bytes == 0
+    assert result.total_size_known is False
+    assert set(pyogrio.list_layers(result.target_path)[:, 0]) == {"bgt_waterdeel"}
+
+
+def test_corrupt_existing_predefined_archive_is_downloaded_again(
+    monkeypatch,
+    tmp_path,
+):
+    payload = _zip_with_gml("bgt_waterdeel.gml")
+    archive = tmp_path / "bgt-gmllight-nl-nopbp.zip"
+    archive.write_bytes(b"not a zip")
+    _mock_download(monkeypatch, FakeStreamResponse(payload))
+    _mock_gml_reader(monkeypatch, {"bgt_waterdeel": "EPSG:28992"})
+
+    result = download_bgt(download_dir=tmp_path, progress=False)
+
+    assert result.archive_path == archive
+    assert result.archive_path.read_bytes() == payload
+    assert result.downloaded_bytes == len(payload)
+    assert set(pyogrio.list_layers(result.target_path)[:, 0]) == {"bgt_waterdeel"}
+    assert _temp_archives_for(result.archive_path) == []
+
+
+def test_invalid_downloaded_zip_does_not_replace_existing_valid_archive(
+    monkeypatch,
+    tmp_path,
+):
+    valid_payload = _zip_with_gml("bgt_waterdeel.gml")
+    archive = tmp_path / "bgt-gmllight-nl-nopbp.zip"
+    archive.write_bytes(valid_payload)
+    _mock_download(monkeypatch, FakeStreamResponse(b"not a zip"))
+
+    with pytest.raises(DownloadPayloadError, match="valid ZIP"):
+        bgt_download_module._download_validated_zip_archive(
+            url=BGT_PREDEFINED_URL,
+            archive_path=archive,
+            description=archive.name,
+            chunk_size=1024 * 1024,
+            timeout=30,
+            progress=False,
+        )
+
+    assert archive.read_bytes() == valid_payload
+    assert _temp_archives_for(archive) == []
 
 
 def test_predefined_download_with_content_length_reports_progress(
@@ -274,6 +455,7 @@ def test_predefined_download_with_content_length_reports_progress(
 
     captured = capsys.readouterr()
     assert result.total_size_known is True
+    assert "bgt-gmllight-nl-nopbp.zip" in captured.out
     assert "%" in captured.out
 
 
@@ -288,8 +470,245 @@ def test_predefined_download_without_content_length_reports_bytes_only(
 
     captured = capsys.readouterr()
     assert result.total_size_known is False
+    assert "bgt-gmllight-nl-nopbp.zip" in captured.out
     assert "MB" in captured.out
     assert "%" not in captured.out
+
+
+def test_predefined_download_logs_cache_reading_conversion_and_completion(
+    monkeypatch,
+    tmp_path,
+    caplog,
+):
+    payload = _zip_with_gml("bgt_waterdeel.gml")
+    _mock_download(monkeypatch, FakeStreamResponse(payload))
+    _mock_gml_reader(monkeypatch, {"bgt_waterdeel": "EPSG:28992"})
+    caplog.set_level(logging.INFO, logger="waterlagen.bgt.download")
+    caplog.set_level(logging.INFO, logger="waterlagen._downloads")
+
+    download_bgt(download_dir=tmp_path, progress=False)
+
+    assert "bgt-gmllight-nl-nopbp.zip is missing; downloading it" in caplog.text
+    assert "Downloading bgt-gmllight-nl-nopbp.zip to" in caplog.text
+    assert "Reading BGT archive" in caplog.text
+    assert "Reading selected BGT GML bgt_waterdeel.gml" in caplog.text
+    assert "Converting bgt_waterdeel.gml to layer bgt_waterdeel" in caplog.text
+    assert "Validating final BGT GeoPackage" in caplog.text
+    assert "Completed BGT download workflow" in caplog.text
+
+
+def test_predefined_conversion_uses_vsizip_without_extracting(
+    monkeypatch,
+    tmp_path,
+):
+    archive = tmp_path / "bgt-gmllight-nl-nopbp.zip"
+    archive.write_bytes(_zip_with_gml("bgt_waterdeel.gml", "nested/bgt_wegdeel.gml"))
+    target = tmp_path / "bgt.gpkg"
+    calls = []
+
+    def fail_extract(*args, **kwargs):
+        raise AssertionError("selected GML files should not be extracted")
+
+    def fake_translate(
+        gml_path,
+        target_path,
+        *,
+        layer_name,
+        expected_crs,
+        append,
+        source_crs,
+        **kwargs,
+    ):
+        calls.append((gml_path, target_path, layer_name, expected_crs, append))
+        gdf = gpd.GeoDataFrame(
+            {"id": [len(calls)]},
+            geometry=[Point(100000 + len(calls), 450000)],
+            crs=expected_crs,
+        )
+        pyogrio.write_dataframe(
+            gdf,
+            target_path,
+            layer=layer_name,
+            driver="GPKG",
+            append=append,
+        )
+
+    monkeypatch.setattr("waterlagen.bgt.download.zipfile.ZipFile.extract", fail_extract)
+    monkeypatch.setattr(
+        "waterlagen.bgt.download._translate_gml_layer_to_geopackage",
+        fake_translate,
+    )
+
+    layer_count = _convert_bgt_zip_to_geopackage(
+        archive,
+        target,
+        feature_types=["waterdeel", "wegdeel"],
+        expected_crs="EPSG:28992",
+    )
+
+    assert layer_count == 2
+    assert [call[2] for call in calls] == ["bgt_waterdeel", "bgt_wegdeel"]
+    assert all(str(call[0]).startswith("/vsizip/") for call in calls)
+    assert str(calls[0][0]).endswith("bgt-gmllight-nl-nopbp.zip/bgt_waterdeel.gml")
+    assert str(calls[1][0]).endswith("bgt-gmllight-nl-nopbp.zip/nested/bgt_wegdeel.gml")
+    assert set(pyogrio.list_layers(target)[:, 0]) == {
+        "bgt_waterdeel",
+        "bgt_wegdeel",
+    }
+
+
+def test_predefined_conversion_failure_cleans_temporary_geopackage(
+    monkeypatch,
+    tmp_path,
+):
+    archive = tmp_path / "bgt-gmllight-nl-nopbp.zip"
+    archive.write_bytes(_zip_with_gml("bgt_waterdeel.gml"))
+    target = tmp_path / "bgt.gpkg"
+
+    def fake_translate(gml_path, target_path, **kwargs):
+        Path(target_path).write_bytes(b"partial geopackage")
+        raise DownloadPayloadError("invalid GML data")
+
+    monkeypatch.setattr(
+        "waterlagen.bgt.download._translate_gml_layer_to_geopackage",
+        fake_translate,
+    )
+
+    with pytest.raises(DownloadPayloadError, match="invalid GML data"):
+        _convert_bgt_zip_to_geopackage(
+            archive,
+            target,
+            feature_types=["waterdeel"],
+            expected_crs="EPSG:28992",
+        )
+
+    assert not target.exists()
+    assert _temp_files_for(target) == []
+
+
+def test_target_replaceability_is_checked_before_gml_conversion(
+    monkeypatch,
+    tmp_path,
+):
+    archive = tmp_path / "bgt-gmllight-nl-nopbp.zip"
+    archive.write_bytes(_zip_with_gml("bgt_waterdeel.gml"))
+    target = tmp_path / "bgt.gpkg"
+    _valid_gpkg(target)
+    calls = []
+
+    def fail_preflight(target_path):
+        calls.append(("preflight", target_path))
+        raise PermissionError("target is locked")
+
+    def fail_translate(*args, **kwargs):
+        calls.append(("translate",))
+        raise AssertionError("GML conversion should not start after failed preflight")
+
+    monkeypatch.setattr(
+        "waterlagen.bgt.download._check_target_replaceable_before_conversion",
+        fail_preflight,
+    )
+    monkeypatch.setattr(
+        "waterlagen.bgt.download._translate_gml_layer_to_geopackage",
+        fail_translate,
+    )
+
+    with pytest.raises(PermissionError, match="target is locked"):
+        _convert_bgt_zip_to_geopackage(
+            archive,
+            target,
+            feature_types=["waterdeel"],
+            expected_crs="EPSG:28992",
+        )
+
+    assert calls == [("preflight", target)]
+
+
+def test_replaceability_preflight_checks_existing_target(monkeypatch, tmp_path):
+    target = tmp_path / "bgt.gpkg"
+    _valid_gpkg(target)
+    checked = []
+
+    monkeypatch.setattr(
+        "waterlagen.bgt.download._assert_windows_target_replaceable",
+        lambda path: checked.append(path),
+    )
+
+    _check_target_replaceable_before_conversion(target)
+
+    assert checked == [target]
+    assert target.exists()
+
+
+def test_replace_with_retry_releases_handles_before_retry(monkeypatch, tmp_path):
+    attempts = []
+    releases = []
+    sleeps = []
+
+    class LockedOncePath:
+        def replace(self, target_path):
+            attempts.append(target_path)
+            if len(attempts) == 1:
+                raise PermissionError("locked")
+
+    monkeypatch.setattr(
+        "waterlagen.bgt.download._release_geospatial_file_handles",
+        lambda: releases.append("release"),
+    )
+    monkeypatch.setattr(
+        "waterlagen.bgt.download.time.sleep",
+        lambda delay: sleeps.append(delay),
+    )
+
+    target = tmp_path / "bgt.gpkg"
+    _replace_with_retry(
+        LockedOncePath(),
+        target,
+        attempts=2,
+        delay_s=0.01,
+    )
+
+    assert attempts == [target, target]
+    assert releases == ["release", "release"]
+    assert sleeps == [0.01]
+
+
+def test_predefined_download_logs_reused_valid_archive(
+    monkeypatch,
+    tmp_path,
+    caplog,
+):
+    archive = tmp_path / "bgt-gmllight-nl-nopbp.zip"
+    archive.write_bytes(_zip_with_gml("bgt_waterdeel.gml"))
+
+    def fake_get(url, **kwargs):
+        raise AssertionError("valid archive should be reused")
+
+    monkeypatch.setattr("waterlagen._downloads.requests.get", fake_get)
+    _mock_gml_reader(monkeypatch, {"bgt_waterdeel": "EPSG:28992"})
+    caplog.set_level(logging.INFO, logger="waterlagen.bgt.download")
+
+    download_bgt(download_dir=tmp_path, progress=False)
+
+    assert f"Reusing existing valid BGT archive {archive}" in caplog.text
+
+
+def test_predefined_download_logs_invalid_archive_replacement(
+    monkeypatch,
+    tmp_path,
+    caplog,
+):
+    archive = tmp_path / "bgt-gmllight-nl-nopbp.zip"
+    archive.write_bytes(b"not a zip")
+    payload = _zip_with_gml("bgt_waterdeel.gml")
+    _mock_download(monkeypatch, FakeStreamResponse(payload))
+    _mock_gml_reader(monkeypatch, {"bgt_waterdeel": "EPSG:28992"})
+    caplog.set_level(logging.INFO, logger="waterlagen.bgt.download")
+
+    download_bgt(download_dir=tmp_path, progress=False)
+
+    assert "is invalid; downloading replacement" in caplog.text
+    assert f"Replacing BGT archive {archive}" in caplog.text
 
 
 def test_invalid_zip_is_rejected(monkeypatch, tmp_path):
@@ -338,6 +757,27 @@ def test_interrupted_download_cleans_temp_and_preserves_existing(monkeypatch, tm
 
     assert target.read_bytes() == existing
     assert _temp_files_for(target) == []
+
+
+def test_existing_target_without_overwrite_skips_archive_download(
+    monkeypatch,
+    tmp_path,
+):
+    target = tmp_path / "bgt.gpkg"
+    existing = _valid_gpkg(target, layer="existing")
+
+    def fake_get(url, **kwargs):
+        raise AssertionError("target overwrite=False should skip archive download")
+
+    monkeypatch.setattr("waterlagen._downloads.requests.get", fake_get)
+
+    result = download_bgt(download_dir=tmp_path, overwrite=False, progress=False)
+
+    assert result.target_path == target
+    assert result.downloaded_bytes == 0
+    assert result.layer_count == 1
+    assert target.read_bytes() == existing
+    assert not (tmp_path / "bgt-gmllight-nl-nopbp.zip").exists()
 
 
 def test_multiple_gml_layers_and_layer_names_preserved(monkeypatch, tmp_path):
@@ -469,7 +909,7 @@ def test_atomic_replacement_after_success(monkeypatch, tmp_path):
     _mock_download(monkeypatch, FakeStreamResponse(payload))
     _mock_gml_reader(monkeypatch, {"bgt_waterdeel": "EPSG:28992"})
 
-    result = download_bgt(target_path=target, progress=False)
+    result = download_bgt(download_dir=tmp_path, target_path=target, progress=False)
 
     assert result.target_path == target
     assert set(pyogrio.list_layers(target)[:, 0]) == {"bgt_waterdeel"}

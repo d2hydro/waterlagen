@@ -22,16 +22,27 @@ import pandas as pd
 import rasterio as rio
 from rasterio import features
 
+from waterlagen import datastore
 from waterlagen.bag import download_bag_light
 from waterlagen.bgt import download_bgt
 from waterlagen.brp import download_brp
 from waterlagen.dijkringen import download_dijkringen
+from waterlagen.logger import init_logger
 from waterlagen.settings import settings
+from waterlagen.top10nl import download_top10nl
 
-SCRIPT_DIR = Path(__file__).resolve().parent
-SOURCE_DATA_DIR = SCRIPT_DIR / "data" / "source_data"
-PROCESSED_DATA_DIR = SCRIPT_DIR / "data" / "processed_data"
+SOURCE_DATA_DIR = datastore.source_data_dir
+PROCESSED_DATA_DIR = datastore.processed_data_dir
 
+logger = init_logger(
+    name="landgebruik_js",
+    log_file=datastore.data_dir / "landgebruik_js.log",
+)
+logger.info(
+    "Initialized datastore with source_data_dir=%s and processed_data_dir=%s",
+    SOURCE_DATA_DIR,
+    PROCESSED_DATA_DIR,
+)
 
 FUNCTIONEEL_GEBIED_CODES = {
     "sportparken": 91,
@@ -244,6 +255,12 @@ def download_sources(config: LandgebruikConfig) -> None:
         download_dijkringen(
             download_dir=config.dijkringen_gpkg.parent,
             target_path=config.dijkringen_gpkg,
+            overwrite=False,
+        )
+
+    if not config.top10nl_gpkg.exists():
+        download_top10nl(
+            download_dir=config.top10nl_gpkg.parent,
             overwrite=False,
         )
 
@@ -539,6 +556,7 @@ def create_profile(config: LandgebruikConfig) -> dict[str, Any]:
     return rio.profiles.DefaultGTiffProfile(
         count=1,
         dtype="uint8",
+        photometric="PALETTE",
         nodata=0,
         compress="PACKBITS",
         width=width,
@@ -675,6 +693,8 @@ def write_landgebruik_raster(config: LandgebruikConfig) -> Path:
     )
 
     with rio.open(paths.output_tif, "w", **profile) as r_out:
+        r_out.colorinterp = (rio.enums.ColorInterp.palette,)
+        r_out.write_colormap(1, COLORMAP)
         for block_number, (window_index, window) in enumerate(
             r_out.block_windows(),
             start=1,
@@ -711,8 +731,6 @@ def write_landgebruik_raster(config: LandgebruikConfig) -> Path:
             r_out.write_band(1, out, window=window)
 
         r_out.set_band_description(1, "Landgebruik")
-        r_out.colorinterp = (rio.enums.ColorInterp.palette,)
-        r_out.write_colormap(1, COLORMAP)
 
     return paths.output_tif
 

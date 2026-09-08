@@ -13,6 +13,7 @@ from waterlagen._downloads import (
 )
 from waterlagen.dijkringen.download import (
     DEFAULT_FILENAME,
+    DIJKRINGEN_MAPSERVER_URL,
     DIJKRINGEN_URL,
     download_dijkringen_historie,
 )
@@ -213,6 +214,30 @@ def test_download_dijkringen_historie_allows_target_path_override(
 
     assert result.target_path == target
     assert target.exists()
+
+
+def test_download_dijkringen_falls_back_to_mapserver(monkeypatch, tmp_path):
+    target = tmp_path / DEFAULT_FILENAME
+    geojson = b'{"type":"FeatureCollection","features":[{"type":"Feature","properties":{"id":1},"geometry":{"type":"Polygon","coordinates":[[[3,51],[3,52],[4,52],[4,51],[3,51]]]}}]}'
+    calls = []
+
+    def fake_get(url, **kwargs):
+        calls.append(url)
+        if url == DIJKRINGEN_URL:
+            return FakeResponse(
+                b"bad request",
+                status_error=requests.HTTPError("400 Client Error"),
+            )
+        assert url == DIJKRINGEN_MAPSERVER_URL
+        return FakeResponse(geojson, headers={"Content-Type": "application/geo+json"})
+
+    monkeypatch.setattr("waterlagen._downloads.requests.get", fake_get)
+
+    result = download_dijkringen_historie(target_path=target, progress=False)
+
+    assert calls == [DIJKRINGEN_URL, DIJKRINGEN_MAPSERVER_URL]
+    assert result.source_url == DIJKRINGEN_MAPSERVER_URL
+    validate_geopackage(target)
 
 
 def test_html_error_payload_is_rejected(monkeypatch, tmp_path):

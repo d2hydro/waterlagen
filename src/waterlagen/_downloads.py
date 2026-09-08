@@ -107,8 +107,10 @@ def _raise_for_known_error_payload(
 
     if stripped.startswith((b"{", b"[")) or "json" in content_type:
         try:
-            json.loads(stripped.decode("utf-8"))
+            payload = json.loads(stripped.decode("utf-8"))
         except (UnicodeDecodeError, json.JSONDecodeError):
+            return
+        if isinstance(payload, dict) and payload.get("type") == "FeatureCollection":
             return
         raise DownloadPayloadError("Downloaded payload is a JSON error document")
 
@@ -153,6 +155,7 @@ def stream_download_to_temp(
     target_path: Path,
     *,
     suffix: str | None = None,
+    description: str | None = None,
     chunk_size: int = 1024 * 1024,
     timeout: int = 30,
     logger=None,
@@ -161,6 +164,7 @@ def stream_download_to_temp(
     """Stream a download to a temporary file beside target_path."""
     target_path = Path(target_path)
     target_path.parent.mkdir(exist_ok=True, parents=True)
+    description = description or target_path.name
 
     fd, tmp_name = tempfile.mkstemp(
         prefix=f".{target_path.name}.",
@@ -173,7 +177,7 @@ def stream_download_to_temp(
     content_type: str | None = None
     try:
         if logger is not None:
-            logger.info(f"Start downloading {url} to {target_path}")
+            logger.info("Downloading %s to %s", description, target_path)
 
         with os.fdopen(fd, "wb") as f:
             with requests.get(
@@ -191,7 +195,8 @@ def stream_download_to_temp(
                     f.write(chunk)
                     downloaded += len(chunk)
                     if progress:
-                        sys.stdout.write("\r" + _format_progress(downloaded, total))
+                        progress_text = _format_progress(downloaded, total)
+                        sys.stdout.write(f"\r{description}: {progress_text}")
                         sys.stdout.flush()
 
         _raise_for_known_error_payload(tmp_path, content_type=content_type)
@@ -217,6 +222,7 @@ def download_geopackage_with_metadata(
     timeout: int = 30,
     logger=None,
     progress: bool = True,
+    description: str | None = None,
     expected_crs: str | int | None = None,
 ) -> GeoPackageDownload:
     """Stream a GeoPackage download to a temp file and atomically replace target."""
@@ -241,6 +247,7 @@ def download_geopackage_with_metadata(
             timeout=timeout,
             logger=logger,
             progress=progress,
+            description=description,
         )
         tmp_path = downloaded_file.target_path
 
@@ -280,6 +287,7 @@ def download_geopackage(
     timeout: int = 30,
     logger=None,
     progress: bool = True,
+    description: str | None = None,
     expected_crs: str | int | None = None,
 ) -> Path:
     """Stream a GeoPackage download to a temp file and atomically replace target."""
@@ -291,5 +299,6 @@ def download_geopackage(
         timeout=timeout,
         logger=logger,
         progress=progress,
+        description=description,
         expected_crs=expected_crs,
     ).target_path
