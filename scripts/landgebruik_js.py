@@ -29,6 +29,7 @@ from waterlagen.brp import download_brp
 from waterlagen.dijkringen import download_dijkringen
 from waterlagen.logger import init_logger
 from waterlagen.settings import settings
+from waterlagen.top10nl import download_top10nl
 
 SOURCE_DATA_DIR = datastore.source_data_dir
 PROCESSED_DATA_DIR = datastore.processed_data_dir
@@ -254,6 +255,12 @@ def download_sources(config: LandgebruikConfig) -> None:
         download_dijkringen(
             download_dir=config.dijkringen_gpkg.parent,
             target_path=config.dijkringen_gpkg,
+            overwrite=False,
+        )
+
+    if not config.top10nl_gpkg.exists():
+        download_top10nl(
+            download_dir=config.top10nl_gpkg.parent,
             overwrite=False,
         )
 

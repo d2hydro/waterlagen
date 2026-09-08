@@ -1,4 +1,5 @@
 # %%
+import gc
 import os
 import tempfile
 import time
@@ -277,6 +278,82 @@ def _close_gdal_dataset(dataset: object | None) -> None:
         close()
 
 
+def _release_geospatial_file_handles() -> None:
+    """Prompt GDAL and Python wrappers to release recently closed file handles."""
+    gdal.ErrorReset()
+    gc.collect()
+
+
+def _assert_windows_target_replaceable(target_path: Path) -> None:
+    """Check whether Windows will allow replacing an existing target file."""
+    if os.name != "nt":
+        return
+    if not target_path.exists():
+        return
+
+    import ctypes
+    from ctypes import wintypes
+
+    delete_access = 0x00010000
+    file_share_read = 0x00000001
+    file_share_write = 0x00000002
+    file_share_delete = 0x00000004
+    open_existing = 3
+    file_attribute_normal = 0x00000080
+    invalid_handle_value = wintypes.HANDLE(-1).value
+
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel32.CreateFileW.argtypes = [
+        wintypes.LPCWSTR,
+        wintypes.DWORD,
+        wintypes.DWORD,
+        wintypes.LPVOID,
+        wintypes.DWORD,
+        wintypes.DWORD,
+        wintypes.HANDLE,
+    ]
+    kernel32.CreateFileW.restype = wintypes.HANDLE
+    kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
+    kernel32.CloseHandle.restype = wintypes.BOOL
+    handle = kernel32.CreateFileW(
+        str(target_path),
+        delete_access,
+        file_share_read | file_share_write | file_share_delete,
+        None,
+        open_existing,
+        file_attribute_normal,
+        None,
+    )
+    if handle == invalid_handle_value:
+        error_code = ctypes.get_last_error()
+        raise PermissionError(
+            error_code,
+            "Cannot replace existing GeoPackage because Windows denied delete "
+            "access. Close programs or Python sessions that have it open and "
+            "try again.",
+            str(target_path),
+        )
+
+    kernel32.CloseHandle(handle)
+
+
+def _check_target_replaceable_before_conversion(target_path: Path) -> None:
+    """Fail before expensive conversion when the target cannot be replaced."""
+    target_path.parent.mkdir(exist_ok=True, parents=True)
+    _release_geospatial_file_handles()
+    if target_path.exists():
+        _assert_windows_target_replaceable(target_path)
+        return
+
+    fd, tmp_name = tempfile.mkstemp(
+        prefix=f".{target_path.name}.preflight.",
+        suffix=".tmp",
+        dir=target_path.parent,
+    )
+    os.close(fd)
+    Path(tmp_name).unlink(missing_ok=True)
+
+
 def _replace_with_retry(
     source_path: Path,
     target_path: Path,
@@ -287,11 +364,16 @@ def _replace_with_retry(
     """Atomically replace a path, retrying transient Windows file locks."""
     for attempt in range(attempts):
         try:
+            _release_geospatial_file_handles()
             source_path.replace(target_path)
             return
         except PermissionError:
             if attempt == attempts - 1:
-                raise
+                raise PermissionError(
+                    f"Could not replace temporary GeoPackage {source_path} "
+                    f"with {target_path}. Close programs or Python sessions "
+                    "that have either file open and try again."
+                ) from None
             logger.warning(
                 "Could not replace %s with %s because a process has it open; "
                 "retrying (%s/%s)",
@@ -352,12 +434,19 @@ def _translate_gml_layer_to_geopackage(
         _close_gdal_dataset(source_dataset)
         dataset = None
         source_dataset = None
+        _release_geospatial_file_handles()
 
 
-def _validate_geopackage_spatial_crs(path: Path, *, expected_crs: str | int) -> None:
-    validate_geopackage(path)
+def _validate_geopackage_spatial_crs(path: Path, *, expected_crs: str | int) -> int:
+    try:
+        layer_infos = read_layer_crs_info(path)
+    except Exception as exc:
+        raise DownloadPayloadError(f"{path} is not a valid GeoPackage") from exc
+    if not layer_infos:
+        raise DownloadPayloadError(f"{path} is not a valid GeoPackage: no layers found")
+
     expected_label = format_crs(expected_crs)
-    for layer_info in read_layer_crs_info(path):
+    for layer_info in layer_infos:
         if not layer_info.is_spatial:
             continue
         if layer_info.crs is None:
@@ -370,6 +459,7 @@ def _validate_geopackage_spatial_crs(path: Path, *, expected_crs: str | int) -> 
                 f"Converted layer '{layer_info.layer}' has CRS "
                 f"{format_crs(layer_info.crs)}; expected {expected_label}"
             )
+    return len(layer_infos)
 
 
 def _convert_bgt_zip_to_separate_geopackages(
@@ -456,6 +546,8 @@ def _convert_bgt_zip_to_geopackage(
             "Downloaded BGT ZIP contains none of the requested feature types"
         )
 
+    _check_target_replaceable_before_conversion(target_path)
+
     fd, tmp_name = tempfile.mkstemp(
         prefix=f".{target_path.name}.",
         suffix=".gpkg",
@@ -488,8 +580,10 @@ def _convert_bgt_zip_to_geopackage(
             first_layer = False
 
         logger.info("Validating final BGT GeoPackage %s", tmp_gpkg)
-        _validate_geopackage_spatial_crs(tmp_gpkg, expected_crs=expected_crs)
-        layer_count = len(read_layer_crs_info(tmp_gpkg))
+        layer_count = _validate_geopackage_spatial_crs(
+            tmp_gpkg,
+            expected_crs=expected_crs,
+        )
         _replace_with_retry(tmp_gpkg, target_path)
         return layer_count
     except Exception:

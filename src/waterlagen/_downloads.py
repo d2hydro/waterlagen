@@ -107,8 +107,10 @@ def _raise_for_known_error_payload(
 
     if stripped.startswith((b"{", b"[")) or "json" in content_type:
         try:
-            json.loads(stripped.decode("utf-8"))
+            payload = json.loads(stripped.decode("utf-8"))
         except (UnicodeDecodeError, json.JSONDecodeError):
+            return
+        if isinstance(payload, dict) and payload.get("type") == "FeatureCollection":
             return
         raise DownloadPayloadError("Downloaded payload is a JSON error document")
 

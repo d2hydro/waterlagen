@@ -13,7 +13,9 @@ from waterlagen._crs import format_crs, read_layer_crs_info, same_crs
 from waterlagen._downloads import DownloadPayloadError, validate_geopackage
 from waterlagen.bgt.download import (
     BGT_PREDEFINED_URL,
+    _check_target_replaceable_before_conversion,
     _convert_bgt_zip_to_geopackage,
+    _replace_with_retry,
     _translate_gml_layer_to_geopackage,
     bgt_download,
     download_bgt,
@@ -581,6 +583,93 @@ def test_predefined_conversion_failure_cleans_temporary_geopackage(
 
     assert not target.exists()
     assert _temp_files_for(target) == []
+
+
+def test_target_replaceability_is_checked_before_gml_conversion(
+    monkeypatch,
+    tmp_path,
+):
+    archive = tmp_path / "bgt-gmllight-nl-nopbp.zip"
+    archive.write_bytes(_zip_with_gml("bgt_waterdeel.gml"))
+    target = tmp_path / "bgt.gpkg"
+    _valid_gpkg(target)
+    calls = []
+
+    def fail_preflight(target_path):
+        calls.append(("preflight", target_path))
+        raise PermissionError("target is locked")
+
+    def fail_translate(*args, **kwargs):
+        calls.append(("translate",))
+        raise AssertionError("GML conversion should not start after failed preflight")
+
+    monkeypatch.setattr(
+        "waterlagen.bgt.download._check_target_replaceable_before_conversion",
+        fail_preflight,
+    )
+    monkeypatch.setattr(
+        "waterlagen.bgt.download._translate_gml_layer_to_geopackage",
+        fail_translate,
+    )
+
+    with pytest.raises(PermissionError, match="target is locked"):
+        _convert_bgt_zip_to_geopackage(
+            archive,
+            target,
+            feature_types=["waterdeel"],
+            expected_crs="EPSG:28992",
+        )
+
+    assert calls == [("preflight", target)]
+
+
+def test_replaceability_preflight_checks_existing_target(monkeypatch, tmp_path):
+    target = tmp_path / "bgt.gpkg"
+    _valid_gpkg(target)
+    checked = []
+
+    monkeypatch.setattr(
+        "waterlagen.bgt.download._assert_windows_target_replaceable",
+        lambda path: checked.append(path),
+    )
+
+    _check_target_replaceable_before_conversion(target)
+
+    assert checked == [target]
+    assert target.exists()
+
+
+def test_replace_with_retry_releases_handles_before_retry(monkeypatch, tmp_path):
+    attempts = []
+    releases = []
+    sleeps = []
+
+    class LockedOncePath:
+        def replace(self, target_path):
+            attempts.append(target_path)
+            if len(attempts) == 1:
+                raise PermissionError("locked")
+
+    monkeypatch.setattr(
+        "waterlagen.bgt.download._release_geospatial_file_handles",
+        lambda: releases.append("release"),
+    )
+    monkeypatch.setattr(
+        "waterlagen.bgt.download.time.sleep",
+        lambda delay: sleeps.append(delay),
+    )
+
+    target = tmp_path / "bgt.gpkg"
+    _replace_with_retry(
+        LockedOncePath(),
+        target,
+        attempts=2,
+        delay_s=0.01,
+    )
+
+    assert attempts == [target, target]
+    assert releases == ["release", "release"]
+    assert sleeps == [0.01]
 
 
 def test_predefined_download_logs_reused_valid_archive(
