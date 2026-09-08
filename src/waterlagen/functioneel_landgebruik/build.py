@@ -13,8 +13,8 @@ from waterlagen import datastore as default_datastore
 from waterlagen.bag import download_bag_light
 from waterlagen.bgt import download_bgt
 from waterlagen.brp import download_brp
-from waterlagen.dijkringen import download_dijkringen
 from waterlagen.datastore import DataStore
+from waterlagen.dijkringen import download_dijkringen
 from waterlagen.functioneel_landgebruik.legend import COLORMAP
 from waterlagen.functioneel_landgebruik.rasterize import rasterize_features
 from waterlagen.functioneel_landgebruik.sources import (
