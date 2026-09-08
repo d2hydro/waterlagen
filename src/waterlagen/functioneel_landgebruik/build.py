@@ -82,6 +82,7 @@ def _profile_for_grid(grid: RasterGrid, *, output_config: RasterOutputConfig) ->
     """Create the GeoTIFF profile used for functional land-use raster output."""
     return {
         "driver": "GTiff",
+        "photometric": "PALETTE",
         "count": 1,
         "dtype": "uint8",
         "nodata": 0,
@@ -314,6 +315,8 @@ def bouw_functioneel_landgebruik(
     tmp_path.unlink(missing_ok=True)
     try:
         with rio.open(tmp_path, "w", **profile) as dst:
+            dst.colorinterp = (rio.enums.ColorInterp.palette,)
+            dst.write_colormap(1, COLORMAP)
             dst.write(raster, 1)
             build_raster_overviews(
                 dst,
@@ -321,8 +324,6 @@ def bouw_functioneel_landgebruik(
                 resampling=Resampling.mode,
             )
             dst.set_band_description(1, "Landgebruik")
-            dst.colorinterp = (rio.enums.ColorInterp.palette,)
-            dst.write_colormap(1, COLORMAP)
 
         tmp_path.replace(target_path)
     except Exception:

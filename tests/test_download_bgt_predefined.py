@@ -235,7 +235,8 @@ def test_gdal_translation_preserves_fields_and_xml_attributes(tmp_path):
     assert {"gml_id", "naam_status", "naam", "laterVeld"} <= set(result.columns)
     assert result["gml_id"].tolist() == ["waterdeel.1", "waterdeel.2"]
     assert result["naam_status"].tolist() == ["bestaand", "gepland"]
-    assert result["laterVeld"].tolist() == [None, "alleen in tweede object"]
+    assert result["laterVeld"].isna().iloc[0]
+    assert result["laterVeld"].iloc[1] == "alleen in tweede object"
 
 
 def test_gdal_translation_formats_explicit_source_crs(monkeypatch, tmp_path):
