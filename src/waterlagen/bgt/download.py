@@ -264,6 +264,45 @@ def _gml_layer_source_crs(
     return source_crs
 
 
+def _close_gdal_dataset(dataset: object | None) -> None:
+    """Flush and close a GDAL dataset before its file is accessed again."""
+    if dataset is None:
+        return
+
+    flush_cache = getattr(dataset, "FlushCache", None)
+    if flush_cache is not None:
+        flush_cache()
+    close = getattr(dataset, "Close", None)
+    if close is not None:
+        close()
+
+
+def _replace_with_retry(
+    source_path: Path,
+    target_path: Path,
+    *,
+    attempts: int = 10,
+    delay_s: float = 0.5,
+) -> None:
+    """Atomically replace a path, retrying transient Windows file locks."""
+    for attempt in range(attempts):
+        try:
+            source_path.replace(target_path)
+            return
+        except PermissionError:
+            if attempt == attempts - 1:
+                raise
+            logger.warning(
+                "Could not replace %s with %s because a process has it open; "
+                "retrying (%s/%s)",
+                target_path,
+                source_path,
+                attempt + 1,
+                attempts - 1,
+            )
+            time.sleep(delay_s)
+
+
 def _translate_gml_layer_to_geopackage(
     gml_path: Path | str,
     target_path: Path,
@@ -292,21 +331,29 @@ def _translate_gml_layer_to_geopackage(
         transactionSize=100_000,
     )
 
-    with gdal.ExceptionMgr(useExceptions=True):
-        source_dataset = gdal.OpenEx(
-            str(gml_path),
-            gdal.OF_VECTOR,
-            open_options=GML_OPEN_OPTIONS,
-        )
-        if source_dataset is None:
-            raise DownloadPayloadError(f"Could not open GML dataset {gml_path}")
-        dataset = gdal.VectorTranslate(
-            str(target_path), source_dataset, options=options
-        )
-    if dataset is None:
-        raise DownloadPayloadError(f"Could not convert {gml_path} to {target_path}")
-    dataset = None
     source_dataset = None
+    dataset = None
+    try:
+        with gdal.ExceptionMgr(useExceptions=True):
+            source_dataset = gdal.OpenEx(
+                str(gml_path),
+                gdal.OF_VECTOR,
+                open_options=GML_OPEN_OPTIONS,
+            )
+            if source_dataset is None:
+                raise DownloadPayloadError(f"Could not open GML dataset {gml_path}")
+            dataset = gdal.VectorTranslate(
+                str(target_path), source_dataset, options=options
+            )
+        if dataset is None:
+            raise DownloadPayloadError(
+                f"Could not convert {gml_path} to {target_path}"
+            )
+    finally:
+        _close_gdal_dataset(dataset)
+        _close_gdal_dataset(source_dataset)
+        dataset = None
+        source_dataset = None
 
 
 def _validate_geopackage_spatial_crs(path: Path, *, expected_crs: str | int) -> None:
@@ -358,10 +405,13 @@ def _convert_bgt_zip_to_separate_geopackages(
                         tmp_gpkg,
                         expected_crs=expected_crs,
                     )
-                    tmp_gpkg.replace(gpkg_out)
+                    _replace_with_retry(tmp_gpkg, gpkg_out)
                     layer_count += 1
                 except Exception:
-                    tmp_gpkg.unlink(missing_ok=True)
+                    try:
+                        tmp_gpkg.unlink(missing_ok=True)
+                    except PermissionError:
+                        logger.warning("Could not remove temporary GeoPackage %s", tmp_gpkg)
                     raise
 
     return layer_count
@@ -440,10 +490,13 @@ def _convert_bgt_zip_to_geopackage(
         logger.info("Validating final BGT GeoPackage %s", tmp_gpkg)
         _validate_geopackage_spatial_crs(tmp_gpkg, expected_crs=expected_crs)
         layer_count = len(read_layer_crs_info(tmp_gpkg))
-        tmp_gpkg.replace(target_path)
+        _replace_with_retry(tmp_gpkg, target_path)
         return layer_count
     except Exception:
-        tmp_gpkg.unlink(missing_ok=True)
+        try:
+            tmp_gpkg.unlink(missing_ok=True)
+        except PermissionError:
+            logger.warning("Could not remove temporary GeoPackage %s", tmp_gpkg)
         raise
 
 

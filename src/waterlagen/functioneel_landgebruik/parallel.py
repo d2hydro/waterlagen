@@ -43,6 +43,8 @@ class TileBuildError(RuntimeError):
 
 @dataclass(frozen=True, slots=True)
 class FunctioneelLandgebruikTileJob:
+    """Serializable build settings for one functional land-use raster tile."""
+
     tile_id: str
     bounds: tuple[int, int, int, int]
     target_path: Path
@@ -55,6 +57,7 @@ class FunctioneelLandgebruikTileJob:
 
 
 def _build_tile_worker(job: FunctioneelLandgebruikTileJob) -> Path:
+    """Build one tile inside a worker process without downloading sources."""
     return bouw_functioneel_landgebruik(
         target_path=job.target_path,
         bounds=job.bounds,
@@ -130,6 +133,7 @@ def _job_from_row(
     layers: FunctioneelLandgebruikLayers,
     output_config: RasterOutputConfig,
 ) -> FunctioneelLandgebruikTileJob:
+    """Convert one tile-index row to the job object submitted to a worker."""
     tile = _tile_from_row(row)
     return FunctioneelLandgebruikTileJob(
         tile_id=tile.tile_id,
@@ -150,6 +154,7 @@ def _prepare_sources_once(
     *,
     download_missing_sources: bool,
 ) -> None:
+    """Download and validate shared sources once before tile jobs start."""
     if download_missing_sources:
         _download_missing_sources(sources, layers)
     _validate_sources_exist(sources)
@@ -171,7 +176,70 @@ def bouw_functioneel_landgebruik_tiles(
     download_missing_sources: bool = True,
     show_progress: bool = True,
 ) -> list[Path]:
-    """Build functioneel-landgebruik GeoTIFFs for tiles from the tile index."""
+    """Build functional land-use GeoTIFF tiles from a tile index.
+
+    The tile index is read with :func:`waterlagen.raster.tiles.read_tiles`,
+    validated for the required tile columns, optionally filtered by
+    ``tile_ids``, and converted into one worker job per selected tile. Existing
+    tile files are reused when ``overwrite`` is False. Before submitting work,
+    missing shared source datasets can be downloaded once in the parent process
+    and all configured source paths are validated.
+
+    Each submitted tile is built by :func:`bouw_functioneel_landgebruik` in a
+    process-pool worker. Worker jobs receive explicit source paths, layer names,
+    raster resolution, CRS, bounds, and output settings. Workers do not perform
+    source downloads. Failed tiles are collected and reported together as a
+    :class:`TileBuildError`; successful and skipped tile paths are returned in
+    the same order as the selected tile index.
+
+    Parameters
+    ----------
+    target_dir : Path
+        Directory where tile GeoTIFFs are written.
+    tiles_path : Path, optional
+        Tile-index dataset. When omitted, the default tile index from
+        :func:`read_tiles` is used.
+    workers : int, optional
+        Number of worker processes. Defaults to at most four workers, bounded
+        by ``os.cpu_count()``.
+    overwrite : bool, optional
+        If False, existing target tiles are skipped and returned as-is.
+    tile_ids : Collection[str], optional
+        Optional subset of tile IDs to build. Unknown tile IDs raise a
+        ``ValueError``.
+    resolution_m : float, optional
+        Raster cell size passed to each tile build, by default 0.5.
+    crs : str, optional
+        CRS for tile bounds and raster output, by default
+        :data:`waterlagen.settings.settings.crs`.
+    sources : FunctioneelLandgebruikSources, optional
+        Explicit source GeoPackage paths. Mutually exclusive with
+        ``data_store``.
+    data_store : DataStore, optional
+        Datastore used to derive source paths. Mutually exclusive with
+        ``sources``.
+    layers : FunctioneelLandgebruikLayers, optional
+        Source layer names used by each tile build.
+    output_config : RasterOutputConfig, optional
+        GeoTIFF block size and overview factors.
+    download_missing_sources : bool, optional
+        Whether missing shared source datasets are downloaded before workers
+        are started, by default True.
+    show_progress : bool, optional
+        Whether to show a tqdm progress bar for selected tiles.
+
+    Returns
+    -------
+    list[Path]
+        Paths to the skipped or written GeoTIFF tiles, ordered like the selected
+        tile index.
+
+    Side Effects
+    ------------
+    Creates ``target_dir`` when needed, may download missing shared source
+    datasets, writes tile GeoTIFFs through worker processes, and logs skipped,
+    completed, and failed tiles.
+    """
     worker_count = _resolve_workers(workers)
     target_dir = Path(target_dir)
     target_dir.mkdir(parents=True, exist_ok=True)

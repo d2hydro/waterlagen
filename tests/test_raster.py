@@ -45,7 +45,7 @@ def test_create_vrt_file_builds_from_tifs(tmp_path, monkeypatch):
         tif_a.absolute().resolve().as_posix(),
         tif_b.absolute().resolve().as_posix(),
     }
-    assert calls["options_kwargs"]["resolution"] == "average"
+    assert "resolution" not in calls["options_kwargs"]
     assert flushed["value"] is True
 
 

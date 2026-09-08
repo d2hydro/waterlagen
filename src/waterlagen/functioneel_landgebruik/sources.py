@@ -26,8 +26,11 @@ def _with_code(
     category_column: str,
     codes: dict[str, int],
 ) -> gpd.GeoDataFrame:
+    """Map classified categories to uint8 raster codes and keep geometry only."""
     if gdf.empty:
-        return gpd.GeoDataFrame({"code": pd.Series(dtype="uint8")}, geometry=[], crs=gdf.crs)
+        return gpd.GeoDataFrame(
+            {"code": pd.Series(dtype="uint8")}, geometry=[], crs=gdf.crs
+        )
 
     result = gdf.copy()
     result[category_column] = result[category_column].astype(str).str.strip()
@@ -43,14 +46,37 @@ def classify_inside_dikes(
     *,
     category_column: str,
 ) -> gpd.GeoDataFrame:
-    """Append ' buitendijks' to categories outside the prepared dike area."""
+    """Mark categories outside the prepared dike area.
+
+    Representative points are tested against ``dike_area``. Features outside
+    that geometry keep their original geometry but get ``" buitendijks"``
+    appended to the selected category column, so downstream code can map them
+    to different raster codes.
+
+    Parameters
+    ----------
+    gdf : geopandas.GeoDataFrame
+        Classified features to adjust.
+    dike_area : BaseGeometry
+        Dissolved dike-ring geometry in the same CRS as ``gdf``.
+    category_column : str
+        Column containing the class label to update.
+
+    Returns
+    -------
+    geopandas.GeoDataFrame
+        Copy of ``gdf`` with a boolean ``binnendijks`` column and adjusted
+        category values for outside features.
+    """
     result = gdf.copy()
     if result.empty:
         result["binnendijks"] = pd.Series(dtype=bool)
         return result
 
     check_points = result.geometry.representative_point()
-    result["binnendijks"] = check_points.apply(lambda point: point.covered_by(dike_area))
+    result["binnendijks"] = check_points.apply(
+        lambda point: point.covered_by(dike_area)
+    )
     outside = ~result["binnendijks"]
     result.loc[outside, category_column] = (
         result.loc[outside, category_column].astype(str) + " buitendijks"
@@ -65,6 +91,30 @@ def prepare_functionele_gebieden(
     bounds: tuple[float, float, float, float],
     dike_area: BaseGeometry,
 ) -> gpd.GeoDataFrame:
+    """Prepare Top10NL functional areas for rasterization.
+
+    Reads ``typefunctioneelgebied`` and geometry from the requested Top10NL
+    layer within ``bounds``, classifies each feature with
+    :func:`classify_functioneel_gebied`, applies inside/outside-dike variants,
+    and converts the resulting categories to legend codes.
+
+    Parameters
+    ----------
+    top10nl_gpkg : Path
+        GeoPackage containing the Top10NL functional-area layer.
+    layer : str
+        Layer name to read.
+    bounds : tuple[float, float, float, float]
+        Bounding box used as read filter, in the source layer CRS.
+    dike_area : BaseGeometry
+        Dissolved dike-ring geometry used for binnendijks/buitendijks classes.
+
+    Returns
+    -------
+    geopandas.GeoDataFrame
+        GeoDataFrame with ``geometry`` and uint8 ``code`` columns ready for
+        rasterization.
+    """
     gdf = wgpd.read_file(
         top10nl_gpkg,
         layer=layer,
@@ -87,6 +137,31 @@ def prepare_brp(
     bounds: tuple[float, float, float, float],
     dike_area: BaseGeometry,
 ) -> gpd.GeoDataFrame:
+    """Prepare BRP crop parcels for rasterization.
+
+    Reads BRP features in ``bounds``, removes rows whose ``category`` is
+    ``landschapselement``, classifies each crop/category combination with
+    :func:`classify_brp_gewas`, applies inside/outside-dike variants, and maps
+    the classes to BRP legend codes.
+
+    Parameters
+    ----------
+    brp_gpkg : Path
+        GeoPackage containing BRP crop parcels.
+    layer : str
+        BRP layer name to read.
+    bounds : tuple[float, float, float, float]
+        Bounding box used as read filter, in the source layer CRS.
+    dike_area : BaseGeometry
+        Dissolved dike-ring geometry used for binnendijks/buitendijks classes.
+
+    Returns
+    -------
+    geopandas.GeoDataFrame
+        GeoDataFrame with ``geometry`` and uint8 ``code`` columns ready for
+        rasterization. Empty inputs return an empty coded GeoDataFrame with the
+        source CRS.
+    """
     gdf = wgpd.read_file(
         brp_gpkg,
         layer=layer,
@@ -94,7 +169,9 @@ def prepare_brp(
         columns=["gewas", "category", "geometry"],
     )
     if gdf.empty:
-        return gpd.GeoDataFrame({"code": pd.Series(dtype="uint8")}, geometry=[], crs=gdf.crs)
+        return gpd.GeoDataFrame(
+            {"code": pd.Series(dtype="uint8")}, geometry=[], crs=gdf.crs
+        )
 
     category = gdf["category"].fillna("").astype(str).str.lower()
     gdf = gdf[category != "landschapselement"].copy()
@@ -112,6 +189,27 @@ def prepare_water(
     layer: str,
     bounds: tuple[float, float, float, float],
 ) -> gpd.GeoDataFrame:
+    """Prepare BGT water features for rasterization.
+
+    Reads the configured BGT water layer in ``bounds`` and keeps only features
+    whose ``bgt-status`` maps to a functional land-use code. At present only
+    existing water features, status ``bestaand``, receive code 1.
+
+    Parameters
+    ----------
+    bgt_gpkg : Path
+        GeoPackage containing the BGT layers.
+    layer : str
+        BGT water layer name, normally ``bgt_waterdeel``.
+    bounds : tuple[float, float, float, float]
+        Bounding box used as read filter, in the source layer CRS.
+
+    Returns
+    -------
+    geopandas.GeoDataFrame
+        GeoDataFrame with ``geometry`` and uint8 ``code`` columns ready for
+        rasterization.
+    """
     gdf = wgpd.read_file(
         bgt_gpkg,
         layer=layer,
@@ -119,7 +217,9 @@ def prepare_water(
         columns=["bgt-status", "geometry"],
     )
     if gdf.empty:
-        return gpd.GeoDataFrame({"code": pd.Series(dtype="uint8")}, geometry=[], crs=gdf.crs)
+        return gpd.GeoDataFrame(
+            {"code": pd.Series(dtype="uint8")}, geometry=[], crs=gdf.crs
+        )
 
     gdf["code"] = gdf["bgt-status"].map({"bestaand": 1})
     gdf = gdf.dropna(subset=["code", "geometry"]).copy()
@@ -134,6 +234,30 @@ def prepare_wegen(
     bounds: tuple[float, float, float, float],
     dike_area: BaseGeometry,
 ) -> gpd.GeoDataFrame:
+    """Prepare BGT road features for rasterization.
+
+    Reads the configured BGT road layer in ``bounds``, classifies
+    ``bgt-functie`` with :func:`classify_weg`, drops unclassified roads,
+    applies inside/outside-dike variants, and maps the categories to road
+    legend codes.
+
+    Parameters
+    ----------
+    bgt_gpkg : Path
+        GeoPackage containing the BGT layers.
+    layer : str
+        BGT road layer name, normally ``bgt_wegdeel``.
+    bounds : tuple[float, float, float, float]
+        Bounding box used as read filter, in the source layer CRS.
+    dike_area : BaseGeometry
+        Dissolved dike-ring geometry used for binnendijks/buitendijks classes.
+
+    Returns
+    -------
+    geopandas.GeoDataFrame
+        GeoDataFrame with ``geometry`` and uint8 ``code`` columns ready for
+        rasterization.
+    """
     gdf = wgpd.read_file(
         bgt_gpkg,
         layer=layer,
@@ -156,6 +280,7 @@ def _koppel_hoofdfunctie_aan_panden(
     oppervlakte_col: str = "oppervlakte",
     status_col: str = "status",
 ) -> gpd.GeoDataFrame:
+    """Assign the dominant verblijfsobject function to each BAG pand."""
     panden = panden.copy()
     vbo = verblijfsobjecten.copy()
 
@@ -212,6 +337,7 @@ def _verfijn_woonfunctie_panden(
     gebruiksdoel_col: str = "gebruiksdoel",
     oppervlakte_col: str = "oppervlakte",
 ) -> gpd.GeoDataFrame:
+    """Split BAG residential buildings into apartment/floor-count classes."""
     panden = panden.copy()
     vbo = verblijfsobjecten.copy()
     vbo["vbo_hoofdfunctie"] = vbo[gebruiksdoel_col].apply(eerste_gebruiksdoel)
@@ -290,6 +416,36 @@ def prepare_bag(
     bounds: tuple[float, float, float, float],
     dike_area: BaseGeometry,
 ) -> gpd.GeoDataFrame:
+    """Prepare BAG building features for rasterization.
+
+    Reads BAG panden and verblijfsobjecten in ``bounds``. Panden with building
+    or demolition permit statuses are removed by
+    :func:`_koppel_hoofdfunctie_aan_panden`. Verblijfsobjecten are linked to
+    panden by BAG identifiers, the dominant use function is selected by summed
+    verblijfsobject area, and residential buildings are refined into apartment
+    or estimated floor-count classes. Final BAG categories are adjusted for
+    inside/outside-dike location and mapped to BAG legend codes.
+
+    Parameters
+    ----------
+    bag_gpkg : Path
+        GeoPackage containing BAG pand and verblijfsobject layers.
+    pand_layer : str
+        BAG pand layer name.
+    verblijfsobject_layer : str
+        BAG verblijfsobject layer name.
+    bounds : tuple[float, float, float, float]
+        Bounding box used as read filter for both BAG layers, in the source CRS.
+    dike_area : BaseGeometry
+        Dissolved dike-ring geometry used for binnendijks/buitendijks classes.
+
+    Returns
+    -------
+    geopandas.GeoDataFrame
+        GeoDataFrame with ``geometry`` and uint8 ``code`` columns ready for
+        rasterization. Empty pand inputs return an empty coded GeoDataFrame with
+        the pand layer CRS.
+    """
     panden = wgpd.read_file(
         bag_gpkg,
         layer=pand_layer,
@@ -303,7 +459,9 @@ def prepare_bag(
         columns=["pand_identificatie", "gebruiksdoel", "oppervlakte", "geometry"],
     )
     if panden.empty:
-        return gpd.GeoDataFrame({"code": pd.Series(dtype="uint8")}, geometry=[], crs=panden.crs)
+        return gpd.GeoDataFrame(
+            {"code": pd.Series(dtype="uint8")}, geometry=[], crs=panden.crs
+        )
 
     bag = _koppel_hoofdfunctie_aan_panden(panden, vbo)
     bag = _verfijn_woonfunctie_panden(bag, vbo)

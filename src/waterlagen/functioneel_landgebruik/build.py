@@ -33,6 +33,8 @@ from waterlagen.top10nl import download_top10nl
 
 @dataclass(frozen=True)
 class FunctioneelLandgebruikSources:
+    """Input GeoPackage paths for the functional land-use build workflow."""
+
     bgt_gpkg: Path = field(
         default_factory=lambda: default_datastore.bgt_dir / "bgt.gpkg"
     )
@@ -65,6 +67,8 @@ class FunctioneelLandgebruikSources:
 
 @dataclass(frozen=True)
 class FunctioneelLandgebruikLayers:
+    """Layer names expected in the functional land-use source GeoPackages."""
+
     bgt_water: str = "bgt_waterdeel"
     bgt_wegdeel: str = "bgt_wegdeel"
     bag_pand: str = "pand"
@@ -75,6 +79,7 @@ class FunctioneelLandgebruikLayers:
 
 
 def _profile_for_grid(grid: RasterGrid, *, output_config: RasterOutputConfig) -> dict:
+    """Create the GeoTIFF profile used for functional land-use raster output."""
     return {
         "driver": "GTiff",
         "count": 1,
@@ -99,6 +104,7 @@ def _download_missing_sources(
     sources: FunctioneelLandgebruikSources,
     layers: FunctioneelLandgebruikLayers,
 ) -> None:
+    """Download source datasets that are missing from the configured paths."""
     if not sources.bgt_gpkg.exists():
         download_bgt(
             download_dir=sources.bgt_gpkg.parent,
@@ -132,6 +138,7 @@ def _download_missing_sources(
 
 
 def _validate_sources_exist(sources: FunctioneelLandgebruikSources) -> None:
+    """Raise a clear error when one or more configured source datasets are absent."""
     missing = [path for path in sources.__dict__.values() if not Path(path).exists()]
     if missing:
         labels = ", ".join(str(path) for path in missing)
@@ -142,6 +149,7 @@ def _read_dike_area(
     sources: FunctioneelLandgebruikSources,
     layers: FunctioneelLandgebruikLayers,
 ):
+    """Read and dissolve the dike-ring geometry used for inside/outside classes."""
     dijkringen = wgpd.read_file(sources.dijkringen_gpkg, layer=layers.dijkringen)
     return dijkringen.geometry.make_valid().union_all()
 
@@ -153,6 +161,7 @@ def _prepare_priority_sources(
     bounds: tuple[float, float, float, float],
     dike_area,
 ) -> list[gpd.GeoDataFrame]:
+    """Prepare classified vector sources in rasterization priority order."""
     return [
         prepare_functionele_gebieden(
             sources.top10nl_gpkg,
@@ -201,7 +210,59 @@ def bouw_functioneel_landgebruik(
     overwrite: bool = True,
     output_config: RasterOutputConfig | None = None,
 ) -> Path:
-    """Build the functional land-use GeoTIFF for a requested extent."""
+    """Build a functional land-use GeoTIFF for one requested extent.
+
+    The workflow prepares all configured vector sources for the requested
+    bounds, classifies their attributes to the functional land-use legend,
+    rasterizes them in priority order, and writes a paletted GeoTIFF with
+    overviews. Source geometries are read with the requested bounds as a bbox
+    filter. Top10NL, BRP, BGT roads, and BAG classes are additionally adjusted
+    for whether their representative point lies inside the configured dike-ring
+    area.
+
+    Parameters
+    ----------
+    target_path : Path
+        GeoTIFF path to write.
+    bounds : tuple[float, float, float, float]
+        Output bounds as ``(xmin, ymin, xmax, ymax)`` in ``crs``.
+    resolution_m : float, optional
+        Raster cell size in map units, by default 0.5.
+    crs : str, optional
+        Output CRS and the CRS assumed for ``bounds``, by default
+        :data:`waterlagen.settings.settings.crs`.
+    sources : FunctioneelLandgebruikSources, optional
+        Explicit source GeoPackage paths. Mutually exclusive with
+        ``data_store``.
+    data_store : DataStore, optional
+        Datastore used to derive default source paths. Mutually exclusive with
+        ``sources``.
+    layers : FunctioneelLandgebruikLayers, optional
+        Source layer names. Defaults to the package layer-name conventions.
+    download_missing_sources : bool, optional
+        Whether missing source datasets are downloaded before building. If
+        omitted, the deprecated ``download_missing`` value is used when given,
+        otherwise missing sources are downloaded.
+    download_missing : bool, optional
+        Backwards-compatible alias for ``download_missing_sources``.
+    overwrite : bool, optional
+        If False and ``target_path`` already exists, the existing GeoTIFF is
+        returned without validating sources, downloading, or rewriting output.
+    output_config : RasterOutputConfig, optional
+        GeoTIFF block size and overview factors.
+
+    Returns
+    -------
+    Path
+        The written or reused ``target_path``.
+
+    Side Effects
+    ------------
+    May download missing BGT, BAG, BRP, Top10NL, and dijkringen source files to
+    the configured datastore paths. The GeoTIFF is written to a temporary file
+    beside ``target_path`` and atomically replaces the target after successful
+    raster creation.
+    """
     target_path = Path(target_path)
     if sources is not None and data_store is not None:
         raise ValueError("Pass either sources or data_store, not both")

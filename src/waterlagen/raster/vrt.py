@@ -33,7 +33,6 @@ def create_vrt_file(vrt_file: Path, directory: Path | list[Path]):
 
     if len(tif_files) > 0:
         vrt_options = gdal.BuildVRTOptions(
-            resolution="average",
             separate=False,
             addAlpha=False,
             bandList=[1],
@@ -145,8 +144,12 @@ def _validate_cog_file(cog_file: Path, vrt_dataset) -> None:
                 f"blocks, got {block_size[0]} x {block_size[1]}"
             )
 
-        if not _same_crs(vrt_dataset.GetProjectionRef(), cog_dataset.GetProjectionRef()):
-            raise ValueError(f"COG validation failed for {cog_file}: CRS differs from VRT")
+        if not _same_crs(
+            vrt_dataset.GetProjectionRef(), cog_dataset.GetProjectionRef()
+        ):
+            raise ValueError(
+                f"COG validation failed for {cog_file}: CRS differs from VRT"
+            )
 
         if cog_band.DataType != vrt_band.DataType:
             raise ValueError(
