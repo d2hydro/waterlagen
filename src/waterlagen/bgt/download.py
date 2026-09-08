@@ -346,9 +346,7 @@ def _translate_gml_layer_to_geopackage(
                 str(target_path), source_dataset, options=options
             )
         if dataset is None:
-            raise DownloadPayloadError(
-                f"Could not convert {gml_path} to {target_path}"
-            )
+            raise DownloadPayloadError(f"Could not convert {gml_path} to {target_path}")
     finally:
         _close_gdal_dataset(dataset)
         _close_gdal_dataset(source_dataset)
@@ -411,7 +409,9 @@ def _convert_bgt_zip_to_separate_geopackages(
                     try:
                         tmp_gpkg.unlink(missing_ok=True)
                     except PermissionError:
-                        logger.warning("Could not remove temporary GeoPackage %s", tmp_gpkg)
+                        logger.warning(
+                            "Could not remove temporary GeoPackage %s", tmp_gpkg
+                        )
                     raise
 
     return layer_count

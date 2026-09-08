@@ -32,10 +32,14 @@ def test_create_vrt_file_builds_from_tifs(tmp_path, monkeypatch):
         calls["options"] = options
         return DummyDataset()
 
-    monkeypatch.setattr(vrt_mod, "gdal", SimpleNamespace(
-        BuildVRTOptions=_fake_options,
-        BuildVRT=_fake_build_vrt,
-    ))
+    monkeypatch.setattr(
+        vrt_mod,
+        "gdal",
+        SimpleNamespace(
+            BuildVRTOptions=_fake_options,
+            BuildVRT=_fake_build_vrt,
+        ),
+    )
 
     out = vrt_mod.create_vrt_file(vrt_file=vrt, directory=tmp_path)
 
@@ -117,15 +121,21 @@ def test_create_cog_file_translates_vrt_directly_to_cog(tmp_path, monkeypatch):
 
     assert out == cog
     assert cog.read_text() == "cog"
-    assert calls["destName"] == (tmp_path / "functioneel_landgebruik.tmp.tif").as_posix()
+    assert (
+        calls["destName"] == (tmp_path / "functioneel_landgebruik.tmp.tif").as_posix()
+    )
     assert calls["options_kwargs"]["format"] == "COG"
-    assert calls["options_kwargs"]["creationOptions"] == list(vrt_mod.COG_CREATION_OPTIONS)
+    assert calls["options_kwargs"]["creationOptions"] == list(
+        vrt_mod.COG_CREATION_OPTIONS
+    )
     assert "OVERVIEW_RESAMPLING=NEAREST" in calls["options_kwargs"]["creationOptions"]
     assert calls["options_kwargs"]["noData"] == 0
     assert "callback" not in calls["options_kwargs"]
 
 
-def test_create_cog_file_skips_existing_output_without_opening_vrt(tmp_path, monkeypatch):
+def test_create_cog_file_skips_existing_output_without_opening_vrt(
+    tmp_path, monkeypatch
+):
     cog = tmp_path / "functioneel_landgebruik.tif"
     cog.write_text("existing")
 
@@ -198,9 +208,13 @@ def test_create_cog_file_writes_valid_cog_from_vrt(tmp_path):
     vrt = tmp_path / "functioneel_landgebruik.vrt"
     cog = tmp_path / "functioneel_landgebruik.tif"
     tmp = tmp_path / "functioneel_landgebruik.tmp.tif"
-    data = (np.arange(1024 * 1024, dtype=np.uint32) % 5).astype("uint8").reshape(
-        1024,
-        1024,
+    data = (
+        (np.arange(1024 * 1024, dtype=np.uint32) % 5)
+        .astype("uint8")
+        .reshape(
+            1024,
+            1024,
+        )
     )
 
     with rasterio.open(
