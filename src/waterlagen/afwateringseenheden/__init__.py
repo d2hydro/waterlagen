@@ -10,7 +10,8 @@ from .objects import (
     read_puntobjecten,
     waterbeheercode_from_nen3610id,
 )
-from .pcraster import require_pcraster
+from .pcraster import SubcatchmentResult, calculate_subcatchments, require_pcraster
+from .raster import WatersysteemRasters, prepare_watersysteem_rasters
 from .workflow import (
     prepare_watersysteem,
     split_connected_secondary_hydroobjecten,
@@ -19,7 +20,11 @@ from .workflow import (
 
 __all__ = [
     "WatersysteemResult",
+    "WatersysteemRasters",
+    "SubcatchmentResult",
+    "calculate_subcatchments",
     "prepare_watersysteem",
+    "prepare_watersysteem_rasters",
     "read_hydroobjecten",
     "read_puntobjecten",
     "require_pcraster",

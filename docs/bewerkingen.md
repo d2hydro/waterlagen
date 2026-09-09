@@ -103,3 +103,37 @@ watersysteem_path = write_watersysteem(
     watersysteem=watersysteem,
 )
 ```
+
+## Rasters voor afwateringseenheden
+
+`prepare_watersysteem_rasters()` maakt voor een vierkant in het project-CRS
+een DEM en een raster met hydroobjectsegment-ID's. Standaard wordt
+`source_data/ahn/dtm_05/dtm_05.vrt` op een grid van 2 bij 2 meter gelezen. De
+DEM bevat na `rasterio.fill.fillnodata` geen NoData-cellen. Primaire
+hydroobjecten worden met tweemaal en secundaire hydroobjecten met eenmaal de opgegeven branddiepte
+verlaagd; bij overlap heeft primair voorrang. De bestaande datatype-, schaal-
+en offsetmetadata van de AHN-DTM blijven behouden.
+
+```python
+from shapely.geometry import box
+
+from waterlagen.afwateringseenheden import prepare_watersysteem_rasters
+
+rasters = prepare_watersysteem_rasters(
+    box(190_000, 375_000, 191_000, 376_000),
+    burn_depth_m=5.0,
+)
+```
+
+`calculate_subcatchments()` gebruikt deze twee rasters als in-memory
+PCRaster-clone. De LDD en de subcatchments worden als `ldd.tif` en
+`subcatchments.tif` naast de voorbereide rasters geschreven. De polygonen
+komen in `afwateringseenheden.gpkg` in de map van het vierkant, laag
+`afvoergebiedaanvoergebied`; iedere polygoon krijgt na terugkoppeling met
+`hydroobject_segment` een `segment_id`.
+
+```python
+from waterlagen.afwateringseenheden import calculate_subcatchments
+
+subcatchments = calculate_subcatchments(rasters)
+```

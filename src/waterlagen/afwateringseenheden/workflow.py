@@ -187,6 +187,81 @@ def _bron_ids(features: gpd.GeoDataFrame, *, layer_name: str) -> set[str]:
     return set(normalized)
 
 
+def _secondary_positions_connected_to_primary(
+    hydroobject_secundair: gpd.GeoDataFrame,
+    hydroobject_primair: gpd.GeoDataFrame,
+    *,
+    tolerance: float,
+) -> set[int]:
+    """Return secondary positions in components that spatially reach a primary."""
+    secondary_index = hydroobject_secundair.sindex
+    primary_index = None
+    if not hydroobject_primair.empty:
+        primary_index = hydroobject_primair.sindex
+
+    parents = list(range(len(hydroobject_secundair)))
+    ranks = [0] * len(hydroobject_secundair)
+
+    def find(position: int) -> int:
+        root = position
+        while parents[root] != root:
+            root = parents[root]
+        while parents[position] != position:
+            parent = parents[position]
+            parents[position] = root
+            position = parent
+        return root
+
+    def union(first_position: int, second_position: int) -> None:
+        first_root = find(first_position)
+        second_root = find(second_position)
+        if first_root == second_root:
+            return
+        if ranks[first_root] < ranks[second_root]:
+            parents[first_root] = second_root
+            return
+        parents[second_root] = first_root
+        if ranks[first_root] == ranks[second_root]:
+            ranks[first_root] += 1
+
+    directly_connected_positions: set[int] = set()
+    for secondary_position, geometry in enumerate(hydroobject_secundair.geometry):
+        if geometry is None or geometry.is_empty:
+            continue
+        query_geometry = geometry if tolerance == 0 else geometry.buffer(tolerance)
+
+        if primary_index is not None:
+            primary_positions = primary_index.query(
+                query_geometry,
+                predicate="intersects",
+            )
+            for primary_position in primary_positions:
+                primary_geometry = hydroobject_primair.geometry.iloc[primary_position]
+                if geometry.distance(primary_geometry) <= tolerance:
+                    directly_connected_positions.add(secondary_position)
+                    break
+
+        secondary_positions = secondary_index.query(
+            query_geometry,
+            predicate="intersects",
+        )
+        for candidate_position in secondary_positions:
+            if candidate_position <= secondary_position:
+                continue
+            candidate_geometry = hydroobject_secundair.geometry.iloc[candidate_position]
+            if geometry.distance(candidate_geometry) <= tolerance:
+                union(secondary_position, candidate_position)
+
+    connected_component_roots = {
+        find(position) for position in directly_connected_positions
+    }
+    return {
+        position
+        for position in range(len(hydroobject_secundair))
+        if find(position) in connected_component_roots
+    }
+
+
 def split_connected_secondary_hydroobjecten(
     hydroobject_secundair: gpd.GeoDataFrame,
     hydroobject_primair: gpd.GeoDataFrame,
@@ -196,12 +271,14 @@ def split_connected_secondary_hydroobjecten(
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
     """Split secondary hydroobjecten into connected and unconnected sources.
 
-    A secondary source is connected when its complete geometry lies within
-    ``tolerance`` of a different secondary source or a primary source. The
-    comparison includes vertices and every position along a line segment. It
-    therefore does not depend on endpoint-based ``hydroobject_verbinding``
-    records. Those records are retained as an argument for API compatibility
-    and are inspected only to warn about unknown source identifiers.
+    Secondary hydroobjecten form spatially connected components. A component
+    is connected only when at least one member lies within ``tolerance`` of a
+    primary hydroobject; a component consisting solely of secondary objects is
+    unconnected. Comparisons include vertices and every position along a line
+    segment, so they do not depend on endpoint-based
+    ``hydroobject_verbinding`` records. Those records are retained as an
+    argument for API compatibility and are inspected only to warn about
+    unknown source identifiers.
 
     Parameters
     ----------
@@ -282,45 +359,16 @@ def split_connected_secondary_hydroobjecten(
         hydroobject_primair,
         layer_name="hydroobject_primair",
     )
-    secundair_index = secundair_in_project_crs.sindex
-    primair_index = primair_in_project_crs.sindex
-    connected_ids: set[str] = set()
-    for secundair_position, (_, secundair) in enumerate(
-        secundair_in_project_crs.iterrows()
-    ):
-        geometry = secundair.geometry
-        if geometry is None or geometry.is_empty:
-            continue
-        query_geometry = geometry if tolerance == 0 else geometry.buffer(tolerance)
-        candidate_positions = primair_index.query(
-            query_geometry,
-            predicate="intersects",
-        )
-        for candidate_position in candidate_positions:
-            candidate = primair_in_project_crs.geometry.iloc[candidate_position]
-            if geometry.distance(candidate) <= tolerance:
-                connected_ids.add(str(secundair["bron_id"]))
-                break
-        if str(secundair["bron_id"]) in connected_ids:
-            continue
-        candidate_positions = secundair_index.query(
-            query_geometry,
-            predicate="intersects",
-        )
-        for candidate_position in candidate_positions:
-            if candidate_position == secundair_position:
-                continue
-            candidate = secundair_in_project_crs.geometry.iloc[candidate_position]
-            if geometry.distance(candidate) <= tolerance:
-                connected_ids.add(str(secundair["bron_id"]))
-                break
-
-    connected = hydroobject_secundair.loc[
-        hydroobject_secundair["bron_id"].astype(str).isin(connected_ids)
-    ].copy()
-    unconnected = hydroobject_secundair.loc[
-        ~hydroobject_secundair["bron_id"].astype(str).isin(connected_ids)
-    ].copy()
+    connected_positions = _secondary_positions_connected_to_primary(
+        secundair_in_project_crs,
+        primair_in_project_crs,
+        tolerance=tolerance,
+    )
+    connected = hydroobject_secundair.iloc[sorted(connected_positions)].copy()
+    unconnected_positions = sorted(
+        set(range(len(hydroobject_secundair))) - connected_positions
+    )
+    unconnected = hydroobject_secundair.iloc[unconnected_positions].copy()
     logger.info(
         "Classified %s secondary hydroobjecten: %s connected, %s unconnected",
         len(hydroobject_secundair),

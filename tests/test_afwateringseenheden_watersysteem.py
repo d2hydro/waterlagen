@@ -475,16 +475,20 @@ def test_split_hydroobjecten_by_length_divides_long_lines_equally():
     assert result.geometry.length.tolist() == [300.0, 300.0]
 
 
-def test_secondary_connected_to_secondary_is_retained_once_with_source_fields():
+def test_secondary_network_without_primary_is_classified_as_unconnected():
     primair = _hydroobjecten_met_bron_ids(["primair-1"])
     primair.geometry = [LineString([(100, 0), (110, 0)])]
     secundair = _hydroobjecten_met_bron_ids(
-        ["secundair-1", "secundair-2", "secundair-los"]
+        [
+            "{595D8BDA-728B-443A-A833-FC5CDE1F42AA}",
+            "{50E3F09D-DEAA-4AAD-BF1A-E708D974B8F7}",
+            "{499AAD47-4F5C-49D6-B0CF-425488D3FDA0}",
+        ]
     )
     secundair.geometry = [
         LineString([(0, 0), (5, 0)]),
         LineString([(6, 0), (11, 0)]),
-        LineString([(20, 0), (25, 0)]),
+        LineString([(12, 0), (17, 0)]),
     ]
 
     verbonden, niet_verbonden = split_connected_secondary_hydroobjecten(
@@ -493,14 +497,14 @@ def test_secondary_connected_to_secondary_is_retained_once_with_source_fields():
         _bron_verbindingen([]),
     )
 
-    assert verbonden["bron_id"].tolist() == ["secundair-1", "secundair-2"]
-    assert niet_verbonden["bron_id"].tolist() == ["secundair-los"]
-    assert verbonden["code"].tolist() == ["code-secundair-1", "code-secundair-2"]
-    assert verbonden.crs == secundair.crs
+    assert verbonden.empty
+    assert niet_verbonden["bron_id"].tolist() == secundair["bron_id"].tolist()
+    assert niet_verbonden["code"].tolist() == secundair["code"].tolist()
+    assert niet_verbonden.crs == secundair.crs
     assert len(verbonden) + len(niet_verbonden) == len(secundair)
 
 
-def test_secondary_connected_to_primary_and_secondary_is_retained_once():
+def test_secondary_network_with_one_primary_connection_is_connected():
     primair = _hydroobjecten_met_bron_ids(["primair-1", "primair-los"])
     secundair = _hydroobjecten_met_bron_ids(["secundair-1", "secundair-2"])
     primair.geometry = [
