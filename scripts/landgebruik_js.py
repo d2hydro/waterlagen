@@ -8,6 +8,8 @@ Aanpassingen:
 - feature: automatisch downloaden bag, bgt, brp, en dijkringen naar datastore
 - feature: verwijzingen naar datastore i.p.v. lokale bestanden
 - fix:  classify_weg wegen["functie"] vervangen voor wegen["bgt-functie"] (kolom functie bestaat niet)
+- fix: BGT-waterdelen en -wegdelen alleen gebruiken bij status 'bestaand'
+  en lege eindRegistratie en objectEindTijd (geen historie of beëindigde objecten)
 """
 
 from dataclasses import dataclass
@@ -628,8 +630,14 @@ def add_water(
         paths.bgt_gpkg,
         layer=config.bgt_water_layer,
         bbox=window_bounds,
-        columns=["bgt-status", "geometry"],
+        columns=["bgt-status", "eindRegistratie", "objectEindTijd", "geometry"],
     )
+    # Ook historische registraties kunnen nog de status 'bestaand' hebben.
+    water = water[
+        (water["bgt-status"] == "bestaand")
+        & water["eindRegistratie"].isna()
+        & water["objectEindTijd"].isna()
+    ].copy()
     water["code"] = water["bgt-status"].map({"bestaand": 1})
     rasterize_codes(rasterize, water)
 
@@ -645,8 +653,20 @@ def add_wegen(
         paths.bgt_gpkg,
         layer=config.bgt_wegdeel_layer,
         bbox=window_bounds,
-        columns=["bgt-functie", "geometry"],
+        columns=[
+            "bgt-functie",
+            "bgt-status",
+            "eindRegistratie",
+            "objectEindTijd",
+            "geometry",
+        ],
     )
+    # Beide einddatums moeten leeg zijn: van de registratie én van het object.
+    wegen = wegen[
+        (wegen["bgt-status"] == "bestaand")
+        & wegen["eindRegistratie"].isna()
+        & wegen["objectEindTijd"].isna()
+    ].copy()
     wegen["cat_weg"] = wegen["bgt-functie"].apply(classify_weg)
     wegen = voeg_dijkligging_toe(wegen, dijkringen, "cat_weg")
     wegen["code"] = wegen["cat_weg"].map(WEG_CODES)
