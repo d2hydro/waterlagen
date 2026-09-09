@@ -72,3 +72,29 @@ hydamo = download_hydamo()
 ```
 
 Voor alle opties zie de [code-referentie](reference/hydamo.md#waterlagen.hydamo.download_hydamo).
+
+### Administratieve gebieden
+Bestuurlijke gebieden en waterschapsgrenzen worden als GeoPackages in
+`datastore.administratieve_gebieden_dir` opgeslagen. Bestuurlijke gebieden zijn
+jaargangen: geef daarom altijd expliciet een jaar op. De tile-workflow gebruikt
+standaard jaargang 2026 en leest de landsgrens uit de laag `landgebied`; download
+deze bron vooraf met `download_bestuurlijke_gebieden(year=2026)`.
+
+```python
+from waterlagen.administratieve_gebieden import (
+    download_bestuurlijke_gebieden,
+    download_waterschapsgrenzen,
+)
+
+bestuurlijke_gebieden = download_bestuurlijke_gebieden(year=2026)
+waterschapsgrenzen = download_waterschapsgrenzen()
+```
+
+De genormaliseerde GeoDataFrames bevatten `naam`, `bgt_code`,
+`waterbeheercode`, `bron`, `versie` en `geometry`, naast relevante oorspronkelijke
+bronvelden. `bgt_code` komt uit het bronveld `code`; `waterbeheercode` komt uit
+`waterbeheerdercode`. Ontbreekt die laatste waarde, dan wordt uitsluitend een code
+uit `nen3610id` in de vorm `NL.WBHCODE.<code>.<type>.<id>` gebruikt. Een mislukte
+fallback blijft leeg en geeft een waarschuwing.
+
+Voor alle opties zie de [code-referentie](reference/administratieve_gebieden.md).
