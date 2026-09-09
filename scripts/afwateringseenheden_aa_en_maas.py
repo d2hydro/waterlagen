@@ -1,4 +1,5 @@
 # %%
+from waterlagen import datastore
 from waterlagen.administratieve_gebieden import (
     download_waterschapsgrenzen,
     normaliseer_waterschapsgrenzen,
@@ -6,6 +7,12 @@ from waterlagen.administratieve_gebieden import (
 )
 from waterlagen.ahn import download_ahn
 from waterlagen.hydamo import download_hydamo
+from waterlagen.logger import init_logger
+
+logger = init_logger(
+    name="afwateringseenheden",
+    log_file=datastore.data_dir / "afwateringseenheden.log",
+)
 
 WATERBEHEERCODE = "38"
 BUFFER_M = 5000
