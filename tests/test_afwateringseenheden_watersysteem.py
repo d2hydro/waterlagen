@@ -202,6 +202,7 @@ def test_read_hydroobjecten_explodes_multilines_and_warns(tmp_path, caplog):
     result = read_hydroobjecten(path)
 
     assert len(result) == 2
+    assert result["bron_id"].tolist() == ["multi:0001", "multi:0002"]
     assert "Exploding MultiLineString" in caplog.text
 
 

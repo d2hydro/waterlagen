@@ -310,9 +310,11 @@ def read_hydroobjecten(
     """Read selected HyDAMO hydroobjecten as project-CRS line features.
 
     MultiLineStrings are exploded while preserving relevant source attributes.
-    Empty, invalid, and non-line geometries are skipped with a warning. The
-    returned data includes ``bron_id`` from ``globalid`` where available,
-    otherwise ``code`` or the source row index.
+    Their parts receive a deterministic ``:0001``-style suffix on ``bron_id``
+    so every returned line can be handled independently. Empty, invalid, and
+    non-line geometries are skipped with a warning. Other returned features use
+    ``globalid`` for ``bron_id`` where available, otherwise ``code`` or the
+    source row index.
 
     Parameters
     ----------
@@ -344,6 +346,7 @@ def read_hydroobjecten(
         attribute_filters=attribute_filters,
         spatial_selection_crs=spatial_selection_crs,
     )
+    source = _add_bron_id(source)
     records: list[dict[str, object]] = []
     for index, row in source.iterrows():
         geometry = row.geometry
@@ -362,11 +365,13 @@ def read_hydroobjecten(
                 geometry.geom_type,
             )
             continue
-        for line in geometries:
+        for part_number, line in enumerate(geometries, start=1):
             if line.is_empty or line.length == 0:
                 logger.warning("Skipping empty hydroobject line at index %s", index)
                 continue
             record = row.drop(labels="geometry").to_dict()
+            if isinstance(geometry, MultiLineString):
+                record["bron_id"] = f"{row['bron_id']}:{part_number:04d}"
             record["geometry"] = line
             records.append(record)
 
@@ -374,7 +379,7 @@ def read_hydroobjecten(
         result = source.iloc[0:0].copy()
     else:
         result = gpd.GeoDataFrame(records, geometry="geometry", crs=source.crs)
-    return _add_bron_id(result).reset_index(drop=True)
+    return result.reset_index(drop=True)
 
 
 def read_puntobjecten(

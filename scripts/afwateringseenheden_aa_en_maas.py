@@ -59,7 +59,6 @@ hydamo = download_hydamo(overwrite=False)
 hydroobjecten = read_hydroobjecten(
     hydamo.target_path,
     spatial_selection=spatial_mask,
-    waterbeheercodes=[WATERBEHEERCODE],
 )
 hydroobject_primair = hydroobjecten.loc[
     hydroobjecten[CATEGORIE_OPPERVLAKTEWATER_COLUMN] == "primair"
