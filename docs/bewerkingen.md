@@ -34,3 +34,72 @@ rasterize_bag(
     buffer_step_m=1,
 )
 ```
+
+### Afwateringseenheden
+De eerste stap leest geselecteerde HyDAMO-hydroobjecten en puntobjecten. De
+HyDAMO-bronkolom `categorieoppwaterlichaam` bevat onder meer de waarden
+`primair` en `secundair`; de alias `categorieoppervlaktewater` is alleen voor
+filters beschikbaar. Waterbeheerdercodes worden uit `nen3610id` gelezen.
+Primaire hydroobjecten worden eerst gesplitst bij nabijgelegen puntobjecten en
+daarna op een maximale lengte. Verbindingen tussen primaire hydroobjecten zijn
+tweedimensionale punten tussen finale hydroobjectsegmenten. Ze omvatten zowel
+gedeelde segmentuiteinden door knippen op lengte als verbindingen bij relevante
+puntobjecten. Per hydraulisch knooppunt met `n` segmenten worden precies
+`n - 1` gerichte verbindingen gemaakt: `van_segment` eindigt op het knooppunt
+en `naar_segment` begint daar. Bij meerdere in- en uitgaande
+segmenten wordt een reproduceerbare hoofdroute op segment-ID gekozen. Een
+knoop met alleen in- of alleen uitgaande segmenten gebruikt het laagste
+segment-ID als topologische wortel. Een
+geometrische kruising zonder gedeeld uiteinde of relevant puntobject vormt geen
+verbinding.
+
+Secundaire hydroobjecten worden op hun volledige geometrie gefilterd.
+`hydroobject_secundair` bevat alleen secundaire objecten die binnen 2 m van een
+primair of ander secundair object liggen; dit geldt zowel bij vertices als
+ergens op een lijnsegment. Gebruik `secondary_connection_tolerance` bij
+`write_watersysteem()` om deze tolerantie aan te passen.
+`hydroobject_secundair_niet_verbonden` bevat de overige geselecteerde objecten.
+De twee lagen vormen samen de oorspronkelijke secundaire selectie.
+De laag `hydroobject_segment` bevat bovendien een meegeleverde QGIS-stijl in
+de GeoPackage-tabel `layer_styles`.
+
+Zonder een expliciet uitvoerpad wordt het bestand `watersysteem.gpkg` onder
+`datastore.afwateringseenheden_path` geschreven. Een bestaand resultaat wordt
+standaard hergebruikt; zet `overwrite=True` om het opnieuw op te bouwen.
+
+```python
+from shapely.geometry import box
+
+from waterlagen import datastore
+from waterlagen.afwateringseenheden import (
+    prepare_watersysteem,
+    read_hydroobjecten,
+    read_puntobjecten,
+    write_watersysteem,
+)
+
+selectie = box(120_000, 410_000, 121_000, 411_000)
+hydamo_path = datastore.hydamo_dir / "hydamo.gpkg"
+hydroobjecten = read_hydroobjecten(
+    hydamo_path,
+    spatial_selection=selectie,
+    waterbeheercodes=["38"],
+)
+hydroobject_primair = hydroobjecten.loc[
+    hydroobjecten["categorieoppwaterlichaam"] == "primair"
+]
+hydroobject_secundair = hydroobjecten.loc[
+    hydroobjecten["categorieoppwaterlichaam"] == "secundair"
+]
+puntobjecten = read_puntobjecten(hydamo_path, spatial_selection=selectie)
+watersysteem = prepare_watersysteem(
+    hydroobject_primair,
+    puntobjecten,
+    hydroobject_secundair=hydroobject_secundair,
+)
+watersysteem_path = write_watersysteem(
+    hydroobject_primair=hydroobject_primair,
+    hydroobject_secundair=hydroobject_secundair,
+    watersysteem=watersysteem,
+)
+```

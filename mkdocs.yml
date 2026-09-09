@@ -25,6 +25,7 @@ nav:
       - BAG: reference/bag.md
       - BGT: reference/bgt.md
       - Administratieve gebieden: reference/administratieve_gebieden.md
+      - Afwateringseenheden: reference/afwateringseenheden.md
       - HYDAMO: reference/hydamo.md
       - DataStore: reference/datastore.md
   - Notebooks:

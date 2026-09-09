@@ -26,6 +26,10 @@ data
 Voor de GKW HYDAMO-download is `datastore.hydamo_dir` de standaardmap onder
 `source_data/hydamo`.
 
+Voor de bewerking van afwateringseenheden is
+`datastore.afwateringseenheden_path` de standaardmap onder
+`processed_data/afwateringseenheden`.
+
 Administratieve gebiedsbronnen staan onder
 `datastore.administratieve_gebieden_dir`, oftewel
 `source_data/administratieve_gebieden`.
