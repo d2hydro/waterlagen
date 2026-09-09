@@ -17,6 +17,15 @@ def test_hydamo_dir_is_created_under_source_data(tmp_path):
     assert datastore.hydamo_dir.is_dir()
 
 
+def test_afwateringseenheden_path_is_created_under_processed_data(tmp_path):
+    datastore = DataStore(data_dir=tmp_path / "data")
+
+    assert datastore.afwateringseenheden_path == (
+        tmp_path / "data" / "processed_data" / "afwateringseenheden"
+    )
+    assert datastore.afwateringseenheden_path.is_dir()
+
+
 def test_cwd_datastore_overrides_repo_datastore(tmp_path, monkeypatch):
     repo_root = tmp_path / "repo"
     monkeypatch.setattr(datastore_module, "repo_root", repo_root)

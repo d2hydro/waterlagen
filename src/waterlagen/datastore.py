@@ -108,6 +108,13 @@ class DataStore(BaseSettings):
 
     @computed_field
     @property
+    def afwateringseenheden_path(self) -> Path:
+        afwateringseenheden_path = self.processed_data_dir / "afwateringseenheden"
+        afwateringseenheden_path.mkdir(exist_ok=True, parents=True)
+        return afwateringseenheden_path
+
+    @computed_field
+    @property
     def administratieve_gebieden_dir(self) -> Path:
         administratieve_gebieden_dir = self.source_data_dir / "administratieve_gebieden"
         administratieve_gebieden_dir.mkdir(exist_ok=True, parents=True)

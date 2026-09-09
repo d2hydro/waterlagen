@@ -44,4 +44,5 @@ version_scheme = "no-guess-dev"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/waterlagen"]
+include = ["src/waterlagen/styles/*.qml"]
 
