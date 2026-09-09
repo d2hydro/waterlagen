@@ -70,6 +70,47 @@ def test_build_tiles_returns_existing_file_when_overwrite_false(tmp_path, monkey
     assert target.read_bytes() == b"existing"
 
 
+def test_build_tiles_reads_landsgrens_from_downloaded_source(tmp_path):
+    boundary_source = tmp_path / "BestuurlijkeGebieden_2026.gpkg"
+    boundary = box(100, 100, 1100, 1100)
+    source = gpd.GeoDataFrame(
+        {"naam": ["Nederland"], "code": ["6030"]},
+        geometry=[boundary],
+        crs=tiles_mod.EXPECTED_CRS,
+    )
+    source.to_file(boundary_source, layer="landgebied", driver="GPKG")
+
+    path = build_tiles(
+        tmp_path / "tiles.gpkg",
+        tile_size_m=1000,
+        boundary_path=boundary_source,
+    )
+
+    assert len(read_tiles(path)) == 4
+
+
+def test_build_tiles_reports_missing_landsgrens_source(tmp_path):
+    missing_source = tmp_path / "BestuurlijkeGebieden_2026.gpkg"
+
+    with pytest.raises(FileNotFoundError, match="download_bestuurlijke_gebieden"):
+        build_tiles(tmp_path / "tiles.gpkg", boundary_path=missing_source)
+
+
+def test_prepare_boundary_reprojects_downloaded_landsgrens_source(tmp_path):
+    boundary_source = tmp_path / "BestuurlijkeGebieden_2026.gpkg"
+    source = gpd.GeoDataFrame(
+        {"naam": ["Nederland"], "code": ["6030"]},
+        geometry=[box(4.8, 52.3, 4.9, 52.4)],
+        crs="EPSG:4326",
+    )
+    source.to_file(boundary_source, layer="landgebied", driver="GPKG")
+
+    gdf, boundary = tiles_mod._prepare_boundary(boundary_source)
+
+    assert gdf.crs == tiles_mod.EXPECTED_CRS
+    assert boundary.is_valid
+
+
 def test_overwrite_true_rebuilds_complete_dataset(tmp_path, monkeypatch):
     target = tmp_path / "tiles.gpkg"
     target.write_bytes(b"existing")

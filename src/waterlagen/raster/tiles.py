@@ -1,24 +1,22 @@
 import tempfile
 import os
 from dataclasses import dataclass
-from importlib import resources
 from math import ceil, floor
 from pathlib import Path
 from typing import Iterable
 
 import geopandas as gpd
 import pandas as pd
-import pyogrio
 from shapely.geometry import box
 from shapely.geometry.base import BaseGeometry
 
 from waterlagen import _geopandas as wgpd
 from waterlagen import datastore
+from waterlagen.administratieve_gebieden import read_landsgrens
 from waterlagen._crs import format_crs, same_crs
 from waterlagen.settings import settings
 
 TILES_LAYER = "tiles"
-BOUNDARY_RESOURCE = "landsgrens.gpkg"
 EXPECTED_CRS = "EPSG:28992"
 
 
@@ -68,22 +66,22 @@ def _validate_inputs(
         raise ValueError("target_path suffix must be .gpkg")
 
 
-def _boundary_resource_path():
-    return resources.files("waterlagen.resources").joinpath(BOUNDARY_RESOURCE)
+def _read_boundary(boundary_path: Path | None = None) -> gpd.GeoDataFrame:
+    """Read the downloaded landsgrens without triggering a download."""
+    try:
+        return read_landsgrens(path=boundary_path)
+    except FileNotFoundError as exc:
+        raise FileNotFoundError(
+            "National boundary source is missing. Download it first with "
+            "waterlagen.administratieve_gebieden.download_bestuurlijke_gebieden("
+            "year=2026)."
+        ) from exc
 
 
-def _read_boundary() -> gpd.GeoDataFrame:
-    resource = _boundary_resource_path()
-    with resources.as_file(resource) as path:
-        layers = pyogrio.list_layers(path)
-        if len(layers) == 0:
-            raise ValueError(f"No layers found in boundary resource: {BOUNDARY_RESOURCE}")
-        layer_name = layers[0][0]
-        return wgpd.read_file(path, layer=layer_name)
-
-
-def _prepare_boundary() -> tuple[gpd.GeoDataFrame, BaseGeometry]:
-    gdf = _read_boundary()
+def _prepare_boundary(
+    boundary_path: Path | None = None,
+) -> tuple[gpd.GeoDataFrame, BaseGeometry]:
+    gdf = _read_boundary(boundary_path)
     if gdf.empty:
         raise ValueError("Boundary dataset is empty")
     if "geometry" not in gdf or gdf.geometry.isna().all():
@@ -225,10 +223,36 @@ def build_tiles(
     tile_size_m: int = 2000,
     origin_x: int = 0,
     origin_y: int = 0,
+    boundary_path: Path | None = None,
     overwrite: bool = False,
 ) -> Path:
-    """Build the reusable national tile index GeoPackage."""
-    target_path = Path(target_path) if target_path is not None else _default_tiles_path()
+    """Build the reusable national tile index GeoPackage.
+
+    Parameters
+    ----------
+    target_path : Path, optional
+        Output tile-index GeoPackage. Defaults to the processed-data datastore.
+    tile_size_m : int, optional
+        Width and height of each square tile in metres.
+    origin_x : int, optional
+        X coordinate of the fixed tile grid origin in EPSG:28992.
+    origin_y : int, optional
+        Y coordinate of the fixed tile grid origin in EPSG:28992.
+    boundary_path : Path, optional
+        Downloaded bestuurlijke gebieden GeoPackage containing the ``landgebied``
+        layer. When omitted, uses the configured 2026 datastore source. This
+        function never downloads the source automatically.
+    overwrite : bool, optional
+        Whether to rebuild an existing tile index.
+
+    Returns
+    -------
+    Path
+        Path to the tile-index GeoPackage.
+    """
+    target_path = (
+        Path(target_path) if target_path is not None else _default_tiles_path()
+    )
     _validate_inputs(
         target_path,
         tile_size_m=tile_size_m,
@@ -240,7 +264,10 @@ def build_tiles(
         return target_path
 
     target_path.parent.mkdir(parents=True, exist_ok=True)
-    _, boundary = _prepare_boundary()
+    if boundary_path is None:
+        _, boundary = _prepare_boundary()
+    else:
+        _, boundary = _prepare_boundary(Path(boundary_path))
     tiles = _build_tiles_gdf(
         boundary,
         tile_size_m=tile_size_m,

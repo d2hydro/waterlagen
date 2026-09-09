@@ -106,6 +106,13 @@ class DataStore(BaseSettings):
         hydamo_dir.mkdir(exist_ok=True, parents=True)
         return hydamo_dir
 
+    @computed_field
+    @property
+    def administratieve_gebieden_dir(self) -> Path:
+        administratieve_gebieden_dir = self.source_data_dir / "administratieve_gebieden"
+        administratieve_gebieden_dir.mkdir(exist_ok=True, parents=True)
+        return administratieve_gebieden_dir
+
 
 datastore = DataStore()
 logger.info(

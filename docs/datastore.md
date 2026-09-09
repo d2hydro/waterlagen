@@ -26,6 +26,10 @@ data
 Voor de GKW HYDAMO-download is `datastore.hydamo_dir` de standaardmap onder
 `source_data/hydamo`.
 
+Administratieve gebiedsbronnen staan onder
+`datastore.administratieve_gebieden_dir`, oftewel
+`source_data/administratieve_gebieden`.
+
 ## Gebruik
 Zie de [code referentie](reference/datastore.md). Mocht u bijvoorbeeld willen weten waar de data_dir staat:
 

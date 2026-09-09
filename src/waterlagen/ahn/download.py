@@ -1,6 +1,9 @@
 # %%
 import io
+import os
+import tempfile
 import zipfile
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
@@ -23,10 +26,102 @@ gdal.UseExceptions()
 
 
 def _is_zipfile(response: Response) -> bool:
-    """Check if response is zip-file"""
-    return ("zip" in response.headers.get("Content-Type", "")) | response.url.endswith(
-        "zip"
+    """Return whether an AHN response is a ZIP archive."""
+    content_type = response.headers.get("Content-Type", "").lower()
+    response_url = str(getattr(response, "url", "")).lower()
+    return "zip" in content_type or response_url.endswith(".zip")
+
+
+@dataclass(frozen=True)
+class _TileFailure:
+    """Details of a tile that exhausted all configured download attempts."""
+
+    tile_index: str
+    url: str
+    reason: str
+
+
+def _validate_retries(retries: int) -> None:
+    """Validate the maximum number of total download attempts per tile."""
+    if not isinstance(retries, int) or isinstance(retries, bool):
+        raise TypeError("retries must be an integer")
+    if retries < 0:
+        raise ValueError("retries must not be negative")
+
+
+def _is_valid_ahn_tile(path: Path) -> bool:
+    """Return whether path is a readable AHN TIFF with usable raster metadata."""
+    path = Path(path)
+    if not path.exists():
+        return False
+
+    try:
+        with rasterio.open(path) as src:
+            if src.width <= 0 or src.height <= 0 or src.count < 1:
+                return False
+            if src.crs is None or src.transform is None:
+                return False
+            if not src.profile.get("driver") or not src.dtypes[0]:
+                return False
+            src.read(1)
+    except Exception as exc:
+        logger.debug("Invalid AHN TIFF %s: %s", path, exc)
+        return False
+    return True
+
+
+def _temporary_tile_path(file_path: Path) -> Path:
+    """Create an unused temporary TIFF path beside its final tile path."""
+    fd, temporary_name = tempfile.mkstemp(
+        prefix=f".{file_path.name}.",
+        suffix=".tif",
+        dir=file_path.parent,
     )
+    os.close(fd)
+    temporary_path = Path(temporary_name)
+    temporary_path.unlink(missing_ok=True)
+    return temporary_path
+
+
+def _tif_bytes_from_response(response: Response, *, tile_index: str) -> bytes:
+    """Return a direct TIFF response or the first TIFF member from a ZIP response."""
+    if not _is_zipfile(response):
+        return response.content
+
+    with zipfile.ZipFile(io.BytesIO(response.content)) as zip_file:
+        tif_names = [
+            name for name in zip_file.namelist() if name.lower().endswith(".tif")
+        ]
+        if not tif_names:
+            raise ValueError(f"No TIFF found in ZIP response for AHN tile {tile_index}")
+        return zip_file.read(tif_names[0])
+
+
+def _write_ahn_tile(temporary_path: Path, data_bytes: bytes) -> None:
+    """Write an AHN response to a temporary TIFF and build its overviews."""
+    with MemoryFile(data_bytes) as memfile:
+        with memfile.open() as source:
+            data = source.read(1)
+            profile = source.profile.copy()
+            source_nodata = source.nodata
+
+    if settings.m_to_cm:
+        data, nodata = array_float_m_to_cm_int(data, nodata=source_nodata)
+        scales = (0.01,)
+        profile.update(dtype=np.int16, nodata=nodata)
+    else:
+        scales = (1.0,)
+
+    profile.update(compress="deflate", predictor=2, tiled=True)
+    with rasterio.open(temporary_path, "w", **profile) as destination:
+        raster_cell_size = abs(destination.res[0])
+        destination.scales = scales
+        destination.write(data, 1)
+        factors = [
+            int(size / raster_cell_size) for size in [5, 25] if size > raster_cell_size
+        ]
+        destination.build_overviews(factors, Resampling.average)
+        destination.update_tags(ns="rio_overview", resampling="average")
 
 
 def get_tiles_features(
@@ -160,10 +255,16 @@ def download_ahn(
     missing_only: bool = True,
     create_vrt: bool = True,
     save_tiles_index: bool = False,
+    *,
+    retries: int = 10,
 ) -> Path:
-    """Downloads AHN rasters
+    """Download AHN rasters with validated, atomic tile replacement.
 
-    Downloads ahn DTM or DSM rasters on 0.5m or 5m resolution
+    Downloads AHN DTM or DSM rasters on 0.5 m or 5 m resolution. Each
+    response is written to a temporary TIFF beside its target, processed,
+    closed, reopened, and validated before it atomically replaces the final
+    tile. A valid existing tile is reused with ``missing_only=True``. An
+    invalid existing tile is removed and downloaded again.
 
     Parameters
     ----------
@@ -181,6 +282,9 @@ def download_ahn(
         Create a vrt-file so all tiles can be opened as one, by default True
     save_tiles_index : bool, optional
         Save the tile index as a GeoPackage in the download-dir, by default False
+    retries : int, optional
+        Maximum total download attempts for each tile, by default 10. Set to 0
+        to make every requested tile fail without an HTTP request.
 
     Returns
     -------
@@ -188,7 +292,9 @@ def download_ahn(
         Path to download dir or vrt_file, being a sub-directory of ahn_root_dir
     """
 
-    # int service
+    _validate_retries(retries)
+
+    # init service
     ahn_service = AHNService(service=service)
     ahn_service._validate_inputs(cell_size=cell_size, ahn_version=ahn_version)
     # get AHN tiles as gdf
@@ -209,97 +315,184 @@ def download_ahn(
     if save_tiles_index:
         tiles_gdf.to_file(download_dir / f"{download_dir.name}.gpkg")
 
-    # iteratively download AHN-tiles
+    valid_tiles = 0
+    retried_tiles = 0
+    failed_tiles: list[_TileFailure] = []
+
+    # Iteratively download AHN tiles. Failures are collected so the caller gets
+    # every failed tile instead of an incomplete dataset without an exception.
     with rasterio.Env():
-        for idx, row in enumerate(tiles_gdf.itertuples()):
+        for row in tiles_gdf.itertuples():
             tile_index = row.Index
             file_path = download_dir / f"{tile_index}.tif"
+            url = getattr(
+                row,
+                ahn_service.download_url_field(
+                    model=model,
+                    cell_size=cell_size,
+                    ahn_version=ahn_version,
+                ),
+            )
+            existing_tile_is_valid = False
+            invalid_existing_tile = False
 
-            if (not missing_only) or (not file_path.exists()):
-                logger.info(
-                    f"downloading {tile_index} ({idx + 1}/{len(tiles_gdf)}) to {file_path}"
-                )
-
-                # dump existing file
-                try:
-                    file_path.unlink(missing_ok=True)
-                except PermissionError as e:
-                    logger.error(e)
+            if file_path.exists():
+                existing_tile_is_valid = _is_valid_ahn_tile(file_path)
+                if existing_tile_is_valid and missing_only:
+                    logger.info(
+                        "Reusing valid AHN tile %s from %s at %s",
+                        tile_index,
+                        url,
+                        file_path,
+                    )
+                    valid_tiles += 1
                     continue
-
-                # get file
-                url = getattr(
-                    row,
-                    ahn_service.download_url_field(
-                        model=model, cell_size=cell_size, ahn_version=ahn_version
-                    ),
-                )
-                response = requests.get(url)
-                try:
-                    response.raise_for_status()
-                except Exception as e:
-                    logger.error(e)
-                    continue
-
-                # read tif in memory
-                logger.info(f"writing {file_path}")
-                data_bytes = response.content
-
-                # unzip if is zip_file
-                if _is_zipfile(response):
+                if not existing_tile_is_valid:
+                    invalid_existing_tile = True
+                    logger.warning(
+                        "Existing AHN tile %s at %s is invalid or incomplete; "
+                        "removing it before download from %s",
+                        tile_index,
+                        file_path,
+                        url,
+                    )
                     try:
-                        with zipfile.ZipFile(io.BytesIO(response.content)) as zf:
-                            tif_names = [
-                                name
-                                for name in zf.namelist()
-                                if name.lower().endswith(".tif")
-                            ]
-                            if not tif_names:
-                                logger.error(f"No tif found in zip for {tile_index}")
-                                continue
-                            data_bytes = zf.read(tif_names[0])
-                    except Exception as e:
-                        logger.error(f"Failed to read zip for {tile_index}: {e}")
+                        file_path.unlink()
+                    except OSError as exc:
+                        reason = f"could not remove invalid existing tile: {exc}"
+                        logger.error(
+                            "Failed AHN tile %s from %s to %s: %s",
+                            tile_index,
+                            url,
+                            file_path,
+                            reason,
+                        )
+                        failed_tiles.append(
+                            _TileFailure(
+                                tile_index=str(tile_index),
+                                url=str(url),
+                                reason=reason,
+                            )
+                        )
                         continue
 
-                with MemoryFile(data_bytes) as memfile:
-                    with memfile.open() as src:
-                        # Read the data
-                        data = src.read(1)  # Read first band; use read() for all bands
-                        profile = src.profile.copy()
-
-                    # make it integer if user specified
-                    if settings.m_to_cm:
-                        data, nodata = array_float_m_to_cm_int(data, nodata=src.nodata)
-                        # update scales
-                        scales = (0.01,)
-                        profile.update(
-                            dtype=np.int16,
-                            nodata=nodata,
+            tile_was_retried = invalid_existing_tile
+            successful = False
+            last_error: Exception | None = None
+            for attempt in range(1, retries + 1):
+                temporary_path: Path | None = None
+                logger.info(
+                    "Downloading AHN tile %s, attempt %s/%s, from %s to %s",
+                    tile_index,
+                    attempt,
+                    retries,
+                    url,
+                    file_path,
+                )
+                try:
+                    temporary_path = _temporary_tile_path(file_path)
+                    response = requests.get(url)
+                    response.raise_for_status()
+                    data_bytes = _tif_bytes_from_response(
+                        response,
+                        tile_index=str(tile_index),
+                    )
+                    _write_ahn_tile(temporary_path, data_bytes)
+                    if not _is_valid_ahn_tile(temporary_path):
+                        raise ValueError(
+                            f"Temporary AHN TIFF validation failed: {temporary_path}"
+                        )
+                    logger.info(
+                        "Validated temporary AHN tile %s at %s",
+                        tile_index,
+                        temporary_path,
+                    )
+                    temporary_path.replace(file_path)
+                    logger.info(
+                        "Successfully validated AHN tile %s at %s",
+                        tile_index,
+                        file_path,
+                    )
+                    valid_tiles += 1
+                    if tile_was_retried or attempt > 1:
+                        retried_tiles += 1
+                    successful = True
+                    break
+                except Exception as exc:
+                    last_error = exc
+                    if attempt < retries:
+                        logger.warning(
+                            "AHN tile %s, attempt %s/%s from %s to %s failed; "
+                            "retrying: %s",
+                            tile_index,
+                            attempt,
+                            retries,
+                            url,
+                            file_path,
+                            exc,
                         )
                     else:
-                        scales = (1.0,)
+                        logger.warning(
+                            "AHN tile %s, final attempt %s/%s from %s to %s failed: %s",
+                            tile_index,
+                            attempt,
+                            retries,
+                            url,
+                            file_path,
+                            exc,
+                        )
+                finally:
+                    if temporary_path is not None:
+                        try:
+                            temporary_path.unlink(missing_ok=True)
+                        except OSError as cleanup_error:
+                            logger.warning(
+                                "Could not remove temporary AHN tile %s: %s",
+                                temporary_path,
+                                cleanup_error,
+                            )
 
-                    # compression
-                    profile.update(
-                        compress="deflate",
-                        predictor=2,
-                        tiled=True,
-                    )
+            if successful:
+                continue
 
-                    # write it to disc
-                    with rasterio.open(file_path, "w", **profile) as dst:
-                        raster_cell_size = abs(dst.res[0])
-                        dst.scales = scales
-                        dst.write(data, 1)
-                        # create overviews
-                        factors = [
-                            int(size / raster_cell_size)
-                            for size in [5, 25]
-                            if size > raster_cell_size
-                        ]
-                        dst.build_overviews(factors, Resampling.average)
-                        dst.update_tags(ns="rio_overview", resampling="average")
+            if last_error is None:
+                reason = f"no download attempts configured (retries={retries})"
+            else:
+                reason = str(last_error)
+            logger.error(
+                "Failed AHN tile %s from %s to %s after %s attempts: %s",
+                tile_index,
+                url,
+                file_path,
+                retries,
+                reason,
+            )
+            failed_tiles.append(
+                _TileFailure(
+                    tile_index=str(tile_index),
+                    url=str(url),
+                    reason=reason,
+                )
+            )
+
+    if failed_tiles:
+        logger.error(
+            "AHN download failed: %s valid, %s retried, %s failed",
+            valid_tiles,
+            retried_tiles,
+            len(failed_tiles),
+        )
+        failures = "; ".join(
+            f"{failure.tile_index} ({failure.url}): {failure.reason}"
+            for failure in failed_tiles
+        )
+        raise RuntimeError(f"AHN download failed for tiles: {failures}")
+
+    logger.info(
+        "AHN download completed: %s valid, %s retried, 0 failed",
+        valid_tiles,
+        retried_tiles,
+    )
     if create_vrt:
         vrt_file = create_vrt_file(download_dir)
         return vrt_file

@@ -24,6 +24,7 @@ nav:
       - AHN: reference/ahn.md
       - BAG: reference/bag.md
       - BGT: reference/bgt.md
+      - Administratieve gebieden: reference/administratieve_gebieden.md
       - HYDAMO: reference/hydamo.md
       - DataStore: reference/datastore.md
   - Notebooks:

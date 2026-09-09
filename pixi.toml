@@ -39,6 +39,9 @@ pymdown-extensions = "*"
 mkdocstrings = "*"
 mkdocstrings-python = "*"
 
+[feature.afwateringseenheden.dependencies]
+pcraster = "*"
+
 [feature.docs.tasks]
 docs-serve = "mkdocs serve --livereload"
 docs-build = "mkdocs build --strict"
@@ -51,3 +54,4 @@ ipykernel = "*"
 [environments]
 default = ["dev"]
 docs = ["docs", "dev"]
+afwateringseenheden = ["dev", "afwateringseenheden"]
