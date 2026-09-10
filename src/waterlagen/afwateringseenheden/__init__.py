@@ -13,9 +13,7 @@ from .objects import (
 from .pcraster import SubcatchmentResult, calculate_subcatchments, require_pcraster
 from .raster import WatersysteemRasters, prepare_watersysteem_rasters
 from .tiles import (
-    AfwateringseenhedenTileError,
     AfwateringseenhedenTileResult,
-    AfwateringseenhedenTilesError,
     AfwateringseenhedenTilesResult,
     calculate_afwateringseenheden_tiles,
 )
@@ -29,9 +27,7 @@ __all__ = [
     "WatersysteemResult",
     "WatersysteemRasters",
     "SubcatchmentResult",
-    "AfwateringseenhedenTileError",
     "AfwateringseenhedenTileResult",
-    "AfwateringseenhedenTilesError",
     "AfwateringseenhedenTilesResult",
     "calculate_subcatchments",
     "calculate_afwateringseenheden_tiles",

@@ -146,27 +146,7 @@ tegel en schrijft optioneel een samengevoegde GeoPackage. Tegels zonder
 hydroobjectsegmenten worden overgeslagen. Als een afwateringseenheid vanaf de
 buitenrand van de tegelbuffer tot in de echte tegel reikt, wordt die tegel in
 `boundary_issue_tile_ids` gemeld; vergroot dan de `tile_buffer_m` en bereken
-die tegel opnieuw. Onafhankelijke tegels kunnen met `workers` in afzonderlijke
-processen worden berekend. De standaard `workers=1` houdt de bestaande
-seriële verwerking aan; bij een hogere waarde worden hoogstens zoveel processen
-gestart als er geselecteerde tegels zijn.
-
-De standaardwaarde kan per machine in het bestaande `.env`-bestand worden
-ingesteld met `AFWATERINGSEENHEDEN_WORKERS`, bijvoorbeeld:
-
-```text
-AFWATERINGSEENHEDEN_WORKERS=8
-```
-
-Een expliciete `workers=` bij de functieaanroep heeft voorrang op deze
-instelling. Kies de waarde bewust per machine en beschikbare RAM; er is geen
-automatische hardwaredetectie. Zonder instelling blijft de veilige waarde 1.
-
-Op Windows gebruikt de verwerking de `spawn`-methode. Roep de functie daarom
-vanuit een script met parallelle workers aan onder
-`if __name__ == "__main__":`, zodat een worker het script niet opnieuw als
-hoofdstroom uitvoert. Elke worker opent zelf zijn GDAL-, rasterio- en
-PCRaster-resources en schrijft uitsluitend naar zijn eigen tegelmap.
+die tegel opnieuw.
 
 ```python
 from waterlagen import datastore
@@ -181,6 +161,5 @@ result = calculate_afwateringseenheden_tiles(
     merged_output_path=datastore.afwateringseenheden_path / "afwateringseenheden.gpkg",
     tile_size_m=5000,
     tile_buffer_m=2000,
-    workers=1,
 )
 ```
