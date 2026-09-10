@@ -137,3 +137,29 @@ from waterlagen.afwateringseenheden import calculate_subcatchments
 
 subcatchments = calculate_subcatchments(rasters)
 ```
+
+Voor grotere gebieden kan dezelfde berekening per tegel worden uitgevoerd.
+`calculate_afwateringseenheden_tiles()` maakt per tegel een gebufferde
+rekengrid, hergebruikt `prepare_watersysteem_rasters()` en
+`calculate_subcatchments()`, knipt bruikbare polygonen terug naar de echte
+tegel en schrijft optioneel een samengevoegde GeoPackage. Tegels zonder
+hydroobjectsegmenten worden overgeslagen. Als een afwateringseenheid vanaf de
+buitenrand van de tegelbuffer tot in de echte tegel reikt, wordt die tegel in
+`boundary_issue_tile_ids` gemeld; vergroot dan de `tile_buffer_m` en bereken
+die tegel opnieuw.
+
+```python
+from waterlagen import datastore
+from waterlagen.afwateringseenheden import calculate_afwateringseenheden_tiles
+
+result = calculate_afwateringseenheden_tiles(
+    gebied,
+    burn_depth_m=100,
+    ahn_vrt_path=datastore.ahn_dir / "dtm_05" / "dtm_05.vrt",
+    watersysteem_path=datastore.afwateringseenheden_path / "watersysteem.gpkg",
+    output_dir=datastore.afwateringseenheden_path / "tiles",
+    merged_output_path=datastore.afwateringseenheden_path / "afwateringseenheden.gpkg",
+    tile_size_m=5000,
+    tile_buffer_m=2000,
+)
+```
