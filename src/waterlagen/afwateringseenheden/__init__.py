@@ -12,6 +12,11 @@ from .objects import (
 )
 from .pcraster import SubcatchmentResult, calculate_subcatchments, require_pcraster
 from .raster import WatersysteemRasters, prepare_watersysteem_rasters
+from .tiles import (
+    AfwateringseenhedenTileResult,
+    AfwateringseenhedenTilesResult,
+    calculate_afwateringseenheden_tiles,
+)
 from .workflow import (
     prepare_watersysteem,
     split_connected_secondary_hydroobjecten,
@@ -22,7 +27,10 @@ __all__ = [
     "WatersysteemResult",
     "WatersysteemRasters",
     "SubcatchmentResult",
+    "AfwateringseenhedenTileResult",
+    "AfwateringseenhedenTilesResult",
     "calculate_subcatchments",
+    "calculate_afwateringseenheden_tiles",
     "prepare_watersysteem",
     "prepare_watersysteem_rasters",
     "read_hydroobjecten",

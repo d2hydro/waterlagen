@@ -23,10 +23,13 @@ from waterlagen.logger import get_logger
 from waterlagen.raster.grid import RasterGrid
 from waterlagen.settings import settings
 
+from ._coverage import _coverage_mask
+
 logger = get_logger(__name__)
 
 DEM_FILENAME = "dem_2m.tif"
 HYDROOBJECT_SEGMENT_FILENAME = "hydroobject_segment.tif"
+COVERAGE_VERSION = "source_extents_v1"
 
 
 @dataclass(frozen=True)
@@ -85,26 +88,54 @@ def _grid_for_square(
     )
 
 
-def _fill_dem_nodata(data: np.ndarray) -> np.ndarray:
-    """Fill non-finite DEM cells with rasterio's inverse-distance algorithm."""
+def _fill_dem_nodata(
+    data: np.ndarray, coverage_mask: np.ndarray | None = None
+) -> np.ndarray:
+    """Fill only covered gaps, excluding outside cells as targets and donors.
+
+    The inverse-distance method and full-grid search distance are unchanged.
+    GDAL's mask marks outside cells as *not to be filled*; its NODATA option
+    excludes their temporary sentinel from interpolation donors. Original finite
+    values are restored exactly; only candidate cells change.
+    """
     valid_cells = np.isfinite(data)
-    if valid_cells.all():
+    if coverage_mask is None:
+        coverage_mask = np.ones(data.shape, dtype=bool)
+    if coverage_mask.shape != data.shape:
+        raise ValueError("coverage_mask must match the DEM shape")
+    candidates = coverage_mask & ~valid_cells
+    if not candidates.any():
         return data
     if not valid_cells.any():
         raise ValueError("DEM has no finite elevation values to fill NoData cells")
 
     max_search_distance = float(np.hypot(*data.shape))
-    filled_data = fillnodata(
-        data,
-        mask=valid_cells,
-        max_search_distance=max_search_distance,
+    sentinel = float(np.finfo(np.float32).min)
+    if np.any(data[valid_cells] <= sentinel):
+        raise ValueError("DEM values conflict with the interpolation NoData sentinel")
+    working = data.copy()
+    outside = ~coverage_mask & ~valid_cells
+    working[outside] = sentinel
+    logger.info(
+        "Interpolating %s covered DEM cells; excluding %s outside cells",
+        int(candidates.sum()),
+        int(outside.sum()),
     )
-    remaining = int((~np.isfinite(filled_data)).sum())
+    filled_data = fillnodata(
+        working,
+        mask=~candidates,
+        max_search_distance=max_search_distance,
+        nodata=sentinel,
+    )
+    interpolated = filled_data[candidates]
+    remaining = int((~np.isfinite(interpolated) | (interpolated == sentinel)).sum())
     if remaining:
         raise ValueError(
             "DEM NoData filling did not complete; "
             f"{remaining} non-finite cell(s) remain"
         )
+    filled_data[valid_cells] = data[valid_cells]
+    filled_data[outside] = data[outside]
     return filled_data
 
 
@@ -123,8 +154,12 @@ def _validate_source_coverage(
     )
 
 
-def _resample_dem(source: rasterio.io.DatasetReader, grid: RasterGrid) -> np.ndarray:
-    """Resample the raw DEM values to the target grid and fill all NoData cells."""
+def _resample_dem(
+    source: rasterio.io.DatasetReader,
+    grid: RasterGrid,
+    coverage_mask: np.ndarray | None = None,
+) -> np.ndarray:
+    """Resample DEM values and fill NoData only within full source raster extents."""
     _validate_source_coverage(source, grid)
     data = np.full((grid.height, grid.width), np.nan, dtype=np.float64)
     reproject(
@@ -138,7 +173,9 @@ def _resample_dem(source: rasterio.io.DatasetReader, grid: RasterGrid) -> np.nda
         dst_nodata=np.nan,
         resampling=Resampling.bilinear,
     )
-    return _fill_dem_nodata(data)
+    if coverage_mask is None:
+        coverage_mask = _coverage_mask(source, grid)
+    return _fill_dem_nodata(data, coverage_mask)
 
 
 def _features_in_project_crs(
@@ -190,25 +227,40 @@ def _burn_depth_in_stored_units(burn_depth_m: float, *, scale: float) -> float:
     return burn_depth_m / scale
 
 
-def _cast_dem_data(data: np.ndarray, *, dtype: str) -> np.ndarray:
-    """Cast interpolated raw elevation values back to the source storage type."""
+def _cast_dem_data(
+    data: np.ndarray, *, dtype: str, nodata: float | None = None
+) -> np.ndarray:
+    """Cast elevations to source units, restoring declared NoData after burning."""
     target_dtype = np.dtype(dtype)
     if np.issubdtype(target_dtype, np.integer):
         limits = np.iinfo(target_dtype)
         rounded = np.rint(data)
+        missing = ~np.isfinite(rounded)
+        if missing.any():
+            if nodata is None or not np.isfinite(nodata):
+                raise ValueError(
+                    "Integer DEM requires a finite NoData value outside coverage"
+                )
+            rounded[missing] = nodata
         if (rounded < limits.min).any() or (rounded > limits.max).any():
             raise ValueError(f"Burned DEM values do not fit in {target_dtype}")
         return rounded.astype(target_dtype)
-    return data.astype(target_dtype)
+    result = data.astype(target_dtype)
+    if nodata is not None:
+        result[~np.isfinite(result)] = nodata
+    return result
 
 
 def _dem_profile(source: rasterio.io.DatasetReader, grid: RasterGrid) -> dict:
     """Create a GeoTIFF profile that preserves the source DEM data type and nodata."""
+    nodata = source.nodata
+    if nodata is None and np.issubdtype(np.dtype(source.dtypes[0]), np.floating):
+        nodata = np.nan
     return {
         "driver": "GTiff",
         "count": 1,
         "dtype": source.dtypes[0],
-        "nodata": source.nodata,
+        "nodata": nodata,
         "width": grid.width,
         "height": grid.height,
         "transform": grid.transform,
@@ -229,6 +281,7 @@ def _write_dem(
     with rasterio.open(target_path, "w", **profile) as destination:
         destination.scales = scales
         destination.offsets = offsets
+        destination.update_tags(waterlagen_dem_coverage=COVERAGE_VERSION)
         destination.write(data, 1)
 
 
@@ -278,8 +331,9 @@ def _validate_rasters(
     segment_path: Path,
     *,
     grid: RasterGrid,
+    coverage_mask: np.ndarray | None = None,
 ) -> None:
-    """Ensure completed output rasters share the requested grid and DEM has no gaps."""
+    """Validate the grid and require finite elevations inside coverage only."""
     with rasterio.open(dem_path) as dem, rasterio.open(segment_path) as segment:
         for raster_path, dataset in ((dem_path, dem), (segment_path, segment)):
             if dataset.count != 1:
@@ -294,8 +348,14 @@ def _validate_rasters(
                 raise ValueError(
                     f"{raster_path} does not match the requested alignment"
                 )
-        if np.ma.getmaskarray(dem.read(1, masked=True)).any():
-            raise ValueError(f"{dem_path} still contains NoData cells")
+        values = dem.read(1, masked=True)
+        missing = np.ma.getmaskarray(values) | ~np.isfinite(values.data)
+        if coverage_mask is None:
+            coverage_mask = np.ones(missing.shape, dtype=bool)
+        if (missing & coverage_mask).any():
+            raise ValueError(f"{dem_path} still contains NoData cells inside coverage")
+        if (~missing & ~coverage_mask).any():
+            raise ValueError(f"{dem_path} contains elevation values outside coverage")
 
 
 def prepare_watersysteem_rasters(
@@ -312,9 +372,11 @@ def prepare_watersysteem_rasters(
     """Create aligned DEM and hydroobject-segment rasters for one spatial square.
 
     The AHN ``dtm_05`` VRT is resampled to a 2 by 2 metre grid by default.
-    Missing elevation cells are filled with ``rasterio.fill.fillnodata`` using
-    a search distance spanning the full raster, so the final DEM has no NoData
-    holes. Primary and secondary hydroobjects are rasterized separately.
+    Missing elevation cells inside cached full source raster extents are filled
+    with ``rasterio.fill.fillnodata`` using the original full-grid search
+    distance. NoData outside all source extents is not offered for interpolation.
+    All NoData inside a source extent remains fillable, including at its edges.
+    Primary and secondary hydroobjects are rasterized separately.
     The primary mask has priority, so its two-times burn depth is not added to
     the one-times secondary depth in overlapping cells. The companion segment
     raster stores GeoPackage feature IDs, with zero denoting no segment.
@@ -343,7 +405,8 @@ def prepare_watersysteem_rasters(
         Cell size in project-CRS metres, by default 2.
     overwrite : bool, optional
         Whether existing validated raster pairs are regenerated. With False,
-        both existing valid outputs are reused.
+        both existing valid outputs from this coverage policy are reused.
+        Outputs with missing or outdated coverage metadata are regenerated.
 
     Returns
     -------
@@ -368,9 +431,18 @@ def prepare_watersysteem_rasters(
     result = WatersysteemRasters(dem_path, segment_path)
 
     if dem_path.exists() and segment_path.exists() and not overwrite:
-        _validate_rasters(dem_path, segment_path, grid=grid)
-        logger.info("Reusing validated watersysteem rasters in %s", output_dir)
-        return result
+        with rasterio.open(dem_path) as existing:
+            version = existing.tags().get("waterlagen_dem_coverage")
+        if version == COVERAGE_VERSION:
+            with rasterio.open(ahn_vrt_path) as source:
+                coverage = _coverage_mask(source, grid)
+            _validate_rasters(dem_path, segment_path, grid=grid, coverage_mask=coverage)
+            logger.info("Reusing validated watersysteem rasters in %s", output_dir)
+            return result
+        logger.info(
+            "Regenerating rasters with missing or outdated source-coverage metadata in %s",
+            output_dir,
+        )
 
     if not ahn_vrt_path.exists():
         raise FileNotFoundError(f"AHN VRT not found: {ahn_vrt_path}")
@@ -387,7 +459,9 @@ def prepare_watersysteem_rasters(
         with rasterio.open(ahn_vrt_path) as source:
             if source.crs is None:
                 raise ValueError(f"AHN VRT has no CRS: {ahn_vrt_path}")
-            dem_data = _resample_dem(source, grid)
+            _validate_source_coverage(source, grid)
+            coverage = _coverage_mask(source, grid)
+            dem_data = _resample_dem(source, grid, coverage)
             scale = source.scales[0]
             primary = _features_in_project_crs(
                 watersysteem_path,
@@ -410,6 +484,7 @@ def prepare_watersysteem_rasters(
             burned_dem = _cast_dem_data(
                 dem_data - burn_values,
                 dtype=source.dtypes[0],
+                nodata=source.nodata,
             )
             _write_dem(
                 temporary_dem_path,
@@ -432,7 +507,12 @@ def prepare_watersysteem_rasters(
             grid=grid,
         )
         logger.info("Validating watersysteem rasters for square %s", grid.bounds)
-        _validate_rasters(temporary_dem_path, temporary_segment_path, grid=grid)
+        _validate_rasters(
+            temporary_dem_path,
+            temporary_segment_path,
+            grid=grid,
+            coverage_mask=coverage,
+        )
         temporary_dem_path.replace(dem_path)
         temporary_segment_path.replace(segment_path)
     except Exception:

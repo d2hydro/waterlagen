@@ -1,6 +1,4 @@
 # %%
-from shapely.geometry import box
-
 from waterlagen import datastore
 from waterlagen.administratieve_gebieden import (
     download_waterschapsgrenzen,
@@ -8,9 +6,8 @@ from waterlagen.administratieve_gebieden import (
     read_waterschapsgrenzen_layer,
 )
 from waterlagen.afwateringseenheden import (
-    calculate_subcatchments,
+    calculate_afwateringseenheden_tiles,
     prepare_watersysteem,
-    prepare_watersysteem_rasters,
     read_hydroobjecten,
     read_puntobjecten,
     write_watersysteem,
@@ -29,8 +26,9 @@ logger = init_logger(
 WATERBEHEERCODE = "38"
 BUFFER_M = 5000
 BURN_DEPTH_M = 100
-# Dit vierkant ligt binnen de AHN-VRT en bevat hydroobject_segmenten.
-RUIMTELIJK_VIERKANT = box(155_000, 415_000, 160_000, 420_000)
+MAX_FILL_DEPTH_M = 50
+TILE_SIZE_M = 10000
+TILE_BUFFER_M = 2000
 ENGINE = "pcraster"
 
 # if PCRaster is used as engine, we should run an environment that has it
@@ -85,25 +83,25 @@ watersysteem_path = write_watersysteem(
 )
 logger.info("Prepared Aa en Maas watersysteem at %s", watersysteem_path)
 
-# Maak voor een expliciet vierkant de twee rasterinvoerlagen voor de
-# vervolgberekening. De AHN-aanroep hierboven levert de gebruikte dtm_05.vrt.
-rasters = prepare_watersysteem_rasters(
-    RUIMTELIJK_VIERKANT,
+# Bereken afwateringseenheden per tegel voor het beheergebied met buffer.
+# De AHN-aanroep hierboven levert de gebruikte dtm_05.vrt.
+tile_result = calculate_afwateringseenheden_tiles(
+    spatial_mask,
     burn_depth_m=BURN_DEPTH_M,
     ahn_vrt_path=dtm,
     watersysteem_path=watersysteem_path,
-    output_dir=datastore.afwateringseenheden_path / "190000_375000",
+    output_dir=datastore.afwateringseenheden_path / "tiles",
+    merged_output_path=datastore.afwateringseenheden_path / "afwateringseenheden.gpkg",
+    tile_size_m=TILE_SIZE_M,
+    tile_buffer_m=TILE_BUFFER_M,
+    max_fill_depth_m=MAX_FILL_DEPTH_M,
+    engine=ENGINE,
     overwrite=True,
 )
 logger.info(
-    "Prepared Aa en Maas rasters: DEM %s and hydroobject segments %s",
-    rasters.dem_path,
-    rasters.hydroobject_segment_path,
-)
-subcatchments = calculate_subcatchments(
-    rasters, watersysteem_path=watersysteem_path, engine=ENGINE
-)
-logger.info(
-    "Prepared Aa en Maas subcatchments at %s",
-    subcatchments.subcatchments_path,
+    "Prepared Aa en Maas afwateringseenheden: %s tile(s), %s skipped, %s boundary issue(s), merged at %s",
+    len(tile_result.tile_results),
+    len(tile_result.skipped_tile_ids),
+    len(tile_result.boundary_issue_tile_ids),
+    tile_result.merged_path,
 )
