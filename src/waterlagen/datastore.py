@@ -27,7 +27,7 @@ class DataStore(BaseSettings):
     PROCESSED_DATA=path/to/processed/data
     ```
 
-    Parameters
+    Attributes
     ----------
     data_dir : Path
         The root for `source_data_dir` and `processed_data_dir`. Defaults to ./data.
