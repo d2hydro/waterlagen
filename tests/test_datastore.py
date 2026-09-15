@@ -37,10 +37,18 @@ def test_vbo_buurt_paths_are_under_processed_data(tmp_path):
     )
     assert datastore.inwoners_dir.is_dir()
     assert (
+        datastore.inwoners_parquet_path
+        == tmp_path / "data" / "processed_data" / "inwoners" / "inwoners.parquet"
+    )
+    assert (
         datastore.autos_path
         == tmp_path / "data" / "processed_data" / "autos" / "autos.gpkg"
     )
     assert datastore.autos_dir.is_dir()
+    assert (
+        datastore.autos_parquet_path
+        == tmp_path / "data" / "processed_data" / "autos" / "autos.parquet"
+    )
 
 
 def test_afwateringseenheden_path_is_created_under_processed_data(tmp_path):

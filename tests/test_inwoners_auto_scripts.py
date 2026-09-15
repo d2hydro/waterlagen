@@ -36,7 +36,9 @@ def test_scripts_prepare_shared_cbs_and_vbo_buurt_data(
         bag_vbo_path=tmp_path / "processed" / "vbo_buurt" / "bag_vbo.gpkg",
         cbs_buurt_path=tmp_path / "processed" / "vbo_buurt" / "cbs_buurt.gpkg",
         inwoners_path=tmp_path / "processed" / "inwoners" / "inwoners.gpkg",
+        inwoners_parquet_path=tmp_path / "processed" / "inwoners" / "inwoners.parquet",
         autos_path=tmp_path / "processed" / "autos" / "autos.gpkg",
+        autos_parquet_path=tmp_path / "processed" / "autos" / "autos.parquet",
     )
     buurtkaart_path = data_store.administratieve_gebieden_dir / "wijkenbuurten.gpkg"
 
@@ -120,6 +122,8 @@ def test_scripts_prepare_shared_cbs_and_vbo_buurt_data(
             "cbs_buurt_path": data_store.cbs_buurt_path,
             "target_path": data_store.inwoners_path,
             "overwrite": False,
+            "geoparquet_path": data_store.inwoners_parquet_path,
+            "write_geoparquet": script.WRITE_GEOPARQUET,
         }
     else:
         assert events[4][1] == {
@@ -128,4 +132,6 @@ def test_scripts_prepare_shared_cbs_and_vbo_buurt_data(
             "cbs_buurtgegevens_path": data_store.cbs_dir / "buurtgegevens_2025.json",
             "target_path": data_store.autos_path,
             "overwrite": False,
+            "geoparquet_path": data_store.autos_parquet_path,
+            "write_geoparquet": script.WRITE_GEOPARQUET,
         }

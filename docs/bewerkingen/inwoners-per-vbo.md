@@ -18,6 +18,7 @@ aantal BAG-woon-VBO's zichtbaar blijft.
 
 De bewerking koppelt de CBS-waarden op `buurtcode` aan de VBO-punten. Er vindt
 geen nieuwe ruimtelijke koppeling plaats.
+De technische `_hilbert`-volgorde van de gedeelde woon-VBO's blijft behouden.
 
 Voor iedere buurt worden twee waarden berekend:
 
@@ -35,11 +36,18 @@ controleert Waterlagen de sommen van beide verdeelmethoden.
 
 ## Resultaat
 
-De bewerking schrijft `processed_data/inwoners/inwoners.gpkg`, laag `inwoners`. Deze
-bevat de oorspronkelijke VBO-puntgeometrie en minimaal `identificatie`,
+De bewerking schrijft standaard `processed_data/inwoners/inwoners.gpkg`, laag
+`inwoners`. Deze bevat de oorspronkelijke VBO-puntgeometrie en minimaal `identificatie`,
 eventueel `pand_identificatie`, `buurtcode`, `aantal_inwoners`,
 `aantal_huishoudens`, `aantal_woonvbo`, `inwoners_obv_huishoudens` en
-`inwoners_obv_woonvbo`.
+`inwoners_obv_woonvbo`, plus de technische `_hilbert`-kolom.
+
+Als de optie `WRITE_GEOPARQUET` in `scripts/inwoners.py` is ingeschakeld,
+schrijft de bewerking daarnaast `processed_data/inwoners/inwoners.parquet`.
+Dit is standaard GeoParquet 1.1 met WKB-geometrie, een standaard bbox-covering
+en Parquet-statistieken. De fysieke rijvolgorde blijft de oplopende
+`_hilbert`-volgorde uit het gedeelde VBO-buurtbestand; groepen van 100.000
+rijen ondersteunen daarmee ruimtelijke pruning bij een query op `bounds`.
 
 De waarden zijn geen pand- of rasterwaarden. Personenauto's en aanvullende
 correcties maken geen deel uit van deze bewerking.

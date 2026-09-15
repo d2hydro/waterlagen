@@ -4,6 +4,7 @@ from pathlib import Path
 import geopandas as gpd
 import numpy as np
 import pandas as pd
+import pyarrow.parquet as pq
 from shapely.geometry import Point, box
 
 from waterlagen.inwoners import (
@@ -20,6 +21,7 @@ def _bag_vbo() -> gpd.GeoDataFrame:
             "identificatie": ["vbo-1", "vbo-2", "vbo-3", "vbo-4"],
             "pand_identificatie": ["pand-1", "pand-2", "pand-3", "pand-4"],
             "buurtcode": ["BU00000001", "BU00000001", "BU00000002", "BU99999999"],
+            "_hilbert": [1, 2, 3, 4],
         },
         geometry=[Point(1, 1), Point(2, 2), Point(11, 1), Point(31, 1)],
         crs="EPSG:28992",
@@ -74,6 +76,7 @@ def test_bereken_inwoners_per_vbo_keeps_two_methods_and_missing_cbs_values(caplo
         "aantal_woonvbo",
         "inwoners_obv_huishoudens",
         "inwoners_obv_woonvbo",
+        "_hilbert",
         "geometry",
     ]
     assert result.loc[:1, "inwoners_obv_huishoudens"].tolist() == [25.0, 25.0]
@@ -84,6 +87,8 @@ def test_bereken_inwoners_per_vbo_keeps_two_methods_and_missing_cbs_values(caplo
     assert pd.isna(result.loc[3, "inwoners_obv_woonvbo"])
     assert result.geometry.tolist() == _bag_vbo().geometry.tolist()
     assert result.crs == _bag_vbo().crs
+    assert result["_hilbert"].tolist() == [1, 2, 3, 4]
+    assert result["_hilbert"].is_monotonic_increasing
     assert missing_count == 1
     assert unchecked_buurt_count == 1
     assert "1 VBO's have missing required CBS values" in caplog.text
@@ -109,13 +114,17 @@ def test_bereken_inwoners_per_vbo_keeps_zero_denominator_as_missing(caplog):
 def test_bouw_inwoners_writes_vbo_points_and_reuses_existing_output(tmp_path):
     bag_vbo_path, cbs_buurt_path = _write_sources(tmp_path)
     target_path = tmp_path / "inwoners.gpkg"
+    geoparquet_path = tmp_path / "inwoners.parquet"
 
     build = bouw_inwoners(
         bag_vbo_path=bag_vbo_path,
         cbs_buurt_path=cbs_buurt_path,
         target_path=target_path,
+        geoparquet_path=geoparquet_path,
+        write_geoparquet=True,
     )
     output = gpd.read_file(target_path, layer=INWONERS_LAYER)
+    parquet_output = gpd.read_parquet(geoparquet_path)
 
     assert build.target_path == target_path
     assert build.vbo_count == 4
@@ -123,19 +132,29 @@ def test_bouw_inwoners_writes_vbo_points_and_reuses_existing_output(tmp_path):
     assert build.vbos_with_missing_cbs_data == 1
     assert build.buurten_without_woonvbo_control == 1
     assert build.reused is False
+    assert build.geoparquet_path == geoparquet_path
     assert output.crs == _bag_vbo().crs
     assert output.geometry.tolist() == _bag_vbo().geometry.tolist()
+    assert output["_hilbert"].tolist() == [1, 2, 3, 4]
+    assert output["_hilbert"].is_monotonic_increasing
     assert output.loc[0, "aantal_inwoners"] == 100
     assert output.loc[0, "aantal_huishoudens"] == 4
     assert output.loc[0, "aantal_woonvbo"] == 2
+    assert parquet_output["_hilbert"].tolist() == [1, 2, 3, 4]
+    assert parquet_output.geometry.tolist() == _bag_vbo().geometry.tolist()
+    assert parquet_output.crs == _bag_vbo().crs
+    assert pq.read_metadata(geoparquet_path).num_row_groups == 1
 
     reused = bouw_inwoners(
         bag_vbo_path=tmp_path / "missing-bag.gpkg",
         cbs_buurt_path=tmp_path / "missing-cbs.gpkg",
         target_path=target_path,
+        geoparquet_path=geoparquet_path,
         overwrite=False,
+        write_geoparquet=True,
     )
 
     assert reused.reused is True
     assert reused.vbo_count == 4
     assert reused.buurt_count == 3
+    assert reused.geoparquet_path == geoparquet_path

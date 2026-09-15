@@ -2,6 +2,7 @@
 
 from .build import (
     AUTOS_LAYER,
+    PERSONENAUTOS_COLUMN,
     AutosBuild,
     bereken_personenautos_per_vbo,
     bouw_autos,
@@ -9,6 +10,7 @@ from .build import (
 
 __all__ = [
     "AUTOS_LAYER",
+    "PERSONENAUTOS_COLUMN",
     "AutosBuild",
     "bereken_personenautos_per_vbo",
     "bouw_autos",

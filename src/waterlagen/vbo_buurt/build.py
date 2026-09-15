@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 from pathlib import Path
+from time import perf_counter
 
 import geopandas as gpd
 import pandas as pd
@@ -18,6 +19,11 @@ from waterlagen.administratieve_gebieden import (
 )
 from waterlagen.cbs import buurtgegevens_2025_path, read_buurtgegevens
 from waterlagen.logger import get_logger
+from waterlagen.vbo_buurt.hilbert import (
+    HILBERT_COLUMN,
+    sorteer_op_hilbert,
+    valideer_hilbert_volgorde,
+)
 
 logger = get_logger(__name__)
 
@@ -30,18 +36,21 @@ PAND_ID_COLUMN = "pand_identificatie"
 STATUS_COLUMN = "status"
 GEBRUIKSDOEL_COLUMN = "gebruiksdoel"
 AANTAL_WOONVBO_COLUMN = "aantal_woonvbo"
+PERSONENAUTOS_TOTAAL_COLUMN = "personenautos_totaal"
 BAG_VBO_COLUMNS = (
     VBO_ID_COLUMN,
     PAND_ID_COLUMN,
     STATUS_COLUMN,
     GEBRUIKSDOEL_COLUMN,
     CBS_BUURTCODE_COLUMN,
+    HILBERT_COLUMN,
     "geometry",
 )
 CBS_BUURT_COLUMNS = (
     CBS_BUURTCODE_COLUMN,
     "aantal_inwoners",
     "aantal_huishoudens",
+    PERSONENAUTOS_TOTAAL_COLUMN,
     AANTAL_WOONVBO_COLUMN,
     "geometry",
 )
@@ -257,6 +266,7 @@ def _read_cbs_buurtgegevens(path: Path) -> pd.DataFrame:
     columns = (
         "aantal_inwoners",
         "aantal_huishoudens",
+        PERSONENAUTOS_TOTAAL_COLUMN,
     )
     return read_buurtgegevens(path, columns=columns)
 
@@ -311,10 +321,19 @@ def _read_bag_vbo_counts(path: Path) -> tuple[int, int]:
     data = read_file(
         path,
         layer=BAG_VBO_LAYER,
-        columns=[VBO_ID_COLUMN, CBS_BUURTCODE_COLUMN],
+        columns=[VBO_ID_COLUMN, CBS_BUURTCODE_COLUMN, HILBERT_COLUMN],
         ignore_geometry=True,
     )
+    valideer_hilbert_volgorde(data)
     return len(data), int(data[CBS_BUURTCODE_COLUMN].nunique())
+
+
+def _cbs_buurt_has_current_schema(path: Path) -> bool:
+    """Return whether a cached CBS buurt output contains all required values."""
+    info = pyogrio.read_info(path, layer=CBS_BUURT_OUTPUT_LAYER)
+    columns = {str(column) for column in info["fields"]}
+    required_columns = set(CBS_BUURT_COLUMNS) - {"geometry"}
+    return required_columns <= columns
 
 
 def bouw_vbo_buurt(
@@ -368,16 +387,21 @@ def bouw_vbo_buurt(
             "Only one VBO-buurt output exists. Use overwrite=True to rebuild both outputs."
         )
     if len(existing_paths) == len(output_paths) and not overwrite:
-        selected_woonvbo_count, buurt_count = _read_bag_vbo_counts(bag_vbo_path)
-        logger.info("Reusing BAG VBO output from %s", bag_vbo_path)
-        logger.info("Reusing CBS buurt output from %s", cbs_buurt_path)
-        return VboBuurtBuild(
-            bag_vbo_path=bag_vbo_path,
-            cbs_buurt_path=cbs_buurt_path,
-            source_vbo_count=None,
-            selected_woonvbo_count=selected_woonvbo_count,
-            buurt_count=buurt_count,
-            reused=True,
+        if _cbs_buurt_has_current_schema(cbs_buurt_path):
+            selected_woonvbo_count, buurt_count = _read_bag_vbo_counts(bag_vbo_path)
+            logger.info("Reusing BAG VBO output from %s", bag_vbo_path)
+            logger.info("Reusing CBS buurt output from %s", cbs_buurt_path)
+            return VboBuurtBuild(
+                bag_vbo_path=bag_vbo_path,
+                cbs_buurt_path=cbs_buurt_path,
+                source_vbo_count=None,
+                selected_woonvbo_count=selected_woonvbo_count,
+                buurt_count=buurt_count,
+                reused=True,
+            )
+        logger.info(
+            "Rebuilding CBS buurt output because it lacks required columns: %s",
+            cbs_buurt_path,
         )
 
     woonvbo, source_vbo_count = _read_bag_woonverblijfsobjecten(
@@ -395,9 +419,19 @@ def bouw_vbo_buurt(
         feature_id_column=VBO_ID_COLUMN,
     )
     bag_vbo = gekoppeld[_bag_vbo_columns(gekoppeld)].copy()
+    del woonvbo
+    del gekoppeld
+    bag_vbo = sorteer_op_hilbert(bag_vbo)
     cbs_buurtgegevens = _read_cbs_buurtgegevens(cbs_buurtgegevens_path)
     cbs_buurt = _bouw_cbs_buurt(buurten, bag_vbo, cbs_buurtgegevens)
+    del buurten
+    del cbs_buurtgegevens
+
+    started = perf_counter()
     _write_geopackage(bag_vbo, bag_vbo_path, layer_name=BAG_VBO_LAYER)
+    logger.info(
+        "Wrote Hilbert-sorted BAG VBO GeoPackage in %.1f s", perf_counter() - started
+    )
     _write_geopackage(cbs_buurt, cbs_buurt_path, layer_name=CBS_BUURT_OUTPUT_LAYER)
     buurt_count = int(bag_vbo[CBS_BUURTCODE_COLUMN].nunique())
     logger.info(

@@ -170,6 +170,12 @@ class DataStore(BaseSettings):
 
     @computed_field
     @property
+    def inwoners_parquet_path(self) -> Path:
+        """Return the optional GeoParquet inwoners per woon-VBO output path."""
+        return self.inwoners_dir / "inwoners.parquet"
+
+    @computed_field
+    @property
     def autos_dir(self) -> Path:
         """Return the directory for processed personenauto's per woon-VBO data."""
         autos_dir = self.processed_data_dir / "autos"
@@ -181,6 +187,12 @@ class DataStore(BaseSettings):
     def autos_path(self) -> Path:
         """Return the processed personenauto's per woon-VBO GeoPackage path."""
         return self.autos_dir / "autos.gpkg"
+
+    @computed_field
+    @property
+    def autos_parquet_path(self) -> Path:
+        """Return the optional GeoParquet personenauto output path."""
+        return self.autos_dir / "autos.parquet"
 
 
 datastore = DataStore()

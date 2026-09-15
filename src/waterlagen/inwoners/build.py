@@ -12,6 +12,7 @@ import pyogrio
 from waterlagen import datastore
 from waterlagen._geopackage import write_geopackage_layer_atomically
 from waterlagen._geopandas import read_file
+from waterlagen._geoparquet import write_geoparquet_atomically
 from waterlagen.administratieve_gebieden import CBS_BUURTCODE_COLUMN
 from waterlagen.logger import get_logger
 from waterlagen.vbo_buurt.build import (
@@ -22,6 +23,7 @@ from waterlagen.vbo_buurt.build import (
     VBO_ID_COLUMN,
 )
 from waterlagen.vbo_buurt.verdeling import deel_buurtwaarde_per_vbo
+from waterlagen.vbo_buurt.hilbert import HILBERT_COLUMN, valideer_hilbert_volgorde
 
 logger = get_logger(__name__)
 
@@ -48,6 +50,7 @@ class InwonersBuild:
     vbos_with_missing_cbs_data: int
     buurten_without_woonvbo_control: int
     reused: bool
+    geoparquet_path: Path | None = None
 
 
 def _require_columns(data: pd.DataFrame, columns: tuple[str, ...]) -> None:
@@ -185,25 +188,28 @@ def bereken_inwoners_per_vbo(
         Result, number of VBO's missing required CBS values, and number of CBS
         buurten for which the inwonerbehoudende control could not be performed.
     """
-    _require_columns(bag_vbo, (VBO_ID_COLUMN, CBS_BUURTCODE_COLUMN))
+    _require_columns(bag_vbo, (VBO_ID_COLUMN, CBS_BUURTCODE_COLUMN, HILBERT_COLUMN))
     if bag_vbo.crs is None:
         raise ValueError("BAG VBO data have no CRS")
     if bag_vbo[VBO_ID_COLUMN].isna().any():
         raise ValueError("BAG VBO data contain missing identificaties")
     if bag_vbo[VBO_ID_COLUMN].duplicated().any():
         raise ValueError("BAG VBO data contain duplicate identificaties")
+    valideer_hilbert_volgorde(bag_vbo)
 
     cbs_values = _cbs_values(cbs_buurten)
-    bag_columns = [VBO_ID_COLUMN, CBS_BUURTCODE_COLUMN, "geometry"]
+    bag_columns = [VBO_ID_COLUMN, CBS_BUURTCODE_COLUMN, HILBERT_COLUMN, "geometry"]
     if PAND_ID_COLUMN in bag_vbo.columns:
         bag_columns.insert(1, PAND_ID_COLUMN)
     result = bag_vbo[bag_columns].merge(
         cbs_values,
         on=CBS_BUURTCODE_COLUMN,
         how="left",
+        sort=False,
         validate="many_to_one",
     )
     result = gpd.GeoDataFrame(result, geometry="geometry", crs=bag_vbo.crs)
+    valideer_hilbert_volgorde(result)
     for column in CBS_VALUE_COLUMNS:
         result[column] = pd.to_numeric(result[column], errors="coerce")
 
@@ -252,6 +258,7 @@ def bereken_inwoners_per_vbo(
             AANTAL_WOONVBO_COLUMN,
             INWONERS_OBV_HUISHOUDENS_COLUMN,
             INWONERS_OBV_WOONVBO_COLUMN,
+            HILBERT_COLUMN,
             "geometry",
         ]
     )
@@ -262,12 +269,12 @@ def _read_bag_vbo(path: Path, *, layer: str) -> gpd.GeoDataFrame:
     """Read the selected BAG VBO fields used in the inwoners product."""
     info = pyogrio.read_info(path, layer=layer)
     available_columns = {str(column) for column in info["fields"]}
-    required_columns = {VBO_ID_COLUMN, CBS_BUURTCODE_COLUMN}
+    required_columns = {VBO_ID_COLUMN, CBS_BUURTCODE_COLUMN, HILBERT_COLUMN}
     missing_columns = required_columns - available_columns
     if missing_columns:
         names = ", ".join(sorted(missing_columns))
         raise ValueError(f"BAG VBO layer {layer} has no required column(s): {names}")
-    columns = [VBO_ID_COLUMN, CBS_BUURTCODE_COLUMN]
+    columns = [VBO_ID_COLUMN, CBS_BUURTCODE_COLUMN, HILBERT_COLUMN]
     if PAND_ID_COLUMN in available_columns:
         columns.append(PAND_ID_COLUMN)
     return read_file(path, layer=layer, columns=columns)
@@ -299,22 +306,37 @@ def bouw_inwoners(
     cbs_buurt_path: Path = datastore.cbs_buurt_path,
     *,
     target_path: Path = datastore.inwoners_path,
+    geoparquet_path: Path = datastore.inwoners_parquet_path,
     bag_vbo_layer: str = BAG_VBO_LAYER,
     cbs_buurt_layer: str = CBS_BUURT_OUTPUT_LAYER,
     overwrite: bool = True,
+    write_geoparquet: bool = False,
 ) -> InwonersBuild:
     """Build inwoners per woon-VBO from the shared VBO-buurt products.
 
     The BAG point geometry is retained. CBS values are joined by ``buurtcode``;
-    no spatial join is repeated. When ``overwrite`` is False, an existing output
+    no spatial join is repeated. Optionally write standard GeoParquet in the
+    existing Hilbert order. When ``overwrite`` is False, an existing GeoPackage
     is reused without reading the input GeoPackages.
     """
     bag_vbo_path = Path(bag_vbo_path)
     cbs_buurt_path = Path(cbs_buurt_path)
     target_path = Path(target_path)
+    geoparquet_path = Path(geoparquet_path)
     if target_path.exists() and not overwrite:
         vbo_count, buurt_count = _read_output_counts(target_path, layer=INWONERS_LAYER)
         logger.info("Reusing inwoners output from %s", target_path)
+        written_geoparquet_path = None
+        if write_geoparquet:
+            started = perf_counter()
+            inwoners = read_file(target_path, layer=INWONERS_LAYER)
+            valideer_hilbert_volgorde(inwoners)
+            written_geoparquet_path = write_geoparquet_atomically(
+                inwoners,
+                geoparquet_path,
+                overwrite=False,
+            )
+            logger.info("Wrote inwoners GeoParquet in %.1f s", perf_counter() - started)
         return InwonersBuild(
             target_path=target_path,
             vbo_count=vbo_count,
@@ -322,6 +344,7 @@ def bouw_inwoners(
             vbos_with_missing_cbs_data=0,
             buurten_without_woonvbo_control=0,
             reused=True,
+            geoparquet_path=written_geoparquet_path,
         )
     if not bag_vbo_path.exists():
         raise FileNotFoundError(f"BAG VBO output {bag_vbo_path} does not exist")
@@ -347,6 +370,15 @@ def bouw_inwoners(
         layer_name=INWONERS_LAYER,
     )
     logger.info("Wrote inwoners GeoPackage in %.1f s", perf_counter() - started)
+    written_geoparquet_path = None
+    if write_geoparquet:
+        started = perf_counter()
+        written_geoparquet_path = write_geoparquet_atomically(
+            inwoners,
+            geoparquet_path,
+            overwrite=overwrite,
+        )
+        logger.info("Wrote inwoners GeoParquet in %.1f s", perf_counter() - started)
     buurt_count = int(inwoners[CBS_BUURTCODE_COLUMN].nunique())
     logger.info(
         "Completed inwoners output with %s VBO's in %s buurten: %s",
@@ -361,4 +393,5 @@ def bouw_inwoners(
         vbos_with_missing_cbs_data=missing_count,
         buurten_without_woonvbo_control=unchecked_buurt_count,
         reused=False,
+        geoparquet_path=written_geoparquet_path,
     )

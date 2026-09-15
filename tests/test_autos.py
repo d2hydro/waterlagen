@@ -5,6 +5,7 @@ from pathlib import Path
 import geopandas as gpd
 import numpy as np
 import pandas as pd
+import pyarrow.parquet as pq
 from shapely.geometry import Point, box
 
 from waterlagen.autos import AUTOS_LAYER, bereken_personenautos_per_vbo, bouw_autos
@@ -17,6 +18,7 @@ def _bag_vbo() -> gpd.GeoDataFrame:
             "identificatie": ["vbo-1", "vbo-2", "vbo-3", "vbo-4"],
             "pand_identificatie": ["pand-1", "pand-2", "pand-3", "pand-4"],
             "buurtcode": ["BU00000001", "BU00000001", "BU00000002", "BU99999999"],
+            "_hilbert": [1, 2, 3, 4],
         },
         geometry=[Point(1, 1), Point(2, 2), Point(11, 1), Point(31, 1)],
         crs="EPSG:28992",
@@ -75,6 +77,7 @@ def test_bereken_personenautos_per_vbo_distributes_values_vectorized(caplog):
         "personenautos_totaal",
         "aantal_woonvbo",
         "personenautos",
+        "_hilbert",
         "geometry",
     ]
     assert result.loc[:1, "personenautos"].tolist() == [10.0, 10.0]
@@ -82,6 +85,8 @@ def test_bereken_personenautos_per_vbo_distributes_values_vectorized(caplog):
     assert pd.isna(result.loc[3, "personenautos"])
     assert result.geometry.tolist() == _bag_vbo().geometry.tolist()
     assert result.crs == _bag_vbo().crs
+    assert result["_hilbert"].tolist() == [1, 2, 3, 4]
+    assert result["_hilbert"].is_monotonic_increasing
     assert missing_count == 1
     assert unchecked_buurt_count == 1
     assert "1 VBO's have missing required CBS values" in caplog.text
@@ -106,14 +111,18 @@ def test_bereken_personenautos_per_vbo_keeps_zero_woonvbo_as_missing(caplog):
 def test_bouw_autos_writes_vbo_points_and_reuses_existing_output(tmp_path):
     bag_vbo_path, cbs_buurt_path, cbs_buurtgegevens_path = _write_sources(tmp_path)
     target_path = tmp_path / "autos.gpkg"
+    geoparquet_path = tmp_path / "autos.parquet"
 
     build = bouw_autos(
         bag_vbo_path=bag_vbo_path,
         cbs_buurt_path=cbs_buurt_path,
         cbs_buurtgegevens_path=cbs_buurtgegevens_path,
         target_path=target_path,
+        geoparquet_path=geoparquet_path,
+        write_geoparquet=True,
     )
     output = gpd.read_file(target_path, layer=AUTOS_LAYER)
+    parquet_output = gpd.read_parquet(geoparquet_path)
 
     assert build.target_path == target_path
     assert build.vbo_count == 4
@@ -121,20 +130,30 @@ def test_bouw_autos_writes_vbo_points_and_reuses_existing_output(tmp_path):
     assert build.vbos_with_missing_cbs_data == 1
     assert build.buurten_without_control == 1
     assert build.reused is False
+    assert build.geoparquet_path == geoparquet_path
     assert output.crs == _bag_vbo().crs
     assert output.geometry.tolist() == _bag_vbo().geometry.tolist()
+    assert output["_hilbert"].tolist() == [1, 2, 3, 4]
+    assert output["_hilbert"].is_monotonic_increasing
     assert output.loc[0, "personenautos_totaal"] == 20
     assert output.loc[0, "aantal_woonvbo"] == 2
     assert output.loc[0, "personenautos"] == 10
+    assert parquet_output["_hilbert"].tolist() == [1, 2, 3, 4]
+    assert parquet_output.geometry.tolist() == _bag_vbo().geometry.tolist()
+    assert parquet_output.crs == _bag_vbo().crs
+    assert pq.read_metadata(geoparquet_path).num_row_groups == 1
 
     reused = bouw_autos(
         bag_vbo_path=tmp_path / "missing-bag.gpkg",
         cbs_buurt_path=tmp_path / "missing-cbs.gpkg",
         cbs_buurtgegevens_path=tmp_path / "missing-cbs.json",
         target_path=target_path,
+        geoparquet_path=geoparquet_path,
         overwrite=False,
+        write_geoparquet=True,
     )
 
     assert reused.reused is True
     assert reused.vbo_count == 4
     assert reused.buurt_count == 3
+    assert reused.geoparquet_path == geoparquet_path

@@ -12,8 +12,14 @@ from waterlagen.vbo_buurt import bouw_vbo_buurt
 
 logger = get_logger(__name__)
 
+WRITE_GEOPARQUET = True
 
-def main(data_store: DataStore | None = None) -> Path:
+
+def main(
+    data_store: DataStore | None = None,
+    *,
+    write_geoparquet: bool = WRITE_GEOPARQUET,
+) -> Path:
     """Produce inwoners per woon-VBO from CBS and BAG source data."""
     data_store = data_store or DataStore()
     init_logger(
@@ -52,10 +58,12 @@ def main(data_store: DataStore | None = None) -> Path:
         cbs_buurt_path=data_store.cbs_buurt_path,
         target_path=data_store.inwoners_path,
         overwrite=False,
+        geoparquet_path=data_store.inwoners_parquet_path,
+        write_geoparquet=write_geoparquet,
     )
     logger.info("Inwoners stap completed in %.1f s", perf_counter() - started)
     return inwoners.target_path
 
 
 if __name__ == "__main__":
-    main()
+    main(write_geoparquet=WRITE_GEOPARQUET)

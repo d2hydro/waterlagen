@@ -45,6 +45,6 @@ gerapporteerd.
 
 De buurtgeometrieën worden ook gebruikt voor de ruimtelijke koppeling van
 [woon-VBO's per CBS-buurt](../bewerkingen/vbo-buurt.md). In die bewerking
-worden `aantal_inwoners` en `aantal_huishoudens` uit StatLine op de CBS-
-buurtpolygonen bewaard, samen met het afgeleide aantal woon-VBO's. Andere
-StatLine-kerncijfers worden daar nog niet aan toegevoegd.
+worden `aantal_inwoners`, `aantal_huishoudens` en `personenautos_totaal` uit
+StatLine op de CBS-buurtpolygonen bewaard, samen met het afgeleide aantal
+woon-VBO's. Andere StatLine-kerncijfers worden daar niet aan toegevoegd.

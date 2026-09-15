@@ -12,8 +12,14 @@ from waterlagen.vbo_buurt import bouw_vbo_buurt
 
 logger = get_logger(__name__)
 
+WRITE_GEOPARQUET = False
 
-def main(data_store: DataStore | None = None) -> Path:
+
+def main(
+    data_store: DataStore | None = None,
+    *,
+    write_geoparquet: bool = WRITE_GEOPARQUET,
+) -> Path:
     """Produce personenauto's per woon-VBO from CBS and BAG source data."""
     data_store = data_store or DataStore()
     init_logger(
@@ -53,10 +59,12 @@ def main(data_store: DataStore | None = None) -> Path:
         cbs_buurtgegevens_path=buurtgegevens_2025_path(data_store.cbs_dir),
         target_path=data_store.autos_path,
         overwrite=False,
+        geoparquet_path=data_store.autos_parquet_path,
+        write_geoparquet=write_geoparquet,
     )
     logger.info("Autos stap completed in %.1f s", perf_counter() - started)
     return autos.target_path
 
 
 if __name__ == "__main__":
-    main()
+    main(write_geoparquet=WRITE_GEOPARQUET)
