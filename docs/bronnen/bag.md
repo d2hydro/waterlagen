@@ -21,6 +21,9 @@ GeoPackage.
 
 BAG-panden zijn invoer voor [BAG-vloerpeilen](../bewerkingen/bag-vloerpeilen.md)
 en voor [functioneel landgebruik](../bewerkingen/functioneel-landgebruik.md).
+Voor de verwerking van inwoners en personenauto's worden uitsluitend
+verblijfsobjecten met woonfunctie en status in gebruik gebruikt; zie
+[Woon-VBO's per CBS-buurt](../bewerkingen/vbo-buurt.md).
 
 ## Externe verwijzingen
 

@@ -12,6 +12,7 @@ pydantic-settings = "*"
 rasterio = "*"
 pyogrio = "*"
 pyproj = "*"
+pyarrow = "*"
 numpy = "*"
 requests = "*"
 shapely = "*"
@@ -28,6 +29,10 @@ ruff = "*"
 [feature.dev.tasks]
 test-cov = "pytest --cov=src/waterlagen --cov-report=term-missing"
 functioneel_landgebruik = "python scripts/functioneel_landgebruik.py"
+inwoners = "python scripts/inwoners.py"
+auto = "python scripts/auto.py"
+autos = "python scripts/autos.py"
+statistiek_inwoners_autos = "python scripts/statistiek_inwoners_autos.py"
 
 [feature.docs.dependencies]
 mkdocs = "*"

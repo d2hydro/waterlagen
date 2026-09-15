@@ -24,6 +24,7 @@ dependencies = [
     "rasterio",
     "pyogrio",
     "pyproj",
+    "pyarrow",
     "numpy",
     "requests",
     "shapely",
