@@ -120,6 +120,14 @@ class DataStore(BaseSettings):
         administratieve_gebieden_dir.mkdir(exist_ok=True, parents=True)
         return administratieve_gebieden_dir
 
+    @computed_field
+    @property
+    def cbs_dir(self) -> Path:
+        """Return the directory for source data published by CBS."""
+        cbs_dir = self.source_data_dir / "cbs"
+        cbs_dir.mkdir(exist_ok=True, parents=True)
+        return cbs_dir
+
 
 datastore = DataStore()
 logger.info(

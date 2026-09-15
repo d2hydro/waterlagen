@@ -17,6 +17,13 @@ def test_hydamo_dir_is_created_under_source_data(tmp_path):
     assert datastore.hydamo_dir.is_dir()
 
 
+def test_cbs_dir_is_created_under_source_data(tmp_path):
+    datastore = DataStore(data_dir=tmp_path / "data")
+
+    assert datastore.cbs_dir == tmp_path / "data" / "source_data" / "cbs"
+    assert datastore.cbs_dir.is_dir()
+
+
 def test_afwateringseenheden_path_is_created_under_processed_data(tmp_path):
     datastore = DataStore(data_dir=tmp_path / "data")
 

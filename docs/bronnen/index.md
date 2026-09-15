@@ -10,3 +10,4 @@ die kunnen worden gedownload. Voor datasets die uit bronnen worden afgeleid zie 
 - Dijkringen: [Dijkringen](dijkringen.md)
 - Administratieve grenzen: [Bestuurlijke gebieden](bestuurlijke-gebieden.md) en
   [Waterschapsgrenzen](waterschapsgrenzen.md)
+- CBS: [Wijk- en Buurtkaart en Kerncijfers](cbs.md)

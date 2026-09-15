@@ -27,6 +27,7 @@ nav:
       - GKW HYDAMO: bronnen/hydamo.md
       - Bestuurlijke gebieden: bronnen/bestuurlijke-gebieden.md
       - Waterschapsgrenzen: bronnen/waterschapsgrenzen.md
+      - CBS Wijk- en Buurtkaart en Kerncijfers: bronnen/cbs.md
   - Bewerkingen:
       - Overzicht: bewerkingen/index.md
       - AHN interpoleren: bewerkingen/ahn-interpoleren.md
