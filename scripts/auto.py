@@ -4,15 +4,15 @@ from pathlib import Path
 from time import perf_counter
 
 from waterlagen.administratieve_gebieden import download_wijk_buurtkaart_2025
+from waterlagen.autos import bouw_autos
 from waterlagen.cbs import buurtgegevens_2025_path, download_buurtgegevens_2025
 from waterlagen.datastore import DataStore
-from waterlagen.autos import bouw_autos
 from waterlagen.logger import get_logger, init_logger
 from waterlagen.vbo_buurt import bouw_vbo_buurt
 
 logger = get_logger(__name__)
 
-WRITE_GEOPARQUET = False
+WRITE_GEOPARQUET = True
 
 
 def main(
