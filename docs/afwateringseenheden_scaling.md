@@ -3,7 +3,8 @@
 ## Meetopzet
 
 Vervolgbenchmark van 10 september 2026, met de bestaande coverage-definitie
-`union(full_extent_of_each_source_tif)`. De productiecode is niet aangepast.
+`union(full_extent_of_each_source_tif)`. Voor die benchmark werd de productiecode
+niet aangepast; de latere productie-workflow ondersteunt inmiddels parallel rekenen.
 De tijdelijke scripts `scripts/benchmark_afwateringseenheden_scaling.py` en
 `scripts/analyze_afwateringseenheden_scaling.py` bewaren hun meetgegevens onder
 `data/benchmark_afwateringseenheden_scaling/`.
@@ -136,3 +137,45 @@ deze zijn niet door dit ideale oppervlaktemodel gedekt. De empirische
 LDD-fit over drie geneste gebieden beschrijft deze locatie en parameters,
 geen universele complexiteitswet: reliëf, depressies en netwerkdichtheid
 veranderen mee met het gebied.
+
+## Controle van parallelle berekening
+
+De productie-workflow rekent inmiddels parallel, met een vaste seed per tegel.
+Zie [de actuele productie-instellingen](reference/afwateringseenheden.md#parallel-rekenen-voor-aa-en-maas)
+voor het uitvoeren van heel Aa en Maas en het samenvoegen, opschonen en aanvullen.
+
+De nieuwe testset is beperkt tot twee tests:
+
+- Serieel versus zes workers: dezelfde rasters en polygonen, ook bij hergebruik.
+- Eén aanvultest: bruikbare buurpolygonen vullen gaten, randpolygonen vallen af
+  en bestaande toewijzingen blijven behouden.
+
+Uitvoeren vanuit de repository:
+
+```powershell
+pixi run --environment afwateringseenheden pytest tests/test_afwateringseenheden_workers.py tests/test_afwateringseenheden_merging.py
+```
+
+De tests gebruiken kleine synthetische datasets. Aparte uitvoer- en
+foutscenariotests zijn uit deze testset verwijderd, net als de losse benchmark.
+De bestaande projecttests en veiligheidscontroles in de productiecode blijven behouden.
+
+### Historische proef van 14 september 2026
+
+De toenmalige proef met twee kernen van 2 × 2 km, 2 km buffer, 2 m resolutie en
+seed 12345 per job is geslaagd. Inclusief beide batches en vergelijking duurde
+hij 213,3 seconden. Resultaten staan in
+`data/benchmark_afwateringseenheden_scaling/20260914_170149_151917_parallel_check/comparison.json`.
+
+| Uitvoering van dezelfde twee tegels | Tijd | Piek-RAM (parent + workers) |
+| --- | ---: | ---: |
+| Eén worker | 128,2 s | 1,01 GB |
+| Twee workers | 83,2 s | 1,76 GB |
+
+Dat is 1,54× zo snel, of 35% minder wachttijd in deze proef. De LDD-stappen
+liepen daadwerkelijk tegelijk. Er waren **nul afwijkende rastercellen** en
+**nul afwijkende segmentpolygonen**, zowel in de ruwe als gefilterde uitvoer.
+De bronversies bleven ongewijzigd. Deze meting mag niet rechtstreeks worden
+vertaald naar de huidige volledige run met grotere tegels en meer workers.
+De serie met één worker draaide eerst: bestandscaches kunnen de versnelling
+beïnvloeden. Dit was geen gecontroleerde herhaalde prestatiebenchmark.

@@ -215,3 +215,6 @@ scripts/data/*
 
 # Misc extensions
 *.cmd
+
+# Local VS Code launcher
+/open-vscode.bat
