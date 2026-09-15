@@ -24,6 +24,15 @@ def test_cbs_dir_is_created_under_source_data(tmp_path):
     assert datastore.cbs_dir.is_dir()
 
 
+def test_vbo_buurt_paths_are_under_processed_data(tmp_path):
+    datastore = DataStore(data_dir=tmp_path / "data")
+
+    assert datastore.vbo_buurt_dir == tmp_path / "data" / "processed_data" / "vbo_buurt"
+    assert datastore.bag_vbo_path == datastore.vbo_buurt_dir / "bag_vbo.gpkg"
+    assert datastore.cbs_buurt_path == datastore.vbo_buurt_dir / "cbs_buurt.gpkg"
+    assert datastore.vbo_buurt_path == datastore.bag_vbo_path
+
+
 def test_afwateringseenheden_path_is_created_under_processed_data(tmp_path):
     datastore = DataStore(data_dir=tmp_path / "data")
 

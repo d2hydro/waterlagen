@@ -10,8 +10,8 @@ voor de nieuwe WaterSchadeSchatter:
 - [AHN interpolatie (raster)](ahn-interpoleren.md)
 - [BAG vloerpeilen (raster)](bag-vloerpeilen.md) 
 - [Functioneel landgebruik (raster)](functioneel-landgebruik.md) 
+- [Woon-VBO's per CBS-buurt](vbo-buurt.md)
 
 voor hydrologische analyses/modellering:
 
 - [Afwateringseenheden (features)](afwateringseenheden.md)
-

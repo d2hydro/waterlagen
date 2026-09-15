@@ -34,12 +34,14 @@ nav:
       - BAG-vloerpeilen: bewerkingen/bag-vloerpeilen.md
       - Functioneel landgebruik: bewerkingen/functioneel-landgebruik.md
       - Afwateringseenheden: bewerkingen/afwateringseenheden.md
+      - Woon-VBO's per CBS-buurt: bewerkingen/vbo-buurt.md
   - Zelf produceren:
       - Overzicht: produceren/index.md
       - Installatie: produceren/installatie.md
       - Configuratie en DataStore: produceren/configuratie.md
       - Eerste dataset produceren: produceren/eerste-dataset.md
       - Afwateringseenheden: produceren/afwateringseenheden.md
+      - Inwoners en personenauto's: produceren/inwoners-personenautos.md
   - API-referentie:
       - AHN: reference/ahn.md
       - BAG: reference/bag.md

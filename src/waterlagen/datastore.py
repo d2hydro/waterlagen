@@ -128,6 +128,32 @@ class DataStore(BaseSettings):
         cbs_dir.mkdir(exist_ok=True, parents=True)
         return cbs_dir
 
+    @computed_field
+    @property
+    def vbo_buurt_path(self) -> Path:
+        """Return the processed BAG VBO GeoPackage path for compatibility."""
+        return self.bag_vbo_path
+
+    @computed_field
+    @property
+    def vbo_buurt_dir(self) -> Path:
+        """Return the directory for shared BAG VBO and CBS-buurt outputs."""
+        vbo_buurt_dir = self.processed_data_dir / "vbo_buurt"
+        vbo_buurt_dir.mkdir(exist_ok=True, parents=True)
+        return vbo_buurt_dir
+
+    @computed_field
+    @property
+    def bag_vbo_path(self) -> Path:
+        """Return the selected BAG VBO GeoPackage path."""
+        return self.vbo_buurt_dir / "bag_vbo.gpkg"
+
+    @computed_field
+    @property
+    def cbs_buurt_path(self) -> Path:
+        """Return the CBS buurt polygon GeoPackage path."""
+        return self.vbo_buurt_dir / "cbs_buurt.gpkg"
+
 
 datastore = DataStore()
 logger.info(

@@ -28,6 +28,8 @@ ruff = "*"
 [feature.dev.tasks]
 test-cov = "pytest --cov=src/waterlagen --cov-report=term-missing"
 functioneel_landgebruik = "python scripts/functioneel_landgebruik.py"
+inwoners = "python scripts/inwoners.py"
+auto = "python scripts/auto.py"
 
 [feature.docs.dependencies]
 mkdocs = "*"
