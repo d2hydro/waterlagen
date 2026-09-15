@@ -1,10 +1,15 @@
 from .download import (
     BESTUURLIJKE_GEBIEDEN_URL,
+    CBS_BUURTCODE_COLUMN,
+    CBS_BUURTEN_LAYER,
+    CBS_WIJK_BUURTKAART_2025_URL,
     DEFAULT_BESTUURLIJKE_GEBIEDEN_YEAR,
     WATERSCHAPSGRENZEN_URL,
     bestuurlijke_gebieden_path,
     download_bestuurlijke_gebieden,
     download_waterschapsgrenzen,
+    download_wijk_buurtkaart_2025,
+    wijk_buurtkaart_2025_path,
 )
 from .sources import (
     LANDSGRENS_LAYER,
@@ -19,6 +24,9 @@ from .sources import (
 
 __all__ = [
     "BESTUURLIJKE_GEBIEDEN_URL",
+    "CBS_BUURTCODE_COLUMN",
+    "CBS_BUURTEN_LAYER",
+    "CBS_WIJK_BUURTKAART_2025_URL",
     "DEFAULT_BESTUURLIJKE_GEBIEDEN_YEAR",
     "LANDSGRENS_LAYER",
     "UNIFORM_AREA_COLUMNS",
@@ -27,9 +35,11 @@ __all__ = [
     "bestuurlijke_gebieden_path",
     "download_bestuurlijke_gebieden",
     "download_waterschapsgrenzen",
+    "download_wijk_buurtkaart_2025",
     "normaliseer_bestuurlijke_gebieden",
     "normaliseer_waterschapsgrenzen",
     "read_bestuurlijke_gebieden_layer",
     "read_landsgrens",
     "read_waterschapsgrenzen_layer",
+    "wijk_buurtkaart_2025_path",
 ]

@@ -21,7 +21,7 @@ pip install waterlagen
 ```
 
 ## Aan de slag
-Wanneer de gebruiker eenmalig een `data_dir` opgeeft voor de `DataStore`, worden hier alle downloads, bewerkingen en logs opgeslagen. Lees meer over de DataStore in de [documentatie](https://d2hydro.github.io/waterlagen/datastore/) 
+Wanneer de gebruiker eenmalig een `data_dir` opgeeft voor de `DataStore`, worden hier alle downloads, bewerkingen en logs opgeslagen. Lees meer over de DataStore in de [documentatie](https://d2hydro.github.io/waterlagen/produceren/configuratie/)
 
 ### Downloaden
 Het ondersteunen van de volgende lagen vanaf [PDOK](https://www.pdok.nl/) en [AHN.nl](https://www.ahn.nl/) wordt ondersteund:
@@ -30,7 +30,7 @@ Het ondersteunen van de volgende lagen vanaf [PDOK](https://www.pdok.nl/) en [AH
 * BAG
 * BGT
 
-Lees verder in de [documentatie](https://d2hydro.github.io/waterlagen/downloads/) 
+Lees verder in de [documentatie](https://d2hydro.github.io/waterlagen/produceren/eerste-dataset/)
 
 ### Bewerken
 De volgende bewerkingen zijn beschikbaar:
