@@ -9,6 +9,7 @@ from .build import (
     koppel_features_aan_buurten,
     selecteer_woonverblijfsobjecten,
 )
+from .verdeling import deel_buurtwaarde_per_vbo
 
 __all__ = [
     "BAG_VBO_LAYER",
@@ -16,6 +17,7 @@ __all__ = [
     "BuurtKoppelingError",
     "VboBuurtBuild",
     "bouw_vbo_buurt",
+    "deel_buurtwaarde_per_vbo",
     "koppel_features_aan_buurten",
     "selecteer_woonverblijfsobjecten",
 ]

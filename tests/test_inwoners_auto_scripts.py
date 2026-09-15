@@ -35,6 +35,8 @@ def test_scripts_prepare_shared_cbs_and_vbo_buurt_data(
         bag_dir=tmp_path / "source" / "bag",
         bag_vbo_path=tmp_path / "processed" / "vbo_buurt" / "bag_vbo.gpkg",
         cbs_buurt_path=tmp_path / "processed" / "vbo_buurt" / "cbs_buurt.gpkg",
+        inwoners_path=tmp_path / "processed" / "inwoners" / "inwoners.gpkg",
+        autos_path=tmp_path / "processed" / "autos" / "autos.gpkg",
     )
     buurtkaart_path = data_store.administratieve_gebieden_dir / "wijkenbuurten.gpkg"
 
@@ -52,6 +54,14 @@ def test_scripts_prepare_shared_cbs_and_vbo_buurt_data(
         events.append(("bouw_vbo_buurt", kwargs))
         return SimpleNamespace(bag_vbo_path=data_store.bag_vbo_path)
 
+    def fake_bouw_inwoners(**kwargs):
+        events.append(("bouw_inwoners", kwargs))
+        return SimpleNamespace(target_path=data_store.inwoners_path)
+
+    def fake_bouw_autos(**kwargs):
+        events.append(("bouw_autos", kwargs))
+        return SimpleNamespace(target_path=data_store.autos_path)
+
     monkeypatch.setattr(script, "init_logger", fake_init_logger)
     monkeypatch.setattr(
         script, "download_wijk_buurtkaart_2025", fake_download_buurtkaart
@@ -60,16 +70,29 @@ def test_scripts_prepare_shared_cbs_and_vbo_buurt_data(
         script, "download_buurtgegevens_2025", fake_download_buurtgegevens
     )
     monkeypatch.setattr(script, "bouw_vbo_buurt", fake_bouw_vbo_buurt)
+    if script_name == "inwoners.py":
+        monkeypatch.setattr(script, "bouw_inwoners", fake_bouw_inwoners)
+    else:
+        monkeypatch.setattr(script, "bouw_autos", fake_bouw_autos)
 
     result = script.main(data_store=data_store)
 
-    assert result == data_store.bag_vbo_path
-    assert [event[0] for event in events] == [
+    expected_events = [
         "init_logger",
         "download_buurtkaart",
         "download_buurtgegevens",
         "bouw_vbo_buurt",
     ]
+    if script_name == "inwoners.py":
+        expected_events.append("bouw_inwoners")
+    else:
+        expected_events.append("bouw_autos")
+    assert result == (
+        data_store.inwoners_path
+        if script_name == "inwoners.py"
+        else data_store.autos_path
+    )
+    assert [event[0] for event in events] == expected_events
     assert events[0][1] == {
         "name": logger_name,
         "debug": False,
@@ -91,3 +114,18 @@ def test_scripts_prepare_shared_cbs_and_vbo_buurt_data(
         "cbs_buurt_path": data_store.cbs_buurt_path,
         "overwrite": False,
     }
+    if script_name == "inwoners.py":
+        assert events[4][1] == {
+            "bag_vbo_path": data_store.bag_vbo_path,
+            "cbs_buurt_path": data_store.cbs_buurt_path,
+            "target_path": data_store.inwoners_path,
+            "overwrite": False,
+        }
+    else:
+        assert events[4][1] == {
+            "bag_vbo_path": data_store.bag_vbo_path,
+            "cbs_buurt_path": data_store.cbs_buurt_path,
+            "cbs_buurtgegevens_path": data_store.cbs_dir / "buurtgegevens_2025.json",
+            "target_path": data_store.autos_path,
+            "overwrite": False,
+        }

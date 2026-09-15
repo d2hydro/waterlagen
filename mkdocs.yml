@@ -35,6 +35,8 @@ nav:
       - Functioneel landgebruik: bewerkingen/functioneel-landgebruik.md
       - Afwateringseenheden: bewerkingen/afwateringseenheden.md
       - Woon-VBO's per CBS-buurt: bewerkingen/vbo-buurt.md
+      - Inwoners per woon-VBO: bewerkingen/inwoners-per-vbo.md
+      - Personenauto's per woon-VBO: bewerkingen/personenautos-per-vbo.md
   - Zelf produceren:
       - Overzicht: produceren/index.md
       - Installatie: produceren/installatie.md

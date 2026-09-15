@@ -10,6 +10,7 @@ from .buurtgegevens import (
     StatLineDownload,
     buurtgegevens_2025_path,
     download_buurtgegevens_2025,
+    read_buurtgegevens,
     validate_buurtcode_systematiek,
 )
 
@@ -23,5 +24,6 @@ __all__ = [
     "StatLineDownload",
     "buurtgegevens_2025_path",
     "download_buurtgegevens_2025",
+    "read_buurtgegevens",
     "validate_buurtcode_systematiek",
 ]

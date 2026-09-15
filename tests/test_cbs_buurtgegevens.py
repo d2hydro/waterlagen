@@ -4,6 +4,7 @@ import zipfile
 from pathlib import Path
 
 import geopandas as gpd
+import pandas as pd
 import pytest
 from shapely.geometry import Point
 
@@ -19,6 +20,7 @@ from waterlagen.cbs import (
     CBS_STATLINE_OBSERVATIONS_URL,
     BUURTGEGEVENS_COLUMNS,
     download_buurtgegevens_2025,
+    read_buurtgegevens,
     validate_buurtcode_systematiek,
 )
 
@@ -196,6 +198,27 @@ def test_download_buurtgegevens_reuses_existing_result(monkeypatch, tmp_path):
 
     assert result.reused is True
     assert result.buurt_count == 1
+
+
+def test_read_buurtgegevens_keeps_selected_missing_values(tmp_path):
+    path = tmp_path / "buurtgegevens_2025.json"
+    path.write_text(
+        json.dumps(
+            {
+                "rows": [
+                    {"buurtcode": "BU00000001", "personenautos_totaal": None},
+                    {"buurtcode": "BU00000002", "personenautos_totaal": 10},
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    result = read_buurtgegevens(path, columns=("personenautos_totaal",))
+
+    assert result["buurtcode"].tolist() == ["BU00000001", "BU00000002"]
+    assert pd.isna(result.loc[0, "personenautos_totaal"])
+    assert result.loc[1, "personenautos_totaal"] == 10
 
 
 def test_validate_buurtcode_systematiek_requires_matching_unique_codes(tmp_path):

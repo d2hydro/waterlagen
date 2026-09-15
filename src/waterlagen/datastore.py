@@ -154,6 +154,34 @@ class DataStore(BaseSettings):
         """Return the CBS buurt polygon GeoPackage path."""
         return self.vbo_buurt_dir / "cbs_buurt.gpkg"
 
+    @computed_field
+    @property
+    def inwoners_dir(self) -> Path:
+        """Return the directory for processed inwoners per woon-VBO data."""
+        inwoners_dir = self.processed_data_dir / "inwoners"
+        inwoners_dir.mkdir(exist_ok=True, parents=True)
+        return inwoners_dir
+
+    @computed_field
+    @property
+    def inwoners_path(self) -> Path:
+        """Return the processed inwoners per woon-VBO GeoPackage path."""
+        return self.inwoners_dir / "inwoners.gpkg"
+
+    @computed_field
+    @property
+    def autos_dir(self) -> Path:
+        """Return the directory for processed personenauto's per woon-VBO data."""
+        autos_dir = self.processed_data_dir / "autos"
+        autos_dir.mkdir(exist_ok=True, parents=True)
+        return autos_dir
+
+    @computed_field
+    @property
+    def autos_path(self) -> Path:
+        """Return the processed personenauto's per woon-VBO GeoPackage path."""
+        return self.autos_dir / "autos.gpkg"
+
 
 datastore = DataStore()
 logger.info(

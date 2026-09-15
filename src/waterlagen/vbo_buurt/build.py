@@ -1,8 +1,5 @@
 """Build the shared processed BAG VBO-to-CBS-buurt dataset."""
 
-import json
-import os
-import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -11,16 +8,15 @@ import pandas as pd
 import pyogrio
 
 from waterlagen import datastore
-from waterlagen._crs import read_layer_crs_info, same_crs
-from waterlagen._downloads import validate_geopackage
-from waterlagen._geopackage import write_geopackage_layer
+from waterlagen._crs import same_crs
+from waterlagen._geopackage import write_geopackage_layer_atomically
 from waterlagen._geopandas import read_file
 from waterlagen.administratieve_gebieden import (
     CBS_BUURTCODE_COLUMN,
     CBS_BUURTEN_LAYER,
     wijk_buurtkaart_2025_path,
 )
-from waterlagen.cbs import buurtgegevens_2025_path
+from waterlagen.cbs import buurtgegevens_2025_path, read_buurtgegevens
 from waterlagen.logger import get_logger
 
 logger = get_logger(__name__)
@@ -258,31 +254,11 @@ def _bag_vbo_columns(features: gpd.GeoDataFrame) -> list[str]:
 
 def _read_cbs_buurtgegevens(path: Path) -> pd.DataFrame:
     """Read required StatLine values while retaining CBS missing values."""
-    if not path.exists():
-        raise FileNotFoundError(
-            f"CBS buurtgegevens {path} do not exist. "
-            "Download them with waterlagen.cbs.download_buurtgegevens_2025()."
-        )
-    with path.open(encoding="utf-8") as file:
-        payload = json.load(file)
-    rows = payload.get("rows")
-    if not isinstance(rows, list):
-        raise ValueError("CBS buurtgegevens have no rows list")
-    data = pd.DataFrame(rows)
-    required_columns = [
-        CBS_BUURTCODE_COLUMN,
+    columns = (
         "aantal_inwoners",
         "aantal_huishoudens",
-    ]
-    missing_columns = [column for column in required_columns if column not in data]
-    if missing_columns:
-        names = ", ".join(missing_columns)
-        raise ValueError(f"CBS buurtgegevens have no required column(s): {names}")
-    if data[CBS_BUURTCODE_COLUMN].isna().any():
-        raise ValueError("CBS buurtgegevens contain missing buurtcodes")
-    if data[CBS_BUURTCODE_COLUMN].duplicated().any():
-        raise ValueError("CBS buurtgegevens contain duplicate buurtcodes")
-    return data[required_columns].copy()
+    )
+    return read_buurtgegevens(path, columns=columns)
 
 
 def _bouw_cbs_buurt(
@@ -323,36 +299,11 @@ def _write_geopackage(
     layer_name: str,
 ) -> None:
     """Write and validate one output layer before atomically replacing it."""
-    target_path.parent.mkdir(parents=True, exist_ok=True)
-    file_descriptor, temporary_name = tempfile.mkstemp(
-        prefix=f".{target_path.name}.",
-        suffix=".gpkg",
-        dir=target_path.parent,
+    write_geopackage_layer_atomically(
+        features,
+        target_path,
+        layer_name=layer_name,
     )
-    os.close(file_descriptor)
-    temporary_path = Path(temporary_name)
-    temporary_path.unlink(missing_ok=True)
-    try:
-        write_geopackage_layer(
-            features,
-            temporary_path,
-            layer_name=layer_name,
-            mode="w",
-        )
-        validate_geopackage(temporary_path)
-        layer_info = read_layer_crs_info(temporary_path)
-        output_layer = next(
-            (info for info in layer_info if info.layer == layer_name),
-            None,
-        )
-        if output_layer is None or output_layer.crs is None:
-            raise ValueError("Written VBO-buurt layer has no CRS")
-        if not same_crs(features.crs, output_layer.crs):
-            raise ValueError("Written VBO-buurt layer has a changed CRS")
-        temporary_path.replace(target_path)
-    except Exception:
-        temporary_path.unlink(missing_ok=True)
-        raise
 
 
 def _read_bag_vbo_counts(path: Path) -> tuple[int, int]:

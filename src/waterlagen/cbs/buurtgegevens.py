@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import TypeAlias
 
 import requests
+import pandas as pd
 
 from waterlagen import datastore
 from waterlagen._geopandas import read_file
@@ -252,6 +253,40 @@ def _read_download_count(path: Path) -> int:
     if not isinstance(rows, list):
         raise ValueError(f"Existing CBS buurtgegevens file {path} has no rows list")
     return len(rows)
+
+
+def read_buurtgegevens(
+    path: Path,
+    *,
+    columns: tuple[str, ...],
+) -> pd.DataFrame:
+    """Read selected columns from downloaded CBS buurtgegevens.
+
+    The source JSON keeps CBS no-data as ``null``. This reader preserves those
+    values and verifies that each CBS buurtcode occurs once.
+    """
+    path = Path(path)
+    if not path.exists():
+        raise FileNotFoundError(
+            f"CBS buurtgegevens {path} do not exist. "
+            "Download them with download_buurtgegevens_2025()."
+        )
+    with path.open(encoding="utf-8") as file:
+        payload = json.load(file)
+    rows = payload.get("rows")
+    if not isinstance(rows, list):
+        raise ValueError("CBS buurtgegevens have no rows list")
+    data = pd.DataFrame(rows)
+    required_columns = (CBS_BUURTCODE_COLUMN, *columns)
+    missing_columns = [column for column in required_columns if column not in data]
+    if missing_columns:
+        names = ", ".join(missing_columns)
+        raise ValueError(f"CBS buurtgegevens have no required column(s): {names}")
+    if data[CBS_BUURTCODE_COLUMN].isna().any():
+        raise ValueError("CBS buurtgegevens contain missing buurtcodes")
+    if data[CBS_BUURTCODE_COLUMN].duplicated().any():
+        raise ValueError("CBS buurtgegevens contain duplicate buurtcodes")
+    return data[list(required_columns)].copy()
 
 
 def validate_buurtcode_systematiek(
