@@ -13,4 +13,4 @@ werken.
 - Werk functionele documentatie, broninformatie en productie-instructies bij
   wanneer publiek gedrag verandert.
 
-De volledige operationele instructies voor coding agents staan in [AGENTS.md](../../AGENTS.md).
+De volledige operationele instructies voor coding agents staan in [AGENTS.md](https://github.com/d2hydro/waterlagen/blob/main/AGENTS.md).
