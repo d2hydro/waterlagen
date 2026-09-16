@@ -218,3 +218,4 @@ scripts/data/*
 
 # Local VS Code launcher
 /open-vscode.bat
+.vscode/settings.json

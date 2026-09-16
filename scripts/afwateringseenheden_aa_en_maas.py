@@ -121,7 +121,6 @@ def main() -> None:
         merged_output_path=run_dir / "afwateringseenheden.gpkg",
         tile_size_m=TILE_SIZE_M,
         tile_buffer_m=TILE_BUFFER_M,
-        retry_tile_buffer_m=(),
         max_fill_depth_m=MAX_FILL_DEPTH_M,
         engine=ENGINE,
         workers=WORKERS,

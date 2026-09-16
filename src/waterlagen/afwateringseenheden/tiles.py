@@ -48,7 +48,7 @@ class AfwateringseenhedenTileResult:
     """Result for one afwateringseenheden tile calculation.
 
     calculation_duration_seconds measures elapsed tile processing time,
-    including reuse checks and retries, but excluding pool queue time.
+    including reuse checks, but excluding pool queue time.
     Direct construction without calculation_buffer_m assumes no buffer.
     """
 
@@ -107,7 +107,7 @@ class _TileJob:
     ahn_vrt_path: Path
     watersysteem_path: Path
     burn_depth_m: float
-    buffer_distances: tuple[float, ...]
+    tile_buffer_m: float
     resolution_m: float
     max_fill_depth_m: float
     overwrite: bool
@@ -136,31 +136,6 @@ def _validate_tile_inputs(
         raise TypeError("origin_x must be an integer")
     if not isinstance(origin_y, int) or isinstance(origin_y, bool):
         raise TypeError("origin_y must be an integer")
-
-
-def _calculation_buffer_distances(
-    tile_buffer_m: float,
-    retry_tile_buffer_m: Collection[float],
-) -> tuple[float, ...]:
-    """Return the initial buffer followed by progressively larger retries."""
-    if isinstance(retry_tile_buffer_m, (str, bytes)):
-        raise TypeError(
-            "retry_tile_buffer_m must be a collection of numeric buffer distances"
-        )
-
-    retry_distances = tuple(float(distance) for distance in retry_tile_buffer_m)
-    if any(
-        not isfinite(distance) or distance <= tile_buffer_m
-        for distance in retry_distances
-    ):
-        raise ValueError(
-            "Each retry_tile_buffer_m value must be finite and greater than tile_buffer_m"
-        )
-    if tuple(sorted(retry_distances)) != retry_distances:
-        raise ValueError("retry_tile_buffer_m values must be in ascending order")
-    if len(set(retry_distances)) != len(retry_distances):
-        raise ValueError("retry_tile_buffer_m values must not contain duplicates")
-    return (tile_buffer_m, *retry_distances)
 
 
 def _format_coordinate(value: int) -> str:
@@ -312,7 +287,7 @@ def _read_existing_subcatchments(path: Path) -> gpd.GeoDataFrame | None:
 
 
 def _cached_buffer_m(job: _TileJob) -> float:
-    """Read the actual cached buffer, including a previous larger-buffer retry."""
+    """Read the actual buffer from the cached raster grid."""
     raster_path = job.output_dir / SUBCATCHMENTS_FILENAME
     if not raster_path.is_file():
         raise FileNotFoundError(f"Cannot verify cached tile buffer: {raster_path}")
@@ -655,104 +630,86 @@ def _write_merged_subcatchments(
 
 
 def _calculate_tile(job: _TileJob) -> AfwateringseenhedenTileResult:
-    """Calculate or reuse one tile, retrying only when configured."""
+    """Calculate a tile once with the configured buffer, or reuse its cached result."""
     tile = job.tile
     job.output_dir.mkdir(parents=True, exist_ok=True)
-    buffer_distances = job.buffer_distances
+    calculation_buffer_m = job.tile_buffer_m
     existing_subcatchments = None
     if not job.overwrite:
         existing_subcatchments = _read_existing_subcatchments(
             job.output_dir / SUBCATCHMENTS_GPKG_FILENAME
         )
         if existing_subcatchments is not None:
-            cached_buffer = _cached_buffer_m(job)
-            larger_retries = [
-                distance
-                for distance in buffer_distances[1:]
-                if distance > cached_buffer
-            ]
-            buffer_distances = (cached_buffer, *larger_retries)
-    for attempt, calculation_buffer_m in enumerate(buffer_distances):
+            calculation_buffer_m = _cached_buffer_m(job)
+
+    if existing_subcatchments is None:
         logger.info(
             "Calculating afwateringseenheden tile %s with a %s m buffer",
             tile.tile_id,
             calculation_buffer_m,
         )
-        if attempt > 0:
-            existing_subcatchments = None
-
-        if existing_subcatchments is None:
-            rasters = prepare_watersysteem_rasters(
-                _calculation_geometry(tile, tile_buffer_m=calculation_buffer_m),
-                burn_depth_m=job.burn_depth_m,
-                ahn_vrt_path=job.ahn_vrt_path,
-                watersysteem_path=job.watersysteem_path,
-                output_dir=job.output_dir,
-                resolution_m=job.resolution_m,
-                overwrite=job.overwrite or attempt > 0,
-            )
-            if not _has_segment_cells(rasters):
-                logger.info(
-                    "Skipping afwateringseenheden tile %s without hydroobject segments",
-                    tile.tile_id,
-                )
-                return AfwateringseenhedenTileResult(
-                    tile=tile,
-                    output_dir=job.output_dir,
-                    rasters=rasters,
-                    subcatchments=None,
-                    usable_subcatchments=_empty_like_subcatchments(None),
-                    calculation_buffer_m=calculation_buffer_m,
-                    skipped_reason="no hydroobject_segment cells",
-                )
-            if job.random_seed is not None:
-                require_pcraster().setrandomseed(job.random_seed)
-            subcatchment_result = calculate_subcatchments(
-                rasters,
-                watersysteem_path=job.watersysteem_path,
-                max_fill_depth_m=job.max_fill_depth_m,
-                engine=job.engine,
-            )
-            subcatchments = subcatchment_result.subcatchments
-        else:
-            rasters = WatersysteemRasters(
-                dem_path=job.output_dir / "dem_2m.tif",
-                hydroobject_segment_path=job.output_dir / "hydroobject_segment.tif",
-            )
-            subcatchment_result = None
-            subcatchments = existing_subcatchments
-            logger.info("Reusing afwateringseenheden tile %s", tile.tile_id)
-
-        usable_subcatchments, has_boundary_issue = _usable_subcatchments_for_tile(
-            subcatchments,
-            tile=tile,
-            tile_buffer_m=calculation_buffer_m,
-            resolution_m=job.resolution_m,
-        )
-        if has_boundary_issue and attempt < len(buffer_distances) - 1:
-            logger.warning(
-                "Buffer of %s m is insufficient for afwateringseenheden tile %s; retrying with %s m",
-                calculation_buffer_m,
-                tile.tile_id,
-                buffer_distances[attempt + 1],
-            )
-            continue
-        if has_boundary_issue:
-            logger.warning(
-                "Buffer of %s m may be insufficient for afwateringseenheden tile %s",
-                calculation_buffer_m,
-                tile.tile_id,
-            )
-        return AfwateringseenhedenTileResult(
-            tile=tile,
+        rasters = prepare_watersysteem_rasters(
+            _calculation_geometry(tile, tile_buffer_m=calculation_buffer_m),
+            burn_depth_m=job.burn_depth_m,
+            ahn_vrt_path=job.ahn_vrt_path,
+            watersysteem_path=job.watersysteem_path,
             output_dir=job.output_dir,
-            rasters=rasters,
-            subcatchments=subcatchment_result,
-            usable_subcatchments=usable_subcatchments,
-            calculation_buffer_m=calculation_buffer_m,
-            has_boundary_issue=has_boundary_issue,
+            resolution_m=job.resolution_m,
+            overwrite=job.overwrite,
         )
-    raise ValueError("A tile calculation requires at least one buffer distance")
+        if not _has_segment_cells(rasters):
+            logger.info(
+                "Skipping afwateringseenheden tile %s without hydroobject segments",
+                tile.tile_id,
+            )
+            return AfwateringseenhedenTileResult(
+                tile=tile,
+                output_dir=job.output_dir,
+                rasters=rasters,
+                subcatchments=None,
+                usable_subcatchments=_empty_like_subcatchments(None),
+                calculation_buffer_m=calculation_buffer_m,
+                skipped_reason="no hydroobject_segment cells",
+            )
+        if job.random_seed is not None:
+            require_pcraster().setrandomseed(job.random_seed)
+        subcatchment_result = calculate_subcatchments(
+            rasters,
+            watersysteem_path=job.watersysteem_path,
+            max_fill_depth_m=job.max_fill_depth_m,
+            engine=job.engine,
+        )
+        subcatchments = subcatchment_result.subcatchments
+    else:
+        rasters = WatersysteemRasters(
+            dem_path=job.output_dir / "dem_2m.tif",
+            hydroobject_segment_path=job.output_dir / "hydroobject_segment.tif",
+        )
+        subcatchment_result = None
+        subcatchments = existing_subcatchments
+        logger.info("Reusing afwateringseenheden tile %s", tile.tile_id)
+
+    usable_subcatchments, has_boundary_issue = _usable_subcatchments_for_tile(
+        subcatchments,
+        tile=tile,
+        tile_buffer_m=calculation_buffer_m,
+        resolution_m=job.resolution_m,
+    )
+    if has_boundary_issue:
+        logger.warning(
+            "Buffer of %s m may be insufficient for afwateringseenheden tile %s",
+            calculation_buffer_m,
+            tile.tile_id,
+        )
+    return AfwateringseenhedenTileResult(
+        tile=tile,
+        output_dir=job.output_dir,
+        rasters=rasters,
+        subcatchments=subcatchment_result,
+        usable_subcatchments=usable_subcatchments,
+        calculation_buffer_m=calculation_buffer_m,
+        has_boundary_issue=has_boundary_issue,
+    )
 
 
 def _calculate_tile_worker(job: _TileJob) -> AfwateringseenhedenTileResult:
@@ -835,7 +792,6 @@ def calculate_afwateringseenheden_tiles(
     tile_ids: Collection[str] | None = None,
     tile_size_m: int = 5000,
     tile_buffer_m: float = 2000,
-    retry_tile_buffer_m: Collection[float] = (),
     origin_x: int = 0,
     origin_y: int = 0,
     resolution_m: float = 2.0,
@@ -876,11 +832,7 @@ def calculate_afwateringseenheden_tiles(
         Tile width and height in metres, by default 5000.
     tile_buffer_m : float, optional
         Buffer around each tile used for the hydrological calculation, by
-        default 2000.
-    retry_tile_buffer_m : Collection[float], optional
-        Progressively larger buffer distances in metres. A tile is recalculated
-        with these buffers when an afwateringseenheid reaches the calculation
-        boundary. The default performs no retries.
+        default 2000. Boundary issues are reported without recalculating the tile.
     origin_x, origin_y : int, optional
         Origin of the generated tile grid, by default 0, 0.
     resolution_m : float, optional
@@ -889,8 +841,8 @@ def calculate_afwateringseenheden_tiles(
         Maximum PCRaster depression fill depth in metres.
     overwrite : bool, optional
         Whether to regenerate existing per-tile rasters and subcatchments.
-        Cached raster metadata determines the actual buffer, including a previous
-        retry. Cached CRS and resolution must match the requested grid.
+        Cached raster metadata determines the actual buffer.
+        Cached CRS and resolution must match the requested grid.
         Reusing a tile requires its ``subcatchments.tif`` alongside the GeoPackage.
     engine : {"pcraster"}, optional
         Flow-direction engine.
@@ -938,10 +890,6 @@ def calculate_afwateringseenheden_tiles(
         origin_x=origin_x,
         origin_y=origin_y,
     )
-    calculation_buffer_distances = _calculation_buffer_distances(
-        tile_buffer_m,
-        retry_tile_buffer_m,
-    )
     data_store = data_store or default_datastore
     ahn_vrt_path = Path(ahn_vrt_path or data_store.ahn_dir / "dtm_05" / "dtm_05.vrt")
     watersysteem_path = Path(
@@ -972,7 +920,7 @@ def calculate_afwateringseenheden_tiles(
             ahn_vrt_path=ahn_vrt_path,
             watersysteem_path=watersysteem_path,
             burn_depth_m=burn_depth_m,
-            buffer_distances=calculation_buffer_distances,
+            tile_buffer_m=tile_buffer_m,
             resolution_m=resolution_m,
             max_fill_depth_m=max_fill_depth_m,
             overwrite=overwrite,

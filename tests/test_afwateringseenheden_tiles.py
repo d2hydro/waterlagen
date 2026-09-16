@@ -268,14 +268,20 @@ def test_calculate_tiles_skips_tiles_without_segment_cells(
     assert result.merged_subcatchments.empty
 
 
-def test_calculate_tiles_reports_boundary_issues(
+def test_calculate_tiles_reports_boundary_issues_without_recalculation(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    prepared_bounds = []
+    calculation_count = 0
+
     def fake_prepare(ruimtelijk_vierkant, **kwargs) -> WatersysteemRasters:
+        prepared_bounds.append(ruimtelijk_vierkant.bounds)
         return _fake_rasters(Path(kwargs["output_dir"]))
 
     def fake_calculate(rasters: WatersysteemRasters, **kwargs) -> SubcatchmentResult:
+        nonlocal calculation_count
+        calculation_count += 1
         subcatchments = gpd.GeoDataFrame(
             {"segment_fid": [1], "segment_id": ["segment-a"]},
             geometry=[box(50, 50, 1099, 200)],
@@ -302,62 +308,9 @@ def test_calculate_tiles_reports_boundary_issues(
         overwrite=True,
     )
 
+    assert prepared_bounds == [(-100.0, -100.0, 1100.0, 1100.0)]
+    assert calculation_count == 1
+    assert result.tile_results[0].calculation_buffer_m == 100
     assert result.boundary_issue_tile_ids == ("000000_000000_001000_001000",)
     assert result.tile_results[0].has_boundary_issue
     assert result.tile_results[0].usable_subcatchments.empty
-
-
-def test_calculate_tiles_retries_boundary_issues_with_a_larger_buffer(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    prepared_bounds: list[tuple[float, float, float, float]] = []
-    calculation_count = 0
-
-    def fake_prepare(ruimtelijk_vierkant, **kwargs) -> WatersysteemRasters:
-        prepared_bounds.append(ruimtelijk_vierkant.bounds)
-        return _fake_rasters(Path(kwargs["output_dir"]))
-
-    def fake_calculate(rasters: WatersysteemRasters, **kwargs) -> SubcatchmentResult:
-        nonlocal calculation_count
-        calculation_count += 1
-        geometry = (
-            box(50, 50, 1099, 200)
-            if calculation_count == 1
-            else box(300, 300, 700, 700)
-        )
-        subcatchments = gpd.GeoDataFrame(
-            {"segment_fid": [1], "segment_id": ["segment-a"]},
-            geometry=[geometry],
-            crs=settings.crs,
-        )
-        return SubcatchmentResult(
-            rasters.dem_path.parent / "ldd.tif",
-            rasters.dem_path.parent / "subcatchments.tif",
-            rasters.dem_path.parent / "afwateringseenheden.gpkg",
-            subcatchments,
-        )
-
-    monkeypatch.setattr(tiles_module, "prepare_watersysteem_rasters", fake_prepare)
-    monkeypatch.setattr(tiles_module, "calculate_subcatchments", fake_calculate)
-
-    result = calculate_afwateringseenheden_tiles(
-        box(0, 0, 1000, 1000),
-        burn_depth_m=100,
-        watersysteem_path=tmp_path / "watersysteem.gpkg",
-        output_dir=tmp_path / "tiles",
-        tile_size_m=1000,
-        tile_buffer_m=100,
-        retry_tile_buffer_m=(300,),
-        resolution_m=2,
-        overwrite=True,
-    )
-
-    assert prepared_bounds == [
-        (-100.0, -100.0, 1100.0, 1100.0),
-        (-300.0, -300.0, 1300.0, 1300.0),
-    ]
-    assert calculation_count == 2
-    assert result.boundary_issue_tile_ids == ()
-    assert result.tile_results[0].calculation_buffer_m == 300
-    assert len(result.tile_results[0].usable_subcatchments) == 1

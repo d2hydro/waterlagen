@@ -20,6 +20,8 @@ Het script berekent het beheergebied met `BUFFER_M` als gebiedsbuffer,
 `WORKERS` processen, kernen van 10 × 10 km, `TILE_BUFFER_M` als tegelbuffer
 en een resolutie van 2 m.
 Iedere tegel gebruikt seed 12345. Meer workers vragen meer werkgeheugen.
+Randproblemen leiden niet tot herberekening met een grotere buffer;
+na afloop worden gaten waar mogelijk aangevuld vanuit buurtegels.
 
 Start vanuit de repository in een terminal:
 
@@ -37,7 +39,7 @@ wordt voor het huidige gebied opnieuw voorbereid in `watersysteem.gpkg` in de ru
 
 De totale verwerkingstijd per tegel staat in `afwateringseenheden.log` en, bij
 parallel rekenen, in `tiles/<tegel-id>/workflow.log`. Deze tijd omvat
-rastervoorbereiding, afwatering en uitvoer, inclusief eventuele herhaalpogingen.
+rastervoorbereiding, afwatering en uitvoer.
 Wachttijd in de pool en het gezamenlijke samenvoegen vallen erbuiten. Bij
 hergebruik meet de timer alleen het controleren en verwerken van de bestaande
 tegeluitvoer. In Python staat de tijd in `calculation_duration_seconds` per tegel.
