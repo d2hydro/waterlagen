@@ -1,12 +1,51 @@
 from pathlib import Path
 
 import geopandas as gpd
-from shapely.geometry import box
+import pytest
+from shapely.geometry import LineString, Polygon, box
 
 from waterlagen.afwateringseenheden import SubcatchmentResult
 from waterlagen.afwateringseenheden import tiles as tiles_module
 from waterlagen.raster.tiles import Tile
 from waterlagen.settings import settings
+
+
+def test_fill_gap_ignores_linear_remnants() -> None:
+    """Line remnants have no area and cannot be used as a GeoPandas clip mask."""
+    additions, remaining = tiles_module._fill_gap(LineString([(0, 0), (1, 1)]), [])
+
+    assert additions == []
+    assert remaining.is_empty
+
+
+@pytest.mark.parametrize("first_donor_width", [1, 2])
+def test_fill_gap_removes_linear_remnants_between_donors(
+    first_donor_width: int,
+) -> None:
+    # The spike survives subtraction as a line, alone or beside a polygon.
+    gap = Polygon([(0, 0), (2, 0), (2, 2), (0, 2), (0, 0), (-1, 0), (0, 0)])
+    donors = []
+    for tile_id, polygon in [
+        ("a", box(0, 0, first_donor_width, 2)),
+        ("b", box(1, 0, 2, 2)),
+    ]:
+        subcatchments = gpd.GeoDataFrame(
+            {"segment_fid": [1], "segment_id": ["segment"]},
+            geometry=[polygon],
+            crs=settings.crs,
+        )
+        donors.append(tiles_module._GapDonor(tile_id, box(-2, -2, 4, 4), subcatchments))
+
+    additions, remaining = tiles_module._fill_gap(gap, donors)
+
+    assert remaining.is_empty
+    assert len(additions) == 3 - first_donor_width
+    assigned = gpd.GeoSeries(
+        [frame.geometry.union_all() for frame in additions], crs=settings.crs
+    )
+    assert assigned.union_all().equals(box(0, 0, 2, 2))
+    assert assigned.area.sum() == 4
+    assert additions[0].bron_tegel.tolist() == ["a"]
 
 
 def test_gap_filling_uses_safe_neighbour_and_preserves_existing_assignment(

@@ -170,9 +170,11 @@ def test_resample_dem_rejects_a_square_outside_the_ahn_vrt(
     ahn_vrt_path, _ = source_paths
     grid = raster_module._grid_for_square(box(10, 10, 18, 18), resolution_m=2)
 
-    with rasterio.open(ahn_vrt_path) as source:
-        with pytest.raises(ValueError, match="does not intersect AHN VRT extent"):
-            raster_module._resample_dem(source, grid)
+    with (
+        rasterio.open(ahn_vrt_path) as source,
+        pytest.raises(ValueError, match="does not intersect AHN VRT extent"),
+    ):
+        raster_module._resample_dem(source, grid)
 
 
 def test_prepare_watersysteem_rasters_cleans_temporary_files_after_failure(
@@ -248,7 +250,9 @@ def test_fill_excludes_outside_targets_and_preserves_finite_values(monkeypatch) 
         assert np.all(mask[~coverage])
         assert np.all(image[~coverage] == nodata)
         assert max_search_distance == pytest.approx(np.hypot(*data.shape))
-        return original_fill(image, mask=mask, max_search_distance=max_search_distance, nodata=nodata)
+        return original_fill(
+            image, mask=mask, max_search_distance=max_search_distance, nodata=nodata
+        )
 
     monkeypatch.setattr(raster_module, "fillnodata", checked_fill)
     result = raster_module._fill_dem_nodata(data, coverage)
@@ -260,34 +264,52 @@ def test_fill_excludes_outside_targets_and_preserves_finite_values(monkeypatch) 
 
 def test_no_interpolation_for_exterior_nodata_only(monkeypatch) -> None:
     data = np.array([[1.0, np.nan]])
-    monkeypatch.setattr(raster_module, "fillnodata", lambda *a, **kw: pytest.fail("No targets"))
+    monkeypatch.setattr(
+        raster_module, "fillnodata", lambda *a, **kw: pytest.fail("No targets")
+    )
     result = raster_module._fill_dem_nodata(data, np.array([[True, False]]))
     assert np.array_equal(result, data, equal_nan=True)
 
 
-def test_prepare_preserves_exterior_nodata_through_burning_and_reuse(source_paths, tmp_path) -> None:
+def test_prepare_preserves_exterior_nodata_through_burning_and_reuse(
+    source_paths, tmp_path
+) -> None:
     vrt, watersysteem = source_paths
-    kwargs = dict(burn_depth_m=1.5, ahn_vrt_path=vrt, watersysteem_path=watersysteem,
-                  output_dir=tmp_path / "covered")
+    kwargs = {
+        "burn_depth_m": 1.5,
+        "ahn_vrt_path": vrt,
+        "watersysteem_path": watersysteem,
+        "output_dir": tmp_path / "covered",
+    }
     result = prepare_watersysteem_rasters(box(-2, -2, 10, 10), **kwargs)
     with rasterio.open(result.dem_path) as source:
         values = source.read(1, masked=True)
         assert source.nodata == NODATA
         assert values[1:5, 1:5].count() == 16
         assert values.count() == 16
-        assert source.tags()["waterlagen_dem_coverage"] == raster_module.COVERAGE_VERSION
+        assert (
+            source.tags()["waterlagen_dem_coverage"] == raster_module.COVERAGE_VERSION
+        )
     assert prepare_watersysteem_rasters(box(-2, -2, 10, 10), **kwargs) == result
 
 
-def test_old_outputs_without_coverage_policy_are_regenerated(source_paths, tmp_path) -> None:
+def test_old_outputs_without_coverage_policy_are_regenerated(
+    source_paths, tmp_path
+) -> None:
     vrt, watersysteem = source_paths
-    kwargs = dict(burn_depth_m=1.5, ahn_vrt_path=vrt, watersysteem_path=watersysteem,
-                  output_dir=tmp_path / "old")
+    kwargs = {
+        "burn_depth_m": 1.5,
+        "ahn_vrt_path": vrt,
+        "watersysteem_path": watersysteem,
+        "output_dir": tmp_path / "old",
+    }
     result = prepare_watersysteem_rasters(box(0, 0, 8, 8), **kwargs)
     with rasterio.open(result.dem_path, "r+") as source:
-        source.update_tags(waterlagen_dem_coverage="old")
+        source.update_tags(waterlagen_dem_coverage="source_extents_v1")
         source.write(np.full((4, 4), -123, dtype="int16"), 1)
     prepare_watersysteem_rasters(box(0, 0, 8, 8), **kwargs)
     with rasterio.open(result.dem_path) as source:
-        assert source.tags()["waterlagen_dem_coverage"] == raster_module.COVERAGE_VERSION
+        assert (
+            source.tags()["waterlagen_dem_coverage"] == raster_module.COVERAGE_VERSION
+        )
         assert not np.any(source.read(1) == -123)

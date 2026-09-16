@@ -29,7 +29,7 @@ logger = get_logger(__name__)
 
 DEM_FILENAME = "dem_2m.tif"
 HYDROOBJECT_SEGMENT_FILENAME = "hydroobject_segment.tif"
-COVERAGE_VERSION = "source_extents_v1"
+COVERAGE_VERSION = "source_extents_v2"
 
 
 @dataclass(frozen=True)
@@ -175,6 +175,9 @@ def _resample_dem(
     )
     if coverage_mask is None:
         coverage_mask = _coverage_mask(source, grid)
+    # Resampling en rasteriseren kunnen een cel op de bronrand anders indelen.
+    # Het dekkingsmasker is leidend, ook voor de donorcellen bij interpolatie.
+    data[~coverage_mask] = np.nan
     return _fill_dem_nodata(data, coverage_mask)
 
 
@@ -251,16 +254,21 @@ def _cast_dem_data(
     return result
 
 
-def _dem_profile(source: rasterio.io.DatasetReader, grid: RasterGrid) -> dict:
-    """Create a GeoTIFF profile that preserves the source DEM data type and nodata."""
+def _dem_nodata(source: rasterio.io.DatasetReader) -> float | None:
+    """Preserve source NoData, using NaN for floating-point DEMs without it."""
     nodata = source.nodata
     if nodata is None and np.issubdtype(np.dtype(source.dtypes[0]), np.floating):
         nodata = np.nan
+    return nodata
+
+
+def _dem_profile(source: rasterio.io.DatasetReader, grid: RasterGrid) -> dict:
+    """Create a GeoTIFF profile that preserves the source DEM data type and nodata."""
     return {
         "driver": "GTiff",
         "count": 1,
         "dtype": source.dtypes[0],
-        "nodata": nodata,
+        "nodata": _dem_nodata(source),
         "width": grid.width,
         "height": grid.height,
         "transform": grid.transform,

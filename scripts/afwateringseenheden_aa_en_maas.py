@@ -16,6 +16,7 @@ from waterlagen.afwateringseenheden import (
     read_puntobjecten,
     write_watersysteem,
 )
+from waterlagen.afwateringseenheden.dem import prepare_ahn_dgm1_dem
 from waterlagen.afwateringseenheden.objects import CATEGORIE_OPPERVLAKTEWATER_COLUMN
 from waterlagen.afwateringseenheden.pcraster import require_pcraster
 from waterlagen.ahn import download_ahn
@@ -23,12 +24,12 @@ from waterlagen.hydamo import download_hydamo
 from waterlagen.logger import init_logger
 
 WATERBEHEERCODE = "38"
-BUFFER_M = 5000
+BUFFER_M = 2000
 BURN_DEPTH_M = 100
 MAX_FILL_DEPTH_M = 50
-TILE_SIZE_M = 10000
+TILE_SIZE_M = 11000
 TILE_BUFFER_M = 2000
-WORKERS = 7
+WORKERS = 32
 RANDOM_SEED = 12345
 ENGINE = "pcraster"
 
@@ -66,50 +67,49 @@ def main() -> None:
     if administratief_gebied.empty:
         raise ValueError(f"Geen waterschapsgrens gevonden voor code {WATERBEHEERCODE}")
 
-    # Zoals oorspronkelijk: beheergebied plus 5 km bij de buren.
     spatial_mask = administratief_gebied.union_all().buffer(BUFFER_M)
-    dtm = datastore.ahn_dir / "dtm_05" / "dtm_05.vrt"
-    if dtm.is_file():
-        logger.info("Hergebruik bestaande AHN VRT: %s", dtm)
-    else:
-        dtm = download_ahn(poly_mask=spatial_mask, missing_only=True)
+    dtm = download_ahn(poly_mask=spatial_mask, missing_only=True)
 
-    watersysteem_path = datastore.afwateringseenheden_path / "watersysteem.gpkg"
-    if watersysteem_path.is_file():
-        logger.info("Hergebruik bestaand watersysteem: %s", watersysteem_path)
-    else:
-        # Alleen als er nog geen watersysteem is: voorbereiden in deze runmap.
-        hydamo = download_hydamo(overwrite=False)
-        hydroobjecten = read_hydroobjecten(
-            hydamo.target_path,
-            spatial_selection=spatial_mask,
-        )
-        hydroobject_primair = hydroobjecten.loc[
-            hydroobjecten[CATEGORIE_OPPERVLAKTEWATER_COLUMN] == "primair"
-        ].copy()
-        hydroobject_secundair = hydroobjecten.loc[
-            hydroobjecten[CATEGORIE_OPPERVLAKTEWATER_COLUMN] == "secundair"
-        ].copy()
-        puntobjecten = read_puntobjecten(
-            hydamo.target_path,
-            layers=["gemaal", "stuw"],
-            spatial_selection=spatial_mask,
-            waterbeheercodes=[WATERBEHEERCODE],
-        )
-        watersysteem = prepare_watersysteem(
-            hydroobject_primair,
-            puntobjecten,
-            hydroobject_secundair=hydroobject_secundair,
-        )
-        watersysteem_path = write_watersysteem(
-            hydroobject_primair=hydroobject_primair,
-            hydroobject_secundair=hydroobject_secundair,
-            watersysteem=watersysteem,
-            output_path=run_dir / "watersysteem.gpkg",
-            overwrite=False,
-        )
+    # Duits DEM eerst naar RD/NAP; geldig AHN houdt voorrang in de overlap.
+    dtm = prepare_ahn_dgm1_dem(
+        dtm,
+        datastore.dgm1_dir,
+        converted_dir=datastore.processed_data_dir / "dgm1_nrw_rdnap",
+        grid_dir=datastore.source_data_dir / "proj_grids",
+        output_path=run_dir / "ahn_dgm1_rdnap.vrt",
+    )
 
-    # Alle tegels, vaste 5 km buffer, geen extra pogingen met grotere buffers.
+    # Selecteer het watersysteem opnieuw: de algemene cache kan een ander gebied zijn.
+    hydamo = download_hydamo(overwrite=False)
+    hydroobjecten = read_hydroobjecten(
+        hydamo.target_path,
+        spatial_selection=spatial_mask,
+    )
+    hydroobject_primair = hydroobjecten.loc[
+        hydroobjecten[CATEGORIE_OPPERVLAKTEWATER_COLUMN] == "primair"
+    ].copy()
+    hydroobject_secundair = hydroobjecten.loc[
+        hydroobjecten[CATEGORIE_OPPERVLAKTEWATER_COLUMN] == "secundair"
+    ].copy()
+    puntobjecten = read_puntobjecten(
+        hydamo.target_path,
+        layers=["gemaal", "stuw"],
+        spatial_selection=spatial_mask,
+        waterbeheercodes=[WATERBEHEERCODE],
+    )
+    watersysteem = prepare_watersysteem(
+        hydroobject_primair,
+        puntobjecten,
+        hydroobject_secundair=hydroobject_secundair,
+    )
+    watersysteem_path = write_watersysteem(
+        hydroobject_primair=hydroobject_primair,
+        hydroobject_secundair=hydroobject_secundair,
+        watersysteem=watersysteem,
+        output_path=run_dir / "watersysteem.gpkg",
+        overwrite=False,
+    )
+
     # Bij het samenvoegen worden lijnrestjes verwijderd en lege delen aangevuld
     # vanuit bruikbare buurtegels.
     tile_result = calculate_afwateringseenheden_tiles(

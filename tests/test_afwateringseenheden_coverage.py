@@ -1,6 +1,6 @@
 import os
-from pathlib import Path
 import xml.etree.ElementTree as ET
+from pathlib import Path
 
 import numpy as np
 import rasterio
@@ -157,3 +157,36 @@ def test_nodata_at_source_edges_is_filled_but_gaps_between_extents_are_not(
         data = _resample_dem(source, grid, coverage)
     assert np.isfinite(data[coverage]).all()
     assert np.isnan(data[~coverage]).all()
+
+
+def test_resampling_clears_values_on_excluded_source_boundary(tmp_path) -> None:
+    from rasterio.enums import Resampling
+    from rasterio.warp import reproject
+
+    from waterlagen.afwateringseenheden.raster import _resample_dem
+
+    # Een 1m-bron begint op x=3: precies het midden van een 2m-doelcel.
+    path = _source(tmp_path / "source.tif", x=3)
+    with rasterio.open(path, "r+") as source:
+        source.write(np.full((8, 8), 7, dtype="int16"), 1)
+    vrt = _vrt(tmp_path / "test.vrt", [path])
+    grid = RasterGrid.from_bounds((0, -2, 14, 10), resolution=2, crs=CRS)
+    with rasterio.open(vrt) as source:
+        coverage = _coverage_mask(source, grid)
+        unmasked = np.full(coverage.shape, np.nan)
+        reproject(
+            source=rasterio.band(source, 1),
+            destination=unmasked,
+            src_nodata=source.nodata,
+            dst_transform=grid.transform,
+            dst_crs=grid.crs,
+            dst_nodata=np.nan,
+            resampling=Resampling.bilinear,
+        )
+        assert (np.isfinite(unmasked) & ~coverage).any()
+        data = _resample_dem(source, grid, coverage)
+
+    assert np.isnan(data[~coverage]).all()
+    assert np.isfinite(data[coverage]).all()
+    valid_inside = np.isfinite(unmasked) & coverage
+    np.testing.assert_array_equal(data[valid_inside], unmasked[valid_inside])

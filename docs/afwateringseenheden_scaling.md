@@ -144,11 +144,12 @@ De productie-workflow rekent inmiddels parallel, met een vaste seed per tegel.
 Zie [de actuele productie-instellingen](reference/afwateringseenheden.md#parallel-rekenen-voor-aa-en-maas)
 voor het uitvoeren van heel Aa en Maas en het samenvoegen, opschonen en aanvullen.
 
-De nieuwe testset is beperkt tot twee tests:
+De gerichte tests controleren:
 
 - Serieel versus zes workers: dezelfde rasters en polygonen, ook bij hergebruik.
 - Eén aanvultest: bruikbare buurpolygonen vullen gaten, randpolygonen vallen af
   en bestaande toewijzingen blijven behouden.
+- Lijnresten bij het aanvullen worden verwijderd, ook tussen opeenvolgende buren.
 
 Uitvoeren vanuit de repository:
 
@@ -156,9 +157,7 @@ Uitvoeren vanuit de repository:
 pixi run --environment afwateringseenheden pytest tests/test_afwateringseenheden_workers.py tests/test_afwateringseenheden_merging.py
 ```
 
-De tests gebruiken kleine synthetische datasets. Aparte uitvoer- en
-foutscenariotests zijn uit deze testset verwijderd, net als de losse benchmark.
-De bestaande projecttests en veiligheidscontroles in de productiecode blijven behouden.
+De tests gebruiken kleine synthetische datasets en vereisen geen downloads.
 
 ### Historische proef van 14 september 2026
 

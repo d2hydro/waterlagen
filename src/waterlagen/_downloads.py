@@ -159,7 +159,7 @@ def stream_download_to_temp(
     suffix: str | None = None,
     description: str | None = None,
     chunk_size: int = 1024 * 1024,
-    timeout: int = 30,
+    timeout: float = 30,
     logger=None,
     progress: bool = True,
 ) -> FileDownload:
@@ -181,25 +181,27 @@ def stream_download_to_temp(
         if logger is not None:
             logger.info("Downloading %s to %s", description, target_path)
 
-        with os.fdopen(fd, "wb") as f:
-            with requests.get(
+        with (
+            os.fdopen(fd, "wb") as f,
+            requests.get(
                 url, stream=True, allow_redirects=True, timeout=timeout
-            ) as response:
-                response.raise_for_status()
+            ) as response,
+        ):
+            response.raise_for_status()
 
-                content_type = response.headers.get("Content-Type")
-                total = _parse_content_length(response.headers.get("Content-Length"))
+            content_type = response.headers.get("Content-Type")
+            total = _parse_content_length(response.headers.get("Content-Length"))
 
-                for chunk in response.iter_content(chunk_size=chunk_size):
-                    if not chunk:
-                        continue
+            for chunk in response.iter_content(chunk_size=chunk_size):
+                if not chunk:
+                    continue
 
-                    f.write(chunk)
-                    downloaded += len(chunk)
-                    if progress:
-                        progress_text = _format_progress(downloaded, total)
-                        sys.stdout.write(f"\r{description}: {progress_text}")
-                        sys.stdout.flush()
+                f.write(chunk)
+                downloaded += len(chunk)
+                if progress:
+                    progress_text = _format_progress(downloaded, total)
+                    sys.stdout.write(f"\r{description}: {progress_text}")
+                    sys.stdout.flush()
 
         _raise_for_known_error_payload(tmp_path, content_type=content_type)
         return FileDownload(

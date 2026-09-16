@@ -78,6 +78,12 @@ def test_six_workers_match_serial_and_reuse_output(
         merged_output_path=tmp_path / "parallel.gpkg",
     )
     assert len(parallel.tile_results) == 6
+    assert all(
+        result.calculation_duration_seconds > 0 for result in serial.tile_results
+    )
+    assert all(
+        result.calculation_duration_seconds > 0 for result in parallel.tile_results
+    )
     assert [item.tile.tile_id for item in serial.tile_results] == [
         item.tile.tile_id for item in parallel.tile_results
     ]
@@ -90,6 +96,9 @@ def test_six_workers_match_serial_and_reuse_output(
     for first, second in zip(serial.tile_results, parallel.tile_results, strict=True):
         assert second.subcatchments is not None
         assert (second.output_dir / "workflow.log").exists()
+        assert "Calculated afwateringseenheden tile" in (
+            second.output_dir / "workflow.log"
+        ).read_text(encoding="utf-8")
         for filename in (
             "dem_2m.tif",
             "hydroobject_segment.tif",

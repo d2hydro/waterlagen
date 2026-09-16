@@ -1,13 +1,12 @@
 """Tile orchestration for afwateringseenheden calculations."""
 
 import multiprocessing
-import os
-import tempfile
 from collections.abc import Collection, Iterable
 from concurrent.futures import ProcessPoolExecutor, as_completed
-from dataclasses import dataclass
-from math import ceil, floor, isfinite
+from dataclasses import dataclass, replace
+from math import ceil, floor, isclose, isfinite
 from pathlib import Path
+from time import perf_counter
 from typing import Literal
 
 import geopandas as gpd
@@ -21,6 +20,7 @@ from shapely.geometry.base import BaseGeometry
 from waterlagen import _geopandas as wgpd
 from waterlagen import datastore as default_datastore
 from waterlagen._crs import format_crs, same_crs
+from waterlagen._downloads import _temporary_path
 from waterlagen._geopackage import write_geopackage_layer
 from waterlagen.datastore import DataStore
 from waterlagen.logger import configure_logging, get_logger
@@ -45,16 +45,22 @@ _AREA_TOLERANCE = 0.0001
 
 @dataclass(frozen=True, slots=True)
 class AfwateringseenhedenTileResult:
-    """Result for one afwateringseenheden tile calculation."""
+    """Result for one afwateringseenheden tile calculation.
+
+    calculation_duration_seconds measures elapsed tile processing time,
+    including reuse checks and retries, but excluding pool queue time.
+    Direct construction without calculation_buffer_m assumes no buffer.
+    """
 
     tile: Tile
     output_dir: Path
     rasters: WatersysteemRasters | None
     subcatchments: SubcatchmentResult | None
     usable_subcatchments: gpd.GeoDataFrame
-    calculation_buffer_m: float
     has_boundary_issue: bool = False
     skipped_reason: str | None = None
+    calculation_buffer_m: float = 0.0
+    calculation_duration_seconds: float = 0.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -108,19 +114,6 @@ class _TileJob:
     engine: Literal["pcraster"]
     crs: str
     random_seed: int | None
-
-
-def _temporary_output_path(output_path: Path) -> Path:
-    """Create an unused temporary GeoPackage path beside its target."""
-    fd, temporary_name = tempfile.mkstemp(
-        prefix=f".{output_path.name}.",
-        suffix=".gpkg",
-        dir=output_path.parent,
-    )
-    os.close(fd)
-    temporary_path = Path(temporary_name)
-    temporary_path.unlink(missing_ok=True)
-    return temporary_path
 
 
 def _validate_tile_inputs(
@@ -323,11 +316,13 @@ def _cached_buffer_m(job: _TileJob) -> float:
     raster_path = job.output_dir / SUBCATCHMENTS_FILENAME
     if not raster_path.is_file():
         raise FileNotFoundError(f"Cannot verify cached tile buffer: {raster_path}")
+    tolerance = job.resolution_m * 1e-6
     with rasterio.open(raster_path) as raster:
-        if not same_crs(raster.crs, job.crs) or raster.res != (
-            job.resolution_m,
-            job.resolution_m,
-        ):
+        resolution_matches = all(
+            isclose(resolution, job.resolution_m, rel_tol=0, abs_tol=tolerance)
+            for resolution in raster.res
+        )
+        if not same_crs(raster.crs, job.crs) or not resolution_matches:
             raise ValueError(
                 f"Cached grid CRS or resolution differs in tile {job.tile.tile_id}"
             )
@@ -339,7 +334,9 @@ def _cached_buffer_m(job: _TileJob) -> float:
         bounds.top - job.tile.ymax,
     )
     if distances[0] < 0 or not all(
-        isfinite(distance) and distance == distances[0] for distance in distances
+        isfinite(distance)
+        and isclose(distance, distances[0], rel_tol=0, abs_tol=tolerance)
+        for distance in distances
     ):
         raise ValueError(
             f"Cached grid has an inconsistent buffer in tile {job.tile.tile_id}"
@@ -466,6 +463,9 @@ def _fill_gap(
     gap: BaseGeometry, donors: Collection[_GapDonor]
 ) -> tuple[list[gpd.GeoDataFrame], BaseGeometry]:
     """Prefer most coverage, then most distance from the edge, then tile ID."""
+    gap = _polygonal_geometry(gap)
+    if gap.is_empty:
+        return [], gap
     candidates = []
     for donor in donors:
         if not donor.calculation_geometry.intersects(gap):
@@ -508,7 +508,7 @@ def _fill_gap(
         selected["bron_tegel"] = candidate.tile_id
         selected["keuzevolgorde"] = priority
         additions.append(selected)
-        remaining = remaining.difference(coverage)
+        remaining = _polygonal_geometry(remaining.difference(coverage))
     return additions, remaining
 
 
@@ -633,7 +633,7 @@ def _write_merged_subcatchments(
     subcatchments: gpd.GeoDataFrame,
 ) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    temporary_path = _temporary_output_path(output_path)
+    temporary_path = _temporary_path(output_path, suffix=".gpkg")
     try:
         write_geopackage_layer(
             subcatchments,
@@ -763,7 +763,20 @@ def _calculate_tile_worker(job: _TileJob) -> AfwateringseenhedenTileResult:
     with rasterio.Env(
         GDAL_NUM_THREADS="1", VRT_NUM_THREADS="1", GDAL_CACHEMAX=256 * 1024 * 1024
     ):
-        return _calculate_tile(job)
+        return _calculate_tile_timed(job)
+
+
+def _calculate_tile_timed(job: _TileJob) -> AfwateringseenhedenTileResult:
+    """Calculate one tile and retain its elapsed worker time."""
+    started_at = perf_counter()
+    result = _calculate_tile(job)
+    duration_seconds = perf_counter() - started_at
+    logger.info(
+        "Calculated afwateringseenheden tile %s in %.1f s",
+        job.tile.tile_id,
+        duration_seconds,
+    )
+    return replace(result, calculation_duration_seconds=duration_seconds)
 
 
 def _calculate_tiles_parallel(
@@ -790,10 +803,11 @@ def _calculate_tiles_parallel(
                 continue
             results[job.tile.tile_id] = result
             logger.info(
-                "Completed tile %s (%s/%s), buffer %s m, boundary issue: %s, skipped: %s",
+                "Completed tile %s (%s/%s) in %.1f s, buffer %s m, boundary issue: %s, skipped: %s",
                 job.tile.tile_id,
                 len(results),
                 len(jobs),
+                result.calculation_duration_seconds,
                 result.calculation_buffer_m,
                 result.has_boundary_issue,
                 result.skipped_reason,
@@ -969,7 +983,7 @@ def calculate_afwateringseenheden_tiles(
         for tile in selected_tiles
     ]
     if workers == 1:
-        tile_results = [_calculate_tile(job) for job in jobs]
+        tile_results = [_calculate_tile_timed(job) for job in jobs]
     else:
         for path in (ahn_vrt_path, watersysteem_path):
             if not path.is_file():

@@ -22,6 +22,7 @@ nav:
       - Bewerkingen: bewerkingen.md
   - Code:
       - AHN: reference/ahn.md
+      - DGM1: reference/dgm1.md
       - BAG: reference/bag.md
       - BGT: reference/bgt.md
       - Administratieve gebieden: reference/administratieve_gebieden.md

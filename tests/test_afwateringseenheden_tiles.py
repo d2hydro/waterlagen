@@ -4,15 +4,18 @@ import geopandas as gpd
 import numpy as np
 import pytest
 import rasterio
+from affine import Affine
 from rasterio.transform import from_origin
 from shapely.geometry import box
 
 from waterlagen.afwateringseenheden import (
+    AfwateringseenhedenTileResult,
     SubcatchmentResult,
     WatersysteemRasters,
     calculate_afwateringseenheden_tiles,
 )
 from waterlagen.afwateringseenheden import tiles as tiles_module
+from waterlagen.raster.tiles import Tile
 from waterlagen.settings import settings
 
 
@@ -40,6 +43,139 @@ def _fake_rasters(output_dir: Path, *, segment_value: int = 1) -> WatersysteemRa
     )
     _write_segment_raster(rasters.hydroobject_segment_path, value=segment_value)
     return rasters
+
+
+def _write_cached_tile(
+    output_dir: Path,
+    *,
+    width: int,
+    transform: Affine,
+    crs: str,
+) -> None:
+    tile_dir = output_dir / "100000_400000_100016_400016"
+    tile_dir.mkdir(parents=True)
+    subcatchments = gpd.GeoDataFrame(
+        {"segment_fid": [1], "segment_id": ["segment-a"]},
+        geometry=[box(100000, 400000, 100016, 400016)],
+        crs=crs,
+    )
+    subcatchments.to_file(
+        tile_dir / tiles_module.SUBCATCHMENTS_GPKG_FILENAME,
+        layer=tiles_module.SUBCATCHMENTS_LAYER,
+        driver="GPKG",
+        index=False,
+    )
+    with rasterio.open(
+        tile_dir / tiles_module.SUBCATCHMENTS_FILENAME,
+        "w",
+        driver="GTiff",
+        width=width,
+        height=width,
+        count=1,
+        dtype="int32",
+        crs=crs,
+        transform=transform,
+    ) as destination:
+        destination.write(np.ones((width, width), dtype=np.int32), 1)
+
+
+@pytest.mark.parametrize(
+    ("optional_fields", "expected_boundary_issue", "expected_skipped_reason"),
+    [
+        ((), False, None),
+        ((True,), True, None),
+        ((True, "no segment cells"), True, "no segment cells"),
+    ],
+)
+def test_tile_result_preserves_positional_arguments(
+    tmp_path: Path,
+    optional_fields: tuple[bool | str, ...],
+    expected_boundary_issue: bool,
+    expected_skipped_reason: str | None,
+) -> None:
+    tile = Tile("000000_000000_000016_000016", 0, 0, 0, 0, 16, 16)
+    subcatchments = gpd.GeoDataFrame(geometry=[], crs=settings.crs)
+
+    result = AfwateringseenhedenTileResult(
+        tile, tmp_path, None, None, subcatchments, *optional_fields
+    )
+
+    assert result.has_boundary_issue is expected_boundary_issue
+    assert result.skipped_reason == expected_skipped_reason
+    assert result.calculation_buffer_m == 0.0
+
+
+@pytest.mark.parametrize(
+    ("tile_buffer_m", "resolution_m", "cached_resolution_m"),
+    [(4.0, 2.0, 2.0), (1.3, 0.1, 0.1), (1.3, 0.1, 0.10000000000000002)],
+)
+def test_calculate_tiles_reuses_integer_and_fractional_cached_grids(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    tile_buffer_m: float,
+    resolution_m: float,
+    cached_resolution_m: float,
+) -> None:
+    output_dir = tmp_path / "tiles"
+    _write_cached_tile(
+        output_dir,
+        width=round((16 + 2 * tile_buffer_m) / resolution_m),
+        transform=from_origin(
+            100000 - tile_buffer_m,
+            400016 + tile_buffer_m,
+            cached_resolution_m,
+            cached_resolution_m,
+        ),
+        crs=settings.crs,
+    )
+
+    def fail_prepare(*args, **kwargs) -> WatersysteemRasters:
+        pytest.fail("A matching cached tile should not be recalculated")
+
+    monkeypatch.setattr(tiles_module, "prepare_watersysteem_rasters", fail_prepare)
+
+    result = calculate_afwateringseenheden_tiles(
+        box(100000, 400000, 100016, 400016),
+        burn_depth_m=1,
+        output_dir=output_dir,
+        tile_size_m=16,
+        tile_buffer_m=tile_buffer_m,
+        resolution_m=resolution_m,
+    )
+
+    assert result.tile_results[0].subcatchments is None
+    assert result.tile_results[0].calculation_buffer_m == pytest.approx(tile_buffer_m)
+    assert result.merged_subcatchments.geometry.iloc[0].equals(
+        box(100000, 400000, 100016, 400016)
+    )
+
+
+@pytest.mark.parametrize("mismatch", ["resolution", "buffer", "crs"])
+def test_calculate_tiles_rejects_mismatched_cached_grids(
+    tmp_path: Path, mismatch: str
+) -> None:
+    output_dir = tmp_path / "tiles"
+    transform = from_origin(99998.7, 400017.3, 0.1, 0.1)
+    crs = settings.crs
+    expected_error = "CRS or resolution differs"
+    if mismatch == "resolution":
+        transform = from_origin(99998.7, 400017.3, 0.2, 0.2)
+    elif mismatch == "buffer":
+        transform = from_origin(99998.8, 400017.3, 0.1, 0.1)
+        expected_error = "inconsistent buffer"
+    else:
+        crs = "EPSG:25832"
+    _write_cached_tile(output_dir, width=186, transform=transform, crs=crs)
+
+    with pytest.raises(ValueError, match=expected_error):
+        calculate_afwateringseenheden_tiles(
+            box(100000, 400000, 100016, 400016),
+            burn_depth_m=1,
+            output_dir=output_dir,
+            tile_size_m=16,
+            tile_buffer_m=1.3,
+            resolution_m=0.1,
+        )
 
 
 def test_calculate_tiles_uses_buffered_tile_geometry_and_writes_merged_output(
