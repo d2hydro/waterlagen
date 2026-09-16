@@ -12,7 +12,7 @@ Kadaster, ontsloten via PDOK.
 
 ## Dataset of service
 
-Waterlagen downloadt een GeoPackage voor een expliciet opgegeven jaar. De
+Waterlagen download een GeoPackage voor een expliciet opgegeven jaar. De
 tegelworkflow gebruikt standaard de jaargang 2026 en leest de landsgrens uit
 de laag `landgebied`.
 

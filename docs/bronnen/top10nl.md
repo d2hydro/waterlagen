@@ -12,7 +12,7 @@ Kadaster, ontsloten via PDOK.
 
 ## Dataset of service
 
-Waterlagen downloadt `top10nl_Compleet.gpkg` uit de PDOK-downloadvoorziening.
+Waterlagen download `top10nl_Compleet.gpkg` uit de PDOK-downloadvoorziening.
 
 ## Gebruik in Waterlagen
 

@@ -1,6 +1,6 @@
 # Ontwikkelomgeving
 
-Kloon de repository en werk vanuit de repository-root. De projectomgeving wordt
+Clone de repository en werk vanuit de repository-root. De projectomgeving wordt
 beheerd met [pixi](https://pixi.sh/):
 
 ```bash

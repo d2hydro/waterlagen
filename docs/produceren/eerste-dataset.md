@@ -1,6 +1,6 @@
 # Eerste dataset produceren
 
-Dit voorbeeld downloadt AHN-DTM-rastertegels voor een klein gebied en maakt
+Dit voorbeeld download AHN-DTM-rastertegels voor een klein gebied en maakt
 een VRT waarmee de tegels als één raster kunnen worden geopend.
 
 ```python

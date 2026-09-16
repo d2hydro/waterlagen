@@ -13,7 +13,7 @@ gebruiksvoorwaarden bij een inhoudelijke publicatie.
 
 ## Dataset of service
 
-Waterlagen downloadt een ZIP-package, valideert de GeoPackage daarin en schrijft
+Waterlagen download een ZIP-package, valideert de GeoPackage daarin en schrijft
 deze lokaal als `hydamo.gpkg`.
 
 ## Gebruik in Waterlagen

@@ -11,7 +11,7 @@ Het Waterschapshuis (HWH), ontsloten via PDOK.
 
 ## Dataset of service
 
-Waterlagen downloadt de actuele GeoPackage en normaliseert relevante
+Waterlagen download de actuele GeoPackage en normaliseert relevante
 bronvelden, waaronder naam, BGT-code en waterbeheercode.
 
 ## Gebruik in Waterlagen

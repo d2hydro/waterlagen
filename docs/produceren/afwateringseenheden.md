@@ -42,10 +42,10 @@ alleen het resultaat binnen de tegelkern wordt opgenomen.
 
 Het script voert de volgende stappen uit:
 
-1. Downloadt en normaliseert de waterschapsgrenzen en selecteert het
+1. Download en normaliseert de waterschapsgrenzen en selecteert het
    beheergebied.
-2. Downloadt de AHN-DTM voor het beheergebied, inclusief de ingestelde buffer.
-3. Downloadt de landelijke HYDAMO-GeoPackage.
+2. Download de AHN-DTM voor het beheergebied, inclusief de ingestelde buffer.
+3. Download de landelijke HYDAMO-GeoPackage.
 4. Berekent afwateringseenheden in tegels volgens [Afwateringseenheden](../bewerkingen/afwateringseenheden.md#werkwijze) en schrijft
    `watersysteem.gpkg` en de samengevoegde `afwateringseenheden.gpkg` naar de DataStore in de submap `bewerkingen\afwateringseenheden`.
 
