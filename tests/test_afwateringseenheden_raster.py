@@ -16,6 +16,43 @@ CRS = settings.crs
 NODATA = -32768
 
 
+@pytest.mark.parametrize("boundary_crs", [CRS, "EPSG:3857"])
+def test_landsgrens_fills_dutch_cells_only_and_invalidates_unmasked_cache(
+    source_paths, tmp_path, monkeypatch, boundary_crs
+) -> None:
+    ahn_vrt_path, watersysteem_path = source_paths
+    landsgrens_path = tmp_path / "bestuurlijke.gpkg"
+    boundary = gpd.GeoDataFrame(geometry=[box(0, 0, 4, 8)], crs=CRS)
+    boundary.to_crs(boundary_crs).to_file(landsgrens_path, layer="landgebied")
+    kwargs = {
+        "burn_depth_m": 0,
+        "ahn_vrt_path": ahn_vrt_path,
+        "watersysteem_path": watersysteem_path,
+        "output_dir": tmp_path / "output",
+    }
+    # Existing unmasked output must not hide the newly requested boundary.
+    result = prepare_watersysteem_rasters(box(0, 0, 8, 8), **kwargs)
+    with rasterio.open(result.dem_path) as dem:
+        assert not np.ma.getmaskarray(dem.read(1, masked=True)).any()
+    kwargs["landsgrens_path"] = landsgrens_path
+    prepare_watersysteem_rasters(box(0, 0, 8, 8), **kwargs)
+    with rasterio.open(result.dem_path) as dem:
+        data = dem.read(1, masked=True)
+        assert not np.ma.getmaskarray(data[:, :2]).any()
+        assert np.all(data[:, :2] == 1000)
+        assert np.ma.getmaskarray(data[:, 2:]).all()
+        assert dem.scales == (0.01,)
+        assert dem.nodata == NODATA
+    version = result.dem_path.stat().st_mtime_ns
+    monkeypatch.setattr(
+        raster_module,
+        "_resample_dem",
+        lambda *args: pytest.fail("unchanged boundary should reuse rasters"),
+    )
+    assert prepare_watersysteem_rasters(box(0, 0, 8, 8), **kwargs) == result
+    assert result.dem_path.stat().st_mtime_ns == version
+
+
 def _write_ahn_vrt(tmp_path: Path) -> Path:
     source_path = tmp_path / "dtm_05.tif"
     data = np.full((16, 16), 1000, dtype=np.int16)

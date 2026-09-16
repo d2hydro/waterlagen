@@ -3,10 +3,12 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 import numpy as np
+import geopandas as gpd
 import rasterio
 from osgeo import gdal
 from rasterio.transform import from_origin
 from rasterio.warp import transform_bounds
+from shapely.geometry import box
 
 from waterlagen.afwateringseenheden._coverage import _coverage_mask, _source_extent
 from waterlagen.raster.grid import RasterGrid
@@ -45,6 +47,33 @@ def test_full_extent_includes_nodata_collar_and_internal_hole(tmp_path) -> None:
     with rasterio.open(vrt) as source:
         coverage = _coverage_mask(source, grid)
     assert coverage.all()
+
+
+def test_landsgrens_clips_source_tiles_and_reloads_changed_boundary(tmp_path) -> None:
+    path = _source(tmp_path / "source.tif")
+    boundary_path = tmp_path / "bestuurlijke.gpkg"
+    geometry = box(-4, -4, 4, 12).difference(box(1, 3, 3, 5))
+    gpd.GeoDataFrame(geometry=[geometry], crs=CRS).to_file(
+        boundary_path, layer="landgebied"
+    )
+    grid = RasterGrid.from_bounds((-2, -2, 10, 10), resolution=1, crs=CRS)
+    with rasterio.open(path) as source:
+        coverage = _coverage_mask(source, grid, boundary_path)
+    expected = np.zeros((12, 12), dtype=bool)
+    expected[2:10, 2:6] = True
+    expected[5:7, 3:5] = False
+    np.testing.assert_array_equal(coverage, expected)
+
+    previous = boundary_path.stat()
+    gpd.GeoDataFrame(geometry=[box(20, 20, 30, 30)], crs=CRS).to_file(
+        boundary_path, layer="landgebied"
+    )
+    os.utime(
+        boundary_path,
+        ns=(previous.st_atime_ns, previous.st_mtime_ns + 1_000_000_000),
+    )
+    with rasterio.open(path) as source:
+        assert not _coverage_mask(source, grid, boundary_path).any()
 
 
 def test_overlap_and_missing_tiles_are_unioned_on_target_grid(tmp_path) -> None:

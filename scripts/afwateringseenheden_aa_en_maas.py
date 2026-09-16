@@ -5,6 +5,8 @@ from datetime import UTC, datetime
 
 from waterlagen import datastore
 from waterlagen.administratieve_gebieden import (
+    DEFAULT_BESTUURLIJKE_GEBIEDEN_YEAR,
+    download_bestuurlijke_gebieden,
     download_waterschapsgrenzen,
     normaliseer_waterschapsgrenzen,
     read_waterschapsgrenzen_layer,
@@ -16,12 +18,12 @@ from waterlagen.afwateringseenheden import (
     read_puntobjecten,
     write_watersysteem,
 )
-from waterlagen.afwateringseenheden.dem import prepare_ahn_dgm1_dem
 from waterlagen.afwateringseenheden.objects import CATEGORIE_OPPERVLAKTEWATER_COLUMN
 from waterlagen.afwateringseenheden.pcraster import require_pcraster
 from waterlagen.ahn import download_ahn
 from waterlagen.hydamo import download_hydamo
 from waterlagen.logger import init_logger
+from waterlagen.settings import settings
 
 WATERBEHEERCODE = "38"
 BUFFER_M = 2000
@@ -29,7 +31,6 @@ BURN_DEPTH_M = 100
 MAX_FILL_DEPTH_M = 50
 TILE_SIZE_M = 10000
 TILE_BUFFER_M = 2000
-WORKERS = 35
 RANDOM_SEED = 12345
 ENGINE = "pcraster"
 
@@ -70,13 +71,10 @@ def main() -> None:
     spatial_mask = administratief_gebied.union_all().buffer(BUFFER_M)
     dtm = download_ahn(poly_mask=spatial_mask, missing_only=True)
 
-    # Duits DEM eerst naar RD/NAP; geldig AHN houdt voorrang in de overlap.
-    dtm = prepare_ahn_dgm1_dem(
-        dtm,
-        datastore.dgm1_dir,
-        converted_dir=datastore.processed_data_dir / "dgm1_nrw_rdnap",
-        grid_dir=datastore.source_data_dir / "proj_grids",
-        output_path=run_dir / "ahn_dgm1_rdnap.vrt",
+    # Vul AHN-tegels en rekenbuffers alleen binnen de Nederlandse landsgrens.
+    bestuurlijke_gebieden = download_bestuurlijke_gebieden(
+        year=DEFAULT_BESTUURLIJKE_GEBIEDEN_YEAR,
+        overwrite=False,
     )
 
     # Selecteer het watersysteem opnieuw: de algemene cache kan een ander gebied zijn.
@@ -116,6 +114,7 @@ def main() -> None:
         spatial_mask,
         burn_depth_m=BURN_DEPTH_M,
         ahn_vrt_path=dtm,
+        landsgrens_path=bestuurlijke_gebieden.target_path,
         watersysteem_path=watersysteem_path,
         output_dir=run_dir / "tiles",
         merged_output_path=run_dir / "afwateringseenheden.gpkg",
@@ -123,7 +122,7 @@ def main() -> None:
         tile_buffer_m=TILE_BUFFER_M,
         max_fill_depth_m=MAX_FILL_DEPTH_M,
         engine=ENGINE,
-        workers=WORKERS,
+        workers=settings.afwateringseenheden_workers,
         random_seed=RANDOM_SEED,
         overwrite=False,
     )

@@ -28,7 +28,6 @@ def test_script_prepares_area_inputs_despite_existing_generic_files(
     script = _load_afwateringseenheden_script()
     data_store = SimpleNamespace(
         ahn_dir=tmp_path / "source" / "ahn",
-        dgm1_dir=tmp_path / "source" / "dgm1_nrw",
         source_data_dir=tmp_path / "source",
         processed_data_dir=tmp_path / "processed",
         afwateringseenheden_path=tmp_path / "processed" / "afwateringseenheden",
@@ -61,6 +60,7 @@ def test_script_prepares_area_inputs_despite_existing_generic_files(
     watersysteem = object()
 
     monkeypatch.setattr(script, "datastore", data_store)
+    monkeypatch.setattr(script.settings, "afwateringseenheden_workers", 3)
     monkeypatch.setattr(script, "require_pcraster", Mock())
     monkeypatch.setattr(script, "init_logger", Mock(return_value=Mock()))
     monkeypatch.setattr(
@@ -75,8 +75,8 @@ def test_script_prepares_area_inputs_despite_existing_generic_files(
     monkeypatch.setattr(script, "download_ahn", Mock(return_value=selected_ahn))
     monkeypatch.setattr(
         script,
-        "prepare_ahn_dgm1_dem",
-        Mock(side_effect=lambda *args, **kwargs: kwargs["output_path"]),
+        "download_bestuurlijke_gebieden",
+        Mock(return_value=SimpleNamespace(target_path=tmp_path / "bestuurlijke.gpkg")),
     )
     monkeypatch.setattr(script, "download_hydamo", Mock(return_value=hydamo))
     monkeypatch.setattr(script, "read_hydroobjecten", Mock(return_value=hydroobjecten))
@@ -114,9 +114,8 @@ def test_script_prepares_area_inputs_despite_existing_generic_files(
     script.download_ahn.assert_called_once_with(
         poly_mask=spatial_mask, missing_only=True
     )
-    assert script.prepare_ahn_dgm1_dem.call_args.args == (
-        selected_ahn,
-        data_store.dgm1_dir,
+    script.download_bestuurlijke_gebieden.assert_called_once_with(
+        year=script.DEFAULT_BESTUURLIJKE_GEBIEDEN_YEAR, overwrite=False
     )
     script.download_hydamo.assert_called_once_with(overwrite=False)
     script.read_hydroobjecten.assert_called_once_with(
@@ -141,6 +140,8 @@ def test_script_prepares_area_inputs_despite_existing_generic_files(
     assert write_args["watersysteem"] is watersysteem
     assert write_args["overwrite"] is False
     tile_args = script.calculate_afwateringseenheden_tiles.call_args.kwargs
+    assert tile_args["workers"] == 3
     assert tile_args["watersysteem_path"] == write_args["output_path"]
-    assert tile_args["ahn_vrt_path"] == run_dir / "ahn_dgm1_rdnap.vrt"
+    assert tile_args["ahn_vrt_path"] == selected_ahn
+    assert tile_args["landsgrens_path"] == tmp_path / "bestuurlijke.gpkg"
     assert generic_watersysteem.read_bytes() == b"existing data for another area"

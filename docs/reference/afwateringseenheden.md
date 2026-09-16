@@ -5,7 +5,8 @@ De DEM-dekking is de vereniging van de volledige rechthoekige rasterextents
 De coverage-bepaling leest uitsluitend georeferentiemetadata, geen pixelwaarden
 of NoData-maskers. Ook NoData aan de rand of binnen een TIFF valt binnen dekking
 en wordt door de bestaande interpolatie gevuld. NoData buiten alle TIFF-extents
-blijft NoData.
+blijft NoData. Met `landsgrens_path` wordt deze dekking verder begrensd tot
+Nederland, ook binnen de tegelbuffers.
 Na resampling worden cellen buiten dit dekkingsmasker op NoData gezet, vóór
 interpolatie. Zo worden randcellen niet onbedoeld als hoogte of donor gebruikt.
 
@@ -17,9 +18,15 @@ Bij `overwrite=False` worden geldige rasterparen met de actuele coverage-tag
 ## Parallel rekenen voor Aa en Maas
 
 Het script berekent het beheergebied met `BUFFER_M` als gebiedsbuffer,
-`WORKERS` processen, kernen van 10 × 10 km, `TILE_BUFFER_M` als tegelbuffer
+`settings.afwateringseenheden_workers` processen, kernen van 10 × 10 km, `TILE_BUFFER_M` als tegelbuffer
 en een resolutie van 2 m.
 Iedere tegel gebruikt seed 12345. Meer workers vragen meer werkgeheugen.
+Het aantal workers is instelbaar via `.env` (standaard 35):
+
+```dotenv
+AFWATERINGSEENHEDEN_WORKERS=35
+```
+
 Randproblemen leiden niet tot herberekening met een grotere buffer;
 na afloop worden gaten waar mogelijk aangevuld vanuit buurtegels.
 
@@ -44,26 +51,26 @@ Wachttijd in de pool en het gezamenlijke samenvoegen vallen erbuiten. Bij
 hergebruik meet de timer alleen het controleren en verwerken van de bestaande
 tegeluitvoer. In Python staat de tijd in `calculation_duration_seconds` per tegel.
 
-### Duits DEM langs de grens
+### AHN binnen de Nederlandse landsgrens
 
-Het script combineert AHN met de gedownloade tegels in `source_data/dgm1_nrw`.
-DGM1 wordt van UTM32/DHHN2016 naar RD/NAP omgerekend, op een 1m-grid en met
-dezelfde hoogteopslag als AHN (momenteel centimeters). De omzetting gebruikt
-de [BKG- en NSGI-correctiegrids](https://cdn.proj.org/): `de_bkg_gcg2016.tif`,
-`nl_nsgi_nlgeo2018.tif` en `nl_nsgi_rdtrans2018.tif`.
-Ontbrekende grids worden eenmalig naar `source_data/proj_grids` gedownload.
-Buiten het geldige bereik van deze grids stopt de omzetting; er is geen
-benaderende terugval of vaste hoogtecorrectie.
+Het script gebruikt uitsluitend AHN als hoogtebron. Het downloadt bestuurlijke
+gebieden (standaard jaargang 2026) met `overwrite=False` en geeft deze bron als
+`landsgrens_path` door aan de tegelberekening. Bestaande bronbestanden worden
+hergebruikt. De laag `landgebied` bepaalt de Nederlandse landsgrens.
 
-Geldig AHN heeft voorrang. DGM1 vult ontbrekend AHN aan vóór interpolatie,
-ook binnen rekenbuffers. Dit gebruikt de databeschikbaarheid, **geen landsgrensmasker**.
-De oorspronkelijke interpolatie voor resterende NoData binnen bronextents blijft
-bestaan; ontbrekende Duitse tegels worden hiermee niet automatisch gedownload.
+Elke tegel, inclusief rekenbuffer, wordt binnen de AHN-bronextents volledig
+dichtgeinterpoleerd voor zover de celmiddens binnen Nederland liggen. Ook gaten
+aan de rand van een brontegel blijven vulbaar. Buiten de landsgrens worden
+hoogtes op NoData gezet voordat de interpolatie begint; deze cellen worden niet
+gevuld en dienen niet als donor. Als er binnen de dekking geen enkele bruikbare
+hoogte is om aanwezige gaten te vullen, stopt de verwerking met een foutmelding.
 
-Omgerekende tegels staan in `processed_data/dgm1_nrw_rdnap` en worden hergebruikt.
-Bij gewijzigde bron- of conversiegegevens vraagt het script om een nieuwe cachemap.
-Elke run krijgt een eigen `ahn_dgm1_rdnap.vrt`; downloads en eerdere runs blijven
-behouden. Een reeds berekende LDD verandert niet: het script start een nieuwe run.
+De grenslaag wordt zo nodig naar het raster-CRS omgezet en per worker gecachet.
+Bij een gewijzigde landsgrensbron (pad, wijzigingstijd of bestandsgrootte) worden
+bestaande rasters en tegelresultaten opnieuw berekend, ook bij `overwrite=False`.
+De functies `calculate_afwateringseenheden_tiles` en
+`prepare_watersysteem_rasters` downloaden de grenslaag zelf niet. Zonder
+`landsgrens_path` behouden ze hun bestaande dekking op basis van bronextents.
 
 De workers rekenen in afzonderlijke `spawn`-processen; het hoofdproces voegt
 de resultaten samen. De functie zelf gebruikt standaard één worker. Start

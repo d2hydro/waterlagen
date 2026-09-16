@@ -27,6 +27,7 @@ from waterlagen.logger import configure_logging, get_logger
 from waterlagen.raster.tiles import Tile, read_tiles, tile_from_row
 from waterlagen.settings import settings
 
+from ._coverage import _landsgrens_version
 from .pcraster import (
     SUBCATCHMENTS_FILENAME,
     SUBCATCHMENTS_GPKG_FILENAME,
@@ -114,6 +115,7 @@ class _TileJob:
     engine: Literal["pcraster"]
     crs: str
     random_seed: int | None
+    landsgrens_path: Path | None = None
 
 
 def _validate_tile_inputs(
@@ -640,6 +642,19 @@ def _calculate_tile(job: _TileJob) -> AfwateringseenhedenTileResult:
             job.output_dir / SUBCATCHMENTS_GPKG_FILENAME
         )
         if existing_subcatchments is not None:
+            dem_path = job.output_dir / "dem_2m.tif"
+            boundary_version = "none"
+            if dem_path.exists():
+                with rasterio.open(dem_path) as dem:
+                    boundary_version = dem.tags().get(
+                        "waterlagen_dem_landsgrens", "none"
+                    )
+            if boundary_version != _landsgrens_version(job.landsgrens_path):
+                logger.info(
+                    "Recalculating tile %s with changed landsgrens", tile.tile_id
+                )
+                existing_subcatchments = None
+        if existing_subcatchments is not None:
             calculation_buffer_m = _cached_buffer_m(job)
 
     if existing_subcatchments is None:
@@ -652,6 +667,7 @@ def _calculate_tile(job: _TileJob) -> AfwateringseenhedenTileResult:
             _calculation_geometry(tile, tile_buffer_m=calculation_buffer_m),
             burn_depth_m=job.burn_depth_m,
             ahn_vrt_path=job.ahn_vrt_path,
+            landsgrens_path=job.landsgrens_path,
             watersysteem_path=job.watersysteem_path,
             output_dir=job.output_dir,
             resolution_m=job.resolution_m,
@@ -784,6 +800,7 @@ def calculate_afwateringseenheden_tiles(
     *,
     burn_depth_m: float,
     ahn_vrt_path: Path | None = None,
+    landsgrens_path: Path | None = None,
     watersysteem_path: Path | None = None,
     output_dir: Path | None = None,
     merged_output_path: Path | None = None,
@@ -811,6 +828,11 @@ def calculate_afwateringseenheden_tiles(
         Burn depth passed to :func:`prepare_watersysteem_rasters`.
     ahn_vrt_path : Path, optional
         AHN VRT used for every tile. Defaults to the datastore AHN DTM VRT.
+    landsgrens_path : Path, optional
+        Bestuurlijke gebieden GeoPackage with Dutch ``landgebied`` polygons.
+        Limits DEM interpolation and valid elevations to Nederland, including
+        tile buffers. None retains full source-extent coverage. No download
+        is performed. Changed boundary sources invalidate cached tile results.
     watersysteem_path : Path, optional
         Prepared watersysteem GeoPackage. Defaults to the datastore output.
     output_dir : Path, optional
@@ -918,6 +940,7 @@ def calculate_afwateringseenheden_tiles(
             tile=tile,
             output_dir=output_dir / tile.tile_id,
             ahn_vrt_path=ahn_vrt_path,
+            landsgrens_path=landsgrens_path,
             watersysteem_path=watersysteem_path,
             burn_depth_m=burn_depth_m,
             tile_buffer_m=tile_buffer_m,

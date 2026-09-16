@@ -79,6 +79,40 @@ def _write_cached_tile(
         destination.write(np.ones((width, width), dtype=np.int32), 1)
 
 
+def test_new_landsgrens_invalidates_cached_subcatchments_and_reaches_rasters(
+    tmp_path, monkeypatch
+) -> None:
+    output_dir = tmp_path / "tiles"
+    _write_cached_tile(
+        output_dir,
+        width=8,
+        transform=from_origin(100000, 400016, 2, 2),
+        crs=settings.crs,
+    )
+    landsgrens_path = tmp_path / "bestuurlijke.gpkg"
+    gpd.GeoDataFrame(
+        geometry=[box(100000, 400000, 100008, 400016)], crs=settings.crs
+    ).to_file(landsgrens_path, layer="landgebied")
+    calls = []
+
+    def fake_prepare(geometry, **kwargs):
+        calls.append(kwargs)
+        return _fake_rasters(kwargs["output_dir"], segment_value=0)
+
+    monkeypatch.setattr(tiles_module, "prepare_watersysteem_rasters", fake_prepare)
+    result = calculate_afwateringseenheden_tiles(
+        box(100000, 400000, 100016, 400016),
+        burn_depth_m=1,
+        output_dir=output_dir,
+        landsgrens_path=landsgrens_path,
+        tile_size_m=16,
+        tile_buffer_m=0,
+    )
+    assert len(calls) == 1
+    assert calls[0]["landsgrens_path"] == landsgrens_path
+    assert result.skipped_tile_ids == ("100000_400000_100016_400016",)
+
+
 @pytest.mark.parametrize(
     ("optional_fields", "expected_boundary_issue", "expected_skipped_reason"),
     [

@@ -23,7 +23,7 @@ from waterlagen.logger import get_logger
 from waterlagen.raster.grid import RasterGrid
 from waterlagen.settings import settings
 
-from ._coverage import _coverage_mask
+from ._coverage import _coverage_mask, _landsgrens_version
 
 logger = get_logger(__name__)
 
@@ -284,12 +284,14 @@ def _write_dem(
     profile: dict,
     scales: tuple[float, ...],
     offsets: tuple[float, ...],
+    landsgrens_version: str = "none",
 ) -> None:
     """Write a DEM while retaining its source scale and offset metadata."""
     with rasterio.open(target_path, "w", **profile) as destination:
         destination.scales = scales
         destination.offsets = offsets
         destination.update_tags(waterlagen_dem_coverage=COVERAGE_VERSION)
+        destination.update_tags(waterlagen_dem_landsgrens=landsgrens_version)
         destination.write(data, 1)
 
 
@@ -371,6 +373,7 @@ def prepare_watersysteem_rasters(
     *,
     burn_depth_m: float,
     ahn_vrt_path: Path | None = None,
+    landsgrens_path: Path | None = None,
     watersysteem_path: Path | None = None,
     output_dir: Path | None = None,
     data_store: DataStore | None = None,
@@ -383,7 +386,9 @@ def prepare_watersysteem_rasters(
     Missing elevation cells inside cached full source raster extents are filled
     with ``rasterio.fill.fillnodata`` using the original full-grid search
     distance. NoData outside all source extents is not offered for interpolation.
-    All NoData inside a source extent remains fillable, including at its edges.
+    With ``landsgrens_path``, source extents are limited to the national boundary.
+    All NoData inside that coverage remains fillable, including at its edges.
+    Outside cells are NoData and cannot be interpolation targets or donors.
     Primary and secondary hydroobjects are rasterized separately.
     The primary mask has priority, so its two-times burn depth is not added to
     the one-times secondary depth in overlapping cells. The companion segment
@@ -404,6 +409,10 @@ def prepare_watersysteem_rasters(
         GeoPackage containing ``hydroobject_primair``,
         ``hydroobject_secundair``, and ``hydroobject_segment``. Defaults to
         ``datastore.afwateringseenheden_path / 'watersysteem.gpkg'``.
+    landsgrens_path : Path, optional
+        Bestuurlijke gebieden GeoPackage with the Dutch ``landgebied`` layer.
+        Reprojected to the target CRS; pixel centres determine inclusion.
+        No download is performed. None retains full source-extent coverage.
     output_dir : Path, optional
         Directory for ``dem_2m.tif`` and ``hydroobject_segment.tif``. Defaults
         to ``datastore.afwateringseenheden_path / 'rasters'``.
@@ -414,7 +423,8 @@ def prepare_watersysteem_rasters(
     overwrite : bool, optional
         Whether existing validated raster pairs are regenerated. With False,
         both existing valid outputs from this coverage policy are reused.
-        Outputs with missing or outdated coverage metadata are regenerated.
+        Outputs with missing or outdated coverage metadata or a changed
+        landsgrens source (path, modification time or size) are regenerated.
 
     Returns
     -------
@@ -437,13 +447,15 @@ def prepare_watersysteem_rasters(
     dem_path = output_dir / DEM_FILENAME
     segment_path = output_dir / HYDROOBJECT_SEGMENT_FILENAME
     result = WatersysteemRasters(dem_path, segment_path)
+    landsgrens_version = _landsgrens_version(landsgrens_path)
 
     if dem_path.exists() and segment_path.exists() and not overwrite:
         with rasterio.open(dem_path) as existing:
             version = existing.tags().get("waterlagen_dem_coverage")
-        if version == COVERAGE_VERSION:
+            boundary_version = existing.tags().get("waterlagen_dem_landsgrens", "none")
+        if version == COVERAGE_VERSION and boundary_version == landsgrens_version:
             with rasterio.open(ahn_vrt_path) as source:
-                coverage = _coverage_mask(source, grid)
+                coverage = _coverage_mask(source, grid, landsgrens_path)
             _validate_rasters(dem_path, segment_path, grid=grid, coverage_mask=coverage)
             logger.info("Reusing validated watersysteem rasters in %s", output_dir)
             return result
@@ -468,7 +480,7 @@ def prepare_watersysteem_rasters(
             if source.crs is None:
                 raise ValueError(f"AHN VRT has no CRS: {ahn_vrt_path}")
             _validate_source_coverage(source, grid)
-            coverage = _coverage_mask(source, grid)
+            coverage = _coverage_mask(source, grid, landsgrens_path)
             dem_data = _resample_dem(source, grid, coverage)
             scale = source.scales[0]
             primary = _features_in_project_crs(
@@ -500,6 +512,7 @@ def prepare_watersysteem_rasters(
                 profile=_dem_profile(source, grid),
                 scales=source.scales,
                 offsets=source.offsets,
+                landsgrens_version=landsgrens_version,
             )
 
         logger.info("Rasterizing hydroobject_segment from %s", watersysteem_path)

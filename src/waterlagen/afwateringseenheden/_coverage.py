@@ -6,6 +6,7 @@ NoData. Source masks and pixel values are never read to determine coverage.
 
 import xml.etree.ElementTree as ET
 from functools import lru_cache
+from hashlib import sha256
 from pathlib import Path
 
 import numpy as np
@@ -13,7 +14,10 @@ import rasterio
 from rasterio.features import rasterize
 from rasterio.warp import transform_bounds
 from shapely.geometry import Polygon, box
+from shapely.geometry.base import BaseGeometry
 
+from waterlagen._crs import same_crs
+from waterlagen.administratieve_gebieden import read_landsgrens
 from waterlagen.logger import get_logger
 from waterlagen.raster.grid import RasterGrid
 
@@ -67,12 +71,40 @@ def _source_extent(
     return box(*bounds)
 
 
-def _coverage_mask(source: rasterio.io.DatasetReader, grid: RasterGrid) -> np.ndarray:
+def _landsgrens_version(path: Path | None) -> str:
+    """Identify the boundary source used to generate cached DEMs."""
+    if path is None:
+        return "none"
+    path = Path(path).resolve()
+    return sha256(f"{path}:{_file_version(path)}".encode()).hexdigest()
+
+
+@lru_cache(maxsize=16)
+def _landsgrens_geometry(path: Path, version: str, crs: str) -> BaseGeometry:
+    """Read and reproject landgebied once per file version and worker."""
+    logger.info("Reading Nederlandse landsgrens from %s", path)
+    landsgrens = read_landsgrens(path=path)
+    if landsgrens.crs is None:
+        raise ValueError(f"Landsgrens has no CRS: {path}")
+    if not same_crs(landsgrens.crs, crs):
+        landsgrens = landsgrens.to_crs(crs)
+    geometry = landsgrens.geometry.make_valid().union_all()
+    if geometry.is_empty or geometry.geom_type not in {"Polygon", "MultiPolygon"}:
+        raise ValueError(f"Landsgrens must contain non-empty polygon geometry: {path}")
+    return geometry
+
+
+def _coverage_mask(
+    source: rasterio.io.DatasetReader,
+    grid: RasterGrid,
+    landsgrens_path: Path | None = None,
+) -> np.ndarray:
     """Union full source raster extents on the exact DEM target grid.
 
     In-memory caches are invalidated by VRT/source/sidecar mtime and size, and
     target CRS. Extents are rasterized at the requested resolution and alignment.
     No coverage files are written beside input data.
+    When supplied, landgebied limits coverage to pixel centres inside Nederland.
     """
     path = Path(source.name).resolve()
     if source.driver == "VRT":
@@ -91,10 +123,29 @@ def _coverage_mask(source: rasterio.io.DatasetReader, grid: RasterGrid) -> np.nd
             extents.append((extent, 1))
     if not extents:
         return np.zeros((grid.height, grid.width), dtype=bool)
-    return rasterize(
+    coverage = rasterize(
         extents,
         out_shape=(grid.height, grid.width),
         transform=grid.transform,
         dtype="uint8",
         fill=0,
     ).astype(bool)
+    if landsgrens_path is None:
+        return coverage
+    landsgrens = _landsgrens_geometry(
+        Path(landsgrens_path).resolve(),
+        _landsgrens_version(landsgrens_path),
+        str(grid.crs),
+    ).intersection(target)
+    if landsgrens.is_empty:
+        return np.zeros_like(coverage)
+    logger.info("Limiting DEM coverage to Nederlandse landsgrens for %s", grid.bounds)
+    national_mask = rasterize(
+        [(landsgrens, 1)],
+        out_shape=coverage.shape,
+        transform=grid.transform,
+        dtype="uint8",
+        fill=0,
+        all_touched=False,
+    ).astype(bool)
+    return coverage & national_mask

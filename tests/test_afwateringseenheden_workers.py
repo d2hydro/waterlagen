@@ -45,9 +45,11 @@ def sources(tmp_path: Path) -> tuple[Path, Path]:
     return dem_path, watersysteem_path
 
 
+@pytest.mark.parametrize("use_landsgrens", [False, True])
 def test_six_workers_match_serial_and_reuse_output(
     sources: tuple[Path, Path],
     tmp_path: Path,
+    use_landsgrens: bool,
 ) -> None:
     pytest.importorskip("pcraster")
     dem_path, watersysteem_path = sources
@@ -63,6 +65,12 @@ def test_six_workers_match_serial_and_reuse_output(
         "resolution_m": 2,
         "random_seed": 12345,
     }
+    if use_landsgrens:
+        landsgrens_path = tmp_path / "bestuurlijke.gpkg"
+        gpd.GeoDataFrame(geometry=[box(0, 0, 36, 48)], crs=settings.crs).to_file(
+            landsgrens_path, layer="landgebied"
+        )
+        options["landsgrens_path"] = landsgrens_path
     serial = calculate_afwateringseenheden_tiles(
         box(8, 8, 56, 40),
         **options,
@@ -113,6 +121,11 @@ def test_six_workers_match_serial_and_reuse_output(
                 assert a.crs == b.crs
                 assert a.nodata == b.nodata
                 np.testing.assert_array_equal(a.read(1), b.read(1))
+                if use_landsgrens and filename == "dem_2m.tif":
+                    columns = a.transform.c + (np.arange(a.width) + 0.5) * a.res[0]
+                    missing = np.ma.getmaskarray(a.read(1, masked=True))
+                    assert missing[:, columns >= 36].all()
+                    assert not missing[:, columns < 36].any()
             path = second.output_dir / filename
             versions[path] = path.stat().st_mtime_ns
         assert_geodataframe_equal(
