@@ -72,11 +72,12 @@ def _source_extent(
 
 
 def _landsgrens_version(path: Path | None) -> str:
-    """Identify the boundary source used to generate cached DEMs."""
+    """Identify the boundary source and masking policy used for cached DEMs."""
     if path is None:
         return "none"
     path = Path(path).resolve()
-    return sha256(f"{path}:{_file_version(path)}".encode()).hexdigest()
+    source_version = sha256(f"{path}:{_file_version(path)}".encode()).hexdigest()
+    return f"area_v2:{source_version}"
 
 
 @lru_cache(maxsize=16)
@@ -137,7 +138,8 @@ def _coverage_mask(
         _landsgrens_version(landsgrens_path),
         str(grid.crs),
     ).intersection(target)
-    if landsgrens.is_empty:
+    # A boundary-only intersection must not rasterize a line as covered cells.
+    if landsgrens.area == 0:
         return np.zeros_like(coverage)
     logger.info("Limiting DEM coverage to Nederlandse landsgrens for %s", grid.bounds)
     national_mask = rasterize(

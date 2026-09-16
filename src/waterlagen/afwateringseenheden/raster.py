@@ -465,7 +465,8 @@ def prepare_watersysteem_rasters(
         Whether existing validated raster pairs are regenerated. With False,
         both existing valid outputs from this coverage policy are reused.
         Outputs with missing or outdated coverage metadata or a changed
-        landsgrens source (path, modification time or size) are regenerated.
+        landsgrens source (path, modification time or size) or masking policy
+        are regenerated.
 
     Returns
     -------

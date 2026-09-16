@@ -79,7 +79,10 @@ gemelde tegels. De randproblemen betreffen de situatie vóór het aanvullen.
 Elke start maakt een nieuwe map
 `<datastore.afwateringseenheden_path>/aa_en_maas_<datum-tijd>/` met
 `watersysteem.gpkg`, `afwateringseenheden.gpkg`, `afwateringseenheden.log` en
-`tiles/<tegel-id>/` met rasters, tegelpolygonen en `workflow.log`.
+`tiles.gpkg`. Deze GeoPackage bevat de geselecteerde kerntiles; de waarde in
+`tile_id` is gelijk aan de naam van de bijbehorende map
+`tiles/<tegel-id>/`. Elke tegelmap bevat rasters, tegelpolygonen en
+`workflow.log`.
 Eerdere runs blijven behouden. De standaard hoofdmap is
 `data/processed_data/afwateringseenheden`.
 

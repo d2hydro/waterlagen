@@ -42,7 +42,7 @@ Grote gebieden kunnen in gebufferde tegels worden berekend:
 - Per kerntile wordt de berekening uitgevoerd op de tile inclusief een buffer. De standaardbuffer is 2 km, zodat afstroming van buiten de kerntile kan worden meegenomen.
 - Alleen afwateringseenheden die niet tot aan de buitenste rekenrand van de buffer reiken, worden teruggeknipt naar de kerntile en meegenomen in het resultaat.
 - De bruikbare resultaten worden per `segment_id` samengevoegd en teruggeknipt naar het oorspronkelijke gebied.
-- Tegels zonder `hydroobject-segmenten` worden overgeslagen. Wanneer een afwateringseenheid vanaf de buffergrens de kerntile bereikt, wordt de tegel gemeld als randprobleem.
+- Tegels zonder `hydroobject-segmenten` op geldige DEM-cellen worden overgeslagen. Wanneer een afwateringseenheid vanaf de buffergrens de kerntile bereikt, wordt de tegel gemeld als randprobleem.
 
 Na het berekenen van afwateringseenheden per tegel worden alle tegels samengevoegd tot één set afwateringseenheden voor het interessegebied.
 
@@ -57,6 +57,8 @@ De dekking kan worden begrensd tot de Nederlandse landsgrens, zoals in het
 Aa en Maas-script. De celmiddens bepalen of cellen binnen Nederland vallen,
 ook in de tegelbuffers. Buitenliggende cellen worden vóór interpolatie op
 NoData gezet; ze worden niet gevuld en leveren geen hoogte voor interpolatie.
+Een tegel die Nederland alleen langs een rand of punt raakt, heeft geen
+Nederlandse DEM-dekking.
 Blijven binnen de dekking cellen leeg, dan krijgen alleen die cellen de
 dichtstbijzijnde oorspronkelijke geldige hoogte binnen de dekking. Bestaande
 hoogtes en al geïnterpoleerde cellen blijven behouden. Zonder bruikbare hoogte
@@ -99,7 +101,9 @@ De standaardproject-CRS is `EPSG:28992`. Elke laag heeft tevens een voorgedefini
 
 Secundaire objecten gelden als verbonden wanneer hun volledige geometrie binnen
 de ingestelde tolerantie (standaard 2 m) van een primair of secundair object
-ligt. Tegels zonder segmentcellen worden overgeslagen. Als een gebied vanaf de
+ligt. Tegels zonder segmentcellen op geldige DEM-hoogtes worden overgeslagen,
+ook wanneer alle segmenten buiten de brondekking of landsgrens liggen. De
+voorbereide rasters blijven beschikbaar voor hergebruik. Als een gebied vanaf de
 buffergrens de kerntile bereikt, meldt Waterlagen de tile als randprobleem.
 Die melding betreft de situatie vóór het aanvullen vanuit buurtegels.
 Controleer de resterende gaten na het samenvoegen; automatisch herberekenen

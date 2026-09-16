@@ -16,6 +16,9 @@ per worker gecachet. Bij een gewijzigde landsgrensbron (pad, wijzigingstijd of
 bestandsgrootte) worden bestaande rasters en tegelresultaten opnieuw berekend,
 ook bij `overwrite=False`. De functies downloaden de grenslaag zelf niet.
 Zonder `landsgrens_path` geldt de dekking van de volledige bronextents.
+De landsgrenstag bevat ook de maskeringsversie. Uitvoer met de oude maskering,
+die een raaklijn ten onrechte als DEM-dekking kon opnemen, wordt eenmalig
+opnieuw berekend. Uitvoer zonder landsgrensmasker blijft herbruikbaar.
 
 Voor hergebruik van tegeluitvoer is ook `subcatchments.tif` nodig: dit bepaalt
 de werkelijke buffer; CRS en resolutie moeten overeenkomen. Het opgegeven
@@ -28,6 +31,15 @@ om de vorige versie te bewaren.
 resterende gaten. `boundary_issue_tile_ids` betreft randproblemen voordat het
 resultaat is aangevuld. `calculation_duration_seconds` geeft de verwerkingstijd
 per tegel, zonder wachttijd in de pool of het gezamenlijke samenvoegen.
+
+`skipped_tile_ids` bevat tegels zonder segmentcellen op geldige DEM-hoogtes.
+Hiervoor worden zowel het segmentraster als het NoData-masker en de eindige
+hoogtewaarden van het DEM gecontroleerd. Voor overgeslagen tegels worden geen
+LDD- of subcatchmentbestanden gemaakt; de voorbereide rasters blijven behouden.
+
+`tiles.gpkg` wordt in de opgegeven `output_dir` geschreven. De laag `tiles`
+bevat de geselecteerde kerntiles en een `tile_id`-kolom met de namen van de
+bijbehorende tegelmappen.
 
 De functie gebruikt standaard een worker. Parallelle berekeningen gebruiken
 afzonderlijke `spawn`-processen en vereisen een script met een `__main__`-guard.

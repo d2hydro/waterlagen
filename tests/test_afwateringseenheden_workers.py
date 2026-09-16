@@ -97,22 +97,35 @@ def test_six_workers_match_serial_and_reuse_output(
     ]
     assert serial.boundary_issue_tile_ids == parallel.boundary_issue_tile_ids
     assert serial.skipped_tile_ids == parallel.skipped_tile_ids
+    if use_landsgrens:
+        assert set(serial.skipped_tile_ids) == {
+            "000040_000008_000056_000024",
+            "000040_000024_000056_000040",
+        }
+    else:
+        assert serial.skipped_tile_ids == ()
     assert_geodataframe_equal(
         serial.merged_subcatchments, parallel.merged_subcatchments
     )
     versions = {}
     for first, second in zip(serial.tile_results, parallel.tile_results, strict=True):
-        assert second.subcatchments is not None
+        assert first.skipped_reason == second.skipped_reason
+        filenames = ["dem_2m.tif", "hydroobject_segment.tif"]
+        if second.skipped_reason is None:
+            assert second.subcatchments is not None
+            filenames.extend(["ldd.tif", "subcatchments.tif"])
+        else:
+            assert first.subcatchments is None
+            assert second.subcatchments is None
+            assert second.usable_subcatchments.empty
+            for result in (first, second):
+                assert not (result.output_dir / "ldd.tif").exists()
+                assert not (result.output_dir / "subcatchments.tif").exists()
         assert (second.output_dir / "workflow.log").exists()
         assert "Calculated afwateringseenheden tile" in (
             second.output_dir / "workflow.log"
         ).read_text(encoding="utf-8")
-        for filename in (
-            "dem_2m.tif",
-            "hydroobject_segment.tif",
-            "ldd.tif",
-            "subcatchments.tif",
-        ):
+        for filename in filenames:
             with (
                 rasterio.open(first.output_dir / filename) as a,
                 rasterio.open(second.output_dir / filename) as b,
@@ -138,6 +151,7 @@ def test_six_workers_match_serial_and_reuse_output(
         output_dir=tmp_path / "parallel",
     )
     assert all(result.subcatchments is None for result in reused.tile_results)
+    assert reused.skipped_tile_ids == parallel.skipped_tile_ids
     for attribute in ("merged_subcatchments", "gap_additions", "remaining_gaps"):
         assert_geodataframe_equal(
             getattr(serial, attribute), getattr(parallel, attribute)

@@ -1,4 +1,5 @@
 from pathlib import Path
+from hashlib import sha256
 
 import geopandas as gpd
 import numpy as np
@@ -10,6 +11,7 @@ from shapely.geometry import LineString, box
 
 from waterlagen.afwateringseenheden import prepare_watersysteem_rasters
 from waterlagen.afwateringseenheden import raster as raster_module
+from waterlagen.afwateringseenheden._coverage import _file_version
 from waterlagen.settings import settings
 
 CRS = settings.crs
@@ -51,6 +53,39 @@ def test_landsgrens_fills_dutch_cells_only_and_invalidates_unmasked_cache(
     )
     assert prepare_watersysteem_rasters(box(0, 0, 8, 8), **kwargs) == result
     assert result.dem_path.stat().st_mtime_ns == version
+
+
+def test_prepare_regenerates_old_landsgrens_mask_at_a_touching_edge(
+    source_paths: tuple[Path, Path], tmp_path: Path
+) -> None:
+    ahn_vrt_path, watersysteem_path = source_paths
+    boundary_path = tmp_path / "bestuurlijke.gpkg"
+    gpd.GeoDataFrame(geometry=[box(-8, 0, 0, 8)], crs=CRS).to_file(
+        boundary_path, layer="landgebied"
+    )
+    options = {
+        "burn_depth_m": 0,
+        "ahn_vrt_path": ahn_vrt_path,
+        "watersysteem_path": watersysteem_path,
+        "landsgrens_path": boundary_path,
+        "output_dir": tmp_path / "output",
+    }
+    result = prepare_watersysteem_rasters(box(0, 0, 8, 8), **options)
+    # Previous masking rasterized the touching edge as a false strip of coverage.
+    previous_version = sha256(
+        f"{boundary_path.resolve()}:{_file_version(boundary_path)}".encode()
+    ).hexdigest()
+    with rasterio.open(result.dem_path, "r+") as dem:
+        data = dem.read(1)
+        data[:, 0] = 1000
+        dem.write(data, 1)
+        dem.update_tags(waterlagen_dem_landsgrens=previous_version)
+
+    assert prepare_watersysteem_rasters(box(0, 0, 8, 8), **options) == result
+
+    with rasterio.open(result.dem_path) as dem:
+        assert np.ma.getmaskarray(dem.read(1, masked=True)).all()
+        assert dem.tags()["waterlagen_dem_landsgrens"] != previous_version
 
 
 def _write_ahn_vrt(tmp_path: Path) -> Path:

@@ -24,7 +24,7 @@ from waterlagen._downloads import _temporary_path
 from waterlagen._geopackage import write_geopackage_layer
 from waterlagen.datastore import DataStore
 from waterlagen.logger import configure_logging, get_logger
-from waterlagen.raster.tiles import Tile, read_tiles, tile_from_row
+from waterlagen.raster.tiles import TILES_LAYER, Tile, read_tiles, tile_from_row
 from waterlagen.settings import settings
 
 from ._coverage import _landsgrens_version
@@ -42,6 +42,7 @@ logger = get_logger(__name__)
 
 # Numerical tolerance in square metres, not a minimum gap size.
 _AREA_TOLERANCE = 0.0001
+TILES_FILENAME = "tiles.gpkg"
 
 
 @dataclass(frozen=True, slots=True)
@@ -253,10 +254,15 @@ def _calculation_geometry(tile: Tile, *, tile_buffer_m: float) -> BaseGeometry:
 
 
 def _has_segment_cells(rasters: WatersysteemRasters) -> bool:
+    """Return whether any segment cell overlaps a valid DEM elevation."""
     with rasterio.open(rasters.hydroobject_segment_path) as segment:
-        data = segment.read(1)
-        nodata = segment.nodata if segment.nodata is not None else 0
-    return bool(np.any(data != nodata))
+        segment_cells = segment.read(1, masked=True).filled(0) != 0
+    if not segment_cells.any():
+        return False
+    with rasterio.open(rasters.dem_path) as dem:
+        elevations = dem.read(1, masked=True)
+    valid_dem = ~np.ma.getmaskarray(elevations) & np.isfinite(elevations.data)
+    return bool(np.any(segment_cells & valid_dem))
 
 
 def _empty_like_subcatchments(
@@ -631,6 +637,37 @@ def _write_merged_subcatchments(
         raise
 
 
+def _write_selected_tiles(output_dir: Path, tiles: Collection[Tile]) -> Path:
+    """Write the selected core tiles with the matching result-folder names."""
+    output_path = output_dir / TILES_FILENAME
+    features = gpd.GeoDataFrame(
+        {"tile_id": [tile.tile_id for tile in tiles]},
+        geometry=[_tile_geometry(tile) for tile in tiles],
+        crs=settings.crs,
+    )
+    temporary_path = _temporary_path(output_path, suffix=".gpkg")
+    try:
+        write_geopackage_layer(
+            features,
+            temporary_path,
+            layer_name=TILES_LAYER,
+            mode="w",
+        )
+        written = wgpd.read_file(temporary_path, layer=TILES_LAYER)
+        if len(written) != len(features):
+            raise ValueError("Written selected tile count does not match the selection")
+        if written["tile_id"].tolist() != features["tile_id"].tolist():
+            raise ValueError("Written selected tile IDs do not match the selection")
+        if not written.geom_type.eq("Polygon").all() or not written.is_valid.all():
+            raise ValueError("Written selected tiles must be valid polygons")
+        temporary_path.replace(output_path)
+    except Exception:
+        temporary_path.unlink(missing_ok=True)
+        raise
+    logger.info("Wrote %s selected core tile(s) to %s", len(features), output_path)
+    return output_path
+
+
 def _calculate_tile(job: _TileJob) -> AfwateringseenhedenTileResult:
     """Calculate a tile once with the configured buffer, or reuse its cached result."""
     tile = job.tile
@@ -675,7 +712,8 @@ def _calculate_tile(job: _TileJob) -> AfwateringseenhedenTileResult:
         )
         if not _has_segment_cells(rasters):
             logger.info(
-                "Skipping afwateringseenheden tile %s without hydroobject segments",
+                "Skipping afwateringseenheden tile %s without hydroobject segments "
+                "within valid DEM coverage",
                 tile.tile_id,
             )
             return AfwateringseenhedenTileResult(
@@ -837,7 +875,9 @@ def calculate_afwateringseenheden_tiles(
         Prepared watersysteem GeoPackage. Defaults to the datastore output.
     output_dir : Path, optional
         Root directory for per-tile folders. Defaults to
-        ``datastore.afwateringseenheden_path / 'tiles'``.
+        ``datastore.afwateringseenheden_path / 'tiles'``. The selected core
+        tiles are written to ``tiles.gpkg`` in this directory. Its ``tile_id``
+        values match the per-tile folder names.
     merged_output_path : Path, optional
         GeoPackage path for the dissolved merged result. When omitted, no
         merged GeoPackage is written. An existing merged file is replaced
@@ -887,6 +927,9 @@ def calculate_afwateringseenheden_tiles(
 
     Notes
     -----
+    Tiles without hydroobject-segment cells on valid DEM elevations are skipped,
+    including tiles whose segments lie entirely outside the source coverage or
+    the supplied national boundary. Prepared rasters can still be reused.
     Line and point remnants from clipping are removed. After merging the core
     results, uncovered parts of selected tiles are filled from usable neighbour
     buffer polygons. Polygons touching their calculation boundary are excluded.
@@ -933,6 +976,7 @@ def calculate_afwateringseenheden_tiles(
     selected_tiles = _select_tiles(tiles, tile_ids)
     if len({tile.tile_id for tile in selected_tiles}) != len(selected_tiles):
         raise ValueError("Selected tiles must have unique tile IDs")
+    _write_selected_tiles(output_dir, selected_tiles)
     logger.info("Selected %s afwateringseenheden tile(s)", len(selected_tiles))
 
     jobs = [

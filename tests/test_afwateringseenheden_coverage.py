@@ -4,6 +4,7 @@ from pathlib import Path
 
 import numpy as np
 import geopandas as gpd
+import pytest
 import rasterio
 from osgeo import gdal
 from rasterio.transform import from_origin
@@ -86,6 +87,23 @@ def test_overlap_and_missing_tiles_are_unioned_on_target_grid(tmp_path) -> None:
     expected[2:10, 2:16] = True
     expected[2:10, 22:30] = True
     assert np.array_equal(coverage, expected)
+
+
+@pytest.mark.parametrize("boundary", [box(-8, 0, 0, 8), box(-8, -8, 0, 0)])
+def test_landsgrens_touching_only_the_grid_edge_has_no_coverage(
+    tmp_path: Path, boundary
+) -> None:
+    path = _source(tmp_path / "source.tif")
+    boundary_path = tmp_path / "bestuurlijke.gpkg"
+    gpd.GeoDataFrame(geometry=[boundary], crs=CRS).to_file(
+        boundary_path, layer="landgebied"
+    )
+    grid = RasterGrid.from_bounds((0, 0, 8, 8), resolution=1, crs=CRS)
+
+    with rasterio.open(path) as source:
+        coverage = _coverage_mask(source, grid, boundary_path)
+
+    assert not coverage.any()
 
 
 def test_cached_extents_are_invalidated_when_source_georeference_changes(

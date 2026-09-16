@@ -19,21 +19,21 @@ from waterlagen.raster.tiles import Tile
 from waterlagen.settings import settings
 
 
-def _write_segment_raster(path: Path, *, value: int) -> None:
+def _write_raster(path: Path, data: np.ndarray, *, nodata: float | None) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with rasterio.open(
         path,
         "w",
         driver="GTiff",
-        width=1,
-        height=1,
+        width=data.shape[1],
+        height=data.shape[0],
         count=1,
-        dtype="int32",
-        nodata=0,
+        dtype=data.dtype,
+        nodata=nodata,
         crs=settings.crs,
         transform=from_origin(0, 1, 1, 1),
     ) as destination:
-        destination.write(np.array([[value]], dtype=np.int32), 1)
+        destination.write(data, 1)
 
 
 def _fake_rasters(output_dir: Path, *, segment_value: int = 1) -> WatersysteemRasters:
@@ -41,7 +41,12 @@ def _fake_rasters(output_dir: Path, *, segment_value: int = 1) -> WatersysteemRa
         dem_path=output_dir / "dem_2m.tif",
         hydroobject_segment_path=output_dir / "hydroobject_segment.tif",
     )
-    _write_segment_raster(rasters.hydroobject_segment_path, value=segment_value)
+    _write_raster(
+        rasters.hydroobject_segment_path,
+        np.array([[segment_value]], dtype=np.int32),
+        nodata=0,
+    )
+    _write_raster(rasters.dem_path, np.array([[1000]], dtype=np.int16), nodata=-32768)
     return rasters
 
 
@@ -275,14 +280,32 @@ def test_calculate_tiles_uses_buffered_tile_geometry_and_writes_merged_output(
         "segment-a",
         "segment-b",
     }
+    written_tiles = gpd.read_file(tmp_path / "tiles" / "tiles.gpkg", layer="tiles")
+    assert written_tiles["tile_id"].tolist() == [
+        "000000_000000_002000_002000",
+        "002000_000000_004000_002000",
+    ]
+    assert written_tiles.geometry.tolist() == [
+        box(0, 0, 2000, 2000),
+        box(2000, 0, 4000, 2000),
+    ]
 
 
-def test_calculate_tiles_skips_tiles_without_segment_cells(
+@pytest.mark.parametrize("outside_dem_coverage", [False, True])
+def test_calculate_tiles_skips_tiles_without_usable_segment_cells(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
+    outside_dem_coverage: bool,
 ) -> None:
     def fake_prepare(ruimtelijk_vierkant, **kwargs) -> WatersysteemRasters:
-        return _fake_rasters(Path(kwargs["output_dir"]), segment_value=0)
+        rasters = _fake_rasters(
+            Path(kwargs["output_dir"]), segment_value=int(outside_dem_coverage)
+        )
+        if outside_dem_coverage:
+            _write_raster(
+                rasters.dem_path, np.array([[-32768]], dtype=np.int16), nodata=-32768
+            )
+        return rasters
 
     def fail_calculate(*args, **kwargs) -> SubcatchmentResult:
         raise AssertionError("tiles without segment cells should be skipped")
@@ -305,6 +328,22 @@ def test_calculate_tiles_skips_tiles_without_segment_cells(
     assert result.merged_path is None
     assert not (tmp_path / "afwateringseenheden.gpkg").exists()
     assert result.merged_subcatchments.empty
+
+
+@pytest.mark.parametrize("missing", [-32768.0, np.nan, np.inf])
+@pytest.mark.parametrize("covered_segment", [False, True])
+def test_segment_cells_require_valid_dem_at_the_same_location(
+    tmp_path: Path, missing: float, covered_segment: bool
+) -> None:
+    rasters = WatersysteemRasters(tmp_path / "dem.tif", tmp_path / "segments.tif")
+    _write_raster(rasters.dem_path, np.array([[10.0, missing]]), nodata=-32768)
+    _write_raster(
+        rasters.hydroobject_segment_path,
+        np.array([[int(covered_segment), 1]], dtype=np.int32),
+        nodata=0,
+    )
+
+    assert tiles_module._has_segment_cells(rasters) is covered_segment
 
 
 def test_calculate_tiles_reports_boundary_issues_without_recalculation(
