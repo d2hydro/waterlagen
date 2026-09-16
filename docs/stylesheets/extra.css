@@ -3,3 +3,7 @@
   --md-primary-fg-color--light: #2e9fd0;
   --md-primary-fg-color--dark: #006a9c;
 }
+
+.md-typeset table td:first-child code {
+  white-space: nowrap;
+}
