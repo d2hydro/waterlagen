@@ -9,6 +9,11 @@ blijft NoData. Met `landsgrens_path` wordt deze dekking verder begrensd tot
 Nederland, ook binnen de tegelbuffers.
 Na resampling worden cellen buiten dit dekkingsmasker op NoData gezet, vóór
 interpolatie. Zo worden randcellen niet onbedoeld als hoogte of donor gebruikt.
+Als de interpolatie toch cellen binnen de dekking leeg laat, krijgen alleen die
+cellen de dichtstbijzijnde oorspronkelijke geldige hoogte binnen de dekking.
+Dit vangnet wordt gelogd; bestaande hoogtes en al geïnterpoleerde cellen blijven
+behouden. Zonder geldige hoogte binnen de dekking stopt de berekening met een
+foutmelding.
 
 Bronextents worden in het geheugen gecachet op basis van bestandsversie,
 sidecarversies en doel-CRS en op het gevraagde doelgrid gerasteriseerd.

@@ -88,6 +88,40 @@ def _grid_for_square(
     )
 
 
+def _nearest_dem_value(
+    data: np.ndarray, donors: np.ndarray, row: int, col: int
+) -> float:
+    """Find the nearest donor using expanding windows, without a full-grid index.
+
+    Call only with at least one donor. Stop when no cell outside the search
+    window can be closer than the best donor found inside it.
+    """
+    height, width = data.shape
+    radius = 1
+    while True:
+        row_start = max(0, row - radius)
+        row_stop = min(height, row + radius + 1)
+        col_start = max(0, col - radius)
+        col_stop = min(width, col + radius + 1)
+        donor_rows, donor_cols = np.nonzero(
+            donors[row_start:row_stop, col_start:col_stop]
+        )
+        if donor_rows.size:
+            donor_rows += row_start
+            donor_cols += col_start
+            distances_squared = (donor_rows - row) ** 2 + (donor_cols - col) ** 2
+            nearest = int(np.argmin(distances_squared))
+            entire_grid = (
+                row_start == 0
+                and row_stop == height
+                and col_start == 0
+                and col_stop == width
+            )
+            if distances_squared[nearest] <= radius**2 or entire_grid:
+                return float(data[donor_rows[nearest], donor_cols[nearest]])
+        radius *= 2
+
+
 def _fill_dem_nodata(
     data: np.ndarray, coverage_mask: np.ndarray | None = None
 ) -> np.ndarray:
@@ -96,7 +130,8 @@ def _fill_dem_nodata(
     The inverse-distance method and full-grid search distance are unchanged.
     GDAL's mask marks outside cells as *not to be filled*; its NODATA option
     excludes their temporary sentinel from interpolation donors. Original finite
-    values are restored exactly; only candidate cells change.
+    values are restored exactly; only candidate cells change. If the masked
+    search leaves gaps, use their nearest original finite donor within coverage.
     """
     valid_cells = np.isfinite(data)
     if coverage_mask is None:
@@ -106,7 +141,8 @@ def _fill_dem_nodata(
     candidates = coverage_mask & ~valid_cells
     if not candidates.any():
         return data
-    if not valid_cells.any():
+    donors = coverage_mask & valid_cells
+    if not donors.any():
         raise ValueError("DEM has no finite elevation values to fill NoData cells")
 
     max_search_distance = float(np.hypot(*data.shape))
@@ -114,7 +150,7 @@ def _fill_dem_nodata(
     if np.any(data[valid_cells] <= sentinel):
         raise ValueError("DEM values conflict with the interpolation NoData sentinel")
     working = data.copy()
-    outside = ~coverage_mask & ~valid_cells
+    outside = ~coverage_mask
     working[outside] = sentinel
     logger.info(
         "Interpolating %s covered DEM cells; excluding %s outside cells",
@@ -127,13 +163,16 @@ def _fill_dem_nodata(
         max_search_distance=max_search_distance,
         nodata=sentinel,
     )
-    interpolated = filled_data[candidates]
-    remaining = int((~np.isfinite(interpolated) | (interpolated == sentinel)).sum())
+    unfilled = candidates & (~np.isfinite(filled_data) | (filled_data == sentinel))
+    remaining = int(unfilled.sum())
     if remaining:
-        raise ValueError(
-            "DEM NoData filling did not complete; "
-            f"{remaining} non-finite cell(s) remain"
+        logger.info(
+            "Filling %s remaining covered DEM cells from nearest original "
+            "elevations within coverage",
+            remaining,
         )
+        for row, col in zip(*np.nonzero(unfilled)):
+            filled_data[row, col] = _nearest_dem_value(data, donors, row, col)
     filled_data[valid_cells] = data[valid_cells]
     filled_data[outside] = data[outside]
     return filled_data
@@ -388,6 +427,8 @@ def prepare_watersysteem_rasters(
     distance. NoData outside all source extents is not offered for interpolation.
     With ``landsgrens_path``, source extents are limited to the national boundary.
     All NoData inside that coverage remains fillable, including at its edges.
+    Gaps left by the masked interpolation use the nearest original finite
+    elevation within coverage. Existing valid outputs are still reused.
     Outside cells are NoData and cannot be interpolation targets or donors.
     Primary and secondary hydroobjects are rasterized separately.
     The primary mask has priority, so its two-times burn depth is not added to

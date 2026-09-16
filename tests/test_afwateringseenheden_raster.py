@@ -191,14 +191,71 @@ def test_fill_dem_nodata_searches_the_full_raster(
     assert observed["max_search_distance"] == pytest.approx(np.hypot(*data.shape))
 
 
-def test_fill_dem_nodata_raises_when_gaps_remain(
-    monkeypatch: pytest.MonkeyPatch,
+@pytest.mark.parametrize("unfilled", [np.nan, np.inf, np.finfo(np.float32).min])
+def test_fill_dem_nodata_recovers_only_remaining_gaps(
+    monkeypatch: pytest.MonkeyPatch, unfilled: float
 ) -> None:
-    data = np.array([[1.0, np.nan]])
-    monkeypatch.setattr(raster_module, "fillnodata", lambda *args, **kwargs: data)
+    data = np.array([[1.123456789, np.nan, np.nan, 4.123456789]])
+    original = data.copy()
+    monkeypatch.setattr(
+        raster_module,
+        "fillnodata",
+        lambda *args, **kwargs: np.array([[1.0, 2.5, unfilled, 4.0]]),
+    )
 
-    with pytest.raises(ValueError, match="1 non-finite cell"):
-        raster_module._fill_dem_nodata(data)
+    result = raster_module._fill_dem_nodata(data)
+
+    np.testing.assert_array_equal(result, [[data[0, 0], 2.5, data[0, 3], data[0, 3]]])
+    np.testing.assert_array_equal(data, original)
+
+
+def test_fill_dem_nodata_recovers_an_isolated_covered_edge_cell(caplog) -> None:
+    data = np.full((3, 3), np.nan)
+    data[2, 0] = 10.123456789
+    original = data.copy()
+    coverage = np.isfinite(data)
+    coverage[0, 2] = True
+
+    with caplog.at_level("INFO", logger=raster_module.__name__):
+        result = raster_module._fill_dem_nodata(data, coverage)
+
+    assert result[0, 2] == data[2, 0]
+    assert result[2, 0] == data[2, 0]
+    assert np.isnan(result[~coverage]).all()
+    assert "Filling 1 remaining covered DEM cells" in caplog.text
+    np.testing.assert_array_equal(data, original)
+
+
+def test_nearest_dem_value_searches_beyond_the_first_window_with_donors() -> None:
+    data = np.full((11, 11), np.nan)
+    data[9, 9] = 10.0  # Found in radius 4, but farther away than the next donor.
+    data[0, 5] = 20.0
+    donors = np.isfinite(data)
+
+    assert raster_module._nearest_dem_value(data, donors, 5, 5) == 20.0
+
+
+def test_fill_dem_nodata_excludes_finite_outside_values_as_donors() -> None:
+    data = np.full((3, 3), np.nan)
+    data[2, 0] = 10.0
+    data[0, 1] = 999.0
+    coverage = np.zeros(data.shape, dtype=bool)
+    coverage[2, 0] = True
+    coverage[0, 2] = True
+
+    result = raster_module._fill_dem_nodata(data, coverage)
+
+    assert result[0, 2] == 10.0
+    np.testing.assert_array_equal(result[~coverage], data[~coverage])
+
+
+@pytest.mark.parametrize("outside_value", [np.nan, 999.0])
+def test_fill_dem_nodata_rejects_coverage_without_donors(outside_value) -> None:
+    data = np.array([[np.nan, outside_value]])
+    coverage = np.array([[True, False]])
+
+    with pytest.raises(ValueError, match="no finite elevation values"):
+        raster_module._fill_dem_nodata(data, coverage)
 
 
 def test_resample_dem_rejects_a_square_outside_the_ahn_vrt(
