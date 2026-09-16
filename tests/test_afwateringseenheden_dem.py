@@ -1,4 +1,5 @@
 from pathlib import Path
+from unittest.mock import Mock
 
 import numpy as np
 import pytest
@@ -8,6 +9,7 @@ from pyproj import Transformer
 from pyproj.exceptions import ProjError
 from rasterio.transform import from_origin
 
+from waterlagen._downloads import FileDownload
 from waterlagen.afwateringseenheden import dem
 from waterlagen.afwateringseenheden._coverage import (
     _coverage_mask,
@@ -147,6 +149,8 @@ def test_converted_tile_reuses_matching_nodata(
     with rasterio.open(ahn_path) as ahn:
         dem._write_converted_tile(converted, values, grid, ahn, conversion)
         assert dem._reuse_converted_tile(converted, ahn, conversion)
+        with pytest.raises(ValueError, match="Verouderde RD/NAP-tegel"):
+            dem._reuse_converted_tile(converted, ahn, {"vertical_datum": "changed"})
 
 
 def test_conversion_failure_does_not_publish_a_tile(tmp_path: Path) -> None:
@@ -177,3 +181,75 @@ def test_conversion_failure_does_not_publish_a_tile(tmp_path: Path) -> None:
     ):
         dem._convert_dgm1(original, output, ahn, transformer)
     assert not output.exists()
+
+
+def test_rdnap_transformer_downloads_and_reuses_local_grids(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    grid_dir = tmp_path / "correction grids"
+    downloads = []
+
+    def download_grid(url, target, **kwargs):
+        downloads.append(url)
+        assert kwargs["timeout"] == 60
+        temporary = target.with_suffix(".part.tif")
+        _write_raster(
+            temporary,
+            np.zeros((2, 2), dtype="float32"),
+            crs="EPSG:4326",
+            left=5,
+            top=53,
+            scale=1,
+        )
+        size = temporary.stat().st_size
+        return FileDownload(url, temporary, size, True, size)
+
+    transformer = Transformer.from_pipeline("+proj=affine")
+    factory = Mock(return_value=transformer)
+    monkeypatch.setattr(dem, "stream_download_to_temp", download_grid)
+    monkeypatch.setattr(dem.Transformer, "from_pipeline", factory)
+
+    assert dem._rdnap_transformer(grid_dir) is transformer
+    assert dem._rdnap_transformer(grid_dir) is transformer
+    assert downloads == [f"https://cdn.proj.org/{name}" for name in dem.GRID_NAMES]
+    assert {path.name for path in grid_dir.iterdir()} == set(dem.GRID_NAMES)
+    pipeline = factory.call_args.args[0]
+    assert pipeline.startswith("+proj=pipeline +step +inv +proj=utm +zone=32")
+    for name, operation in zip(
+        dem.GRID_NAMES,
+        ("+proj=vgridshift", "+inv +proj=vgridshift", "+inv +proj=hgridshift"),
+        strict=True,
+    ):
+        assert f'+step {operation} +grids="{(grid_dir / name).as_posix()}"' in pipeline
+    assert pipeline.endswith("+ellps=bessel")
+
+
+@pytest.mark.parametrize("incomplete", [True, False])
+def test_invalid_correction_grid_is_not_published(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, incomplete: bool
+) -> None:
+    grid_dir = tmp_path / "grids"
+
+    def download_grid(url, target, **kwargs):
+        temporary = target.with_suffix(".part.tif")
+        temporary.write_bytes(b"invalid raster")
+        size = temporary.stat().st_size
+        return FileDownload(url, temporary, size, True, size + int(incomplete))
+
+    monkeypatch.setattr(dem, "stream_download_to_temp", download_grid)
+    error = ValueError if incomplete else rasterio.errors.RasterioIOError
+    with pytest.raises(error):
+        dem._rdnap_transformer(grid_dir)
+    assert list(grid_dir.iterdir()) == []
+
+
+def test_combined_dem_requires_local_dgm1_tiles(tmp_path: Path) -> None:
+    with pytest.raises(FileNotFoundError, match="Geen DGM1-tegels"):
+        dem.prepare_ahn_dgm1_dem(
+            tmp_path / "ahn.vrt",
+            tmp_path / "original",
+            converted_dir=tmp_path / "converted",
+            grid_dir=tmp_path / "grids",
+            output_path=tmp_path / "combined.vrt",
+        )
+    assert not (tmp_path / "combined.vrt").exists()

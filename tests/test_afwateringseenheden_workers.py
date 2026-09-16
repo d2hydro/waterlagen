@@ -134,3 +134,32 @@ def test_six_workers_match_serial_and_reuse_output(
         )
     assert all(path.stat().st_mtime_ns == version for path, version in versions.items())
     assert [path.read_bytes() for path in sources] == input_bytes
+
+
+def test_worker_failures_preserve_existing_merged_output(
+    sources: tuple[Path, Path], tmp_path: Path
+) -> None:
+    dem_path, watersysteem_path = sources
+    merged_path = tmp_path / "merged.gpkg"
+    merged_path.write_bytes(b"previous result")
+
+    with pytest.raises(RuntimeError, match="merged output not written") as error:
+        calculate_afwateringseenheden_tiles(
+            box(8, 8, 40, 24),
+            burn_depth_m=1,
+            ahn_vrt_path=dem_path,
+            watersysteem_path=watersysteem_path,
+            output_dir=tmp_path / "tiles",
+            merged_output_path=merged_path,
+            tile_size_m=16,
+            tile_buffer_m=4,
+            origin_x=8,
+            origin_y=8,
+            workers=2,
+            engine="unsupported",
+        )
+
+    assert "000008_000008_000024_000024" in str(error.value)
+    assert "000024_000008_000040_000024" in str(error.value)
+    assert "Unsupported subcatchment engine" in str(error.value)
+    assert merged_path.read_bytes() == b"previous result"

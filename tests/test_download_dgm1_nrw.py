@@ -9,7 +9,7 @@ import pytest
 import rasterio
 import requests
 from rasterio.transform import from_origin
-from shapely.geometry import box
+from shapely.geometry import Point, box
 
 from waterlagen._downloads import FileDownload
 from waterlagen.settings import settings
@@ -145,8 +145,10 @@ def test_run_cell_ignores_kernel_arguments(
 @pytest.fixture
 def catalog(monkeypatch: pytest.MonkeyPatch, downloader: ModuleType) -> None:
     names = [
+        "readme.txt",
         "dgm1_32_288_5736_1_nw_2022.tif",
         "dgm1_32_288_5736_1_nw_2024.tif",
+        "dgm1_32_288_5736_1_nw_2022.tif",
         "dgm1_32_289_5736_1_nw_2024.tif",
     ]
     files = "".join(f'<file name="{name}" />' for name in names)
@@ -217,6 +219,13 @@ def test_download_builds_vrt_of_selected_tiles_only(
         np.testing.assert_array_equal(source.read(1), 1)
     assert unrelated.is_file()
 
+    url_list = tmp_path / "urls.txt"
+    url_list.write_text(downloader.BASE_URL + selected.name, encoding="utf-8")
+    assert (
+        downloader.download_dgm1(tmp_path, url_list=url_list, create_vrt=False)
+        == tmp_path
+    )
+
     # A forced refresh failure must preserve the original tile and VRT.
     original_tile = selected.read_bytes()
     original_vrt = vrt.read_bytes()
@@ -280,3 +289,79 @@ def test_script_uses_mask_in_configured_crs(
     script_module.main()
     assert calls[0]["url_list"] is None
     assert calls[0]["poly_mask"].equals(original.to_crs(settings.crs).geometry.iloc[0])
+
+
+@pytest.mark.parametrize(
+    ("options", "error", "message"),
+    [
+        ({"timeout": 0}, ValueError, "timeout must be finite"),
+        ({"timeout": float("nan")}, ValueError, "timeout must be finite"),
+        ({"select_indices": "32_288_5736"}, TypeError, "not a string"),
+        ({"poly_mask": Point(0, 0)}, ValueError, "non-empty polygon"),
+    ],
+)
+def test_catalog_rejects_invalid_selection_without_http(
+    downloader, monkeypatch, options, error, message
+):
+    def no_request(*args, **kwargs):
+        pytest.fail("Invalid selection must be rejected before requesting the index")
+
+    monkeypatch.setattr(downloader.requests, "get", no_request)
+    with pytest.raises(error, match=message):
+        downloader.get_tiles_features(**options)
+
+
+@pytest.mark.parametrize(
+    "options",
+    [
+        {"workers": 0},
+        {"workers": True},
+        {"retries": 0},
+        {"timeout": -1},
+        {"timeout": float("inf")},
+        {"url_list": Path("urls.txt"), "select_indices": ["32_288_5736"]},
+    ],
+)
+def test_download_rejects_invalid_options(downloader, options):
+    with pytest.raises(ValueError):
+        downloader.download_dgm1(**options)
+
+
+@pytest.mark.parametrize(
+    "content", [None, "# no tiles\n", "https://example.com/tile.tif"]
+)
+def test_url_list_requires_valid_links(tmp_path, downloader, content):
+    path = tmp_path / "urls.txt"
+    if content is not None:
+        path.write_text(content, encoding="utf-8")
+    error = FileNotFoundError if content is None else ValueError
+    with pytest.raises(error):
+        downloader._read_urls(path)
+
+
+def test_unexpected_raster_grid_is_rejected(tmp_path, downloader):
+    path = tmp_path / "wrong_grid.tif"
+    with rasterio.open(
+        path,
+        "w",
+        driver="GTiff",
+        count=1,
+        width=2,
+        height=2,
+        dtype="float32",
+        crs=25832,
+        transform=from_origin(288000, 5737000, 2, 2),
+    ) as output:
+        output.write(np.ones((2, 2), dtype="float32"), 1)
+    with pytest.raises(ValueError, match="Onverwacht DGM1-raster"):
+        downloader._validate_geotiff(path)
+
+
+def test_vrt_build_failure_preserves_existing_file(tmp_path, monkeypatch, downloader):
+    target = tmp_path / "dgm1.vrt"
+    target.write_bytes(b"previous vrt")
+    monkeypatch.setattr(downloader.gdal, "BuildVRT", lambda *args, **kwargs: None)
+    with pytest.raises(ValueError, match="could not build"):
+        downloader._create_vrt([tmp_path / "source.tif"], target)
+    assert target.read_bytes() == b"previous vrt"
+    assert list(tmp_path.iterdir()) == [target]

@@ -107,7 +107,12 @@ def test_tile_result_preserves_positional_arguments(
 
 @pytest.mark.parametrize(
     ("tile_buffer_m", "resolution_m", "cached_resolution_m"),
-    [(4.0, 2.0, 2.0), (1.3, 0.1, 0.1), (1.3, 0.1, 0.10000000000000002)],
+    [
+        (0.0, 2.0, 2.0),
+        (4.0, 2.0, 2.0),
+        (1.3, 0.1, 0.1),
+        (1.3, 0.1, 0.10000000000000002),
+    ],
 )
 def test_calculate_tiles_reuses_integer_and_fractional_cached_grids(
     tmp_path: Path,
@@ -314,3 +319,51 @@ def test_calculate_tiles_reports_boundary_issues_without_recalculation(
     assert result.boundary_issue_tile_ids == ("000000_000000_001000_001000",)
     assert result.tile_results[0].has_boundary_issue
     assert result.tile_results[0].usable_subcatchments.empty
+
+
+@pytest.mark.parametrize(
+    ("options", "error", "message"),
+    [
+        ({"workers": True}, TypeError, "workers must be an integer"),
+        ({"workers": 0}, ValueError, "workers must be at least 1"),
+        ({"random_seed": True}, TypeError, "random_seed must be an integer"),
+        ({"random_seed": 0}, ValueError, "random_seed must be positive"),
+    ],
+)
+def test_calculate_tiles_rejects_invalid_worker_settings(options, error, message):
+    with pytest.raises(error, match=message):
+        calculate_afwateringseenheden_tiles(
+            box(0, 0, 16, 16), burn_depth_m=1, **options
+        )
+
+
+def test_parallel_calculation_requires_existing_sources(tmp_path: Path) -> None:
+    missing = tmp_path / "missing.vrt"
+    with pytest.raises(FileNotFoundError) as error:
+        calculate_afwateringseenheden_tiles(
+            box(0, 0, 16, 16),
+            burn_depth_m=1,
+            ahn_vrt_path=missing,
+            output_dir=tmp_path / "tiles",
+            workers=2,
+        )
+    assert error.value.args == (missing,)
+
+
+def test_cached_tile_requires_raster_metadata(tmp_path: Path) -> None:
+    output_dir = tmp_path / "tiles"
+    _write_cached_tile(
+        output_dir,
+        width=12,
+        transform=from_origin(99996, 400020, 2, 2),
+        crs=settings.crs,
+    )
+    raster = next(output_dir.glob("*/subcatchments.tif"))
+    raster.unlink()
+    with pytest.raises(FileNotFoundError, match="Cannot verify cached tile buffer"):
+        calculate_afwateringseenheden_tiles(
+            box(100000, 400000, 100016, 400016),
+            burn_depth_m=1,
+            output_dir=output_dir,
+            tile_size_m=16,
+        )
