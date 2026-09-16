@@ -19,12 +19,12 @@ def _datastore_env_files() -> tuple[Path, ...]:
 class DataStore(BaseSettings):
     """DataStore to structurally store downloaded and processed data.
 
-    Input arguments `data_dir`, `processed_data_dir` and `processed_data_dir` can be set in an env-file `.datastore`:
+    The data directories can be configured in an env-file ``.datastore``:
 
     ```
     DATA_DIR=path/to/data/dir
-    SOURCE_DATA=path/to/source/data
-    PROCESSED_DATA=path/to/processed/data
+    SOURCE_DATA_DIR=path/to/source/data
+    PROCESSED_DATA_DIR=path/to/processed/data
     ```
 
     Attributes
@@ -63,6 +63,13 @@ class DataStore(BaseSettings):
         ahn_dir = self.source_data_dir / "ahn"
         ahn_dir.mkdir(exist_ok=True, parents=True)
         return ahn_dir
+
+    @computed_field
+    @property
+    def dgm1_dir(self) -> Path:
+        dgm1_dir = self.source_data_dir / "dgm1_nrw"
+        dgm1_dir.mkdir(exist_ok=True, parents=True)
+        return dgm1_dir
 
     @computed_field
     @property

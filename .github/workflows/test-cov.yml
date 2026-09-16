@@ -20,10 +20,11 @@ jobs:
         uses: prefix-dev/setup-pixi@v0.9.6
         with:
           pixi-version: v0.70.1
+          environments: afwateringseenheden
           cache: true
 
       - name: Run tests with coverage
-        run: pixi run --environment default pytest --cov=src/waterlagen --cov-report=term-missing --cov-report=xml:coverage.xml
+        run: pixi run --environment afwateringseenheden pytest --cov=src/waterlagen --cov-report=term-missing --cov-report=xml:coverage.xml
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5

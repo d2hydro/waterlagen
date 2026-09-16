@@ -1,0 +1,192 @@
+from pathlib import Path
+
+import geopandas as gpd
+import numpy as np
+import pytest
+import rasterio
+from geopandas.testing import assert_geodataframe_equal
+from rasterio.transform import from_origin
+from shapely.geometry import LineString, box
+
+from waterlagen.afwateringseenheden import calculate_afwateringseenheden_tiles
+from waterlagen.settings import settings
+
+
+@pytest.fixture
+def sources(tmp_path: Path) -> tuple[Path, Path]:
+    dem_path = tmp_path / "dem.tif"
+    dem = np.full((24, 32), 1000, dtype=np.int16)
+    with rasterio.open(
+        dem_path,
+        "w",
+        driver="GTiff",
+        width=32,
+        height=24,
+        count=1,
+        dtype="int16",
+        nodata=-32768,
+        crs=settings.crs,
+        transform=from_origin(0, 48, 2, 2),
+    ) as dataset:
+        dataset.scales = (0.01,)
+        dataset.write(dem, 1)
+    watersysteem_path = tmp_path / "watersysteem.gpkg"
+    primary = gpd.GeoDataFrame(
+        {"segment_id": ["first", "second", "third"]},
+        geometry=[LineString([(x, 0), (x, 48)]) for x in (10, 26, 42)],
+        crs=settings.crs,
+    )
+    for layer in ("hydroobject_primair", "hydroobject_segment"):
+        primary.to_file(watersysteem_path, layer=layer, driver="GPKG", index=False)
+    secondary = primary.iloc[:0]
+    secondary.to_file(
+        watersysteem_path, layer="hydroobject_secundair", driver="GPKG", index=False
+    )
+    return dem_path, watersysteem_path
+
+
+@pytest.mark.parametrize("use_landsgrens", [False, True])
+def test_six_workers_match_serial_and_reuse_output(
+    sources: tuple[Path, Path],
+    tmp_path: Path,
+    use_landsgrens: bool,
+) -> None:
+    pytest.importorskip("pcraster")
+    dem_path, watersysteem_path = sources
+    input_bytes = [path.read_bytes() for path in sources]
+    options = {
+        "burn_depth_m": 1,
+        "ahn_vrt_path": dem_path,
+        "watersysteem_path": watersysteem_path,
+        "tile_size_m": 16,
+        "tile_buffer_m": 4,
+        "origin_x": 8,
+        "origin_y": 8,
+        "resolution_m": 2,
+        "random_seed": 12345,
+    }
+    if use_landsgrens:
+        landsgrens_path = tmp_path / "bestuurlijke.gpkg"
+        gpd.GeoDataFrame(geometry=[box(0, 0, 36, 48)], crs=settings.crs).to_file(
+            landsgrens_path, layer="landgebied"
+        )
+        options["landsgrens_path"] = landsgrens_path
+    serial = calculate_afwateringseenheden_tiles(
+        box(8, 8, 56, 40),
+        **options,
+        workers=1,
+        output_dir=tmp_path / "serial",
+        merged_output_path=tmp_path / "serial.gpkg",
+    )
+    parallel = calculate_afwateringseenheden_tiles(
+        box(8, 8, 56, 40),
+        **options,
+        workers=6,
+        output_dir=tmp_path / "parallel",
+        merged_output_path=tmp_path / "parallel.gpkg",
+    )
+    assert len(parallel.tile_results) == 6
+    assert all(
+        result.calculation_duration_seconds > 0 for result in serial.tile_results
+    )
+    assert all(
+        result.calculation_duration_seconds > 0 for result in parallel.tile_results
+    )
+    assert [item.tile.tile_id for item in serial.tile_results] == [
+        item.tile.tile_id for item in parallel.tile_results
+    ]
+    assert serial.boundary_issue_tile_ids == parallel.boundary_issue_tile_ids
+    assert serial.skipped_tile_ids == parallel.skipped_tile_ids
+    if use_landsgrens:
+        assert set(serial.skipped_tile_ids) == {
+            "000040_000008_000056_000024",
+            "000040_000024_000056_000040",
+        }
+    else:
+        assert serial.skipped_tile_ids == ()
+    assert_geodataframe_equal(
+        serial.merged_subcatchments, parallel.merged_subcatchments
+    )
+    versions = {}
+    for first, second in zip(serial.tile_results, parallel.tile_results, strict=True):
+        assert first.skipped_reason == second.skipped_reason
+        filenames = ["dem_2m.tif", "hydroobject_segment.tif"]
+        if second.skipped_reason is None:
+            assert second.subcatchments is not None
+            filenames.extend(["ldd.tif", "subcatchments.tif"])
+        else:
+            assert first.subcatchments is None
+            assert second.subcatchments is None
+            assert second.usable_subcatchments.empty
+            for result in (first, second):
+                assert not (result.output_dir / "ldd.tif").exists()
+                assert not (result.output_dir / "subcatchments.tif").exists()
+        assert (second.output_dir / "workflow.log").exists()
+        assert "Calculated afwateringseenheden tile" in (
+            second.output_dir / "workflow.log"
+        ).read_text(encoding="utf-8")
+        for filename in filenames:
+            with (
+                rasterio.open(first.output_dir / filename) as a,
+                rasterio.open(second.output_dir / filename) as b,
+            ):
+                assert a.transform == b.transform
+                assert a.crs == b.crs
+                assert a.nodata == b.nodata
+                np.testing.assert_array_equal(a.read(1), b.read(1))
+                if use_landsgrens and filename == "dem_2m.tif":
+                    columns = a.transform.c + (np.arange(a.width) + 0.5) * a.res[0]
+                    missing = np.ma.getmaskarray(a.read(1, masked=True))
+                    assert missing[:, columns >= 36].all()
+                    assert not missing[:, columns < 36].any()
+            path = second.output_dir / filename
+            versions[path] = path.stat().st_mtime_ns
+        assert_geodataframe_equal(
+            first.usable_subcatchments, second.usable_subcatchments
+        )
+    reused = calculate_afwateringseenheden_tiles(
+        box(8, 8, 56, 40),
+        **options,
+        workers=6,
+        output_dir=tmp_path / "parallel",
+    )
+    assert all(result.subcatchments is None for result in reused.tile_results)
+    assert reused.skipped_tile_ids == parallel.skipped_tile_ids
+    for attribute in ("merged_subcatchments", "gap_additions", "remaining_gaps"):
+        assert_geodataframe_equal(
+            getattr(serial, attribute), getattr(parallel, attribute)
+        )
+        assert_geodataframe_equal(
+            getattr(parallel, attribute), getattr(reused, attribute)
+        )
+    assert all(path.stat().st_mtime_ns == version for path, version in versions.items())
+    assert [path.read_bytes() for path in sources] == input_bytes
+
+
+def test_worker_failures_preserve_existing_merged_output(
+    sources: tuple[Path, Path], tmp_path: Path
+) -> None:
+    dem_path, watersysteem_path = sources
+    merged_path = tmp_path / "merged.gpkg"
+    merged_path.write_bytes(b"previous result")
+
+    with pytest.raises(RuntimeError, match="merged output not written") as error:
+        calculate_afwateringseenheden_tiles(
+            box(8, 8, 40, 24),
+            burn_depth_m=1,
+            ahn_vrt_path=dem_path,
+            watersysteem_path=watersysteem_path,
+            output_dir=tmp_path / "tiles",
+            merged_output_path=merged_path,
+            tile_size_m=16,
+            tile_buffer_m=4,
+            origin_x=8,
+            origin_y=8,
+            workers=2,
+            engine="unsupported",
+        )
+
+    assert "000008_000008_000024_000024" in str(error.value)
+    assert "000024_000008_000040_000024" in str(error.value)
+    assert "Unsupported subcatchment engine" in str(error.value)
+    assert merged_path.read_bytes() == b"previous result"

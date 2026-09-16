@@ -47,3 +47,8 @@ version_scheme = "no-guess-dev"
 packages = ["src/waterlagen"]
 include = ["src/waterlagen/styles/*.qml"]
 
+[tool.coverage.run]
+source = ["src/waterlagen"]
+concurrency = ["multiprocessing", "thread"]
+parallel = true
+

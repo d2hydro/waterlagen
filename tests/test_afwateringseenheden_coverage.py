@@ -1,12 +1,15 @@
 import os
-from pathlib import Path
 import xml.etree.ElementTree as ET
+from pathlib import Path
 
 import numpy as np
+import geopandas as gpd
+import pytest
 import rasterio
 from osgeo import gdal
 from rasterio.transform import from_origin
 from rasterio.warp import transform_bounds
+from shapely.geometry import box
 
 from waterlagen.afwateringseenheden._coverage import _coverage_mask, _source_extent
 from waterlagen.raster.grid import RasterGrid
@@ -47,6 +50,33 @@ def test_full_extent_includes_nodata_collar_and_internal_hole(tmp_path) -> None:
     assert coverage.all()
 
 
+def test_landsgrens_clips_source_tiles_and_reloads_changed_boundary(tmp_path) -> None:
+    path = _source(tmp_path / "source.tif")
+    boundary_path = tmp_path / "bestuurlijke.gpkg"
+    geometry = box(-4, -4, 4, 12).difference(box(1, 3, 3, 5))
+    gpd.GeoDataFrame(geometry=[geometry], crs=CRS).to_file(
+        boundary_path, layer="landgebied"
+    )
+    grid = RasterGrid.from_bounds((-2, -2, 10, 10), resolution=1, crs=CRS)
+    with rasterio.open(path) as source:
+        coverage = _coverage_mask(source, grid, boundary_path)
+    expected = np.zeros((12, 12), dtype=bool)
+    expected[2:10, 2:6] = True
+    expected[5:7, 3:5] = False
+    np.testing.assert_array_equal(coverage, expected)
+
+    previous = boundary_path.stat()
+    gpd.GeoDataFrame(geometry=[box(20, 20, 30, 30)], crs=CRS).to_file(
+        boundary_path, layer="landgebied"
+    )
+    os.utime(
+        boundary_path,
+        ns=(previous.st_atime_ns, previous.st_mtime_ns + 1_000_000_000),
+    )
+    with rasterio.open(path) as source:
+        assert not _coverage_mask(source, grid, boundary_path).any()
+
+
 def test_overlap_and_missing_tiles_are_unioned_on_target_grid(tmp_path) -> None:
     paths = [_source(tmp_path / f"{i}.tif", x=x) for i, x in enumerate([0, 6, 20])]
     vrt = _vrt(tmp_path / "test.vrt", paths)
@@ -57,6 +87,23 @@ def test_overlap_and_missing_tiles_are_unioned_on_target_grid(tmp_path) -> None:
     expected[2:10, 2:16] = True
     expected[2:10, 22:30] = True
     assert np.array_equal(coverage, expected)
+
+
+@pytest.mark.parametrize("boundary", [box(-8, 0, 0, 8), box(-8, -8, 0, 0)])
+def test_landsgrens_touching_only_the_grid_edge_has_no_coverage(
+    tmp_path: Path, boundary
+) -> None:
+    path = _source(tmp_path / "source.tif")
+    boundary_path = tmp_path / "bestuurlijke.gpkg"
+    gpd.GeoDataFrame(geometry=[boundary], crs=CRS).to_file(
+        boundary_path, layer="landgebied"
+    )
+    grid = RasterGrid.from_bounds((0, 0, 8, 8), resolution=1, crs=CRS)
+
+    with rasterio.open(path) as source:
+        coverage = _coverage_mask(source, grid, boundary_path)
+
+    assert not coverage.any()
 
 
 def test_cached_extents_are_invalidated_when_source_georeference_changes(
@@ -157,3 +204,36 @@ def test_nodata_at_source_edges_is_filled_but_gaps_between_extents_are_not(
         data = _resample_dem(source, grid, coverage)
     assert np.isfinite(data[coverage]).all()
     assert np.isnan(data[~coverage]).all()
+
+
+def test_resampling_clears_values_on_excluded_source_boundary(tmp_path) -> None:
+    from rasterio.enums import Resampling
+    from rasterio.warp import reproject
+
+    from waterlagen.afwateringseenheden.raster import _resample_dem
+
+    # Een 1m-bron begint op x=3: precies het midden van een 2m-doelcel.
+    path = _source(tmp_path / "source.tif", x=3)
+    with rasterio.open(path, "r+") as source:
+        source.write(np.full((8, 8), 7, dtype="int16"), 1)
+    vrt = _vrt(tmp_path / "test.vrt", [path])
+    grid = RasterGrid.from_bounds((0, -2, 14, 10), resolution=2, crs=CRS)
+    with rasterio.open(vrt) as source:
+        coverage = _coverage_mask(source, grid)
+        unmasked = np.full(coverage.shape, np.nan)
+        reproject(
+            source=rasterio.band(source, 1),
+            destination=unmasked,
+            src_nodata=source.nodata,
+            dst_transform=grid.transform,
+            dst_crs=grid.crs,
+            dst_nodata=np.nan,
+            resampling=Resampling.bilinear,
+        )
+        assert (np.isfinite(unmasked) & ~coverage).any()
+        data = _resample_dem(source, grid, coverage)
+
+    assert np.isnan(data[~coverage]).all()
+    assert np.isfinite(data[coverage]).all()
+    valid_inside = np.isfinite(unmasked) & coverage
+    np.testing.assert_array_equal(data[valid_inside], unmasked[valid_inside])

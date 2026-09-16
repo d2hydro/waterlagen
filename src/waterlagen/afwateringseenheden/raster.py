@@ -23,13 +23,13 @@ from waterlagen.logger import get_logger
 from waterlagen.raster.grid import RasterGrid
 from waterlagen.settings import settings
 
-from ._coverage import _coverage_mask
+from ._coverage import _coverage_mask, _landsgrens_version
 
 logger = get_logger(__name__)
 
 DEM_FILENAME = "dem_2m.tif"
 HYDROOBJECT_SEGMENT_FILENAME = "hydroobject_segment.tif"
-COVERAGE_VERSION = "source_extents_v1"
+COVERAGE_VERSION = "source_extents_v2"
 
 
 @dataclass(frozen=True)
@@ -88,6 +88,40 @@ def _grid_for_square(
     )
 
 
+def _nearest_dem_value(
+    data: np.ndarray, donors: np.ndarray, row: int, col: int
+) -> float:
+    """Find the nearest donor using expanding windows, without a full-grid index.
+
+    Call only with at least one donor. Stop when no cell outside the search
+    window can be closer than the best donor found inside it.
+    """
+    height, width = data.shape
+    radius = 1
+    while True:
+        row_start = max(0, row - radius)
+        row_stop = min(height, row + radius + 1)
+        col_start = max(0, col - radius)
+        col_stop = min(width, col + radius + 1)
+        donor_rows, donor_cols = np.nonzero(
+            donors[row_start:row_stop, col_start:col_stop]
+        )
+        if donor_rows.size:
+            donor_rows += row_start
+            donor_cols += col_start
+            distances_squared = (donor_rows - row) ** 2 + (donor_cols - col) ** 2
+            nearest = int(np.argmin(distances_squared))
+            entire_grid = (
+                row_start == 0
+                and row_stop == height
+                and col_start == 0
+                and col_stop == width
+            )
+            if distances_squared[nearest] <= radius**2 or entire_grid:
+                return float(data[donor_rows[nearest], donor_cols[nearest]])
+        radius *= 2
+
+
 def _fill_dem_nodata(
     data: np.ndarray, coverage_mask: np.ndarray | None = None
 ) -> np.ndarray:
@@ -96,7 +130,8 @@ def _fill_dem_nodata(
     The inverse-distance method and full-grid search distance are unchanged.
     GDAL's mask marks outside cells as *not to be filled*; its NODATA option
     excludes their temporary sentinel from interpolation donors. Original finite
-    values are restored exactly; only candidate cells change.
+    values are restored exactly; only candidate cells change. If the masked
+    search leaves gaps, use their nearest original finite donor within coverage.
     """
     valid_cells = np.isfinite(data)
     if coverage_mask is None:
@@ -106,7 +141,8 @@ def _fill_dem_nodata(
     candidates = coverage_mask & ~valid_cells
     if not candidates.any():
         return data
-    if not valid_cells.any():
+    donors = coverage_mask & valid_cells
+    if not donors.any():
         raise ValueError("DEM has no finite elevation values to fill NoData cells")
 
     max_search_distance = float(np.hypot(*data.shape))
@@ -114,7 +150,7 @@ def _fill_dem_nodata(
     if np.any(data[valid_cells] <= sentinel):
         raise ValueError("DEM values conflict with the interpolation NoData sentinel")
     working = data.copy()
-    outside = ~coverage_mask & ~valid_cells
+    outside = ~coverage_mask
     working[outside] = sentinel
     logger.info(
         "Interpolating %s covered DEM cells; excluding %s outside cells",
@@ -127,13 +163,16 @@ def _fill_dem_nodata(
         max_search_distance=max_search_distance,
         nodata=sentinel,
     )
-    interpolated = filled_data[candidates]
-    remaining = int((~np.isfinite(interpolated) | (interpolated == sentinel)).sum())
+    unfilled = candidates & (~np.isfinite(filled_data) | (filled_data == sentinel))
+    remaining = int(unfilled.sum())
     if remaining:
-        raise ValueError(
-            "DEM NoData filling did not complete; "
-            f"{remaining} non-finite cell(s) remain"
+        logger.info(
+            "Filling %s remaining covered DEM cells from nearest original "
+            "elevations within coverage",
+            remaining,
         )
+        for row, col in zip(*np.nonzero(unfilled)):
+            filled_data[row, col] = _nearest_dem_value(data, donors, row, col)
     filled_data[valid_cells] = data[valid_cells]
     filled_data[outside] = data[outside]
     return filled_data
@@ -175,6 +214,9 @@ def _resample_dem(
     )
     if coverage_mask is None:
         coverage_mask = _coverage_mask(source, grid)
+    # Resampling en rasteriseren kunnen een cel op de bronrand anders indelen.
+    # Het dekkingsmasker is leidend, ook voor de donorcellen bij interpolatie.
+    data[~coverage_mask] = np.nan
     return _fill_dem_nodata(data, coverage_mask)
 
 
@@ -251,16 +293,21 @@ def _cast_dem_data(
     return result
 
 
-def _dem_profile(source: rasterio.io.DatasetReader, grid: RasterGrid) -> dict:
-    """Create a GeoTIFF profile that preserves the source DEM data type and nodata."""
+def _dem_nodata(source: rasterio.io.DatasetReader) -> float | None:
+    """Preserve source NoData, using NaN for floating-point DEMs without it."""
     nodata = source.nodata
     if nodata is None and np.issubdtype(np.dtype(source.dtypes[0]), np.floating):
         nodata = np.nan
+    return nodata
+
+
+def _dem_profile(source: rasterio.io.DatasetReader, grid: RasterGrid) -> dict:
+    """Create a GeoTIFF profile that preserves the source DEM data type and nodata."""
     return {
         "driver": "GTiff",
         "count": 1,
         "dtype": source.dtypes[0],
-        "nodata": nodata,
+        "nodata": _dem_nodata(source),
         "width": grid.width,
         "height": grid.height,
         "transform": grid.transform,
@@ -276,12 +323,14 @@ def _write_dem(
     profile: dict,
     scales: tuple[float, ...],
     offsets: tuple[float, ...],
+    landsgrens_version: str = "none",
 ) -> None:
     """Write a DEM while retaining its source scale and offset metadata."""
     with rasterio.open(target_path, "w", **profile) as destination:
         destination.scales = scales
         destination.offsets = offsets
         destination.update_tags(waterlagen_dem_coverage=COVERAGE_VERSION)
+        destination.update_tags(waterlagen_dem_landsgrens=landsgrens_version)
         destination.write(data, 1)
 
 
@@ -363,6 +412,7 @@ def prepare_watersysteem_rasters(
     *,
     burn_depth_m: float,
     ahn_vrt_path: Path | None = None,
+    landsgrens_path: Path | None = None,
     watersysteem_path: Path | None = None,
     output_dir: Path | None = None,
     data_store: DataStore | None = None,
@@ -375,7 +425,11 @@ def prepare_watersysteem_rasters(
     Missing elevation cells inside cached full source raster extents are filled
     with ``rasterio.fill.fillnodata`` using the original full-grid search
     distance. NoData outside all source extents is not offered for interpolation.
-    All NoData inside a source extent remains fillable, including at its edges.
+    With ``landsgrens_path``, source extents are limited to the national boundary.
+    All NoData inside that coverage remains fillable, including at its edges.
+    Gaps left by the masked interpolation use the nearest original finite
+    elevation within coverage. Existing valid outputs are still reused.
+    Outside cells are NoData and cannot be interpolation targets or donors.
     Primary and secondary hydroobjects are rasterized separately.
     The primary mask has priority, so its two-times burn depth is not added to
     the one-times secondary depth in overlapping cells. The companion segment
@@ -396,6 +450,10 @@ def prepare_watersysteem_rasters(
         GeoPackage containing ``hydroobject_primair``,
         ``hydroobject_secundair``, and ``hydroobject_segment``. Defaults to
         ``datastore.afwateringseenheden_path / 'watersysteem.gpkg'``.
+    landsgrens_path : Path, optional
+        Bestuurlijke gebieden GeoPackage with the Dutch ``landgebied`` layer.
+        Reprojected to the target CRS; pixel centres determine inclusion.
+        No download is performed. None retains full source-extent coverage.
     output_dir : Path, optional
         Directory for ``dem_2m.tif`` and ``hydroobject_segment.tif``. Defaults
         to ``datastore.afwateringseenheden_path / 'rasters'``.
@@ -406,7 +464,9 @@ def prepare_watersysteem_rasters(
     overwrite : bool, optional
         Whether existing validated raster pairs are regenerated. With False,
         both existing valid outputs from this coverage policy are reused.
-        Outputs with missing or outdated coverage metadata are regenerated.
+        Outputs with missing or outdated coverage metadata or a changed
+        landsgrens source (path, modification time or size) or masking policy
+        are regenerated.
 
     Returns
     -------
@@ -429,13 +489,15 @@ def prepare_watersysteem_rasters(
     dem_path = output_dir / DEM_FILENAME
     segment_path = output_dir / HYDROOBJECT_SEGMENT_FILENAME
     result = WatersysteemRasters(dem_path, segment_path)
+    landsgrens_version = _landsgrens_version(landsgrens_path)
 
     if dem_path.exists() and segment_path.exists() and not overwrite:
         with rasterio.open(dem_path) as existing:
             version = existing.tags().get("waterlagen_dem_coverage")
-        if version == COVERAGE_VERSION:
+            boundary_version = existing.tags().get("waterlagen_dem_landsgrens", "none")
+        if version == COVERAGE_VERSION and boundary_version == landsgrens_version:
             with rasterio.open(ahn_vrt_path) as source:
-                coverage = _coverage_mask(source, grid)
+                coverage = _coverage_mask(source, grid, landsgrens_path)
             _validate_rasters(dem_path, segment_path, grid=grid, coverage_mask=coverage)
             logger.info("Reusing validated watersysteem rasters in %s", output_dir)
             return result
@@ -460,7 +522,7 @@ def prepare_watersysteem_rasters(
             if source.crs is None:
                 raise ValueError(f"AHN VRT has no CRS: {ahn_vrt_path}")
             _validate_source_coverage(source, grid)
-            coverage = _coverage_mask(source, grid)
+            coverage = _coverage_mask(source, grid, landsgrens_path)
             dem_data = _resample_dem(source, grid, coverage)
             scale = source.scales[0]
             primary = _features_in_project_crs(
@@ -492,6 +554,7 @@ def prepare_watersysteem_rasters(
                 profile=_dem_profile(source, grid),
                 scales=source.scales,
                 offsets=source.offsets,
+                landsgrens_version=landsgrens_version,
             )
 
         logger.info("Rasterizing hydroobject_segment from %s", watersysteem_path)
