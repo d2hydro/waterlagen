@@ -11,8 +11,8 @@ Met [bewerkingen](bewerkingen/index.md) worden deze brongegevens verwerkt tot di
 
 Voor de nieuwe WaterSchadeSchatter:
 
-- [AHN interpolatie (raster)](bewerkingen/ahn-interpoleren.md)
-- [BAG vloerpeilen (raster)](bewerkingen/bag-vloerpeilen.md) 
+- [AHN-interpolatie (raster)](bewerkingen/ahn-interpoleren.md)
+- [BAG-vloerpeilen (raster)](bewerkingen/bag-vloerpeilen.md)
 - [Functioneel landgebruik (raster)](bewerkingen/functioneel-landgebruik.md) 
 
 Voor hydrologische analyses/modellering:

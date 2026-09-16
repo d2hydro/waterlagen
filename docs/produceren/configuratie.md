@@ -9,12 +9,12 @@ de huidige werkmap:
 
 ```text
 DATA_DIR=pad/naar/mijn/data
-SOURCE_DATA=pad/naar/mijn/brongegevens
-PROCESSED_DATA=pad/naar/mijn/bewerkte-gegevens
+SOURCE_DATA_DIR=pad/naar/mijn/brongegevens
+PROCESSED_DATA_DIR=pad/naar/mijn/bewerkte-gegevens
 ```
 
-Een `.datastore` in de huidige werkmap heeft voorrang. `SOURCE_DATA` en
-`PROCESSED_DATA` zijn optioneel; zonder deze waarden gebruikt Waterlagen
+Een `.datastore` in de huidige werkmap heeft voorrang. `SOURCE_DATA_DIR` en
+`PROCESSED_DATA_DIR` zijn optioneel; zonder deze waarden gebruikt Waterlagen
 submappen van `DATA_DIR`.
 
 De technische eigenschappen staan in de [DataStore-API](../reference/datastore.md).

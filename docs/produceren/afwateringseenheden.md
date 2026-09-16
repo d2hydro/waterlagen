@@ -1,6 +1,6 @@
 # Afwateringseenheden produceren
 
-Deze pagina gebruikt [scripts/afwateringseenheden_aa_en_maas.py](../../scripts/afwateringseenheden_aa_en_maas.py) als werkend
+Deze pagina gebruikt [scripts/afwateringseenheden_aa_en_maas.py](https://github.com/d2hydro/waterlagen/blob/main/scripts/afwateringseenheden_aa_en_maas.py) als werkend
 voorbeeld. Het script produceert afwateringseenheden voor het beheergebied van
 Aa en Maas.
 
@@ -25,6 +25,19 @@ Het script selecteert Aa en Maas met waterbeheercode `38`. Pas
 zijn `BUFFER_M`, `BURN_DEPTH_M`, `MAX_FILL_DEPTH_M`, `TILE_SIZE_M` en
 `TILE_BUFFER_M`. Controleer deze waarden altijd voor het beoogde werkgebied.
 
+| Instelling | Eenheid | Betekenis en effect |
+|---|---|---|
+| `WATERBEHEERCODE` | — | Selecteert het waterschap; `"38"` is Aa en Maas. |
+| `BUFFER_M` | meter | Extra strook buiten de waterschapsgrens waarin ook afwateringseenheden worden berekend. |
+| `TILE_SIZE_M` | meter | Zijde van iedere rekentegel, zonder tegelbuffer. Grotere tegels vragen doorgaans meer geheugen. |
+| `TILE_BUFFER_M` | meter | Extra terrein rondom iedere rekentegel dat wordt meegenomen in de berekening. Een grotere buffer kan randproblemen verminderen, maar kost extra rekentijd en geheugen. |
+| `BURN_DEPTH_M` | meter | Verlaging van secundaire waterlopen in het hoogtemodel; primaire waterlopen worden tweemaal zo diep ingebrand. |
+| `MAX_FILL_DEPTH_M` | meter | Maximale diepte van depressies die bij het berekenen van de afstroomrichting worden opgevuld. |
+
+`BUFFER_M = 5000` vergroot het werkgebied én de uitvoer met 5 km buiten de
+waterschapsgrens. `TILE_BUFFER_M` is extra rekenterrein rondom elke tegel;
+alleen het resultaat binnen de tegelkern wordt opgenomen.
+
 ## Workflow
 
 Het script voert de volgende stappen uit:
@@ -33,8 +46,8 @@ Het script voert de volgende stappen uit:
    beheergebied.
 2. Downloadt de AHN-DTM voor het beheergebied, inclusief de ingestelde buffer.
 3. Downloadt de landelijke HYDAMO-GeoPackage.
-4. Berekent afwateringseenheden in tegels volgens [Afwateringseenheden](../bewerkingen/afwateringseenheden.md#werkwijze) en schrijft een samengevoegde
-`watersysteem.gpkg` `afwateringseenheden.gpkg` naar de DataStore in de sub-map `bewerkingen\afwateringseenheden`.
+4. Berekent afwateringseenheden in tegels volgens [Afwateringseenheden](../bewerkingen/afwateringseenheden.md#werkwijze) en schrijft
+   `watersysteem.gpkg` en de samengevoegde `afwateringseenheden.gpkg` naar de DataStore in de submap `bewerkingen\afwateringseenheden`.
 
 Na afloop logt het script het aantal berekende, overgeslagen en als randprobleem
 gemelde tegels. Vergroot `TILE_BUFFER_M` en bereken gemelde tegels opnieuw

@@ -7,9 +7,9 @@ waaronder hydroobjecten en puntobjecten.
 
 ## Leverancier
 
-De repository identificeert deze bron als GKW HYDAMO. De package-endpoint bevat
+De repository identificeert deze bron als GKW HYDAMO. Het package-endpoint bevat
 geen afzonderlijke leveranciersmetadata; bevestig eigenaar, versie en
-gebruikvoorwaarden bij een inhoudelijke publicatie.
+gebruiksvoorwaarden bij een inhoudelijke publicatie.
 
 ## Dataset of service
 

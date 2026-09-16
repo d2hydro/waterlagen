@@ -8,4 +8,4 @@ repository-instructies in [AGENTS.md](../../AGENTS.md) ontvangt en volgt. Ga nie
 automatische detectie: controleer dit voor de gebruikte tool of geef het bestand
 expliciet mee.
 
-De project-brede toelichting op AI-gebruik staat op [AI-gebruik](../over/ai-gebruik.md).
+De projectbrede toelichting op AI-gebruik staat op [AI-gebruik](../over/ai-gebruik.md).

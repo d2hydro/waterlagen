@@ -14,7 +14,7 @@ Kadaster (Landelijke Voorziening BAG), ontsloten via PDOK.
 
 Waterlagen kan een gebiedsselectie ophalen via de BAG-WFS of een landelijke
 `bag-light.gpkg` downloaden en daaruit lezen. Een WFS-verzoek is in Waterlagen
-begrensd op 50.000 objecten; gebruik voor grotere selecties het landelijke
+begrensd op 50.000 objecten; gebruik voor grotere selecties de landelijke
 GeoPackage.
 
 ## Gebruik in Waterlagen

@@ -6,7 +6,7 @@ die kunnen worden gedownload. Voor datasets die uit bronnen worden afgeleid zie 
 - Hoogtegegevens: [AHN](ahn.md)
 - Basisregistraties: [BAG](bag.md), [BGT](bgt.md),
   [BRP](brp.md) en [TOP10NL](top10nl.md)
-- Beheerregister waterscahppen: [GKW HYDAMO](hydamo.md)
+- Beheerregister waterschappen: [GKW HYDAMO](hydamo.md)
 - Dijkringen: [Dijkringen](dijkringen.md)
 - Administratieve grenzen: [Bestuurlijke gebieden](bestuurlijke-gebieden.md) en
   [Waterschapsgrenzen](waterschapsgrenzen.md)

@@ -14,7 +14,7 @@ AHN.
 
 Waterlagen leest de kaartbladindex van AHN en downloadt geselecteerde tegels.
 Voor AHN2 tot en met AHN5 gebruikt de index kaartbladen; AHN6 gebruikt een
-eigen bladwijzer. De gekozen versie, model en resolutie bepalen de bronbestanden.
+eigen bladwijzer. De gekozen versie, het model en de resolutie bepalen de bronbestanden.
 
 ## Gebruik in Waterlagen
 
