@@ -13,35 +13,31 @@ Deze module is bedoeld om alle GIS basislagen (rasters en features) te `download
 
 **Broncode**: [https://github.com/d2hydro/waterlagen](https://github.com/d2hydro/waterlagen)
 
-## Installeren
-Download het **productiepakket** (`waterlagen-productie-<tag>.zip`) uit de
-Assets van een [Waterlagen-release](https://github.com/d2hydro/waterlagen/releases).
-Het pakket bevat scripts voor afwateringseenheden, landgebruik, inwoners en auto's,
-plus een Pixi-omgeving die de bijbehorende release uit PyPI installeert.
-Volg de [installatiehandleiding](docs/produceren/installatie.md), pak de ZIP uit
-en open PowerShell in de map met `pixi.toml`:
 
-```console
-pixi install --locked
-pixi run --locked controleer
+## Zelf produceren
+Voor het zelf produceren van waterlagen zie de [documentatie](https://d2hydro.github.io/waterlagen/produceren). Hierin wordt deze module automatisch geinstalleerd.
+
+## Zelf installeren
+Zorg voor een conda (of pixi) met de juiste ondersteunende packages zie [dependencies] in de [pyproject.toml](https://github.com/d2hydro/waterlagen/blob/main/pyproject.toml). Voeg hier waterlagen toe met
+
+```
+pip install waterlagen
 ```
 
-Git of toegang tot een private repository is niet nodig. De release-workflow
-voegt de ZIP toe na controles op Windows en Linux; oudere releases hebben dit
-asset nog niet. Voor aanpassingen aan Waterlagen zelf gebruikt u de
-[ontwikkelomgeving](docs/bijdragen/ontwikkelomgeving.md).
+## Lagen
+Lagen worden altijd geconverteerd naar GeoTIFF (raster) en GeoPackage (features). Voor efficient gebruikt in de cloud wordt met Cloud-Optimized-GeoTiff (COG) en GeoParquet gewerkt.
 
-## Aan de slag
-Waterlagen slaat downloads en resultaten automatisch op in de submap `data` van
-uw projectfolder. U hoeft hiervoor niets in te stellen. Wilt u een andere locatie
-gebruiken? Zie [Opslag van gegevens](docs/produceren/configuratie.md).
-
-### Downloaden
-Het ondersteunen van de volgende lagen vanaf [PDOK](https://www.pdok.nl/) en [AHN.nl](https://www.ahn.nl/) wordt ondersteund:
+### Bronnen
+Bij het downloaden van  Vanaf [PDOK](https://www.pdok.nl/), [AHN.nl](https://www.ahn.nl/), [CBS](https://www.cbs.nl) en [NHI](https://nhi.nu/data/oppervlaktewater/hydamo-regionaal) kan worden gedownload:
 
 * AHN 4 t/m 6
 * BAG
+* Beheerregisters van de waterschappen
 * BGT
+* BRP
+* CBS buurten (inwoners, huishoudens en personenautos)
+* Diverse administratieve grenzen (landsgrens, waterschapsgrenzen, etc)
+* Dijkringen
 
 Lees verder bij de [bronnen](docs/bronnen/index.md).
 
@@ -50,8 +46,10 @@ De volgende bewerkingen zijn beschikbaar:
 
 * Dichtinterpoleren van AHN DTM
 * Branden van BAG-panden op basis van AHN-hoogte
+* Productie van lagen voor de waterschadeschatter (functioneel_landgebruik, inwoners en autos)
+* Afwateringseenheden
 
 Lees verder in de [documentatie](https://d2hydro.github.io/waterlagen/bewerkingen/) 
 
 ## Ontwikkelaars
-Waterlagen wordt ontwikkeld door [D2Hydro](https://d2hydro.nl/) en het [Hoogheemraadschap Hollands Noorderkwartier](https://www.hhnk.nl/) met als doel het gestandaardiseerd downloaden en bewerkingen van features en rasters via Python voor toepassingen in het waterbeheer.
+Waterlagen wordt ontwikkeld door [D2Hydro](https://d2hydro.nl/) en het [Hoogheemraadschap Hollands Noorderkwartier](https://www.hhnk.nl/) en [Waterschap Aa en Maas](https://www.aaenmaas.nl/) met als doel het gestandaardiseerd downloaden en bewerkingen van features en rasters via Python voor toepassingen in het waterbeheer.

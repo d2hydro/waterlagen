@@ -30,7 +30,7 @@ werkgebied.
 ## Starten
 
 Start na de melding `Imports en rastercontrole OK` de productie voor Aa en Maas.
-Voer deze opdracht uit in [PowerShell vanuit uw projectfolder](installatie.md#powershell-openen-in-uw-projectfolder):
+Voer deze opdracht uit in PowerShell vanuit uw projectfolder:
 
 ```console
 pixi run --locked afwateringseenheden

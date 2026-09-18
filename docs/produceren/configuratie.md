@@ -4,13 +4,12 @@
 
 **U hoeft niets in te stellen.** Het productiepakket bevat al een bestand
 `.datastore` met `DATA_DIR=./data`. Daardoor maakt Waterlagen automatisch een
-map `data` aan in uw projectfolder, bijvoorbeeld `mijn-waterlagen`.
-Daarin staan:
+map `data` aan in uw projectfolder
 
 - `data/source_data`: gedownloade brongegevens;
 - `data/processed_data`: verwerkte resultaten.
 
-Open [PowerShell in uw projectfolder](installatie.md#powershell-openen-in-uw-projectfolder),
+Open PowerShell in uw projectfolder,
 waar `pixi.toml` en `pixi.lock` staan.
 Controleer de installatie en de gebruikte gegevensmap met:
 
@@ -36,20 +35,20 @@ De naam begint met een punt en heeft geen `.txt` erachter.
     DATA_DIR=./data
     ```
 
-   `./data` verwijst naar `data` in uw projectfolder `mijn-waterlagen`.
+   `./data` verwijst naar `data` in uw projectfolder.
    Wilt u gegevens ergens anders bewaren, vervang dan `./data` door het
    volledige pad naar de gewenste opslagmap. Laat `DATA_DIR=` staan.
 
 4. Sla het bestand op als **UTF-8 zonder BOM** (in VS Code heet dit `UTF-8`).
 5. Start uw script opnieuw vanuit uw projectfolder.
 
-Met `DATA_DIR=./data` blijft de opslaglocatie `mijn-waterlagen/data`.
+Met `DATA_DIR=./data` blijft de opslaglocatie `<projectfolder>/data`.
 Bij een ander pad komen `source_data` en
 `processed_data` onder die gekozen opslagmap. Uw Pixi-bestanden, `.datastore`
 en scripts blijven in uw projectfolder staan:
 
 ```text
-mijn-waterlagen/
+<projectfolder>/
 ├── pixi.toml
 ├── pixi.lock
 ├── .datastore              # meegeleverd: bevat de gekozen opslaglocatie

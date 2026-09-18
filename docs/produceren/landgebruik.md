@@ -17,7 +17,7 @@ script en de functionele beschrijving voordat u de productie start.
 
 ## Starten
 
-Open [PowerShell in uw projectfolder](installatie.md#powershell-openen-in-uw-projectfolder)
+Open PowerShell in uw projectfolder
 en voer uit:
 
 ```powershell

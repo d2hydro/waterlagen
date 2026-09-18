@@ -151,7 +151,7 @@ jobs:
       - uses: actions/upload-artifact@v7
         with:
           name: production-bundle
-          path: dist/waterlagen-productie-*.zip
+          path: dist/waterlagen-productie.zip
           if-no-files-found: error
 
   production-test:
@@ -183,8 +183,8 @@ jobs:
       - name: Unpack, install and check the release environment
         shell: bash
         run: |
-          python -m zipfile -e "dist/waterlagen-productie-$RELEASE_TAG.zip" production
-          cd "production/waterlagen-productie-$RELEASE_TAG"
+          python -m zipfile -e dist/waterlagen-productie.zip production
+          cd production
           pixi install --locked
           pixi run --locked controleer
 
@@ -204,4 +204,4 @@ jobs:
       - name: Upload release asset
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload "$RELEASE_TAG" "dist/waterlagen-productie-$RELEASE_TAG.zip" --repo "$GITHUB_REPOSITORY"
+        run: gh release upload "$RELEASE_TAG" dist/waterlagen-productie.zip --repo "$GITHUB_REPOSITORY"

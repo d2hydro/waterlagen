@@ -65,10 +65,9 @@ def test_bundle_is_standalone_and_contains_only_public_inputs(
     archive_path = builder.build_bundle(tag, tmp_path / "output", repository)
     assert len(calls) == 1
     assert "--no-config" in calls[0]
-    assert archive_path.name == f"waterlagen-productie-{tag}.zip"
+    assert archive_path.name == "waterlagen-productie.zip"
     with ZipFile(archive_path) as archive:
-        prefix = f"waterlagen-productie-{tag}/"
-        members = {name.removeprefix(prefix) for name in archive.namelist()}
+        members = set(archive.namelist())
         assert members == {
             "pixi.toml",
             "pixi.lock",
@@ -77,16 +76,16 @@ def test_bundle_is_standalone_and_contains_only_public_inputs(
             ".datastore",
             *(f"scripts/{name}" for name in builder.PRODUCTION_SCRIPTS),
         }
-        assert archive.read(prefix + ".datastore") == b"DATA_DIR=./data\n"
+        assert archive.read(".datastore") == b"DATA_DIR=./data\n"
         for name in builder.PRODUCTION_SCRIPTS:
             assert (
-                archive.read(prefix + f"scripts/{name}")
+                archive.read(f"scripts/{name}")
                 == (repository / "scripts" / name).read_bytes()
             )
-        readme = archive.read(prefix + "README.md").decode()
+        readme = archive.read("README.md").decode()
         assert "@VERSION@" not in readme
         assert tag.removeprefix("v") in readme
-        manifest = tomllib.loads(archive.read(prefix + "pixi.toml").decode())
+        manifest = tomllib.loads(archive.read("pixi.toml").decode())
         for task in manifest["tasks"].values():
             command = task if isinstance(task, str) else task.get("cmd", "")
             for script in re.findall(r"\./(scripts/\S+\.py)", command):
@@ -129,7 +128,7 @@ def test_rejects_wrong_locked_waterlagen_version(tmp_path):
 
 
 def test_failed_lock_does_not_replace_existing_asset(tmp_path, monkeypatch):
-    target = tmp_path / "waterlagen-productie-2026.9.0rc1.zip"
+    target = tmp_path / "waterlagen-productie.zip"
     target.write_bytes(b"previous valid asset")
 
     def fail_lock(*args, **kwargs):

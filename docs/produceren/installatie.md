@@ -28,25 +28,22 @@ Er verschijnt een versienummer. Hebt u Pixi al, dan kunt u deze installatiestap 
 
 ## 2. Download het productiepakket
 
-1. Open de [Waterlagen-releases](https://github.com/d2hydro/waterlagen/releases).
-2. Kies de gewenste release. Onder **Assets** download u
-   **`waterlagen-productie-<tag>.zip`**, waarbij `<tag>` de releasetag is.
-   Kies het productiepakket, niet **Source code (zip)**.
-3. Klik in Verkenner met de rechtermuisknop op het ZIP-bestand en kies **Alles uitpakken**.
-4. Open de uitgepakte map met **`pixi.toml`, `pixi.lock` en `scripts`**.
-   Dit is uw **projectfolder**. U mag die map bijvoorbeeld `mijn-waterlagen` noemen.
+1. Download [**waterlagen-productie.zip**](https://github.com/d2hydro/waterlagen/releases/latest/download/waterlagen-productie.zip)
+   van de nieuwste stabiele release.
+2. Pak de inhoud van de zip-file uit in een projectfolder naar keuze, bijvoorbeeld
+   `waterlagen-productie`. De bestanden en de map `scripts` staan direct in de zip,
+   zonder extra bovenliggende map. Kies een locatie met voldoende schijfruimte
+   voor de lagen die u wilt produceren.
 
-!!! note "Beschikbaarheid"
-    Productiepakketten worden toegevoegd door de release-workflow die bij deze
-    wijziging hoort. Oudere releases, waaronder 2026.2.1 en 2026.9.0rc1, hebben
-    nog geen automatisch gepubliceerd productiepakket. Kies een release waar
-    het genoemde ZIP-bestand onder Assets staat.
+!!! note "Versies en beschikbaarheid"
+    De downloadlink volgt de nieuwste stabiele release. Wilt u een andere versie, ga dan naar
+    [waterlagen releases](https://github.com/d2hydro/waterlagen/releases) en download`waterlagen-productie.zip` onder de `assets` van de juiste release. De productie is beschikbaar vanaf release 2026.9.0
 
 De projectfolder bevat de installatiebestanden en scripts al op de juiste plaats.
 U hoeft geen bestanden uit `envs` te kopiëren of scripts apart te downloaden:
 
 ```text
-mijn-waterlagen/
+waterlagen-productie/
 ├── README.md
 ├── LICENSE
 ├── pixi.toml
@@ -66,43 +63,20 @@ De meegeleverde `.datastore` bevat `DATA_DIR=./data`. Laat dit bestand staan.
 Pixi maakt later de map `.pixi` aan; Waterlagen maakt `data` voor uw gegevens.
 De locatie van uw projectfolder kiest u zelf.
 
-### PowerShell openen in uw projectfolder
+## 3. Installeer en controleer de omgeving
 
-1. Open **Verkenner**.
-2. Ga naar uw projectfolder, bijvoorbeeld `mijn-waterlagen`. In deze map ziet u
-   `pixi.toml` en `pixi.lock`.
-3. Klik bovenaan in de **adresbalk**, waar het pad naar de map staat.
-4. Typ **`powershell`** en druk op **Enter**.
-
-Er opent een PowerShell-venster dat opdrachten vanuit deze projectfolder uitvoert.
-**Voer alle onderstaande opdrachten die met `pixi` beginnen uit in dit
-PowerShell-venster.** Typ of plak één opdracht en druk op **Enter**. Wacht totdat
-de opdracht klaar is voordat u de volgende uitvoert. U herkent dit doordat
-PowerShell weer een regel toont die begint met `PS` en waarop u kunt typen.
-
-Laat PowerShell tijdens de installatie en berekeningen open. Hebt u het venster
-gesloten? Open het dan opnieuw vanuit dezelfde projectfolder met de stappen hierboven.
-
-Python-code uit de voorbeelden slaat u op in een `.py`-bestand onder `scripts`.
-Die code plakt u niet rechtstreeks in PowerShell. Het bijbehorende
-`pixi run ...`-commando voert u wel in PowerShell uit.
-
-## 3. Installeer de vastgelegde omgeving
-
-```powershell
-pixi install --locked
-```
-
-De eerste installatie download de software en kan enkele minuten duren.
-Pixi bewaart deze in `.pixi` onder de projectfolder. `--locked` gebruikt de
-pakketversies uit `pixi.lock`. Bewaar dit bestand samen met `pixi.toml`.
-Internet is nodig voor installatie en voor het ophalen van brongegevens.
-
-## 4. Controleer de installatie
+Voer vanuit uw projectfolder de volgende opdracht uit. Pixi installeert bij de
+eerste uitvoering automatisch de omgeving in `.pixi`. Dit vereist internet en
+kan enkele minuten duren.
 
 ```powershell
 pixi run --locked controleer
 ```
+
+!!! note "Waarom `--locked`?"
+    `--locked` voorkomt dat Pixi het meegeleverde `pixi.lock` wijzigt en stopt
+    als het ontbreekt of niet bij `pixi.toml` past. Zo blijven de pakketversies
+    behouden die bij de release zijn getest.
 
 De controle toont de geïnstalleerde releaseversie en de gegevensmap, importeert
 de scripts en test een klein raster met GDAL, Rasterio en PCRaster.
@@ -112,7 +86,7 @@ Er worden geen brongegevens gedownload en geen productieworkflows gestart.
 Gegevens komen standaard in `./data`, onder uw projectfolder. U hoeft niets in
 te stellen. Zie [Opslag van gegevens](configuratie.md) voor een andere locatie.
 
-## 5. Start een productie
+## 4. Start een productie
 
 Kies één productie. Lees eerst de bijbehorende uitleg en controleer de
 instellingen in het script voor uw toepassing:
@@ -128,7 +102,7 @@ Dit zijn volledige producties die veel gegevens kunnen downloaden en veel
 rekentijd en schijfruimte kunnen vragen. De scripts zijn voorbeelden die u kunt
 aanpassen. Beoordeel de resultaten voordat u ze gebruikt.
 
-Bij een volgende sessie opent u weer [PowerShell in uw projectfolder](#powershell-openen-in-uw-projectfolder).
+Voer ook bij een volgende sessie de opdrachten vanuit uw projectfolder uit.
 U hoeft de omgeving niet apart te activeren.
 
 ## Als een opdracht niet werkt
