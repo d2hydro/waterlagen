@@ -1,45 +1,40 @@
 # Configuratie en DataStore
 
+Deze pagina hoort bij Waterlagen **2026.2.1** met de configuratie uit `envs`.
+Die map (of uw losse kopie ervan) is de productieprojectmap.
 `DataStore` bepaalt waar Waterlagen bronbestanden, verwerkte resultaten en logs
-opslaat. Kies bij gebruik van de commandline een hoofdmap. Voer deze opdrachten
-uit vanuit de projectmap, na de [installatie met Pixi](installatie.md):
-
-```console
-pixi run --environment afwateringseenheden waterlagen controleer --data-dir D:/Waterlagen/data
-```
-
-Geef dezelfde `--data-dir` mee bij het
-[produceren van afwateringseenheden](afwateringseenheden.md).
-
-Met `--data-dir` komen downloads in `source_data` en resultaten in
-`processed_data` onder deze map. Deze optie heeft voorrang op alle andere
-opslaginstellingen, ook afzonderlijk ingestelde bron- en resultaatmappen.
-Gebruik bij volgende opdrachten dezelfde locatie om downloads te hergebruiken.
+opslaat. Zonder aanpassingen gebruikt Waterlagen de submap `data` in de
+projectmap. Downloads komen in `data/source_data` en resultaten in
+`data/processed_data`. Voer de Pixi-opdrachten steeds vanuit de projectmap uit.
+Gebruik bij volgende opdrachten dezelfde opslaglocatie om downloads te hergebruiken.
 
 ## Vaste opslaglocatie
 
-Om de locatie niet bij iedere opdracht te hoeven meegeven, maakt u een tekstbestand
-met de naam `.datastore` in de map van waaruit u Waterlagen uitvoert. Let erop
-dat de bestandsnaam niet eindigt op `.txt`.
+Wilt u de locatie expliciet instellen, maak dan een tekstbestand met de naam
+`.datastore` in de productieprojectmap. Sla het op als UTF-8 zonder BOM en
+let erop dat de bestandsnaam niet eindigt op `.txt`.
 
 ```text
-DATA_DIR=D:/Waterlagen/data
+DATA_DIR=./data
 ```
+
+`./data` verwijst naar de submap `data` in de huidige werkmap. Voor opslag op een
+andere schijf kunt u bijvoorbeeld `DATA_DIR=D:/Waterlagen/data` invullen.
 
 Optioneel kunt u daarin `SOURCE_DATA_DIR` en `PROCESSED_DATA_DIR` opgeven om
 bronnen en resultaten op verschillende locaties te bewaren. Omgevingsvariabelen
-met deze namen hebben voorrang op het bestand. Gebruik bij voorkeur absolute
-paden; relatieve paden worden vanaf de huidige werkmap geïnterpreteerd.
+met deze namen hebben voorrang op het bestand. Ook hier worden relatieve paden
+vanaf de huidige werkmap geïnterpreteerd. Gebruik een absoluut pad als u de
+gegevens buiten de projectmap wilt opslaan.
 
-Zonder opslagconfiguratie gebruikt deze Pixi-route `data` onder de projectmap.
-Waterlagen leest `.datastore` uit de projectmap en de huidige werkmap; het
-bestand in de huidige werkmap heeft voorrang. Opslagmappen worden bij uitvoering
-aangemaakt. Het opvragen van hulp met `--help` maakt geen datamappen aan.
+Versie 2026.2.1 leest `.datastore` uit de huidige werkmap. Zonder
+opslagconfiguratie gebruikt deze versie `data` onder die map. Waterlagen maakt
+opslagmappen automatisch aan.
 
-## Parallel rekenen
+Neem geen `.env` over uit een ontwikkelomgeving met nieuwere workflows.
+Instellingen zoals `AFWATERINGSEENHEDEN_WORKERS` bestaan nog niet in 2026.2.1 en
+kunnen bij het laden een configuratiefout veroorzaken. Voor het AHN-voorbeeld
+hoeft u geen `.env` te maken.
 
-Met `--workers 2` gebruikt de productie twee processen. Zonder die optie volgt
-het aantal processen `AFWATERINGSEENHEDEN_WORKERS` uit uw omgeving of `.env` in de
-huidige werkmap, standaard vier. Meer processen vragen meer werkgeheugen.
-
-De technische eigenschappen staan in de [DataStore-API](../reference/datastore.md).
+De [DataStore-API](../reference/datastore.md) beschrijft de huidige broncode;
+nieuwere eigenschappen zijn niet allemaal beschikbaar in release 2026.2.1.

@@ -1,0 +1,24 @@
+[workspace]
+name = "waterlagen-productie"
+channels = ["conda-forge"]
+platforms = ["win-64", "linux-64"]
+
+# Pixi installeert de GIS-bibliotheken inclusief hun native onderdelen.
+[dependencies]
+python = "3.13.*"
+gdal = "*"
+geopandas = "*"
+pydantic = ">=2"
+pydantic-settings = "*"
+rasterio = "*"
+numpy = "*"
+requests = "*"
+shapely = "*"
+affine = "*"
+
+# De gepubliceerde Waterlagen-release komt uit PyPI.
+[pypi-dependencies]
+waterlagen = "==2026.2.1"
+
+[tasks]
+controleer = "python -c \"import waterlagen; from waterlagen.ahn import get_ahn_rasters; from osgeo import gdal, gdal_array; import rasterio; print('Waterlagen', waterlagen.__version__); print('Imports OK')\""

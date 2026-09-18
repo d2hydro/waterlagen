@@ -1,5 +1,11 @@
 # Inwoners en personenauto's voorbereiden
 
+!!! warning "Vereist nieuwere broncode"
+    Deze workflows en Pixi-taken zijn niet beschikbaar in release 2026.2.1 of
+    de bijbehorende productie-TOML. Gebruik de broncoderepository `waterlagen`
+    met de [ontwikkelomgeving](../bijdragen/ontwikkelomgeving.md) en voer de
+    opdrachten hieronder vanuit die broncodemap uit.
+
 De workflows voor inwoners en personenauto's starten met dezelfde bron- en
 tussenproductstappen. Beide downloaden de CBS-bronnen alleen wanneer die nog
 niet in de DataStore staan en bouwen alleen nieuwe VBO-buurtbestanden wanneer

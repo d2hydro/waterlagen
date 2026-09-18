@@ -18,9 +18,8 @@ urls = { "Source" = "https://github.com/d2hydro/waterlagen", "Documentation" = "
 requires-python = ">=3.11"
 dependencies = [
     "gdal",
-    "geopandas>=1.0",
-    "pandas>=2",
-    "pydantic>=2",
+    "geopandas",
+    "pydantic",
     "pydantic-settings",
     "rasterio",
     "pyogrio",
@@ -28,14 +27,11 @@ dependencies = [
     "pyarrow",
     "numpy",
     "requests",
-    "shapely>=2",
+    "shapely",
     "affine",
     "tqdm"
 ]
 dynamic = ["version"]
-
-[project.scripts]
-waterlagen = "waterlagen.cli:main"
 
 [project.optional-dependencies]
 tests = ["pytest"]

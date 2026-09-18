@@ -1,5 +1,11 @@
 # DGM1 downloaden
 
+!!! warning "Vereist nieuwere broncode"
+    DGM1 is niet beschikbaar in release 2026.2.1 of de bijbehorende
+    productie-TOML. Voer deze voorbeelden uit vanuit de broncoderepository
+    `waterlagen`, met de [ontwikkelomgeving](../bijdragen/ontwikkelomgeving.md).
+    De onderstaande terminalopdracht gebruikt de omgeving `afwateringseenheden`.
+
 Selecteer [DGM1 Nordrhein-Westfalen](../bronnen/dgm1.md) met een gebied,
 tegel-ID's of een lokale URL-lijst. Geef ook benodigde rekenbuffers mee;
 de downloader voegt zelf geen buffer toe.

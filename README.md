@@ -14,15 +14,20 @@ Deze module is bedoeld om alle GIS basislagen (rasters en features) te `download
 **Broncode**: [https://github.com/d2hydro/waterlagen](https://github.com/d2hydro/waterlagen)
 
 ## Installeren
-Gebruik **Pixi** om Waterlagen vanuit de projectmap te installeren en uit te
-voeren. Pixi installeert ook Python, GDAL en PCRaster. Volg de
-[installatiehandleiding](docs/produceren/installatie.md) voor het openen van de
-juiste projectversie en het controleren van de installatie.
+De [installatiehandleiding](docs/produceren/installatie.md) gebruikt **Pixi** en
+de productieconfiguratie in de submap `envs`. Die configuratie installeert
+Waterlagen **2026.2.1 uit PyPI**, samen met Python en de GIS-bibliotheken.
+Volg de handleiding om Waterlagen als ZIP te downloaden en uit te
+pakken. Git is niet nodig. Open de submap `envs` en voer daar uit:
 
 ```console
-pixi install --environment afwateringseenheden --locked
-pixi run --environment afwateringseenheden waterlagen --help
+pixi install --locked
+pixi run controleer
 ```
+
+Deze broncoderepository bevat ook nieuwere workflows die niet in release
+2026.2.1 zitten. Gebruik voor die workflows de
+[ontwikkelomgeving](docs/bijdragen/ontwikkelomgeving.md).
 
 ## Aan de slag
 Wanneer de gebruiker eenmalig een `data_dir` opgeeft voor de `DataStore`, worden hier alle downloads, bewerkingen en logs opgeslagen. Lees meer over de DataStore in de [documentatie](https://d2hydro.github.io/waterlagen/produceren/configuratie/)

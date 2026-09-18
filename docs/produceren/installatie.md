@@ -1,10 +1,10 @@
 # Installatie
 
-Met **Pixi** installeert en start u Waterlagen vanuit de projectmap. Pixi regelt
-Python en de benodigde GIS-bibliotheken, waaronder GDAL en PCRaster. Voor het
-produceren van afwateringseenheden hoeft u geen Python-code te schrijven.
-De projectomgeving ondersteunt Windows en Linux; de voorbeelden hieronder
-gebruiken Windows PowerShell.
+Deze handleiding gebruikt de installatiebestanden in **`envs`** met
+**Waterlagen 2026.2.1** uit PyPI. Pixi installeert Python en de benodigde GIS-bibliotheken, waaronder
+GDAL. U hoeft Git of Python niet apart te installeren.
+De configuratie ondersteunt Windows en Linux; de voorbeelden hieronder gebruiken
+Windows PowerShell. De installatie is op Windows gecontroleerd.
 
 ## 1. Installeer Pixi
 
@@ -20,70 +20,82 @@ pixi --version
 Er verschijnt een versienummer. Hebt u Pixi al, dan kunt u deze installatiestap
 overslaan.
 
-## 2. Open de Waterlagen-projectmap
+## 2. Download en pak het productieproject uit
 
-Open de map met de Waterlagen-bestanden op uw computer. Dit is de map waarin
-`pixi.toml` staat. Bewaar alle bestanden en submappen, inclusief de verborgen
-map `.git`; de installatie bepaalt hiermee de pakketversie.
+U krijgt de installatiebestanden samen in een ZIP-bestand. Clonen is niet nodig.
 
-!!! note "Beschikbaarheid van de commandline-interface"
-    Deze handleiding gebruikt de nieuwe `waterlagen`-opdrachten. Deze versie
-    is nog niet gepubliceerd; de opdrachten zijn voorlopig alleen beschikbaar
-    in de lokale ontwikkelversie. Versie `2026.2.1` bevat ze nog niet.
-    Hebt u de benodigde bestanden niet, vraag de projectbeheerder dan om deze
-    versie beschikbaar te maken op GitHub, zodat u die met Git kunt ophalen.
+1. Open [de productie- en documentatiebranch op GitHub](https://github.com/d2hydro/waterlagen/tree/issue57_productie_waterlagen_ducumentatie).
+   Kies voorlopig deze branch: de installatiebestanden in `envs` staan nog niet
+   op de standaardbranch `main`.
+2. Klik op de groene knop **Code** en daarna op **Download ZIP**.
+3. Klik in Windows Verkenner met de rechtermuisknop op het gedownloade ZIP-bestand
+   en kies **Alles uitpakken**. Kies een map waarin u het project wilt bewaren.
+4. Open de uitgepakte map waarvan de naam begint met `waterlagen-`, en open daarin
+   de submap **`envs`**. Hier staan **`pixi.toml` en `pixi.lock`** voor productie.
 
-Ga in PowerShell naar de projectmap. Vervang het voorbeeldpad door uw eigen pad:
+Bewaar beide bestanden in dezelfde map. `pixi.toml` beschrijft welke software
+nodig is, waaronder Waterlagen 2026.2.1. `pixi.lock` legt de bijbehorende
+pakketversies vast. U hoeft deze bestanden niet zelf te maken of aan te passen.
+Gebruik de bestanden uit **`envs`**. De gelijknamige bestanden in de hoofdmap
+zijn bedoeld voor ontwikkeling. In deze handleiding is `envs` uw
+productieprojectmap. U kunt deze map ook los kopiëren naar een eigen werkmap;
+de overige bestanden uit de ZIP zijn niet nodig om de release te gebruiken.
 
-```powershell
-cd D:/Repositories/waterlagen
-```
+Hebt u de repository al lokaal? Open dan direct de submap `envs`; opnieuw
+downloaden is niet nodig.
 
-Voer alle volgende opdrachten vanuit deze map uit. In VS Code kunt u deze map
-openen en via **Terminal → New Terminal** een terminal starten.
+Klik in de adresbalk van Verkenner, typ `powershell` en druk op Enter. PowerShell
+opent nu in deze map. Voer alle volgende opdrachten vanuit deze map uit.
+In VS Code kunt u de uitgepakte map openen en via **Terminal → New Terminal**
+een terminal starten.
 
 ## 3. Installeer de omgeving
 
 ```powershell
-pixi install --environment afwateringseenheden --locked
+pixi install --locked
 ```
 
 De eerste installatie download de benodigde software en kan enkele minuten
-duren. Pixi bewaart deze in `.pixi` onder de projectmap. De omgeving
-`afwateringseenheden` bevat ook PCRaster voor de afstroomrichtingberekening.
+duren. Pixi bewaart deze in `.pixi` onder de productieprojectmap.
 `--locked` gebruikt de pakketversies die in `pixi.lock` zijn vastgelegd.
+Deze TOML gebruikt de standaardomgeving; u hoeft geen omgeving te kiezen.
 
 ## 4. Controleer de installatie
 
-Kies een schrijfbare map voor uw gegevens. In de voorbeelden is dat
-`D:/Waterlagen/data`; vervang die locatie zo nodig. Zet paden met spaties tussen
-dubbele aanhalingstekens.
+De voorbeelden gebruiken `./data`: de submap `data` in de productieprojectmap.
+Voer de opdrachten daarom steeds vanuit die projectmap uit. De datamap wordt
+automatisch aangemaakt. Zie [Configuratie en DataStore](configuratie.md) als u
+de gegevens op een andere locatie wilt opslaan.
 
 ```powershell
-pixi run --environment afwateringseenheden waterlagen --version
-pixi run --environment afwateringseenheden waterlagen controleer --data-dir D:/Waterlagen/data
+pixi run controleer
 ```
 
-De controle voert een kleine rasterberekening uit en test het schrijven en lezen
-van een bestand. Er worden geen brongegevens gedownload. Bij succes verschijnt
-**Installatie OK**. Het getoonde versienummer volgt de Git-versie van uw projectmap
-en kan een ontwikkelversie zijn.
+De controle test of Waterlagen en de GIS-bibliotheken kunnen worden geladen.
+Er worden geen brongegevens gedownload en geen rasterberekeningen uitgevoerd.
+Bij succes verschijnen **Waterlagen 2026.2.1** en **Imports OK**. De opdracht
+`controleer` is een taak in de productie-TOML.
 
 ## 5. Waterlagen uitvoeren
 
-Bekijk de beschikbare opdrachten:
+Ga verder met [Eerste dataset produceren](eerste-dataset.md): u slaat een kort
+AHN-voorbeeld op als `eerste_dataset.py` in de productieprojectmap en voert het uit:
 
 ```powershell
-pixi run --environment afwateringseenheden waterlagen --help
+pixi run python eerste_dataset.py
 ```
 
-Ga verder met [Afwateringseenheden produceren](afwateringseenheden.md).
-Voor eigen Python-workflows kunt u het voorbeeld bij
-[Eerste dataset produceren](eerste-dataset.md) volgen.
-
 Bij een volgende sessie opent u opnieuw een terminal in dezelfde projectmap en
-gebruikt u weer `pixi run --environment afwateringseenheden ...`. Pixi kiest
+gebruikt u weer `pixi run ...`. Pixi kiest
 automatisch de juiste omgeving; apart activeren is niet nodig.
+
+## Beschikbaar in deze release
+
+De AHN-, BAG- en BGT-functies zijn beschikbaar in versie 2026.2.1. De instructies
+voor DGM1, afwateringseenheden en inwoners/personenauto's gebruiken nieuwere
+broncode en werken niet met deze productie-TOML. Die pagina's vermelden dit
+bovenaan. Ook de API-referentie beschrijft de broncodeversie van deze documentatie;
+daarin kunnen functies staan die nog niet in 2026.2.1 zitten.
 
 ## Als een opdracht niet werkt
 
@@ -91,8 +103,10 @@ automatisch de juiste omgeving; apart activeren is niet nodig.
 |---|---|
 | `pixi` wordt niet herkend | Open een nieuwe terminal na installatie; herstart ook VS Code als u daarin werkt. |
 | Pixi kan geen projectbestand vinden | Ga met `cd` naar de map waarin `pixi.toml` staat. |
-| `waterlagen` wordt niet herkend | Gebruik de volledige `pixi run`-opdracht en controleer of u de versie met de nieuwe opdrachten hebt. |
-| Geen toegang tot de datamap | Kies bij `--data-dir` een locatie waar u bestanden mag opslaan. |
+| `pixi.lock` ontbreekt | Pak de ZIP volledig uit en controleer of `pixi.toml` en `pixi.lock` in dezelfde map staan. Ontbreekt een bestand ook in de ZIP, vraag dan de beheerder om de complete ZIP. |
+| De taak `controleer` ontbreekt | Open de submap `envs` met de productieconfiguratie; de hoofdmap gebruikt de ontwikkelconfiguratie. |
+| Python kan een script niet vinden | Sla het voorbeeld op in de productieprojectmap en voer de opdracht vanuit die map uit. |
+| Geen toegang tot de datamap | Stel in `.datastore` een locatie in waar u bestanden mag opslaan; zie [Configuratie](configuratie.md). |
 
 Voor tests en wijzigingen aan de software, zie
 [Ontwikkelomgeving](../bijdragen/ontwikkelomgeving.md).

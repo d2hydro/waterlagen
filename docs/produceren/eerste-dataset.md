@@ -1,10 +1,12 @@
 # Eerste dataset produceren
 
-Dit voorbeeld download AHN-DTM-rastertegels voor een klein gebied en maakt
+Dit voorbeeld gebruikt **Waterlagen 2026.2.1** met de configuratie uit `envs`.
+Het download AHN-DTM-rastertegels voor een klein gebied en maakt
 een VRT waarmee de tegels als één raster kunnen worden geopend.
 
 Volg eerst [Installatie](installatie.md). Sla de onderstaande Python-code op als
-`eerste_dataset.py` in de Waterlagen-projectmap.
+`eerste_dataset.py` in de submap `envs` (of uw losse kopie van die map), naast
+`pixi.toml` en `pixi.lock`.
 
 ```python
 from shapely.geometry import box
@@ -25,7 +27,7 @@ print(vrt_path)
 Voer het bestand vanuit die projectmap uit:
 
 ```console
-pixi run --environment afwateringseenheden python eerste_dataset.py
+pixi run python eerste_dataset.py
 ```
 
 Dit start de download. Het pad naar de VRT verschijnt na afloop in de terminal;

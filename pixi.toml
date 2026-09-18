@@ -6,8 +6,7 @@ platforms = ["win-64", "linux-64"]
 [dependencies]
 python = ">=3.11"
 gdal = "*"
-geopandas = ">=1.0"
-pandas = ">=2"
+geopandas = "*"
 pydantic = ">=2"
 pydantic-settings = "*"
 rasterio = "*"
@@ -16,7 +15,7 @@ pyproj = "*"
 pyarrow = "*"
 numpy = "*"
 requests = "*"
-shapely = ">=2"
+shapely = "*"
 affine = "*"
 tqdm = "*"
 

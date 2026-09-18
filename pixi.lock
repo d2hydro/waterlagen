@@ -16832,17 +16832,16 @@ packages:
   requires_dist:
   - affine
   - gdal
-  - geopandas>=1.0
+  - geopandas
   - numpy
-  - pandas>=2
   - pyarrow
+  - pydantic
   - pydantic-settings
-  - pydantic>=2
   - pyogrio
   - pyproj
   - rasterio
   - requests
-  - shapely>=2
+  - shapely
   - tqdm
   - pytest ; extra == 'tests'
   requires_python: '>=3.11'

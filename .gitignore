@@ -208,6 +208,7 @@ __marimo__/
 
 # Data(store)
 /data
+/envs/data/
 .datatore
 scripts/.datastore
 .datastore
