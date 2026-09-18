@@ -375,6 +375,7 @@ def require_pcraster() -> ModuleType:
     except ImportError as exc:
         raise RuntimeError(
             "PCRaster is required for afwateringseenheden. "
-            "Run `pixi run --environment afwateringseenheden python ...`."
+            "Install it with `conda install -c conda-forge pcraster`, or use "
+            "`pixi run --environment afwateringseenheden python ...` in a checkout."
         ) from exc
     return pcraster

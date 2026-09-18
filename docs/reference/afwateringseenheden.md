@@ -47,3 +47,12 @@ afzonderlijke `spawn`-processen en vereisen een script met een `__main__`-guard.
 ::: waterlagen.afwateringseenheden
 
 ::: waterlagen.afwateringseenheden.dem.prepare_ahn_dgm1_dem
+
+## Productie voor een waterschap
+
+Voor uitvoering vanuit de terminal, zie
+[Afwateringseenheden produceren](../produceren/afwateringseenheden.md).
+
+::: waterlagen.afwateringseenheden.production.ProductionConfig
+
+::: waterlagen.afwateringseenheden.production.produce_afwateringseenheden

@@ -1,0 +1,78 @@
+schema_version: 1
+
+context:
+  version: "2026.2.2"
+
+package:
+  name: waterlagen
+  version: ${{ version }}
+
+source:
+  path: ..
+  use_gitignore: true
+
+build:
+  number: 0
+  noarch: python
+  script:
+    env:
+      SETUPTOOLS_SCM_PRETEND_VERSION: ${{ version }}
+    content: python -m pip install . --no-deps --no-build-isolation -vv
+  python:
+    entry_points:
+      - waterlagen = waterlagen.cli:main
+
+requirements:
+  host:
+    - python >=3.11
+    - pip
+    - hatchling
+    - hatch-vcs
+  run:
+    - python >=3.11
+    - gdal
+    - geopandas >=1.0
+    - pandas >=2
+    - pydantic >=2
+    - pydantic-settings
+    - rasterio
+    - pyogrio
+    - pyproj
+    - pyarrow
+    - numpy
+    - requests
+    - shapely >=2
+    - affine
+    - tqdm
+
+tests:
+  - python:
+      imports:
+        - waterlagen
+        - waterlagen.cli
+        - waterlagen.ahn
+        - waterlagen.dgm1
+        - waterlagen.afwateringseenheden.production
+      pip_check: true
+  - script:
+      - waterlagen --help
+      - waterlagen --version
+      - waterlagen afwateringseenheden --help
+  - script: run_test.py
+  - script:
+      - waterlagen controleer --data-dir installation-check
+    requirements:
+      run:
+        - pcraster
+
+about:
+  homepage: https://d2hydro.github.io/waterlagen/
+  summary: Download and process GIS base layers for water management
+  license: MIT
+  license_file: LICENSE
+  documentation: https://d2hydro.github.io/waterlagen/
+  repository: https://github.com/d2hydro/waterlagen
+
+extra:
+  recipe-maintainers:
+    - DanielTollenaar

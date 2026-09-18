@@ -1,18 +1,37 @@
 from pathlib import Path
 
-from pydantic import ValidationInfo, computed_field, field_validator
+from pydantic import Field, ValidationInfo, computed_field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from waterlagen.logger import get_logger
 
 logger = get_logger(__name__)
 
-repo_root = Path(__file__).resolve().parents[2]
-default_data_path = repo_root / "data"
+
+def _find_repo_root() -> Path | None:
+    """Recognize a source checkout without mistaking site-packages for one."""
+    package_dir = Path(__file__).resolve().parent
+    candidate = package_dir.parent.parent
+    if package_dir.parent.name == "src" and (candidate / "pyproject.toml").is_file():
+        return candidate
+    return None
+
+
+repo_root = _find_repo_root()
+
+
+def _default_data_path() -> Path:
+    """Use repository data for a checkout, or the current work directory."""
+    return (repo_root or Path.cwd()) / "data"
+
+
+default_data_path = _default_data_path()
 
 
 def _datastore_env_files() -> tuple[Path, ...]:
     """Return datastore config files from lowest to highest precedence."""
+    if repo_root is None:
+        return (Path.cwd() / ".datastore",)
     return repo_root / ".datastore", Path.cwd() / ".datastore"
 
 
@@ -30,31 +49,35 @@ class DataStore(BaseSettings):
     Attributes
     ----------
     data_dir : Path
-        The root for `source_data_dir` and `processed_data_dir`. Defaults to ./data.
+        Root for source data and processed data. Defaults to ``data`` in the
+        source checkout, or in the current working directory for an installed
+        package. Explicit values override environment variables and .datastore.
     source_data_dir : Path
-        A path for for source data, defaults to `data/source_data`
+        Source directory, defaults to ``data_dir / 'source_data'``.
     processed_data_dir : Path
-        A path for for processed data, defaults to `data/processed_data_dir`
+        Results directory, defaults to ``data_dir / 'processed_data'``.
     """
 
-    data_dir: Path = default_data_path
+    data_dir: Path = Field(default_factory=_default_data_path)
     source_data_dir: Path | None = None
     processed_data_dir: Path | None = None
-    model_config = SettingsConfigDict(env_file=None)
+    model_config = SettingsConfigDict(env_file=None, env_file_encoding="utf-8-sig")
 
-    def __init__(self, **values: object) -> None:
+    def __init__(self, *, _create_directories: bool = True, **values: object) -> None:
         values.setdefault("_env_file", _datastore_env_files())
         super().__init__(**values)
+        if _create_directories:
+            self.source_data_dir.mkdir(parents=True, exist_ok=True)
+            self.processed_data_dir.mkdir(parents=True, exist_ok=True)
 
     @field_validator("source_data_dir", "processed_data_dir", mode="after")
-    def ensure_directory_exists(cls, v: Path | None, info: ValidationInfo) -> Path:
+    def resolve_directory(cls, v: Path | None, info: ValidationInfo) -> Path:
         if v is None:
-            data_dir = info.data.get("data_dir") or default_data_path
+            data_dir = info.data.get("data_dir") or _default_data_path()
             if info.field_name == "source_data_dir":
                 v = Path(data_dir) / "source_data"
             else:
                 v = Path(data_dir) / "processed_data"
-        v.mkdir(parents=True, exist_ok=True)
         return v
 
     @computed_field
@@ -202,7 +225,7 @@ class DataStore(BaseSettings):
         return self.autos_dir / "autos.parquet"
 
 
-datastore = DataStore()
+datastore = DataStore(_create_directories=False)
 logger.info(
     "Initialized datastore with source_data_dir=%s and processed_data_dir=%s",
     datastore.source_data_dir,

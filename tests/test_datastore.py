@@ -10,6 +10,49 @@ def test_default_data_path_is_repo_data_directory():
     assert default_data_path == Path(__file__).parents[1] / "data"
 
 
+def test_installed_package_defaults_to_current_directory(tmp_path, monkeypatch):
+    monkeypatch.setattr(datastore_module, "repo_root", None)
+    monkeypatch.chdir(tmp_path)
+    for name in ("DATA_DIR", "SOURCE_DATA_DIR", "PROCESSED_DATA_DIR"):
+        monkeypatch.delenv(name, raising=False)
+    store = DataStore(_env_file=None)
+    assert store.data_dir == tmp_path / "data"
+    assert store.source_data_dir == tmp_path / "data" / "source_data"
+    assert store.processed_data_dir.is_dir()
+    second = tmp_path / "second"
+    second.mkdir()
+    monkeypatch.chdir(second)
+    assert DataStore(_env_file=None).data_dir == second / "data"
+
+
+def test_installed_package_does_not_read_python_directory_config(tmp_path, monkeypatch):
+    package = tmp_path / "Lib" / "site-packages" / "waterlagen"
+    package.mkdir(parents=True)
+    (tmp_path / "Lib" / ".datastore").write_text("DATA_DIR=wrong", encoding="utf-8")
+    monkeypatch.setattr(datastore_module, "__file__", str(package / "datastore.py"))
+    assert datastore_module._find_repo_root() is None
+    monkeypatch.setattr(datastore_module, "repo_root", None)
+    monkeypatch.chdir(tmp_path)
+    assert datastore_module._datastore_env_files() == (tmp_path / ".datastore",)
+
+
+def test_storage_accepts_windows_utf8_bom(tmp_path, monkeypatch):
+    config = tmp_path / ".datastore"
+    config.write_text(f"DATA_DIR={tmp_path / 'selected'}\n", encoding="utf-8-sig")
+    monkeypatch.delenv("DATA_DIR", raising=False)
+    store = DataStore(_env_file=config)
+    assert store.data_dir == tmp_path / "selected"
+
+
+def test_default_instance_can_defer_directory_creation(tmp_path):
+    store = DataStore(
+        data_dir=tmp_path / "unused", _env_file=None, _create_directories=False
+    )
+    assert not store.source_data_dir.exists()
+    assert not store.processed_data_dir.exists()
+    assert store.ahn_dir.is_dir()
+
+
 def test_hydamo_dir_is_created_under_source_data(tmp_path):
     datastore = DataStore(data_dir=tmp_path / "data")
 

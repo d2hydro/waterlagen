@@ -1,36 +1,27 @@
-import importlib.util
-from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock
 
 import geopandas as gpd
+import pytest
 from shapely.geometry import LineString, Point, box
 
-
-def _load_afwateringseenheden_script():
-    script_path = (
-        Path(__file__).resolve().parents[1]
-        / "scripts"
-        / "afwateringseenheden_aa_en_maas.py"
-    )
-    spec = importlib.util.spec_from_file_location(
-        "afwateringseenheden_script", script_path
-    )
-    module = importlib.util.module_from_spec(spec)
-    assert spec.loader is not None
-    spec.loader.exec_module(module)
-    return module
+from waterlagen.afwateringseenheden import production
+from waterlagen.datastore import DataStore
 
 
-def test_script_prepares_area_inputs_despite_existing_generic_files(
-    tmp_path, monkeypatch
+@pytest.mark.parametrize("waterbeheercode, workers", [("38", None), ("25", 2)])
+def test_production_prepares_area_inputs_despite_existing_generic_files(
+    tmp_path, monkeypatch, waterbeheercode, workers
 ):
-    script = _load_afwateringseenheden_script()
-    data_store = SimpleNamespace(
-        ahn_dir=tmp_path / "source" / "ahn",
+    script = production
+    config = production.ProductionConfig(
+        waterbeheercode=waterbeheercode, workers=workers
+    )
+    data_store = DataStore(
+        data_dir=tmp_path,
         source_data_dir=tmp_path / "source",
         processed_data_dir=tmp_path / "processed",
-        afwateringseenheden_path=tmp_path / "processed" / "afwateringseenheden",
+        _env_file=None,
     )
     generic_ahn = data_store.ahn_dir / "dtm_05" / "dtm_05.vrt"
     generic_watersysteem = data_store.afwateringseenheden_path / "watersysteem.gpkg"
@@ -40,7 +31,7 @@ def test_script_prepares_area_inputs_despite_existing_generic_files(
 
     boundary = box(150000, 400000, 151000, 401000)
     boundaries = gpd.GeoDataFrame(
-        {"waterbeheercode": [script.WATERBEHEERCODE]},
+        {"waterbeheercode": [config.waterbeheercode]},
         geometry=[boundary],
         crs="EPSG:28992",
     )
@@ -59,7 +50,6 @@ def test_script_prepares_area_inputs_despite_existing_generic_files(
     hydamo = SimpleNamespace(target_path=tmp_path / "hydamo.gpkg")
     watersysteem = object()
 
-    monkeypatch.setattr(script, "datastore", data_store)
     monkeypatch.setattr(script.settings, "afwateringseenheden_workers", 3)
     monkeypatch.setattr(script, "require_pcraster", Mock())
     monkeypatch.setattr(script, "init_logger", Mock(return_value=Mock()))
@@ -95,7 +85,7 @@ def test_script_prepares_area_inputs_despite_existing_generic_files(
                 tile_results=(),
                 skipped_tile_ids=(),
                 boundary_issue_tile_ids=(),
-                merged_path=None,
+                merged_path=tmp_path / "result.gpkg",
             )
         ),
     )
@@ -108,16 +98,21 @@ def test_script_prepares_area_inputs_despite_existing_generic_files(
     ):
         monkeypatch.setenv(name, "2")
 
-    script.main()
+    result = script.produce_afwateringseenheden(config, data_store=data_store)
+    assert result == tmp_path / "result.gpkg"
 
-    spatial_mask = boundary.buffer(script.BUFFER_M)
+    spatial_mask = boundary.buffer(config.buffer_m)
     script.download_ahn.assert_called_once_with(
-        poly_mask=spatial_mask, missing_only=True
+        ahn_dir=data_store.ahn_dir, poly_mask=spatial_mask, missing_only=True
     )
     script.download_bestuurlijke_gebieden.assert_called_once_with(
-        year=script.DEFAULT_BESTUURLIJKE_GEBIEDEN_YEAR, overwrite=False
+        year=script.DEFAULT_BESTUURLIJKE_GEBIEDEN_YEAR,
+        download_dir=data_store.administratieve_gebieden_dir,
+        overwrite=False,
     )
-    script.download_hydamo.assert_called_once_with(overwrite=False)
+    script.download_hydamo.assert_called_once_with(
+        download_dir=data_store.hydamo_dir, overwrite=False
+    )
     script.read_hydroobjecten.assert_called_once_with(
         hydamo.target_path, spatial_selection=spatial_mask
     )
@@ -125,7 +120,7 @@ def test_script_prepares_area_inputs_despite_existing_generic_files(
         hydamo.target_path,
         layers=["gemaal", "stuw"],
         spatial_selection=spatial_mask,
-        waterbeheercodes=[script.WATERBEHEERCODE],
+        waterbeheercodes=[config.waterbeheercode],
     )
     assert script.prepare_watersysteem.call_args.args[0].equals(hydroobjecten.iloc[[0]])
     assert script.prepare_watersysteem.call_args.args[1] is puntobjecten
@@ -135,13 +130,48 @@ def test_script_prepares_area_inputs_despite_existing_generic_files(
     write_args = script.write_watersysteem.call_args.kwargs
     run_dir = write_args["output_path"].parent
     assert run_dir.parent == data_store.afwateringseenheden_path
-    assert run_dir.name.startswith("aa_en_maas_")
+    prefix = "aa_en_maas_" if waterbeheercode == "38" else "waterschap_25_"
+    assert run_dir.name.startswith(prefix)
     assert write_args["output_path"] == run_dir / "watersysteem.gpkg"
     assert write_args["watersysteem"] is watersysteem
     assert write_args["overwrite"] is False
     tile_args = script.calculate_afwateringseenheden_tiles.call_args.kwargs
-    assert tile_args["workers"] == 3
+    assert tile_args["workers"] == (workers or 3)
+    assert tile_args["data_store"] is data_store
     assert tile_args["watersysteem_path"] == write_args["output_path"]
     assert tile_args["ahn_vrt_path"] == selected_ahn
     assert tile_args["landsgrens_path"] == tmp_path / "bestuurlijke.gpkg"
     assert generic_watersysteem.read_bytes() == b"existing data for another area"
+
+
+def test_missing_pcraster_stops_before_downloads(tmp_path, monkeypatch):
+    download = Mock()
+    monkeypatch.setattr(production, "download_waterschapsgrenzen", download)
+    monkeypatch.setattr(
+        production,
+        "require_pcraster",
+        Mock(side_effect=RuntimeError("PCRaster ontbreekt")),
+    )
+    store = DataStore(data_dir=tmp_path, _env_file=None)
+    with pytest.raises(RuntimeError, match="PCRaster"):
+        production.produce_afwateringseenheden(data_store=store)
+    download.assert_not_called()
+    assert not (tmp_path / "processed_data" / "afwateringseenheden").exists()
+
+
+@pytest.mark.parametrize(
+    "values",
+    [
+        {"waterbeheercode": "../38"},
+        {"workers": 0},
+        {"buffer_m": -1},
+        {"tile_size_m": 0},
+        {"tile_buffer_m": float("inf")},
+        {"burn_depth_m": float("nan")},
+        {"max_fill_depth_m": -1},
+        {"random_seed": 0},
+    ],
+)
+def test_production_rejects_invalid_configuration(values):
+    with pytest.raises(ValueError):
+        production.ProductionConfig(**values)

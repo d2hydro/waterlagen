@@ -14,11 +14,12 @@ Deze module is bedoeld om alle GIS basislagen (rasters en features) te `download
 **Broncode**: [https://github.com/d2hydro/waterlagen](https://github.com/d2hydro/waterlagen)
 
 ## Installeren
-De module `waterlagen` kan in elke omgeving die beschikt over `Python` (>=3.11) en `pip` met:
-
-```
-pip install waterlagen
-```
+Volg de [installatiehandleiding](docs/produceren/installatie.md) voor Waterlagen,
+GDAL en de overige GIS-bibliotheken. De conda-forge-release van versie 2026.2.2
+is in voorbereiding; een lokaal conda-package kan al worden gebouwd en getest.
+Die versie biedt de opdrachten `waterlagen controleer` en
+`waterlagen afwateringseenheden`, zodat voor afwateringseenheden geen eigen
+Python-script nodig is.
 
 ## Aan de slag
 Wanneer de gebruiker eenmalig een `data_dir` opgeeft voor de `DataStore`, worden hier alle downloads, bewerkingen en logs opgeslagen. Lees meer over de DataStore in de [documentatie](https://d2hydro.github.io/waterlagen/produceren/configuratie/)
