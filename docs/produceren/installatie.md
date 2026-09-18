@@ -28,19 +28,22 @@ Er verschijnt een versienummer. Hebt u Pixi al, dan kunt u deze installatiestap 
 
 ## 2. Download het productiepakket
 
-1. Open de [Waterlagen-releases](https://github.com/d2hydro/waterlagen/releases).
-2. Kies de gewenste release. Onder **Assets** download u
-   **`waterlagen-productie-<tag>.zip`**, waarbij `<tag>` de releasetag is.
-   Kies het productiepakket, niet **Source code (zip)**.
-3. Klik in Verkenner met de rechtermuisknop op het ZIP-bestand en kies **Alles uitpakken**.
-4. Open de uitgepakte map met **`pixi.toml`, `pixi.lock` en `scripts`**.
+1. Download [**waterlagen-productie.zip**](https://github.com/d2hydro/waterlagen/releases/latest/download/waterlagen-productie.zip)
+   van de nieuwste stabiele release.
+2. Klik in Verkenner met de rechtermuisknop op het ZIP-bestand en kies **Alles uitpakken**.
+3. Open daarin de map **`waterlagen-productie-<tag>`** met **`pixi.toml`, `pixi.lock` en `scripts`**.
+   Het versienummer blijft in deze mapnaam en in de pakketinhoud staan.
    Dit is uw **projectfolder**. U mag die map bijvoorbeeld `mijn-waterlagen` noemen.
 
 !!! note "Beschikbaarheid"
-    Productiepakketten worden toegevoegd door de release-workflow die bij deze
-    wijziging hoort. Oudere releases, waaronder 2026.2.1 en 2026.9.0rc1, hebben
-    nog geen automatisch gepubliceerd productiepakket. Kies een release waar
-    het genoemde ZIP-bestand onder Assets staat.
+    De downloadlink volgt de nieuwste stabiele release; prereleases vallen daar
+    buiten. Voor een oudere versie of prerelease opent u de
+    [Waterlagen-releases](https://github.com/d2hydro/waterlagen/releases) en kiest u
+    het productiepakket onder **Assets**, niet **Source code (zip)**.
+    Oudere productiepakketten kunnen nog een versienummer in de ZIP-naam hebben.
+    De ZIP komt beschikbaar nadat de releasecontroles zijn geslaagd. Werkt de
+    downloadlink niet, controleer dan bij de releases of het productiepakket al
+    beschikbaar is.
 
 De projectfolder bevat de installatiebestanden en scripts al op de juiste plaats.
 U hoeft geen bestanden uit `envs` te kopiëren of scripts apart te downloaden:

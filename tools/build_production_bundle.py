@@ -86,13 +86,16 @@ def validate_lock(lock_path: Path, version: str) -> None:
 
 
 def build_bundle(tag: str, output_dir: Path, repository: Path = REPO_ROOT) -> Path:
-    """Copy an explicit set of public files, lock dependencies, then create a ZIP."""
+    """Create waterlagen-productie.zip with a versioned top-level directory.
+
+    Replace an existing ZIP only after locking and validation succeed.
+    """
     repository = repository.resolve()
     version = release_version(tag, repository)
     bundle_name = f"waterlagen-productie-{tag}"
     output_dir = output_dir.resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
-    archive_path = output_dir / f"{bundle_name}.zip"
+    archive_path = output_dir / "waterlagen-productie.zip"
 
     with tempfile.TemporaryDirectory(prefix="production-", dir=output_dir) as temporary:
         project_dir = Path(temporary) / bundle_name

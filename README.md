@@ -14,8 +14,8 @@ Deze module is bedoeld om alle GIS basislagen (rasters en features) te `download
 **Broncode**: [https://github.com/d2hydro/waterlagen](https://github.com/d2hydro/waterlagen)
 
 ## Installeren
-Download het **productiepakket** (`waterlagen-productie-<tag>.zip`) uit de
-Assets van een [Waterlagen-release](https://github.com/d2hydro/waterlagen/releases).
+Download [**waterlagen-productie.zip**](https://github.com/d2hydro/waterlagen/releases/latest/download/waterlagen-productie.zip)
+van de nieuwste stabiele release.
 Het pakket bevat scripts voor afwateringseenheden, landgebruik, inwoners en auto's,
 plus een Pixi-omgeving die de bijbehorende release uit PyPI installeert.
 Volg de [installatiehandleiding](docs/produceren/installatie.md), pak de ZIP uit
@@ -26,9 +26,10 @@ pixi install --locked
 pixi run --locked controleer
 ```
 
-Git of toegang tot een private repository is niet nodig. De release-workflow
-voegt de ZIP toe na controles op Windows en Linux; oudere releases hebben dit
-asset nog niet. Voor aanpassingen aan Waterlagen zelf gebruikt u de
+Git of toegang tot een private repository is niet nodig. Voor andere versies en
+de beschikbaarheid van het productiepakket, zie de
+[installatiehandleiding](docs/produceren/installatie.md#2-download-het-productiepakket).
+Voor aanpassingen aan Waterlagen zelf gebruikt u de
 [ontwikkelomgeving](docs/bijdragen/ontwikkelomgeving.md).
 
 ## Aan de slag
