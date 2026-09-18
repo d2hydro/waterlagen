@@ -22,16 +22,16 @@ overslaan.
 
 ## 2. Open de Waterlagen-projectmap
 
-Gebruik uw lokale Git-checkout van Waterlagen: de projectmap met `pixi.toml`,
-`pixi.lock`, `pyproject.toml` en de map `src`. Bewaar de volledige checkout,
-inclusief de verborgen map `.git`; de installatie bepaalt hiermee de pakketversie.
+Open de map met de Waterlagen-bestanden op uw computer. Dit is de map waarin
+`pixi.toml` staat. Bewaar alle bestanden en submappen, inclusief de verborgen
+map `.git`; de installatie bepaalt hiermee de pakketversie.
 
 !!! note "Beschikbaarheid van de commandline-interface"
-    De nieuwe `waterlagen`-opdrachten staan voorlopig alleen op de lokale
-    werkbranch `feat/conda-forge-2026.2.2`. Gebruik de checkout van die branch.
-    Een nieuwe download van `main` of versie `2026.2.1` bevat deze opdrachten
-    nog niet. Hebt u deze checkout niet, vraag de projectbeheerder dan om toegang
-    tot deze versie.
+    Deze handleiding gebruikt de nieuwe `waterlagen`-opdrachten. Deze versie
+    is nog niet gepubliceerd; de opdrachten zijn voorlopig alleen beschikbaar
+    in de lokale ontwikkelversie. Versie `2026.2.1` bevat ze nog niet.
+    Hebt u de benodigde bestanden niet, vraag de projectbeheerder dan om deze
+    versie beschikbaar te maken op GitHub, zodat u die met Git kunt ophalen.
 
 Ga in PowerShell naar de projectmap. Vervang het voorbeeldpad door uw eigen pad:
 
@@ -48,7 +48,7 @@ openen en via **Terminal → New Terminal** een terminal starten.
 pixi install --environment afwateringseenheden --locked
 ```
 
-De eerste installatie downloadt de benodigde software en kan enkele minuten
+De eerste installatie download de benodigde software en kan enkele minuten
 duren. Pixi bewaart deze in `.pixi` onder de projectmap. De omgeving
 `afwateringseenheden` bevat ook PCRaster voor de afstroomrichtingberekening.
 `--locked` gebruikt de pakketversies die in `pixi.lock` zijn vastgelegd.
@@ -66,7 +66,7 @@ pixi run --environment afwateringseenheden waterlagen controleer --data-dir D:/W
 
 De controle voert een kleine rasterberekening uit en test het schrijven en lezen
 van een bestand. Er worden geen brongegevens gedownload. Bij succes verschijnt
-**Installatie OK**. Het getoonde versienummer volgt de Git-versie van uw checkout
+**Installatie OK**. Het getoonde versienummer volgt de Git-versie van uw projectmap
 en kan een ontwikkelversie zijn.
 
 ## 5. Waterlagen uitvoeren
@@ -91,7 +91,7 @@ automatisch de juiste omgeving; apart activeren is niet nodig.
 |---|---|
 | `pixi` wordt niet herkend | Open een nieuwe terminal na installatie; herstart ook VS Code als u daarin werkt. |
 | Pixi kan geen projectbestand vinden | Ga met `cd` naar de map waarin `pixi.toml` staat. |
-| `waterlagen` wordt niet herkend | Gebruik de volledige `pixi run`-opdracht en controleer of uw checkout de commandline-interface bevat. |
+| `waterlagen` wordt niet herkend | Gebruik de volledige `pixi run`-opdracht en controleer of u de versie met de nieuwe opdrachten hebt. |
 | Geen toegang tot de datamap | Kies bij `--data-dir` een locatie waar u bestanden mag opslaan. |
 
 Voor tests en wijzigingen aan de software, zie

@@ -52,7 +52,7 @@ niet-geselecteerde TIFF-bestanden blijven op schijf staan.
 Standaard worden vier bestanden tegelijk gedownload, met drie pogingen per
 tegel en een HTTP-timeout van 60 seconden. Dit is instelbaar via `workers`,
 `retries` en `timeout`. Geldige bestaande bestanden worden hergebruikt met
-`missing_only=True`; `missing_only=False` downloadt de selectie opnieuw. Een
+`missing_only=True`; `missing_only=False` download de selectie opnieuw. Een
 bestaand bestand wordt pas vervangen na een geslaagde download en controle.
 
 De download zet hoogtes nog niet om naar RD/NAP. Voor een gecombineerd

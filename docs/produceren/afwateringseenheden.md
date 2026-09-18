@@ -20,7 +20,7 @@ pixi run --environment afwateringseenheden waterlagen controleer --data-dir D:/W
 ```
 
 Vervang `D:/Waterlagen/data` door uw eigen opslaglocatie. Controleer of daar
-voldoende vrije schijfruimte is: deze workflow downloadt AHN-tegels en landelijke
+voldoende vrije schijfruimte is: deze workflow download AHN-tegels en landelijke
 bronnen en schrijft rasters en tussenresultaten. Het is een volledige productie,
 geen kleine installatietest. De benodigde ruimte en rekentijd hangen af van het
 werkgebied en de instellingen.
@@ -82,14 +82,14 @@ eigen parallelle scripts is een `if __name__ == "__main__"`-guard nodig.
 
 De opdracht voert de volgende stappen uit:
 
-1. Downloadt en normaliseert de waterschapsgrenzen en selecteert het
+1. Download en normaliseert de waterschapsgrenzen en selecteert het
    beheergebied.
 2. Controleert de AHN-selectie inclusief gebiedsbuffer, hergebruikt geldige
-   tegels en downloadt ontbrekende tegels.
-3. Downloadt [bestuurlijke gebieden](../bronnen/bestuurlijke-gebieden.md),
+   tegels en download ontbrekende tegels.
+3. Download [bestuurlijke gebieden](../bronnen/bestuurlijke-gebieden.md),
    standaard jaargang 2026, of hergebruikt de bestaande bron. De laag
    `landgebied` begrenst de DEM-interpolatie tot Nederland, inclusief tegelbuffers.
-4. Hergebruikt of downloadt de landelijke HYDAMO-GeoPackage en bereidt het
+4. Hergebruikt of download de landelijke HYDAMO-GeoPackage en bereidt het
    watersysteem voor het huidige werkgebied opnieuw voor.
 5. Berekent afwateringseenheden in tegels volgens
    [Afwateringseenheden](../bewerkingen/afwateringseenheden.md#werkwijze) en voegt
