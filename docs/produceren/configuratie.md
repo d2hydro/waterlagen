@@ -1,40 +1,80 @@
-# Configuratie en DataStore
+# Opslag van gegevens
 
-Deze pagina hoort bij Waterlagen **2026.2.1** met de configuratie uit `envs`.
-Die map (of uw losse kopie ervan) is de productieprojectmap.
-`DataStore` bepaalt waar Waterlagen bronbestanden, verwerkte resultaten en logs
-opslaat. Zonder aanpassingen gebruikt Waterlagen de submap `data` in de
-projectmap. Downloads komen in `data/source_data` en resultaten in
-`data/processed_data`. Voer de Pixi-opdrachten steeds vanuit de projectmap uit.
-Gebruik bij volgende opdrachten dezelfde opslaglocatie om downloads te hergebruiken.
+## Beginnen zonder instellingen
 
-## Vaste opslaglocatie
+**U hoeft niets in te stellen.** Het productiepakket bevat al een bestand
+`.datastore` met `DATA_DIR=./data`. Daardoor maakt Waterlagen automatisch een
+map `data` aan in uw projectfolder, bijvoorbeeld `mijn-waterlagen`.
+Daarin staan:
 
-Wilt u de locatie expliciet instellen, maak dan een tekstbestand met de naam
-`.datastore` in de productieprojectmap. Sla het op als UTF-8 zonder BOM en
-let erop dat de bestandsnaam niet eindigt op `.txt`.
+- `data/source_data`: gedownloade brongegevens;
+- `data/processed_data`: verwerkte resultaten.
 
-```text
-DATA_DIR=./data
+Open [PowerShell in uw projectfolder](installatie.md#powershell-openen-in-uw-projectfolder),
+waar `pixi.toml` en `pixi.lock` staan.
+Controleer de installatie en de gebruikte gegevensmap met:
+
+```powershell
+pixi run --locked controleer
 ```
 
-`./data` verwijst naar de submap `data` in de huidige werkmap. Voor opslag op een
-andere schijf kunt u bijvoorbeeld `DATA_DIR=D:/Waterlagen/data` invullen.
+Kies daarna een productie bij [Zelf produceren](index.md).
 
-Optioneel kunt u daarin `SOURCE_DATA_DIR` en `PROCESSED_DATA_DIR` opgeven om
-bronnen en resultaten op verschillende locaties te bewaren. Omgevingsvariabelen
-met deze namen hebben voorrang op het bestand. Ook hier worden relatieve paden
-vanaf de huidige werkmap geïnterpreteerd. Gebruik een absoluut pad als u de
-gegevens buiten de projectmap wilt opslaan.
+## Gegevens ergens anders bewaren
 
-Versie 2026.2.1 leest `.datastore` uit de huidige werkmap. Zonder
-opslagconfiguratie gebruikt deze versie `data` onder die map. Waterlagen maakt
-opslagmappen automatisch aan.
+Wilt u bijvoorbeeld een andere schijf gebruiken omdat daar meer ruimte is?
+Dan kunt u de opslaglocatie opgeven in **`.datastore`**. Dat is een gewoon
+tekstbestand met instellingen, geen map en geen Python-script.
+De naam begint met een punt en heeft geen `.txt` erachter.
 
-Neem geen `.env` over uit een ontwikkelomgeving met nieuwere workflows.
-Instellingen zoals `AFWATERINGSEENHEDEN_WORKERS` bestaan nog niet in 2026.2.1 en
-kunnen bij het laden een configuratiefout veroorzaken. Voor het AHN-voorbeeld
-hoeft u geen `.env` te maken.
+1. Open uw projectfolder in VS Code.
+2. Open het meegeleverde bestand **`.datastore`**, direct naast
+   `pixi.toml` en `pixi.lock`.
+3. De instelling voor de standaardmap ziet er zo uit:
 
-De [DataStore-API](../reference/datastore.md) beschrijft de huidige broncode;
-nieuwere eigenschappen zijn niet allemaal beschikbaar in release 2026.2.1.
+    ```text
+    DATA_DIR=./data
+    ```
+
+   `./data` verwijst naar `data` in uw projectfolder `mijn-waterlagen`.
+   Wilt u gegevens ergens anders bewaren, vervang dan `./data` door het
+   volledige pad naar de gewenste opslagmap. Laat `DATA_DIR=` staan.
+
+4. Sla het bestand op als **UTF-8 zonder BOM** (in VS Code heet dit `UTF-8`).
+5. Start uw script opnieuw vanuit uw projectfolder.
+
+Met `DATA_DIR=./data` blijft de opslaglocatie `mijn-waterlagen/data`.
+Bij een ander pad komen `source_data` en
+`processed_data` onder die gekozen opslagmap. Uw Pixi-bestanden, `.datastore`
+en scripts blijven in uw projectfolder staan:
+
+```text
+mijn-waterlagen/
+├── pixi.toml
+├── pixi.lock
+├── .datastore              # meegeleverd: bevat de gekozen opslaglocatie
+└── scripts/
+    └── afwateringseenheden.py
+```
+
+U hoeft `.datastore` niet zelf te openen of uit te voeren bij elke start.
+Waterlagen leest het automatisch uit de map van waaruit u de opdracht uitvoert.
+Zet het daarom in uw projectfolder, boven de submap `scripts`.
+
+**Bestaande gegevens worden niet automatisch verplaatst.** Als u een andere
+opslaglocatie kiest, blijven eerdere downloads op hun oude plek staan.
+Gebruik steeds dezelfde opslaglocatie om downloads te hergebruiken.
+
+??? info "Meer instellingen en technische details"
+    Met `SOURCE_DATA_DIR` en `PROCESSED_DATA_DIR` kunt u brongegevens en
+    resultaten afzonderlijke opslaglocaties geven. Omgevingsvariabelen met
+    dezelfde namen hebben voorrang op de instellingen in `.datastore`.
+
+    Neem geen `.env` over uit een ontwikkelomgeving met nieuwere workflows.
+    Voor de meegeleverde producties hoeft u geen `.env` te maken. Bij
+    [afwateringseenheden](afwateringseenheden.md) stelt u het aantal
+    werkprocessen zo nodig in met `--workers`.
+
+    In de Python-code heet het onderdeel dat de opslaglocaties beheert
+    `DataStore`. De [API-referentie](../reference/datastore.md) beschrijft de
+    huidige broncode en kan nieuwer zijn dan uw gedownloade release.

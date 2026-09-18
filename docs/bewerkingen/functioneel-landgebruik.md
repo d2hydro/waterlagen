@@ -35,5 +35,6 @@ vooraf door de workflow worden gedownload.
 
 ## Zelf produceren
 
-Gebruik `bouw_functioneel_landgebruik` of de workflow in `scripts/`; zie de
-[API-referentie](../reference/functioneel_landgebruik.md).
+Volg [Functioneel landgebruik produceren](../produceren/landgebruik.md) voor
+de workflow met het productiepakket. Voor eigen Python-workflows gebruikt u
+`bouw_functioneel_landgebruik`; zie de [API-referentie](../reference/functioneel_landgebruik.md).

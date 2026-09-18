@@ -14,23 +14,27 @@ Deze module is bedoeld om alle GIS basislagen (rasters en features) te `download
 **Broncode**: [https://github.com/d2hydro/waterlagen](https://github.com/d2hydro/waterlagen)
 
 ## Installeren
-De [installatiehandleiding](docs/produceren/installatie.md) gebruikt **Pixi** en
-de productieconfiguratie in de submap `envs`. Die configuratie installeert
-Waterlagen **2026.2.1 uit PyPI**, samen met Python en de GIS-bibliotheken.
-Volg de handleiding om Waterlagen als ZIP te downloaden en uit te
-pakken. Git is niet nodig. Open de submap `envs` en voer daar uit:
+Download het **productiepakket** (`waterlagen-productie-<tag>.zip`) uit de
+Assets van een [Waterlagen-release](https://github.com/d2hydro/waterlagen/releases).
+Het pakket bevat scripts voor afwateringseenheden, landgebruik, inwoners en auto's,
+plus een Pixi-omgeving die de bijbehorende release uit PyPI installeert.
+Volg de [installatiehandleiding](docs/produceren/installatie.md), pak de ZIP uit
+en open PowerShell in de map met `pixi.toml`:
 
 ```console
 pixi install --locked
-pixi run controleer
+pixi run --locked controleer
 ```
 
-Deze broncoderepository bevat ook nieuwere workflows die niet in release
-2026.2.1 zitten. Gebruik voor die workflows de
+Git of toegang tot een private repository is niet nodig. De release-workflow
+voegt de ZIP toe na controles op Windows en Linux; oudere releases hebben dit
+asset nog niet. Voor aanpassingen aan Waterlagen zelf gebruikt u de
 [ontwikkelomgeving](docs/bijdragen/ontwikkelomgeving.md).
 
 ## Aan de slag
-Wanneer de gebruiker eenmalig een `data_dir` opgeeft voor de `DataStore`, worden hier alle downloads, bewerkingen en logs opgeslagen. Lees meer over de DataStore in de [documentatie](https://d2hydro.github.io/waterlagen/produceren/configuratie/)
+Waterlagen slaat downloads en resultaten automatisch op in de submap `data` van
+uw projectfolder. U hoeft hiervoor niets in te stellen. Wilt u een andere locatie
+gebruiken? Zie [Opslag van gegevens](docs/produceren/configuratie.md).
 
 ### Downloaden
 Het ondersteunen van de volgende lagen vanaf [PDOK](https://www.pdok.nl/) en [AHN.nl](https://www.ahn.nl/) wordt ondersteund:
@@ -39,7 +43,7 @@ Het ondersteunen van de volgende lagen vanaf [PDOK](https://www.pdok.nl/) en [AH
 * BAG
 * BGT
 
-Lees verder in de [documentatie](https://d2hydro.github.io/waterlagen/produceren/eerste-dataset/)
+Lees verder bij de [bronnen](docs/bronnen/index.md).
 
 ### Bewerken
 De volgende bewerkingen zijn beschikbaar:

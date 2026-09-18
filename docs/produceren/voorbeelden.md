@@ -1,17 +1,14 @@
 # Voorbeelden
 
-Voor release 2026.2.1 met de configuratie uit `envs` begint u bij
-[Eerste dataset produceren](eerste-dataset.md). De workflows hieronder horen bij
-de nieuwere broncoderepository `waterlagen`; ze worden niet meegeïnstalleerd met
-de release. Gebruik daarvoor de [ontwikkelomgeving](../bijdragen/ontwikkelomgeving.md).
+Het [productiepakket](installatie.md) bevat de scripts voor
+[afwateringseenheden](afwateringseenheden.md), [landgebruik](landgebruik.md) en
+[inwoners en personenauto's](inwoners-personenautos.md), plus BAG-light als
+voorbereiding en een script voor controle van de inwoners- en autototalen.
 
-De repository bevat uitvoerbare workflows in `scripts/` voor onder meer AHN,
-BAG, BGT, BRP, TOP10NL, dijkringen, HYDAMO en functioneel landgebruik. Pas
-eerst de selectie en uitvoerpaden aan uw eigen werkgebied aan.
+De bestanden onder `scripts/` in het pakket zijn dezelfde openbare voorbeelden
+als in de repository bij die release. Pas de instellingen aan uw toepassing aan.
+Gebruik steeds de scripts en het Pixi-lockbestand uit hetzelfde pakket.
 
-Het bestaande notebook [DEM Alkmaar](../notebooks/dem_alkmaar.ipynb) laat een
-voorbeeldworkflow met een digitaal hoogtemodel zien. De notebook wordt niet
-uitgevoerd tijdens de documentatiebuild.
-
-Zie voor de parameters en returnwaarden van Python-aanroepen de
-[API-referentie](../reference/ahn.md).
+De broncoderepository bevat aanvullende workflows voor onder meer BGT, BRP,
+TOP10NL, dijkringen en HYDAMO. Deze zitten niet allemaal in het productiepakket.
+Gebruik daarvoor de [ontwikkelomgeving](../bijdragen/ontwikkelomgeving.md).

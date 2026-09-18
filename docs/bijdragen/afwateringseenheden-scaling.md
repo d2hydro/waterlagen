@@ -141,7 +141,7 @@ veranderen mee met het gebied.
 ## Controle van parallelle berekening
 
 De productie-workflow rekent inmiddels parallel, met een vaste seed per tegel.
-Zie [de actuele productie-instellingen](../produceren/afwateringseenheden.md#parallel-rekenen)
+Zie [de actuele productie-instellingen](../produceren/afwateringseenheden.md#rekenen-op-een-pc-met-minder-werkgeheugen)
 voor het uitvoeren van heel Aa en Maas en het samenvoegen, opschonen en aanvullen.
 
 De gerichte tests controleren:

@@ -1,88 +1,106 @@
 # Afwateringseenheden produceren
 
-!!! warning "Vereist nieuwere broncode"
-    Deze workflow is niet beschikbaar in release 2026.2.1 of de bijbehorende
-    productie-TOML. De instructies hieronder horen bij de broncoderepository
-    `waterlagen`. Gebruik de [ontwikkelomgeving](../bijdragen/ontwikkelomgeving.md)
-    met de omgeving `afwateringseenheden`.
-
-Met het meegeleverde script `scripts/afwateringseenheden_aa_en_maas.py` produceert
-u afwateringseenheden voor het hele beheergebied van Aa en Maas. Voor uitvoering
-met de standaardinstellingen hoeft u het script niet aan te passen.
+Met het meegeleverde script `scripts/afwateringseenheden.py` produceert
+u afwateringseenheden voor een waterschap. Zonder extra opties
+verwerkt het script Aa en Maas. U kiest een ander waterschap met de
+waterbeheercode in de opdracht; u hoeft het script niet aan te passen.
 
 ## Vooraf
 
-Installeer vanuit de broncodemap de benodigde omgeving:
-
-```console
-pixi install --environment afwateringseenheden --locked
-```
-
-Stel de locatie voor downloads en resultaten in met `.datastore`, zoals
-beschreven bij [Configuratie en DataStore](configuratie.md).
+Volg [Installatie](installatie.md) om het productiepakket te downloaden,
+uit te pakken en met Pixi te installeren. De meegeleverde `.datastore` bewaart
+gegevens standaard onder `./data`. Zie [Opslag van gegevens](configuratie.md)
+als u een andere locatie wilt gebruiken.
 De workflow gebruikt de DataStore voor AHN, HYDAMO, administratieve grenzen,
 tussenresultaten en het logbestand.
 
 Voor de LDD- en subcatchmentberekening is PCRaster nodig. Dit zit in de
-Pixi-omgeving `afwateringseenheden`. Controleer die vanuit de broncodemap:
+Pixi-omgeving van het productiepakket. Controleer die vanuit uw projectfolder:
 
 ```console
-pixi run --environment afwateringseenheden python -c "from osgeo import gdal, gdal_array; import rasterio, pcraster; print('Imports OK')"
+pixi run --locked controleer
 ```
 
-`./data` is de submap `data` in uw Waterlagen-projectmap. Controleer of daar
+`./data` is de submap `data` in uw Waterlagen-projectfolder. Controleer of daar
 voldoende vrije schijfruimte is: deze workflow download AHN-tegels en landelijke
 bronnen en schrijft rasters en tussenresultaten. Het is een volledige productie,
 geen kleine installatietest. De benodigde ruimte en rekentijd hangen af van het
-werkgebied en de instellingen.
+werkgebied.
 
 ## Starten
 
-Start na de melding `Imports OK` de productie:
+Start na de melding `Imports en rastercontrole OK` de productie voor Aa en Maas.
+Voer deze opdracht uit in [PowerShell vanuit uw projectfolder](installatie.md#powershell-openen-in-uw-projectfolder):
 
 ```console
-pixi run --environment afwateringseenheden python scripts/afwateringseenheden_aa_en_maas.py
+pixi run --locked afwateringseenheden
 ```
 
-Laat de terminal open tijdens het rekenen. De voortgang verschijnt in de terminal
+Deze Pixi-taak voert `./scripts/afwateringseenheden.py` uit.
+U kunt het script ook starten met
+`pixi run --locked python ./scripts/afwateringseenheden.py`.
+
+Laat PowerShell open tijdens het rekenen. De voortgang verschijnt in PowerShell
 en in het logbestand. Met `Ctrl+C` kunt u onderbreken. Een volgende start
 hergebruikt geldige bronbestanden, maar maakt een nieuwe uitvoermap en hervat
 de berekeningen uit de vorige uitvoermap niet.
 
-## Werkgebied en parameters
+## Een waterschap kiezen
 
-Het script selecteert Aa en Maas met waterbeheercode `38`. De instellingen staan
-bovenin het script. Pas `WATERBEHEERCODE` aan voor een ander beheergebied en
-controleer de overige instellingen voor dat gebied.
+Geef na `--waterbeheercode` de code van het gewenste waterschap op. Voor
+Aa en Maas is dat `38`:
 
-| Instelling | Standaard | Betekenis en effect |
-|---|---|---|
-| `WATERBEHEERCODE` | `"38"` | Waterbeheercode; `38` is Aa en Maas. |
-| `BUFFER_M` | `2000` | Extra strook in meters buiten de waterschapsgrens waarin ook afwateringseenheden worden berekend. |
-| `TILE_SIZE_M` | `10000` | Zijde in meters van iedere rekentegel, zonder tegelbuffer. Grotere tegels vragen doorgaans meer geheugen. |
-| `TILE_BUFFER_M` | `2000` | Extra terrein in meters rondom iedere rekentegel. Een grotere buffer kan randproblemen verminderen, maar kost extra rekentijd en geheugen. |
-| `BURN_DEPTH_M` | `100` | Verlaging in meters van secundaire waterlopen in het hoogtemodel; primaire waterlopen worden tweemaal zo diep ingebrand. |
-| `MAX_FILL_DEPTH_M` | `50` | Maximale diepte in meters van depressies die bij het berekenen van de afstroomrichting worden opgevuld. |
-| `RANDOM_SEED` | `12345` | Vaste PCRaster-seed per tegel. |
-
-`BUFFER_M = 5000` vergroot het werkgebied én de uitvoer met 5 km buiten de
-waterschapsgrens. `TILE_BUFFER_M` is extra rekenterrein rondom elke tegel;
-alleen het resultaat binnen de tegelkern wordt opgenomen.
-
-### Parallel rekenen
-
-De productie gebruikt standaard kernen van 10 × 10 km, een tegelbuffer van 2 km,
-een resolutie van 2 m en seed 12345 per tegel. Het aantal processen volgt
-`settings.afwateringseenheden_workers`, standaard 4. Stel dit in via `.env`:
-
-```dotenv
-AFWATERINGSEENHEDEN_WORKERS=4
+```powershell
+pixi run --locked afwateringseenheden --waterbeheercode 38
 ```
 
-Meer workers vragen meer werkgeheugen. De workers rekenen in afzonderlijke
-processen; het hoofdproces voegt de resultaten samen. De productie begrenst de
-native rekenthreads per worker op één. Start het vanuit een terminal; voor
-eigen parallelle scripts is een `if __name__ == "__main__"`-guard nodig.
+Eerst controleert het script de opgegeven code aan de hand van de
+waterschapsgrenzen. Een onbekende code stopt de opdracht voordat AHN- en
+HYDAMO-gegevens voor de productie worden opgehaald.
+
+## Rekenen op een pc met minder werkgeheugen
+
+Met `--workers` bepaalt u hoeveel rekentegels parallel worden berekend. Gebruik
+bijvoorbeeld maximaal twee werkprocessen voor Aa en Maas:
+
+```powershell
+pixi run --locked afwateringseenheden --waterbeheercode 38 --workers 2
+```
+
+Er werken maximaal twee processen tegelijk aan rekentegels. Gebruik `--workers 1`
+als uw pc weinig werkgeheugen heeft: de tegels worden dan één voor één verwerkt.
+Dat vraagt minder geheugen voor gelijktijdige berekeningen, maar kan langer duren.
+
+Geef een geheel getal vanaf `1` op. Zonder `--workers` gebruikt het script de
+bestaande instelling voor het aantal werkprocessen, standaard `4`.
+De waterbeheercode en het opgegeven aantal werkprocessen gelden voor deze
+opdracht. U hoeft daarvoor `pixi.toml`, `pixi.lock` of het script niet aan te passen.
+Voor hulp bij het gebruik voert u uit:
+
+```powershell
+pixi run --locked afwateringseenheden --help
+```
+
+## Vaste rekeninstellingen
+
+Via de opdracht kiest u het werkgebied en het aantal werkprocessen. De overige
+rekeninstellingen liggen vast in het meegeleverde script en horen bij de
+productiemethode. Onderstaande waarden lichten de berekening toe. Laat deze
+waarden bij het uitvoeren van de productie ongewijzigd.
+
+| Instelling | Vaste waarde | Betekenis |
+|---|---|---|
+| Gebiedsbuffer | 2000 m | Extra strook buiten de waterschapsgrens waarvoor ook afwateringseenheden worden berekend. |
+| Tegelgrootte | 10 × 10 km | Grootte van iedere tegelkern, zonder tegelbuffer. |
+| Tegelbuffer | 2000 m | Extra rekenterrein rondom iedere tegel; alleen het resultaat binnen de tegelkern wordt opgenomen. |
+| Inbranddiepte | 100 m | Verlaging van secundaire waterlopen in het hoogtemodel; primaire waterlopen worden tweemaal zo diep ingebrand. |
+| Maximale opvuldiepte | 50 m | Maximale diepte van depressies die bij het berekenen van de afstroomrichting worden opgevuld. |
+| PCRaster-seed | 12345 | Vaste startwaarde per tegel voor de berekening. |
+
+De rasterresolutie is 2 m. Door de gebiedsbuffer kunnen de resultaten van
+aangrenzende waterschappen elkaar overlappen. Zie
+[Afwateringseenheden](../bewerkingen/afwateringseenheden.md) voor de
+productiemethode en de interpretatie van de uitkomsten.
 
 ## Workflow
 
@@ -107,28 +125,32 @@ gemelde tegels. De randproblemen betreffen de situatie vóór het aanvullen.
 
 ## Uitvoermap en logging
 
-Elke start maakt een nieuwe map
-`<datastore.afwateringseenheden_path>/aa_en_maas_<datum-tijd>/` met
-`watersysteem.gpkg`, `afwateringseenheden.gpkg`, `afwateringseenheden.log` en
-`tiles.gpkg`. Deze GeoPackage bevat de geselecteerde kerntiles; de waarde in
-`tile_id` is gelijk aan de naam van de bijbehorende map
-`tiles/<tegel-id>/`. Elke tegelmap bevat rasters, tegelpolygonen en
-`workflow.log`.
-De mapnaam begint ook bij een aangepaste waterbeheercode met `aa_en_maas_`.
-Eerdere runs blijven behouden. Bij de voorbeeldopdracht is de hoofdmap
-`data/processed_data/afwateringseenheden` onder de Waterlagen-projectmap.
+Elke productie krijgt een nieuwe uitvoermap. Bij de standaardopslag staat deze
+onder `./data` in uw projectfolder:
 
-Bij succesvolle afronding verschijnt `Aa en Maas klaar:` met onder andere
-het uitvoerpad. Open `afwateringseenheden.gpkg` in QGIS en controleer
-de dekking van het werkgebied en de gemelde randproblemen. Een geslaagde
-berekening vervangt de inhoudelijke beoordeling van de uitkomst niet.
+```text
+data/processed_data/afwateringseenheden/waterschap_<code>_<datum-tijd>/
+```
 
-De verwerkingstijd per tegel staat in het hoofdlog en, bij parallel rekenen,
-in `tiles/<tegel-id>/workflow.log`. Deze tijd omvat rastervoorbereiding,
-afwatering en uitvoer; wachttijd in de pool en gezamenlijk samenvoegen vallen
-erbuiten. Bij hergebruik meet de timer alleen het controleren en verwerken
-van de bestaande tegeluitvoer. Het vangnet voor achtergebleven NoData-cellen
-wordt eveneens gelogd.
+Voor Aa en Maas begint de mapnaam met `waterschap_38_`. De datum en tijd
+onderscheiden de producties; eerdere resultaten blijven behouden.
+
+### Bestanden in de uitvoermap
+
+| Bestand of map | Inhoud |
+|---|---|
+| `afwateringseenheden.gpkg` | De berekende afwateringseenheden; open dit bestand in QGIS. |
+| `watersysteem.gpkg` | Het watersysteem dat voor de berekening is voorbereid. |
+| `tiles.gpkg` | De geselecteerde tegelkernen, met voor elke tegel een `tile_id`. |
+| `afwateringseenheden.log` | Het hoofdlog met voortgang, verwerkingstijden en gemelde randproblemen. |
+| `tiles/<tegel-id>/` | Rasters en polygonen per rekentegel. De mapnaam komt overeen met `tile_id` in `tiles.gpkg`. |
+
+### Logbestanden en verwerkingstijd
+
+De verwerkingstijd per tegel staat in `afwateringseenheden.log`. Bij parallel
+rekenen staat deze ook in `tiles/<tegel-id>/workflow.log`.
+
+Het log vermeldt ook wanneer achtergebleven NoData-cellen worden aangevuld.
 
 Voor hergebruik in een eigen workflow en de bijbehorende cachevoorwaarden,
 zie de [API-referentie](../reference/afwateringseenheden.md#dekking-en-hergebruik).

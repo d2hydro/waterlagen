@@ -1,8 +1,8 @@
 # Ontwikkelomgeving
 
 Deze pagina is bedoeld voor ontwikkelaars die de broncode aanpassen of testen.
-Wilt u Waterlagen 2026.2.1 gebruiken om datasets te maken? Volg dan de
-[installatiehandleiding met ZIP-download](../produceren/installatie.md).
+Wilt u een Waterlagen-release gebruiken om datasets te maken? Volg dan de
+[installatiehandleiding voor het productiepakket](../produceren/installatie.md).
 Daarvoor hoeft u Git niet te installeren.
 
 Voor ontwikkeling: clone de repository en werk vanuit de repository-root. De projectomgeving wordt
