@@ -4,9 +4,10 @@ Dit pakket hoort bij release **@TAG@**. Het installeert Waterlagen **@VERSION@**
 uit PyPI en bevat de bijbehorende openbare productiescripts. Een Git-checkout of
 toegang tot een private repository is niet nodig.
 
-Installeer [Pixi](https://pixi.prefix.dev/latest/installation/) en pak de ZIP uit.
-De uitgepakte map met `pixi.toml`, `pixi.lock` en `scripts` is uw **projectfolder**.
-U mag deze map een eigen naam geven, bijvoorbeeld `mijn-waterlagen`.
+Installeer [Pixi](https://pixi.prefix.dev/latest/installation/) en pak de ZIP uit
+in een map naar keuze, bijvoorbeeld `mijn-waterlagen`. De bestanden staan direct
+in de ZIP, zonder extra bovenliggende map. De gekozen map met `pixi.toml`,
+`pixi.lock` en `scripts` is uw **projectfolder**.
 
 Open die map in Windows Verkenner. Klik in de adresbalk, typ `powershell` en
 druk op Enter. Op Linux opent u een shell in dezelfde map.

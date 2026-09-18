@@ -10,7 +10,7 @@ Daarin staan:
 - `data/source_data`: gedownloade brongegevens;
 - `data/processed_data`: verwerkte resultaten.
 
-Open [PowerShell in uw projectfolder](installatie.md#powershell-openen-in-uw-projectfolder),
+Open PowerShell in uw projectfolder,
 waar `pixi.toml` en `pixi.lock` staan.
 Controleer de installatie en de gebruikte gegevensmap met:
 

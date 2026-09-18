@@ -86,19 +86,18 @@ def validate_lock(lock_path: Path, version: str) -> None:
 
 
 def build_bundle(tag: str, output_dir: Path, repository: Path = REPO_ROOT) -> Path:
-    """Create waterlagen-productie.zip with a versioned top-level directory.
+    """Create waterlagen-productie.zip with project files at the archive root.
 
     Replace an existing ZIP only after locking and validation succeed.
     """
     repository = repository.resolve()
     version = release_version(tag, repository)
-    bundle_name = f"waterlagen-productie-{tag}"
     output_dir = output_dir.resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
     archive_path = output_dir / "waterlagen-productie.zip"
 
     with tempfile.TemporaryDirectory(prefix="production-", dir=output_dir) as temporary:
-        project_dir = Path(temporary) / bundle_name
+        project_dir = Path(temporary) / "project"
         project_dir.mkdir()
         (project_dir / "scripts").mkdir()
         (project_dir / "pixi.toml").write_text(
@@ -141,7 +140,7 @@ def build_bundle(tag: str, output_dir: Path, repository: Path = REPO_ROOT) -> Pa
         temporary_zip = Path(temporary) / "bundle.zip"
         with ZipFile(temporary_zip, "w", compression=ZIP_DEFLATED) as archive:
             for relative_path in sorted(included):
-                info = ZipInfo(f"{bundle_name}/{relative_path}")
+                info = ZipInfo(relative_path)
                 info.compress_type = ZIP_DEFLATED
                 info.external_attr = 0o100644 << 16
                 archive.writestr(info, (project_dir / relative_path).read_bytes())

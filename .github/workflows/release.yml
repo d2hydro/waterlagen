@@ -184,7 +184,7 @@ jobs:
         shell: bash
         run: |
           python -m zipfile -e dist/waterlagen-productie.zip production
-          cd "production/waterlagen-productie-$RELEASE_TAG"
+          cd production
           pixi install --locked
           pixi run --locked controleer
 
