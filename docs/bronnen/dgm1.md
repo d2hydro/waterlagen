@@ -20,8 +20,7 @@ direct uitwisselbaar met AHN in RD/NAP.
 
 DGM1 kan AHN aanvullen in een eigen workflow voor
 [afwateringseenheden](../bewerkingen/afwateringseenheden.md#optioneel-duits-hoogtemodel).
-Het Aa en Maas-script gebruikt uitsluitend AHN. Zie
-[DGM1 downloaden](../produceren/dgm1.md) voor selectie en uitvoering en de
+Het meegeleverde script `afwateringseenheden.py` gebruikt uitsluitend AHN. Zie de
 [API-referentie](../reference/dgm1.md) voor de Python-interface.
 
 ## Externe verwijzingen

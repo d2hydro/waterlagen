@@ -1,14 +1,17 @@
 # Zelf produceren
 
-Deze route is bedoeld voor gebruikers die Waterlagen lokaal willen uitvoeren.
-De stappen zijn:
+Download het **productiepakket van een Waterlagen-release** om zelf
+afwateringseenheden, functioneel landgebruik, inwoners en personenauto's te
+produceren. De ZIP bevat de Pixi-configuratie, het lockbestand en de bijbehorende
+openbare scripts. Pixi installeert de releaseversie van Waterlagen uit PyPI.
+U hebt geen Git of toegang tot een private repository nodig.
 
-1. [Installeer Waterlagen](installatie.md).
-2. Stel de [DataStore](configuratie.md) in.
-3. Maak een [eerste dataset](eerste-dataset.md).
-4. Gebruik de [voorbeelden](voorbeelden.md) als vertrekpunt voor eigen workflows.
-5. Volg [Afwateringseenheden produceren](afwateringseenheden.md) voor de
-   tegelworkflow met AHN en HYDAMO.
+1. [Download en installeer het productiepakket](installatie.md).
+2. Kies alleen zo nodig een andere [opslaglocatie](configuratie.md).
+3. Volg [Afwateringseenheden](afwateringseenheden.md),
+   [Landgebruik](landgebruik.md) of [Inwoners en personenauto's](inwoners-personenautos.md).
 
-De betekenis van de ingangen en resultaten staat niet hier, maar bij
+Andere workflows in de broncoderepository staan bij [Voorbeelden](voorbeelden.md).
+
+Lees over de betekenis van de ingangen en resultaten bij
 [Bronnen](../bronnen/index.md) en [Bewerkingen](../bewerkingen/index.md).

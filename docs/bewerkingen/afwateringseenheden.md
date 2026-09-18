@@ -54,8 +54,8 @@ binnen een bronraster valt binnen dekking en wordt geïnterpoleerd. Buiten alle
 bronextents blijft NoData behouden.
 
 De dekking kan worden begrensd tot de Nederlandse landsgrens, zoals in het
-Aa en Maas-script. De celmiddens bepalen of cellen binnen Nederland vallen,
-ook in de tegelbuffers. Buitenliggende cellen worden vóór interpolatie op
+script `afwateringseenheden.py`. De celmiddens bepalen of cellen binnen Nederland
+vallen, ook in de tegelbuffers. Buitenliggende cellen worden vóór interpolatie op
 NoData gezet; ze worden niet gevuld en leveren geen hoogte voor interpolatie.
 Een tegel die Nederland alleen langs een rand of punt raakt, heeft geen
 Nederlandse DEM-dekking.
@@ -78,8 +78,8 @@ behouden. Zonder bruikbare buur blijft een gat open, ook bij een grotere buffer.
 Voor een eigen grensoverschrijdende workflow kan [DGM1](../bronnen/dgm1.md)
 AHN aanvullen. De voorbereiding maakt aparte 1m-tegels in RD/NAP en een
 gecombineerde VRT waarin geldige AHN-hoogtes voorrang hebben. De originele
-DGM1-bestanden blijven behouden. Het Aa en Maas-script gebruikt uitsluitend
-AHN en begrenst de interpolatie tot Nederland.
+DGM1-bestanden blijven behouden. Het meegeleverde script `afwateringseenheden.py`
+gebruikt uitsluitend AHN en begrenst de interpolatie tot Nederland.
 
 ## Uitvoer
 

@@ -27,5 +27,5 @@ de bronextents wordt niet door de brondekking opgelost.
 
 ## Zelf produceren
 
-Download eerst AHN zoals in [Eerste dataset produceren](../produceren/eerste-dataset.md)
-en gebruik daarna `interpolate_ahn_tiles`; zie de [AHN-API](../reference/ahn.md).
+Gebruik in een eigen Python-workflow `get_ahn_rasters` om AHN op te halen en
+daarna `interpolate_ahn_tiles` om gaten te vullen; zie de [AHN-API](../reference/ahn.md).

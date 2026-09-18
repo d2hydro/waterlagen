@@ -41,10 +41,9 @@ nav:
   - Zelf produceren:
       - Overzicht: produceren/index.md
       - Installatie: produceren/installatie.md
-      - Configuratie en DataStore: produceren/configuratie.md
-      - Eerste dataset produceren: produceren/eerste-dataset.md
-      - DGM1 downloaden: produceren/dgm1.md
+      - Opslag van gegevens: produceren/configuratie.md
       - Afwateringseenheden: produceren/afwateringseenheden.md
+      - Functioneel landgebruik: produceren/landgebruik.md
       - Inwoners en personenauto's: produceren/inwoners-personenautos.md
   - API-referentie:
       - AHN: reference/ahn.md

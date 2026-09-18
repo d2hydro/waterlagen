@@ -2,6 +2,8 @@ import importlib.util
 from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
+
 
 def _load_landgebruik_script():
     script_path = (
@@ -14,10 +16,12 @@ def _load_landgebruik_script():
     return module
 
 
+@pytest.mark.parametrize("configured_default", [False, True])
 def test_landgebruik_script_builds_tiles_vrt_and_cog_in_order(
     tmp_path,
     monkeypatch,
     capsys,
+    configured_default,
 ):
     landgebruik = _load_landgebruik_script()
     events = []
@@ -63,7 +67,19 @@ def test_landgebruik_script_builds_tiles_vrt_and_cog_in_order(
     monkeypatch.setattr(landgebruik, "create_cog_file", fake_create_cog_file)
     monkeypatch.setattr(landgebruik, "inspect_raster", fake_inspect_raster)
 
-    result = landgebruik.main(data_store=data_store)
+    if configured_default:
+        monkeypatch.chdir(tmp_path)
+        for name in ("DATA_DIR", "SOURCE_DATA_DIR", "PROCESSED_DATA_DIR"):
+            monkeypatch.delenv(name, raising=False)
+        (tmp_path / ".datastore").write_text(
+            f"DATA_DIR={data_dir_root.as_posix()}\n"
+            f"SOURCE_DATA_DIR={(tmp_path / 'source').as_posix()}\n"
+            f"PROCESSED_DATA_DIR={processed_dir.as_posix()}\n",
+            encoding="utf-8",
+        )
+        result = landgebruik.main()
+    else:
+        result = landgebruik.main(data_store=data_store)
 
     data_dir = processed_dir / "functioneel_landgebruik"
     tiles_dir = data_dir / "tiles"
@@ -85,7 +101,8 @@ def test_landgebruik_script_builds_tiles_vrt_and_cog_in_order(
     assert events[1][1]["target_dir"] == tiles_dir
     assert events[1][1]["tiles_path"] == tiles_path
     assert events[1][1]["workers"] == 2
-    assert events[1][1]["data_store"] is data_store
+    assert events[1][1]["data_store"].data_dir == data_dir_root
+    assert events[1][1]["data_store"].processed_data_dir == processed_dir
     assert events[1][1]["overwrite"] is False
     assert events[2][1] == {"vrt_file": vrt_file, "directory": tiles_dir}
     assert events[3][1] == {

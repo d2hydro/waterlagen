@@ -3,13 +3,23 @@ name: Release
 on:
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Existing GitHub release tag (version must already be on PyPI)"
+        required: true
+        type: string
 
 permissions:
   contents: read
 
+env:
+  RELEASE_TAG: ${{ inputs.release_tag || github.event.release.tag_name }}
+
 jobs:
   tests:
     name: Test
+    if: github.event_name == 'release'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -20,7 +30,7 @@ jobs:
       - name: Set package version from release tag
         shell: bash
         run: |
-          tag_version="${{ github.event.release.tag_name }}"
+          tag_version="$RELEASE_TAG"
           echo "SETUPTOOLS_SCM_PRETEND_VERSION=${tag_version#v}" >> "$GITHUB_ENV"
 
       - name: Set up Pixi
@@ -34,6 +44,7 @@ jobs:
 
   build:
     name: Build distributions
+    if: github.event_name == 'release'
     needs: tests
     runs-on: ubuntu-latest
     steps:
@@ -45,7 +56,7 @@ jobs:
       - name: Set package version from release tag
         shell: bash
         run: |
-          tag_version="${{ github.event.release.tag_name }}"
+          tag_version="$RELEASE_TAG"
           echo "SETUPTOOLS_SCM_PRETEND_VERSION=${tag_version#v}" >> "$GITHUB_ENV"
 
       - name: Set up Python
@@ -62,7 +73,7 @@ jobs:
       - name: Verify version matches release tag
         shell: bash
         run: |
-          tag_version="${{ github.event.release.tag_name }}"
+          tag_version="$RELEASE_TAG"
           tag_version="${tag_version#v}"
           wheel="$(find dist -maxdepth 1 -name 'waterlagen-*.whl' -print -quit)"
           python -m pip install --no-deps "$wheel"
@@ -77,6 +88,7 @@ jobs:
 
   publish:
     name: Publish to PyPI
+    if: github.event_name == 'release'
     needs: build
     runs-on: ubuntu-latest
     environment:
@@ -94,3 +106,102 @@ jobs:
 
       - name: Publish distributions to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
+
+  production-build:
+    name: Build standalone production bundle
+    needs: publish
+    # A manual run deliberately skips publication; a release run requires it.
+    if: ${{ !cancelled() && (github.event_name == 'workflow_dispatch' || needs.publish.result == 'success') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          # Older tags may not contain the builder. Manual runs use the selected
+          # workflow commit, while the package version comes from RELEASE_TAG.
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.sha || github.event.release.tag_name }}
+
+      - name: Verify the target GitHub release exists
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY"
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - uses: prefix-dev/setup-pixi@v0.9.6
+        with:
+          pixi-version: v0.70.1
+          run-install: false
+          cache: false
+
+      - name: Build and lock against the published PyPI release
+        shell: bash
+        run: |
+          # PyPI indexes may take a short time to expose a newly uploaded wheel.
+          for attempt in 1 2 3 4 5; do
+            if python tools/build_production_bundle.py --tag "$RELEASE_TAG" --output-dir dist; then
+              exit 0
+            fi
+            if [ "$attempt" -lt 5 ]; then sleep 15; fi
+          done
+          exit 1
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: production-bundle
+          path: dist/waterlagen-productie-*.zip
+          if-no-files-found: error
+
+  production-test:
+    name: Test standalone bundle (${{ matrix.os }})
+    needs: production-build
+    if: ${{ !cancelled() && needs.production-build.result == 'success' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      # Deliberately no checkout: the ZIP must work without repository files.
+      - uses: actions/download-artifact@v8
+        with:
+          name: production-bundle
+          path: dist
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - uses: prefix-dev/setup-pixi@v0.9.6
+        with:
+          pixi-version: v0.70.1
+          run-install: false
+          cache: false
+
+      - name: Unpack, install and check the release environment
+        shell: bash
+        run: |
+          python -m zipfile -e "dist/waterlagen-productie-$RELEASE_TAG.zip" production
+          cd "production/waterlagen-productie-$RELEASE_TAG"
+          pixi install --locked
+          pixi run --locked controleer
+
+  production-upload:
+    name: Attach tested production ZIP to the GitHub release
+    needs: production-test
+    if: ${{ !cancelled() && needs.production-test.result == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: production-bundle
+          path: dist
+
+      - name: Upload release asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$RELEASE_TAG" "dist/waterlagen-productie-$RELEASE_TAG.zip" --repo "$GITHUB_REPOSITORY"

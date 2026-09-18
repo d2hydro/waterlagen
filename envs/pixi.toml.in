@@ -1,0 +1,22 @@
+# Generated from the release tag and the repository's runtime dependencies.
+[workspace]
+name = "waterlagen-productie"
+version = "@VERSION@"
+channels = ["conda-forge"]
+platforms = @PLATFORMS@
+
+[dependencies]
+@DEPENDENCIES@
+
+[pypi-dependencies]
+waterlagen = "==@VERSION@"
+
+[tasks]
+controleer = "python ./scripts/controleer_productie.py"
+afwateringseenheden = "python ./scripts/afwateringseenheden.py"
+landgebruik = "python ./scripts/functioneel_landgebruik.py"
+bag = "python ./scripts/bag.py"
+inwoners = { cmd = "python ./scripts/inwoners.py", depends-on = ["bag"] }
+auto = { cmd = "python ./scripts/auto.py", depends-on = ["bag"] }
+autos = { depends-on = ["auto"] }
+statistiek_inwoners_autos = "python ./scripts/statistiek_inwoners_autos.py"

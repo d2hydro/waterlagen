@@ -1,7 +1,11 @@
 # %%
+import argparse
 import multiprocessing
 import os
+from collections.abc import Sequence
 from datetime import UTC, datetime
+
+from shapely.geometry.base import BaseGeometry
 
 from waterlagen import datastore
 from waterlagen.administratieve_gebieden import (
@@ -35,8 +39,53 @@ RANDOM_SEED = 12345
 ENGINE = "pcraster"
 
 
-def main() -> None:
-    """Bereken heel Aa en Maas parallel in een nieuwe uitvoermap."""
+def _waterbeheercode(value: str) -> str:
+    code = value.strip()
+    if not code.isascii() or not code.isdigit():
+        raise argparse.ArgumentTypeError("Een waterbeheercode moet uit cijfers bestaan")
+    return code
+
+
+def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Produceer afwateringseenheden per waterschap (standaard Aa en Maas).",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        allow_abbrev=False,
+    )
+    parser.add_argument(
+        "--waterbeheercode",
+        dest="waterbeheercodes",
+        nargs="+",
+        type=_waterbeheercode,
+        default=[WATERBEHEERCODE],
+        metavar="CODE",
+        help="Een of meer codes, gescheiden door spaties; verwerking achter elkaar",
+    )
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=settings.afwateringseenheden_workers,
+        help="Maximaal aantal gelijktijdige rekenprocessen per waterschap",
+    )
+    args = parser.parse_args(argv)
+    if args.workers < 1:
+        parser.error("--workers moet een geheel getal van minstens 1 zijn")
+    return args
+
+
+def main(
+    *, waterbeheercodes: Sequence[str] | None = None, workers: int | None = None
+) -> None:
+    """Bereken de geselecteerde waterschappen achter elkaar, elk in een eigen map."""
+    if waterbeheercodes is None:
+        waterbeheercodes = [WATERBEHEERCODE]
+    codes = list(dict.fromkeys(_waterbeheercode(code) for code in waterbeheercodes))
+    if not codes:
+        raise ValueError("Geef minstens één waterbeheercode op")
+    if workers is None:
+        workers = settings.afwateringseenheden_workers
+    if workers < 1:
+        raise ValueError("Het aantal workers moet minstens 1 zijn")
     require_pcraster()
 
     # De instellingen worden door de nieuwe workerprocessen overgenomen.
@@ -49,26 +98,55 @@ def main() -> None:
     ):
         os.environ[name] = "1"
 
+    logger = init_logger(name="afwateringseenheden")
+    # Controleer alle codes voordat een grote download of berekening begint.
+    download = download_waterschapsgrenzen(overwrite=False)
+    raw = read_waterschapsgrenzen_layer(path=download.target_path)
+    waterschapsgrenzen = normaliseer_waterschapsgrenzen(raw)
+    available_codes = set(waterschapsgrenzen["waterbeheercode"].dropna())
+    unknown_codes = [code for code in codes if code not in available_codes]
+    if unknown_codes:
+        raise ValueError(
+            f"Geen waterschapsgrens gevonden voor code(s): {', '.join(unknown_codes)}. "
+            f"Beschikbare codes: {', '.join(sorted(available_codes))}"
+        )
+
+    logger.info("Waterschappen in deze productie: %s", ", ".join(codes))
+    for code in codes:
+        administratief_gebied = waterschapsgrenzen.loc[
+            waterschapsgrenzen["waterbeheercode"] == code, "geometry"
+        ].make_valid()
+        spatial_mask = administratief_gebied.union_all().buffer(BUFFER_M)
+        _produce_waterschap(code, spatial_mask, workers=workers)
+
+
+def _produce_waterschap(
+    waterbeheercode: str, spatial_mask: BaseGeometry, *, workers: int
+) -> None:
+    """Produceer één waterschap met vaste rekeninstellingen en eigen uitvoer."""
     timestamp = datetime.now(UTC).astimezone().strftime("%Y%m%d_%H%M%S_%f")
-    run_dir = datastore.afwateringseenheden_path / f"aa_en_maas_{timestamp}"
+    run_dir = (
+        datastore.afwateringseenheden_path / f"waterschap_{waterbeheercode}_{timestamp}"
+    )
     run_dir.mkdir(parents=True, exist_ok=False)
     logger = init_logger(
         name="afwateringseenheden",
         log_file=run_dir / "afwateringseenheden.log",
     )
-    logger.info("Nieuwe Aa en Maas uitvoermap: %s", run_dir)
+    logger.info("Nieuwe uitvoermap voor waterschap %s: %s", waterbeheercode, run_dir)
+    logger.info(
+        "Instellingen: waterbeheercode=%s, buffer_m=%s, tile_size_m=%s, "
+        "tile_buffer_m=%s, burn_depth_m=%s, max_fill_depth_m=%s, random_seed=%s, workers=%s",
+        waterbeheercode,
+        BUFFER_M,
+        TILE_SIZE_M,
+        TILE_BUFFER_M,
+        BURN_DEPTH_M,
+        MAX_FILL_DEPTH_M,
+        RANDOM_SEED,
+        workers,
+    )
 
-    # Bestaande waterschapsgrenzen hergebruiken, of eenmalig downloaden.
-    download = download_waterschapsgrenzen(overwrite=False)
-    raw = read_waterschapsgrenzen_layer(path=download.target_path)
-    waterschapsgrenzen = normaliseer_waterschapsgrenzen(raw)
-    administratief_gebied = waterschapsgrenzen.loc[
-        waterschapsgrenzen["waterbeheercode"] == WATERBEHEERCODE, "geometry"
-    ].make_valid()
-    if administratief_gebied.empty:
-        raise ValueError(f"Geen waterschapsgrens gevonden voor code {WATERBEHEERCODE}")
-
-    spatial_mask = administratief_gebied.union_all().buffer(BUFFER_M)
     dtm = download_ahn(poly_mask=spatial_mask, missing_only=True)
 
     # Vul AHN-tegels en rekenbuffers alleen binnen de Nederlandse landsgrens.
@@ -93,7 +171,7 @@ def main() -> None:
         hydamo.target_path,
         layers=["gemaal", "stuw"],
         spatial_selection=spatial_mask,
-        waterbeheercodes=[WATERBEHEERCODE],
+        waterbeheercodes=[waterbeheercode],
     )
     watersysteem = prepare_watersysteem(
         hydroobject_primair,
@@ -122,13 +200,14 @@ def main() -> None:
         tile_buffer_m=TILE_BUFFER_M,
         max_fill_depth_m=MAX_FILL_DEPTH_M,
         engine=ENGINE,
-        workers=settings.afwateringseenheden_workers,
+        workers=workers,
         random_seed=RANDOM_SEED,
         overwrite=False,
     )
     logger.info(
-        "Aa en Maas klaar: %s tegels, %s overgeslagen, "
+        "Waterschap %s klaar: %s tegels, %s overgeslagen, "
         "%s tegels met oorspronkelijke randproblemen; uitvoer: %s",
+        waterbeheercode,
         len(tile_result.tile_results),
         len(tile_result.skipped_tile_ids),
         len(tile_result.boundary_issue_tile_ids),
@@ -139,4 +218,4 @@ def main() -> None:
 # Nodig op Windows: workers mogen de volledige workflow niet opnieuw starten.
 if __name__ == "__main__":
     multiprocessing.freeze_support()
-    main()
+    main(**vars(_parse_args()))
