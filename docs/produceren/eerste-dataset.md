@@ -9,12 +9,12 @@ Volg eerst [Installatie](installatie.md). Sla de onderstaande Python-code op als
 ```python
 from shapely.geometry import box
 
-from waterlagen.ahn import download_ahn
+from waterlagen.ahn import get_ahn_rasters
 
 # Werkgebied in RD New-coördinaten (EPSG:28992), in meters.
 poly_mask = box(120_000, 480_000, 121_000, 481_000)
 
-vrt_path = download_ahn(
+vrt_path = get_ahn_rasters(
     poly_mask=poly_mask,
     model="dtm",
     cell_size="05",
