@@ -209,6 +209,7 @@ __marimo__/
 # Data(store)
 /data
 /envs/data/
+/waterlagen/
 .datatore
 scripts/.datastore
 .datastore
