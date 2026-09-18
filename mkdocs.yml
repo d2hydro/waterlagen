@@ -62,7 +62,6 @@ nav:
   - Bijdragen:
       - Overzicht: bijdragen/index.md
       - Ontwikkelomgeving: bijdragen/ontwikkelomgeving.md
-      - Productiepakket releasen: bijdragen/productiepakket.md
       - Afwateringseenheden-benchmark: bijdragen/afwateringseenheden-scaling.md
       - Conventies: bijdragen/conventions.md
       - AI coding agents: bijdragen/ai-agents.md

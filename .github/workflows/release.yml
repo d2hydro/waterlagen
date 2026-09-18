@@ -3,16 +3,23 @@ name: Release
 on:
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Existing GitHub release tag (version must already be on PyPI)"
+        required: true
+        type: string
 
 permissions:
   contents: read
 
 env:
-  RELEASE_TAG: ${{ github.event.release.tag_name }}
+  RELEASE_TAG: ${{ inputs.release_tag || github.event.release.tag_name }}
 
 jobs:
   tests:
     name: Test
+    if: github.event_name == 'release'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -37,6 +44,7 @@ jobs:
 
   build:
     name: Build distributions
+    if: github.event_name == 'release'
     needs: tests
     runs-on: ubuntu-latest
     steps:
@@ -80,6 +88,7 @@ jobs:
 
   publish:
     name: Publish to PyPI
+    if: github.event_name == 'release'
     needs: build
     runs-on: ubuntu-latest
     environment:
@@ -101,11 +110,21 @@ jobs:
   production-build:
     name: Build standalone production bundle
     needs: publish
+    # A manual run deliberately skips publication; a release run requires it.
+    if: ${{ !cancelled() && (github.event_name == 'workflow_dispatch' || needs.publish.result == 'success') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: ${{ github.event.release.tag_name }}
+          # Older tags may not contain the builder. Manual runs use the selected
+          # workflow commit, while the package version comes from RELEASE_TAG.
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.sha || github.event.release.tag_name }}
+
+      - name: Verify the target GitHub release exists
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY"
 
       - uses: actions/setup-python@v6
         with:
@@ -138,6 +157,7 @@ jobs:
   production-test:
     name: Test standalone bundle (${{ matrix.os }})
     needs: production-build
+    if: ${{ !cancelled() && needs.production-build.result == 'success' }}
     strategy:
       fail-fast: false
       matrix:
@@ -171,6 +191,7 @@ jobs:
   production-upload:
     name: Attach tested production ZIP to the GitHub release
     needs: production-test
+    if: ${{ !cancelled() && needs.production-test.result == 'success' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
