@@ -5,7 +5,7 @@ uit PyPI en bevat de bijbehorende openbare productiescripts. Een Git-checkout of
 toegang tot een private repository is niet nodig.
 
 Installeer [Pixi](https://pixi.prefix.dev/latest/installation/) en pak de ZIP uit
-in een map naar keuze, bijvoorbeeld `mijn-waterlagen`. De bestanden staan direct
+in een map naar keuze. De bestanden staan direct
 in de ZIP, zonder extra bovenliggende map. De gekozen map met `pixi.toml`,
 `pixi.lock` en `scripts` is uw **projectfolder**.
 
