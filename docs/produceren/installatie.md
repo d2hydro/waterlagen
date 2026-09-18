@@ -1,86 +1,98 @@
 # Installatie
 
-Met Conda installeert u Waterlagen samen met Python en de benodigde GIS-software.
-U hoeft daarvoor geen Python-code te schrijven. De onderstaande route gebruikt
-de commandline-interface van versie **2026.2.2**.
+Met **Pixi** installeert en start u Waterlagen vanuit de projectmap. Pixi regelt
+Python en de benodigde GIS-bibliotheken, waaronder GDAL en PCRaster. Voor het
+produceren van afwateringseenheden hoeft u geen Python-code te schrijven.
+De projectomgeving ondersteunt Windows en Linux; de voorbeelden hieronder
+gebruiken Windows PowerShell.
 
-!!! warning "Publicatie in voorbereiding"
-    Versie 2026.2.2 is nog niet gepubliceerd op conda-forge. Gebruik voorlopig
-    het [lokaal gebouwde pakket](#lokaal-gebouwd-pakket) of de
-    [ontwikkelomgeving](#vanuit-de-broncode). Versie 2026.2.1 heeft deze
-    commandline-interface nog niet.
+## 1. Installeer Pixi
 
-## 1. Installeer Miniforge
+Open de [installatiepagina van Pixi](https://pixi.prefix.dev/latest/installation/)
+en kies op Windows de **Windows Installer**. Voer de installer uit en open daarna
+een nieuwe PowerShell-terminal. Werkt u in VS Code, start VS Code dan opnieuw.
+Controleer of Pixi beschikbaar is:
 
-Download [Miniforge](https://conda-forge.org/download/) voor uw besturingssysteem
-en voer de installer uit. Open op Windows daarna **Miniforge Prompt** vanuit het
-Startmenu. Voer de volgende opdrachten in die prompt uit.
-
-## 2. Installeer Waterlagen
-
-Na publicatie op conda-forge:
-
-```console
-conda create --name waterlagen --override-channels --channel conda-forge waterlagen=2026.2.2 pcraster
-conda activate waterlagen
+```powershell
+pixi --version
 ```
 
-Bevestig de installatie wanneer Conda daarom vraagt. Conda kiest een passende
-Python-versie (minimaal 3.11) en installeert onder andere GDAL. PCRaster is nodig
-voor afwateringseenheden; voor andere Python-workflows is het optioneel.
+Er verschijnt een versienummer. Hebt u Pixi al, dan kunt u deze installatiestap
+overslaan.
 
-### Lokaal gebouwd pakket
+## 2. Open de Waterlagen-projectmap
 
-Zolang conda-forge-publicatie nog ontbreekt, kan de beheerder een lokaal
-conda-kanaal aanleveren volgens de [bouwinstructies](../bijdragen/conda-forge.md).
-Plaats de aangeleverde kanaalmap bijvoorbeeld in `D:/Waterlagen/conda-packages`.
-Daarin moet de submap `noarch` staan, met het pakket en `repodata.json`.
+Gebruik uw lokale Git-checkout van Waterlagen: de projectmap met `pixi.toml`,
+`pixi.lock`, `pyproject.toml` en de map `src`. Bewaar de volledige checkout,
+inclusief de verborgen map `.git`; de installatie bepaalt hiermee de pakketversie.
 
-Gebruik dan deze opdrachten in plaats van de opdrachten hierboven:
+!!! note "Beschikbaarheid van de commandline-interface"
+    De nieuwe `waterlagen`-opdrachten staan voorlopig alleen op de lokale
+    werkbranch `feat/conda-forge-2026.2.2`. Gebruik de checkout van die branch.
+    Een nieuwe download van `main` of versie `2026.2.1` bevat deze opdrachten
+    nog niet. Hebt u deze checkout niet, vraag de projectbeheerder dan om toegang
+    tot deze versie.
 
-```console
-conda create --name waterlagen --override-channels --channel D:/Waterlagen/conda-packages --channel conda-forge waterlagen=2026.2.2 pcraster
-conda activate waterlagen
+Ga in PowerShell naar de projectmap. Vervang het voorbeeldpad door uw eigen pad:
+
+```powershell
+cd D:/Repositories/waterlagen
 ```
 
-Vervang de kanaalmap door de werkelijk ontvangen locatie. Internet blijft nodig
-voor de overige pakketten uit conda-forge.
+Voer alle volgende opdrachten vanuit deze map uit. In VS Code kunt u deze map
+openen en via **Terminal → New Terminal** een terminal starten.
 
-## 3. Controleer de installatie
+## 3. Installeer de omgeving
+
+```powershell
+pixi install --environment afwateringseenheden --locked
+```
+
+De eerste installatie downloadt de benodigde software en kan enkele minuten
+duren. Pixi bewaart deze in `.pixi` onder de projectmap. De omgeving
+`afwateringseenheden` bevat ook PCRaster voor de afstroomrichtingberekening.
+`--locked` gebruikt de pakketversies die in `pixi.lock` zijn vastgelegd.
+
+## 4. Controleer de installatie
 
 Kies een schrijfbare map voor uw gegevens. In de voorbeelden is dat
 `D:/Waterlagen/data`; vervang die locatie zo nodig. Zet paden met spaties tussen
 dubbele aanhalingstekens.
 
-```console
-waterlagen --version
-waterlagen controleer --data-dir D:/Waterlagen/data
-```
-
-De controle voert een kleine rasterberekening uit en test de opslag. Er worden
-geen brongegevens gedownload. Bij succes verschijnt **Installatie OK**.
-Ga daarna verder met [Afwateringseenheden produceren](afwateringseenheden.md).
-
-Open bij een volgende sessie opnieuw Miniforge Prompt en voer eerst
-`conda activate waterlagen` uit. Met `waterlagen --help` ziet u de opdrachten.
-
-## Vanuit de broncode
-
-Ontwikkelaars gebruiken [de Pixi-ontwikkelomgeving](../bijdragen/ontwikkelomgeving.md).
-Vanuit de repository-root zijn dezelfde opdrachten beschikbaar:
-
-```console
-pixi run --environment afwateringseenheden waterlagen --help
+```powershell
+pixi run --environment afwateringseenheden waterlagen --version
 pixi run --environment afwateringseenheden waterlagen controleer --data-dir D:/Waterlagen/data
 ```
 
-De geïnstalleerde pakketversie volgt hier de Git-versie van de checkout.
+De controle voert een kleine rasterberekening uit en test het schrijven en lezen
+van een bestand. Er worden geen brongegevens gedownload. Bij succes verschijnt
+**Installatie OK**. Het getoonde versienummer volgt de Git-versie van uw checkout
+en kan een ontwikkelversie zijn.
 
-## Bestaande Python-omgeving
+## 5. Waterlagen uitvoeren
 
-De [Python-voorbeelden](eerste-dataset.md) blijven beschikbaar. Installatie met
-`pip install waterlagen` vereist een omgeving waarin ook de native
-GIS-bibliotheken correct zijn geïnstalleerd. Een fout zoals
-`Cannot open include file: 'gdal.h'` betekent dat pip GDAL probeert te compileren
-zonder de benodigde ontwikkelbestanden. Gebruik voor de installatie hierboven
-Conda: daarmee worden de voorgebouwde bibliotheken meegeleverd.
+Bekijk de beschikbare opdrachten:
+
+```powershell
+pixi run --environment afwateringseenheden waterlagen --help
+```
+
+Ga verder met [Afwateringseenheden produceren](afwateringseenheden.md).
+Voor eigen Python-workflows kunt u het voorbeeld bij
+[Eerste dataset produceren](eerste-dataset.md) volgen.
+
+Bij een volgende sessie opent u opnieuw een terminal in dezelfde projectmap en
+gebruikt u weer `pixi run --environment afwateringseenheden ...`. Pixi kiest
+automatisch de juiste omgeving; apart activeren is niet nodig.
+
+## Als een opdracht niet werkt
+
+| Melding | Wat u kunt doen |
+|---|---|
+| `pixi` wordt niet herkend | Open een nieuwe terminal na installatie; herstart ook VS Code als u daarin werkt. |
+| Pixi kan geen projectbestand vinden | Ga met `cd` naar de map waarin `pixi.toml` staat. |
+| `waterlagen` wordt niet herkend | Gebruik de volledige `pixi run`-opdracht en controleer of uw checkout de commandline-interface bevat. |
+| Geen toegang tot de datamap | Kies bij `--data-dir` een locatie waar u bestanden mag opslaan. |
+
+Voor tests en wijzigingen aan de software, zie
+[Ontwikkelomgeving](../bijdragen/ontwikkelomgeving.md).

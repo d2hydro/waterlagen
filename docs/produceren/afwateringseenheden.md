@@ -11,12 +11,12 @@ locatie voor downloads en resultaten in via [Configuratie en DataStore](configur
 De workflow gebruikt de DataStore voor AHN, HYDAMO, administratieve grenzen,
 tussenresultaten en het logbestand.
 
-Voor de LDD- en subcatchmentberekening is PCRaster nodig. Activeer de geïnstalleerde
-omgeving en controleer die eerst:
+Voor de LDD- en subcatchmentberekening is PCRaster nodig. Dit zit in de
+Pixi-omgeving uit de installatiehandleiding. Open een terminal in de
+Waterlagen-projectmap en controleer de installatie:
 
 ```console
-conda activate waterlagen
-waterlagen controleer --data-dir D:/Waterlagen/data
+pixi run --environment afwateringseenheden waterlagen controleer --data-dir D:/Waterlagen/data
 ```
 
 Vervang `D:/Waterlagen/data` door uw eigen opslaglocatie. Controleer of daar
@@ -30,19 +30,13 @@ werkgebied en de instellingen.
 Start na de melding `Installatie OK` de productie:
 
 ```console
-waterlagen afwateringseenheden --waterschap 38 --data-dir D:/Waterlagen/data --workers 2
+pixi run --environment afwateringseenheden waterlagen afwateringseenheden --waterschap 38 --data-dir D:/Waterlagen/data --workers 2
 ```
 
 Laat de terminal open tijdens het rekenen. De voortgang verschijnt in de terminal
 en in het logbestand. Met `Ctrl+C` kunt u onderbreken. Een volgende start
 hergebruikt geldige bronbestanden, maar maakt een nieuwe uitvoermap en hervat
 de berekeningen uit de vorige uitvoermap niet.
-
-Vanuit een checkout gebruikt u in plaats daarvan:
-
-```console
-pixi run --environment afwateringseenheden waterlagen afwateringseenheden --waterschap 38 --data-dir D:/Waterlagen/data --workers 2
-```
 
 ## Werkgebied en parameters
 
@@ -51,7 +45,7 @@ De opdracht selecteert Aa en Maas met waterbeheercode `38`. Gebruik
 instellingen altijd voor het beoogde werkgebied. Alle opties staan in:
 
 ```console
-waterlagen afwateringseenheden --help
+pixi run --environment afwateringseenheden waterlagen afwateringseenheden --help
 ```
 
 | Optie | Standaard | Betekenis en effect |

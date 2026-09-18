@@ -1,15 +1,15 @@
 # Configuratie en DataStore
 
 `DataStore` bepaalt waar Waterlagen bronbestanden, verwerkte resultaten en logs
-opslaat. Kies bij gebruik van de commandline een hoofdmap:
+opslaat. Kies bij gebruik van de commandline een hoofdmap. Voer deze opdrachten
+uit vanuit de projectmap, na de [installatie met Pixi](installatie.md):
 
 ```console
-waterlagen controleer --data-dir D:/Waterlagen/data
-waterlagen afwateringseenheden --waterschap 38 --data-dir D:/Waterlagen/data --workers 2
+pixi run --environment afwateringseenheden waterlagen controleer --data-dir D:/Waterlagen/data
 ```
 
-De tweede opdracht start de productie voor het hele beheergebied van Aa en Maas.
-Zie [Afwateringseenheden produceren](afwateringseenheden.md) voor de voorbereiding.
+Geef dezelfde `--data-dir` mee bij het
+[produceren van afwateringseenheden](afwateringseenheden.md).
 
 Met `--data-dir` komen downloads in `source_data` en resultaten in
 `processed_data` onder deze map. Deze optie heeft voorrang op alle andere
@@ -31,11 +31,10 @@ bronnen en resultaten op verschillende locaties te bewaren. Omgevingsvariabelen
 met deze namen hebben voorrang op het bestand. Gebruik bij voorkeur absolute
 paden; relatieve paden worden vanaf de huidige werkmap geïnterpreteerd.
 
-Zonder opslagconfiguratie gebruikt een geïnstalleerd pakket `data` onder de
-huidige werkmap. Bij werken vanuit de broncode is dat `data` in de repository-root.
-Een checkout leest ook `.datastore` uit de repository-root; het bestand in de
-huidige werkmap heeft voorrang. Opslagmappen worden bij uitvoering aangemaakt;
-`waterlagen --help` maakt geen datamappen aan.
+Zonder opslagconfiguratie gebruikt deze Pixi-route `data` onder de projectmap.
+Waterlagen leest `.datastore` uit de projectmap en de huidige werkmap; het
+bestand in de huidige werkmap heeft voorrang. Opslagmappen worden bij uitvoering
+aangemaakt. Het opvragen van hulp met `--help` maakt geen datamappen aan.
 
 ## Parallel rekenen
 

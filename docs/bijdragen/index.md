@@ -6,6 +6,3 @@ agent gebruikt, leest daarnaast [AI coding agents](ai-agents.md).
 
 De [metingen aan tegelgrootte en parallelisatie](afwateringseenheden-scaling.md)
 beschrijven de historische afwateringseenheden-benchmark en de gerichte controles.
-
-Voor het bouwen en publiceren van pakketten, zie
-[Conda-package en release](conda-forge.md).

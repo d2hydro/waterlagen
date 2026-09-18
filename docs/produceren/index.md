@@ -1,8 +1,8 @@
 # Zelf produceren
 
 Deze route is bedoeld voor gebruikers die Waterlagen lokaal willen uitvoeren.
-Voor afwateringseenheden kunt u opdrachten in een terminal gebruiken, zonder
-Python-code te schrijven:
+Met Pixi voert u Waterlagen uit vanuit de projectmap. Voor afwateringseenheden
+kunt u opdrachten in een terminal gebruiken, zonder Python-code te schrijven:
 
 1. [Installeer Waterlagen](installatie.md).
 2. Stel de [DataStore](configuratie.md) in.

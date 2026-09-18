@@ -3,7 +3,8 @@
 De eerste conda-forge-release is voorbereid als **2026.2.2**, met
 **DanielTollenaar** als maintainer. Het recept in `recipe/recipe.yaml` bouwt
 de huidige checkout. Het is nog niet ingediend bij conda-forge.
-De gebruikersroute staat bij [Installatie](../produceren/installatie.md).
+Deze publicatieroute is voorlopig uitgesteld. De gebruikersdocumentatie beschrijft
+alleen [installatie met Pixi](../docs/produceren/installatie.md).
 
 ## Lokaal bouwen en testen
 
@@ -36,8 +37,8 @@ gebouwd pakket bevatten.
 Het resultaat staat in `.cache/conda-build/noarch/`. Geef gebruikers het lokale
 kanaal met `noarch/*.conda` en `noarch/repodata.json`, met behoud van de
 mapstructuur. De tijdelijke bouwmappen hoeven niet mee. Bouwuitvoer blijft
-buiten Git. Het lokale kanaal kan worden gebruikt zoals beschreven bij
-[Installatie](../produceren/installatie.md#lokaal-gebouwd-pakket).
+buiten Git. Voor een latere handmatige pakkettest kan dit kanaal aan Conda worden
+meegegeven met `--channel <pad-naar-kanaal>` naast `--channel conda-forge`.
 
 ## Publiceren
 
@@ -68,9 +69,8 @@ buiten Git. Het lokale kanaal kan worden gebruikt zoals beschreven bij
    [conda-forge-bijdrageprocedure](https://conda-forge.org/docs/maintainer/adding_pkgs/).
    Na acceptatie wordt de feedstock ingericht en wordt het pakket gebouwd en
    gepubliceerd. Het GitHub-releaseproces alleen publiceert niet op conda-forge.
-6. Controleer na publicatie de Conda-installatieopdracht uit de handleiding op
-   een schone machine. Verwijder daarna de melding over publicatie in
-   voorbereiding uit de installatiepagina en README.
+6. Controleer na publicatie de Conda-installatie op een schone machine. Voeg pas
+   daarna deze installatieroute aan de gebruikershandleiding toe.
 
 Volgende conda-releases worden via de feedstock onderhouden. Houd versie,
 bronhash, dependencies en pakkettests bij elkaar. Een `noarch`-pakket bevat
