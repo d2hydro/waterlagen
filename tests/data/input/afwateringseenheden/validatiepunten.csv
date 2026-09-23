@@ -1,2 +1,6 @@
-opmerking,initialen,github_issue,x,y
-Hier wordt de zuidwillemsvaart toegekend aan 2 duikers (1) rijkswateter toevoegen (2) duikers uitsluiten als uitstroompunt,DT,https://github.com/d2hydro/waterlagen/issues/53,179769,373869
+fid,opmerking,initialen,github_issue,x,y
+1,Hier wordt de zuidwillemsvaart toegekend aan 2 duikers (1) rijkswateter toevoegen (2) duikers uitsluiten als uitstroompunt,DT,https://github.com/d2hydro/waterlagen/issues/53,179769,373869
+2,B watergang stroom mogelijk twee kanten op maar is technisch waarschijnlijk maar aan 1 punt gekoppeld.,JH,,186081,402282
+3,Duiker onder dijk zorgt dat deel van kanaal bij afwateringsgebied van landbouwgebied komt. ,JH,,179686,406257
+4,"Missende detailwatergangen zorgen dat de weg afwateringsgebied over weg gaat, niet plausibel",JH,,188374,408177
+5,"Duiker onder weg geeft dat beide kanten zelfde afwateringsgebieden krijgen. Klopt wel, wenselijk?",JH,,176216,412362
