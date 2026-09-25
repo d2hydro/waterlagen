@@ -42,7 +42,7 @@ gekozen uitwerking; complexere combinaties vallen buiten deze stap.
 
 Bij uitsluitend woonfunctie en overige gebruiksfunctie kiezen we woonfunctie,
 ongeacht het aantal VBO's of de oppervlakteverhouding. Dit is een aanvullende
-afspraak. Elk VBO moet ??n bekend gebruiksdoel hebben. Alle VBO's blijven
+afspraak. Elk VBO moet één bekend gebruiksdoel hebben. Alle VBO's blijven
 meetellen voor de bouwlagen en de grens voor woning/appartementencomplex.
 
 Bij minstens twee niet-woon-VBO's wordt de oppervlakte per niet-woonfunctie
@@ -55,10 +55,6 @@ de code stelt niet vast op welke verdieping een functie werkelijk zit.
 Bij meer dan drie VBO's met wonen en slechts één niet-woon-VBO blijft de
 functiekeuze `nog te beoordelen`. Uitsluitend wonen geeft tot en met drie
 VBO's een woning en vanaf vier VBO's een appartementencomplex.
-
-Bij uitsluitend woonfunctie en overige gebruiksfunctie bepaalt wonen de
-indeling. Alle VBO's tellen mee voor de bouwlagen en de grens tussen woning
-en appartementencomplex.
 
 De BAG-voorbereiding gebruikt dezelfde functiekeuze, bouwlagenberekening en
 gebouwklassen als het controlescript. Meervoudige doelen binnen een VBO,
