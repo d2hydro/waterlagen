@@ -1,9 +1,15 @@
-import pytest
+from typing import ClassVar
+
 import geopandas as gpd
+import numpy as np
+import pytest
+import rasterio
 from shapely.geometry import box
 
 from waterlagen.functioneel_landgebruik import parallel as parallel_mod
+from waterlagen.functioneel_landgebruik.nodata_verklaren import LanduseDiagnostics
 from waterlagen.functioneel_landgebruik.parallel import (
+    FunctioneelLandgebruikTileJob,
     TileBuildError,
     bouw_functioneel_landgebruik_tiles,
 )
@@ -58,8 +64,8 @@ class _FakeFuture:
 
 def _patch_executor(monkeypatch, *, reverse_completed: bool = False):
     class FakeExecutor:
-        max_workers_seen = []
-        submitted_jobs = []
+        max_workers_seen: ClassVar[list[int]] = []
+        submitted_jobs: ClassVar[list[FunctioneelLandgebruikTileJob]] = []
 
         def __init__(self, *, max_workers):
             self.max_workers = max_workers
@@ -75,7 +81,7 @@ def _patch_executor(monkeypatch, *, reverse_completed: bool = False):
             self.submitted_jobs.append(job)
             try:
                 return _FakeFuture(result=fn(job))
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001 - Futures bewaren elke workerfout.
                 return _FakeFuture(exception=exc)
 
     def fake_as_completed(futures):
@@ -101,6 +107,9 @@ def _patch_read_tiles(monkeypatch, tiles):
 
 
 def _patch_sources(monkeypatch):
+    monkeypatch.setattr(
+        parallel_mod, "ensure_bag_link_index", lambda *args, **kwargs: None
+    )
     monkeypatch.setattr(parallel_mod, "_download_missing_sources", lambda *args: None)
     monkeypatch.setattr(parallel_mod, "_validate_sources_exist", lambda sources: None)
 
@@ -123,8 +132,8 @@ def _patch_builder(monkeypatch, *, failing_tile_ids=()):
 
 def _patch_progress(monkeypatch):
     class FakeTqdm:
-        instances = []
-        writes = []
+        instances: ClassVar[list["FakeTqdm"]] = []
+        writes: ClassVar[list[str]] = []
 
         def __init__(self, *, total, initial, desc, unit):
             self.total = total
@@ -147,6 +156,132 @@ def _patch_progress(monkeypatch):
 
     monkeypatch.setattr(parallel_mod, "tqdm", FakeTqdm)
     return FakeTqdm
+
+
+@pytest.mark.parametrize("tile_crs", [None, "EPSG:4326"])
+def test_parallel_rejects_invalid_tile_crs_before_preparing_sources(
+    tmp_path, monkeypatch, tile_crs
+):
+    tiles = _tiles_gdf().set_crs(tile_crs, allow_override=True)
+    _patch_read_tiles(monkeypatch, tiles)
+
+    def unexpected_preparation(*args, **kwargs):
+        pytest.fail("Bronnen mogen niet worden voorbereid bij een onjuist CRS.")
+
+    monkeypatch.setattr(parallel_mod, "_prepare_sources_once", unexpected_preparation)
+    with pytest.raises(ValueError, match="CRS van tegelrooster"):
+        bouw_functioneel_landgebruik_tiles(tmp_path / "tiles")
+
+
+def test_parallel_rejects_output_crs_before_creating_output(tmp_path):
+    target_dir = tmp_path / "tiles"
+    with pytest.raises(ValueError, match="Raster-CRS"):
+        bouw_functioneel_landgebruik_tiles(target_dir, crs="EPSG:4326")
+    assert not target_dir.exists()
+
+
+def test_parallel_passes_separate_control_paths_and_merges_selected_tiles(
+    tmp_path, monkeypatch
+):
+    tiles = _tiles_gdf()
+    _patch_read_tiles(monkeypatch, tiles)
+    _patch_sources(monkeypatch)
+    _patch_executor(monkeypatch)
+    calls = _patch_builder(monkeypatch)
+    merged = []
+    monkeypatch.setattr(
+        parallel_mod,
+        "merge_diagnostics",
+        lambda paths, target, **kwargs: merged.append((paths, target, kwargs)),
+    )
+    target = tmp_path / "landgebruik_controle.gpkg"
+    bouw_functioneel_landgebruik_tiles(
+        tmp_path / "tiles",
+        workers=2,
+        tile_ids=tiles.tile_id.tolist()[:2],
+        diagnostics_path=target,
+        show_progress=False,
+    )
+    control_paths = [call["diagnostics_path"] for call in calls]
+    assert control_paths == [
+        tmp_path / "tiles" / ".nodata_controle" / f"{tile_id}.gpkg"
+        for tile_id in tiles.tile_id.tolist()[:2]
+    ]
+    assert merged == [(control_paths, target, {"remove_sources": True})]
+
+
+def test_parallel_does_not_publish_partial_control_after_failure(tmp_path, monkeypatch):
+    tiles = _tiles_gdf()
+    _patch_read_tiles(monkeypatch, tiles)
+    _patch_sources(monkeypatch)
+    _patch_executor(monkeypatch)
+    _patch_builder(monkeypatch, failing_tile_ids=[tiles.iloc[0].tile_id])
+    merged = []
+    monkeypatch.setattr(
+        parallel_mod, "merge_diagnostics", lambda *args: merged.append(args)
+    )
+    with pytest.raises(TileBuildError):
+        bouw_functioneel_landgebruik_tiles(
+            tmp_path / "tiles",
+            workers=2,
+            diagnostics_path=tmp_path / "controle.gpkg",
+            show_progress=False,
+        )
+    assert merged == []
+
+
+def test_parallel_reuses_merged_control_without_permanent_tile_controls(
+    tmp_path, monkeypatch
+):
+    _patch_read_tiles(monkeypatch, _tiles_gdf())
+    _patch_sources(monkeypatch)
+    _patch_executor(monkeypatch)
+
+    def build(**kwargs):
+        path = kwargs["target_path"]
+        with rasterio.open(
+            path,
+            "w",
+            driver="GTiff",
+            width=2,
+            height=2,
+            count=1,
+            dtype="uint8",
+            crs="EPSG:28992",
+            transform=rasterio.transform.from_bounds(*kwargs["bounds"], 2, 2),
+            nodata=0,
+        ) as dst:
+            dst.write(np.zeros((2, 2), dtype="uint8"), 1)
+        LanduseDiagnostics().write(kwargs["diagnostics_path"], raster_path=path)
+        return path
+
+    monkeypatch.setattr(parallel_mod, "bouw_functioneel_landgebruik", build)
+    target = tmp_path / "controle.gpkg"
+    rasters = bouw_functioneel_landgebruik_tiles(
+        tmp_path / "tiles",
+        workers=2,
+        diagnostics_path=target,
+        show_progress=False,
+    )
+    assert not list((tmp_path / "tiles" / ".nodata_controle").glob("*.gpkg"))
+    original = gpd.read_file(target)
+
+    def must_not_build(**kwargs):
+        raise AssertionError("Bestaande tegels horen te worden hergebruikt.")
+
+    monkeypatch.setattr(parallel_mod, "bouw_functioneel_landgebruik", must_not_build)
+    reused = bouw_functioneel_landgebruik_tiles(
+        tmp_path / "tiles",
+        workers=2,
+        diagnostics_path=target,
+        show_progress=False,
+    )
+    assert reused == rasters
+    assert not list((tmp_path / "tiles" / ".nodata_controle").glob("*.gpkg"))
+    assert (
+        gpd.read_file(target).geometry.union_all().equals(original.geometry.union_all())
+    )
+    assert set(gpd.read_file(target).columns) == {"bron", "geometry", "reden"}
 
 
 def test_parallel_build_reads_tiles_and_creates_jobs_with_bounds_and_filenames(
@@ -205,6 +340,33 @@ def test_parallel_build_filters_tile_ids_preserving_index_order(tmp_path, monkey
         (0, 0, 2000, 2000),
         (0, 2000, 2000, 4000),
     ]
+
+
+@pytest.mark.parametrize("with_gemalen", [False, True])
+def test_default_datastore_uses_same_sources_as_single_tile(
+    tmp_path, monkeypatch, with_gemalen
+):
+    from waterlagen.datastore import DataStore
+    from waterlagen.functioneel_landgebruik.landgebruik_berekenen import (
+        FunctioneelLandgebruikSources,
+    )
+
+    store = DataStore(data_dir=tmp_path / "data")
+    if with_gemalen:
+        pump_path = store.source_data_dir / "hydamo" / "hydamo.gpkg"
+        pump_path.parent.mkdir(parents=True, exist_ok=True)
+        pump_path.touch()
+    monkeypatch.setattr(parallel_mod, "default_datastore", store)
+    _patch_read_tiles(monkeypatch, _tiles_gdf().iloc[:1])
+    _patch_sources(monkeypatch)
+    _patch_executor(monkeypatch)
+    calls = _patch_builder(monkeypatch)
+
+    bouw_functioneel_landgebruik_tiles(
+        tmp_path / "tiles", workers=1, show_progress=False
+    )
+
+    assert calls[0]["sources"] == FunctioneelLandgebruikSources.from_datastore(store)
 
 
 def test_parallel_build_rejects_unknown_tile_ids(tmp_path, monkeypatch):
@@ -362,11 +524,16 @@ def test_parallel_build_prepares_sources_once_before_pool_starts(
         "_validate_sources_exist",
         lambda sources: events.append("validate"),
     )
+    monkeypatch.setattr(
+        parallel_mod,
+        "ensure_bag_link_index",
+        lambda *args, **kwargs: events.append("index"),
+    )
     _patch_builder(monkeypatch)
 
     bouw_functioneel_landgebruik_tiles(target_dir=tmp_path, workers=1)
 
-    assert events[:3] == ["download", "validate", "pool"]
+    assert events[:4] == ["download", "validate", "index", "pool"]
 
 
 def test_parallel_build_progress_starts_with_skipped_tiles(tmp_path, monkeypatch):

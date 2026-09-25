@@ -4,6 +4,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import geopandas as gpd
+import pytest
 from shapely.geometry import Point, box
 
 
@@ -20,7 +21,8 @@ def _load_script():
     return module
 
 
-def test_script_logs_cbs_and_derived_totals(tmp_path, caplog):
+@pytest.mark.parametrize("explicit_paths", [False, True])
+def test_script_logs_cbs_and_derived_totals(tmp_path, caplog, explicit_paths):
     script = _load_script()
     cbs_buurt_path = tmp_path / "cbs_buurt.gpkg"
     inwoners_path = tmp_path / "inwoners.gpkg"
@@ -54,7 +56,14 @@ def test_script_logs_cbs_and_derived_totals(tmp_path, caplog):
     )
     caplog.set_level(logging.INFO, logger="statistiek_inwoners_autos")
 
-    statistieken = script.main(data_store=data_store)
+    if explicit_paths:
+        data_store.inwoners_path = tmp_path / "missing_inwoners.gpkg"
+        data_store.autos_path = tmp_path / "missing_autos.gpkg"
+        statistieken = script.main(
+            data_store=data_store, inwoners_path=inwoners_path, autos_path=autos_path
+        )
+    else:
+        statistieken = script.main(data_store=data_store)
 
     assert statistieken.cbs_aantal_inwoners == 150
     assert statistieken.inwoners_obv_huishoudens == 120

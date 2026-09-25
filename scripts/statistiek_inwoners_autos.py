@@ -1,5 +1,6 @@
 """Log CBS- en VBO-totalen voor inwoners en personenauto's."""
 
+import argparse
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -48,8 +49,8 @@ def _som_kolom(path: Path, *, layer: str, column: str) -> int | float | None:
 
 
 def _verschil(
-    verdeelde_waarde: int | float | None,
-    cbs_waarde: int | float | None,
+    verdeelde_waarde: float | None,
+    cbs_waarde: float | None,
 ) -> int | float | None:
     """Return a difference only when both totals are available."""
     if verdeelde_waarde is None or cbs_waarde is None:
@@ -57,7 +58,12 @@ def _verschil(
     return verdeelde_waarde - cbs_waarde
 
 
-def lees_verdelingstatistieken(data_store: DataStore) -> VerdelingStatistieken:
+def lees_verdelingstatistieken(
+    data_store: DataStore,
+    *,
+    inwoners_path: Path | None = None,
+    autos_path: Path | None = None,
+) -> VerdelingStatistieken:
     """Read CBS totals and the derived VBO-value sums from processed outputs."""
     cbs_aantal_inwoners = _som_kolom(
         data_store.cbs_buurt_path,
@@ -70,17 +76,17 @@ def lees_verdelingstatistieken(data_store: DataStore) -> VerdelingStatistieken:
         column=CBS_PERSONENAUTOS_TOTAAL_COLUMN,
     )
     inwoners_obv_huishoudens = _som_kolom(
-        data_store.inwoners_path,
+        inwoners_path or data_store.inwoners_path,
         layer=INWONERS_LAYER,
         column=INWONERS_OBV_HUISHOUDENS_COLUMN,
     )
     inwoners_obv_woonvbo = _som_kolom(
-        data_store.inwoners_path,
+        inwoners_path or data_store.inwoners_path,
         layer=INWONERS_LAYER,
         column=INWONERS_OBV_WOONVBO_COLUMN,
     )
     personenautos = _som_kolom(
-        data_store.autos_path,
+        autos_path or data_store.autos_path,
         layer=AUTOS_LAYER,
         column=PERSONENAUTOS_COLUMN,
     )
@@ -93,7 +99,12 @@ def lees_verdelingstatistieken(data_store: DataStore) -> VerdelingStatistieken:
     )
 
 
-def main(data_store: DataStore | None = None) -> VerdelingStatistieken:
+def main(
+    data_store: DataStore | None = None,
+    *,
+    inwoners_path: Path | None = None,
+    autos_path: Path | None = None,
+) -> VerdelingStatistieken:
     """Log CBS- en VBO-totalen for the inwoners and autos products."""
     data_store = data_store or DataStore()
     init_logger(
@@ -101,7 +112,9 @@ def main(data_store: DataStore | None = None) -> VerdelingStatistieken:
         debug=False,
         log_file=data_store.data_dir / "statistiek_inwoners_autos.log",
     )
-    statistieken = lees_verdelingstatistieken(data_store)
+    statistieken = lees_verdelingstatistieken(
+        data_store, inwoners_path=inwoners_path, autos_path=autos_path
+    )
     logger.info("CBS aantal_inwoners: %s", statistieken.cbs_aantal_inwoners)
     logger.info(
         "Som inwoners_obv_huishoudens: %s (verschil met CBS: %s)",
@@ -132,4 +145,11 @@ def main(data_store: DataStore | None = None) -> VerdelingStatistieken:
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--inwoners-path", type=Path, help="Inwoners-GeoPackage uit de gekozen run"
+    )
+    parser.add_argument(
+        "--autos-path", type=Path, help="Auto-GeoPackage uit de gekozen run"
+    )
+    main(**vars(parser.parse_args()))

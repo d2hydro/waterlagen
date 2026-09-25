@@ -1,14 +1,17 @@
-import inspect
+from xml.etree import ElementTree as ET
 
+import geopandas as gpd
 import numpy as np
+import pytest
 import rasterio
+from shapely.geometry import box
 
-from waterlagen.functioneel_landgebruik import build as build_mod
+from waterlagen.datastore import DataStore
 from waterlagen.functioneel_landgebruik import (
     FunctioneelLandgebruikSources,
     bouw_functioneel_landgebruik,
 )
-from waterlagen.datastore import DataStore
+from waterlagen.functioneel_landgebruik import landgebruik_berekenen as build_mod
 from waterlagen.raster.config import RasterOutputConfig
 
 
@@ -21,6 +24,23 @@ def _patch_sources(monkeypatch, prepared_sources=()):
         "_prepare_priority_sources",
         lambda *args, **kwargs: list(prepared_sources),
     )
+
+
+def test_output_crs_must_match_project(tmp_path):
+    target = tmp_path / "result.tif"
+    with pytest.raises(ValueError, match="Raster-CRS"):
+        bouw_functioneel_landgebruik(target, bounds=(0, 0, 1, 1), crs="EPSG:4326")
+    assert not target.exists()
+
+
+def test_dike_crs_must_match_project(tmp_path):
+    path = tmp_path / "dikes.gpkg"
+    gpd.GeoDataFrame(geometry=[box(0, 0, 1, 1)], crs=4326).to_file(
+        path, layer="dijkring_v_2012", driver="GPKG"
+    )
+    sources = FunctioneelLandgebruikSources(dijkringen_gpkg=path)
+    with pytest.raises(ValueError, match="CRS van dijkringen"):
+        build_mod._read_dike_area(sources, build_mod.FunctioneelLandgebruikLayers())
 
 
 def test_sources_are_derived_from_injected_datastore(tmp_path):
@@ -37,11 +57,6 @@ def test_sources_are_derived_from_injected_datastore(tmp_path):
     assert sources.dijkringen_gpkg == (
         data_store.dijkringen_dir / "dijkringen_historie_2012.gpkg"
     )
-
-
-def test_build_does_not_use_block_windows():
-    source = inspect.getsource(build_mod.bouw_functioneel_landgebruik)
-    assert "block_windows" not in source
 
 
 def test_build_allocates_one_full_tile_raster_and_reuses_it(tmp_path, monkeypatch):
@@ -73,6 +88,15 @@ def test_build_allocates_one_full_tile_raster_and_reuses_it(tmp_path, monkeypatc
 
     assert full_calls == [((16, 16), 0, np.uint8)]
     assert len(set(raster_ids)) == 1
+    palette = ET.parse(target.with_suffix(".qml")).findall(
+        "./pipe/rasterrenderer/colorPalette/paletteEntry"
+    )
+    labels = {int(entry.attrib["value"]): entry.attrib for entry in palette}
+    assert "Water (binnendijks)" in labels[100]["label"]
+    assert "Water (buitendijks)" in labels[228]["label"]
+    assert "Overig gras/natuur" in labels[182]["label"]
+    assert "Agrarisch" not in labels[182]["label"]
+    assert labels[0]["alpha"] == "0"
     with rasterio.open(target) as src:
         assert src.read(1).min() == 3
         assert src.read(1).max() == 3

@@ -12,6 +12,7 @@ U hebt geen Git of toegang tot een private repository nodig.
    [Landgebruik](landgebruik.md) of [Inwoners en personenauto's](inwoners-personenautos.md).
 
 Andere workflows in de broncoderepository staan bij [Voorbeelden](voorbeelden.md).
+Voor losse bronlagen in QGIS: [Actuele BGT-vlakken voorbereiden](bgt-vlakken.md).
 
 Lees over de betekenis van de ingangen en resultaten bij
 [Bronnen](../bronnen/index.md) en [Bewerkingen](../bewerkingen/index.md).

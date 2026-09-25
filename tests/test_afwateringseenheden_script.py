@@ -181,8 +181,12 @@ def test_script_prepares_each_area_despite_existing_generic_files(
         )
         write_args = script.write_watersysteem.call_args_list[index].kwargs
         run_dir = write_args["output_path"].parent
-        assert run_dir.parent == script.datastore.afwateringseenheden_path
-        assert run_dir.name.startswith(f"waterschap_{code}_")
+        assert (
+            run_dir.parent
+            == script.datastore.afwateringseenheden_path / f"waterschap_{code}"
+        )
+        assert run_dir.name.endswith("Z")
+        assert len(run_dir.name) == 16
         assert write_args["output_path"] == run_dir / "watersysteem.gpkg"
         assert write_args["watersysteem"] is production.watersysteem
         assert write_args["overwrite"] is False
@@ -272,3 +276,19 @@ def test_failure_stops_batch_before_next_waterschap(production):
     script.calculate_afwateringseenheden_tiles.assert_called_once()
     script.read_puntobjecten.assert_called_once()
     assert script.read_puntobjecten.call_args.kwargs["waterbeheercodes"] == ["38"]
+
+
+def test_explicit_run_resume_and_overwrite(production):
+    script = production.script
+    script.main(run_id="test")
+    original_path = script.calculate_afwateringseenheden_tiles.call_args.kwargs[
+        "output_dir"
+    ]
+    for mode in ("resume", "overwrite"):
+        script.main(run_id="test", **{mode: True})
+        args = script.calculate_afwateringseenheden_tiles.call_args.kwargs
+        assert args["output_dir"] == original_path
+        assert args["overwrite"] is (mode == "overwrite")
+        assert script.write_watersysteem.call_args.kwargs["overwrite"] is (
+            mode == "overwrite"
+        )

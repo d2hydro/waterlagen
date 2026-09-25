@@ -45,7 +45,7 @@ version_scheme = "no-guess-dev"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/waterlagen"]
-include = ["src/waterlagen/styles/*.qml"]
+include = ["src/waterlagen/styles/*.qml", "src/waterlagen/functioneel_landgebruik/*.csv"]
 
 [tool.coverage.run]
 source = ["src/waterlagen"]

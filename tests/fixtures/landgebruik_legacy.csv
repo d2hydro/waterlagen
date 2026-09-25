@@ -1,0 +1,699 @@
+﻿Bron;Bronlaag;Bronveld;Bronwaarde;Landgebruik volgens notitie;Binnen;Buiten;Toelichting;Maximaal schadebedrag;Pagina;Koppeling-ID
+BAG;pand + verblijfsobject;gebruiksdoel;woonfunctie;Woning met enkel begane grond;1;129;Gebouwregels;Nog vast te stellen;3–5, tabel 1;BAG-001
+BAG;pand + verblijfsobject;gebruiksdoel;woonfunctie;Woning met begane grond en eerste verdieping;2;130;Gebouwregels;Nog vast te stellen;3–5, tabel 1;BAG-002
+BAG;pand + verblijfsobject;gebruiksdoel;woonfunctie;Woning met meer dan 2 verdiepingen;3;131;Gebouwregels;Nog vast te stellen;3–5, tabel 1;BAG-003
+BAG;pand + verblijfsobject;gebruiksdoel;bijeenkomstfunctie;Bijeenkomstfunctie met enkel begane grond;5;133;Gebouwregels;Nog vast te stellen;3–5, tabel 1;BAG-004
+BAG;pand + verblijfsobject;gebruiksdoel;bijeenkomstfunctie;Bijeenkomstfunctie met begane grond en eerste verdieping;6;134;Gebouwregels;Nog vast te stellen;3–5, tabel 1;BAG-005
+BAG;pand + verblijfsobject;gebruiksdoel;bijeenkomstfunctie;Bijeenkomstfunctie met meer dan 2 verdiepingen;7;135;Gebouwregels;Nog vast te stellen;3–5, tabel 1;BAG-006
+BAG;pand + verblijfsobject;gebruiksdoel;celfunctie;Cel-functie met enkel begane grond;8;136;Gebouwregels;Nog vast te stellen;3–5, tabel 1;BAG-007
+BAG;pand + verblijfsobject;gebruiksdoel;celfunctie;Cel-functie met begane grond en eerste verdieping;9;137;Gebouwregels;Nog vast te stellen;3–5, tabel 1;BAG-008
+BAG;pand + verblijfsobject;gebruiksdoel;celfunctie;Cel-functie met meer dan 2 verdiepingen;10;138;Gebouwregels;Nog vast te stellen;3–5, tabel 1;BAG-009
+BAG;pand + verblijfsobject;gebruiksdoel;gezondheidszorgfunctie;Gezondheidszorgfunctie met enkel begane grond;11;139;Gebouwregels;Nog vast te stellen;3–5, tabel 1;BAG-010
+BAG;pand + verblijfsobject;gebruiksdoel;gezondheidszorgfunctie;Gezondheidszorgfunctie met begane grond en eerste verdieping;12;140;Gebouwregels;Nog vast te stellen;3–5, tabel 1;BAG-011
+BAG;pand + verblijfsobject;gebruiksdoel;gezondheidszorgfunctie;Gezondheidszorgfunctie met meer dan 2 verdiepingen;13;141;Gebouwregels;Nog vast te stellen;3–5, tabel 1;BAG-012
+BAG;pand + verblijfsobject;gebruiksdoel;industriefunctie;Industriefunctie met enkel begane grond;14;142;Gebouwregels;Nog vast te stellen;3–5, tabel 1;BAG-013
+BAG;pand + verblijfsobject;gebruiksdoel;industriefunctie;Industriefunctie met begane grond en eerste verdieping;15;143;Gebouwregels;Nog vast te stellen;3–5, tabel 1;BAG-014
+BAG;pand + verblijfsobject;gebruiksdoel;industriefunctie;Industriefunctie met meer dan 2 verdiepingen;16;144;Gebouwregels;Nog vast te stellen;3–5, tabel 1;BAG-015
+BAG;pand + verblijfsobject;gebruiksdoel;kantoorfunctie;Kantoorfunctie met enkel begane grond;17;145;Gebouwregels;Nog vast te stellen;3–5, tabel 1;BAG-016
+BAG;pand + verblijfsobject;gebruiksdoel;kantoorfunctie;Kantoorfunctie met begane grond en eerste verdieping;18;146;Gebouwregels;Nog vast te stellen;3–5, tabel 1;BAG-017
+BAG;pand + verblijfsobject;gebruiksdoel;kantoorfunctie;Kantoorfunctie met meer dan 2 verdiepingen;19;147;Gebouwregels;Nog vast te stellen;3–5, tabel 1;BAG-018
+BAG;pand + verblijfsobject;gebruiksdoel;logiesfunctie;Logiesfunctie met enkel begane grond;20;148;Gebouwregels;Nog vast te stellen;3–5, tabel 1;BAG-019
+BAG;pand + verblijfsobject;gebruiksdoel;logiesfunctie;Logiesfunctie met begane grond en eerste verdieping;21;149;Gebouwregels;Nog vast te stellen;3–5, tabel 1;BAG-020
+BAG;pand + verblijfsobject;gebruiksdoel;logiesfunctie;Logiesfunctie met meer dan 2 verdiepingen;22;150;Gebouwregels;Nog vast te stellen;3–5, tabel 1;BAG-021
+BAG;pand + verblijfsobject;gebruiksdoel;onderwijsfunctie;Onderwijsfunctie met enkel begane grond;23;151;Gebouwregels;Nog vast te stellen;3–5, tabel 1;BAG-022
+BAG;pand + verblijfsobject;gebruiksdoel;onderwijsfunctie;Onderwijsfunctie met begane grond en eerste verdieping;24;152;Gebouwregels;Nog vast te stellen;3–5, tabel 1;BAG-023
+BAG;pand + verblijfsobject;gebruiksdoel;onderwijsfunctie;Onderwijsfunctie met meer dan 2 verdiepingen;25;153;Gebouwregels;Nog vast te stellen;3–5, tabel 1;BAG-024
+BAG;pand + verblijfsobject;gebruiksdoel;sportfunctie;Sportfunctie met enkel begane grond;26;154;Gebouwregels;Nog vast te stellen;3–5, tabel 1;BAG-025
+BAG;pand + verblijfsobject;gebruiksdoel;sportfunctie;Sportfunctie met begane grond en eerste verdieping;27;155;Gebouwregels;Nog vast te stellen;3–5, tabel 1;BAG-026
+BAG;pand + verblijfsobject;gebruiksdoel;sportfunctie;Sportfunctie met meer dan 2 verdiepingen;28;156;Gebouwregels;Nog vast te stellen;3–5, tabel 1;BAG-027
+BAG;pand + verblijfsobject;gebruiksdoel;winkelfunctie;Winkelfunctie met enkel begane grond;29;157;Gebouwregels;Nog vast te stellen;3–5, tabel 1;BAG-028
+BAG;pand + verblijfsobject;gebruiksdoel;winkelfunctie;Winkelfunctie met begane grond en eerste verdieping;30;158;Gebouwregels;Nog vast te stellen;3–5, tabel 1;BAG-029
+BAG;pand + verblijfsobject;gebruiksdoel;winkelfunctie;Winkelfunctie met meer dan 2 verdiepingen;31;159;Gebouwregels;Nog vast te stellen;3–5, tabel 1;BAG-030
+BAG;pand + verblijfsobject;gebruiksdoel;woonfunctie;Appartementencomplex;4;132;Gebouwregels;Nog vast te stellen;3–4;BAG-031
+BAG;pand + verblijfsobject;gebruiksdoel;overige gebruiksfunctie;Overige gebruiksfunctie > 100 m²;32;160;Gebouwregels;Nog vast te stellen;3–4, 8;BAG-032
+BAG;pand + verblijfsobject;gebruiksdoel;overige gebruiksfunctie;Overige gebruiksfunctie ≤ 100 m²;33;161;Gebouwregels;Nog vast te stellen;3–4, 8;BAG-033
+BAG;pand + verblijfsobject;gebruiksdoel;"NULL
+Geen gebruiksdoel ingevuld";NULL (geen gebruiksdoel ingevuld);34;162;Gebouwregels;Nog vast te stellen;3–4, 8;BAG-034
+TOP10NL + BAG;top10nl_gebouw_vlak + pand;typegebouw;"kas, warenhuis
+kas/warenhuis volgens notitie";Kassen;35;163;"Selecteer kas/warenhuis uit TOP10NL en koppel aan BAG-panden; gebruik de BAG-geometrie.";Nog vast te stellen;3, 6;TOP10NL-BAG-001
+TOP10NL;top10nl_functioneel_gebied_vlak;typefunctioneelgebied;"attractiepark
+begraafplaats
+botanische tuin
+bungalowpark
+camping, kampeerterrein — camping + kampeerterrein
+caravanpark
+circuit
+crossbaan
+dierentuin, safaripark — dierentuin + safaripark
+erebegraafplaats
+golfterrein
+grafheuvel
+ijsbaan
+kartingbaan
+openluchttheater
+recreatiegebied
+skibaan
+slipschool
+sportterrein, sportcomplex — sportterrein + sportcomplex
+tennispark
+vakantiepark
+volkstuinen";Sport, recreatie, begraafplaatsen;77;205;;Nog vast te stellen;10, tabel 6;"TOP10NL-001
+TOP10NL-002
+TOP10NL-003
+TOP10NL-004
+TOP10NL-005
+TOP10NL-006
+TOP10NL-007
+TOP10NL-008
+TOP10NL-009
+TOP10NL-010
+TOP10NL-011
+TOP10NL-012
+TOP10NL-013
+TOP10NL-014
+TOP10NL-015
+TOP10NL-016
+TOP10NL-017
+TOP10NL-018
+TOP10NL-019
+TOP10NL-020
+TOP10NL-021
+TOP10NL-022"
+TOP10NL + NGR + BAG;top10nl_functioneel_gebied_vlak + NGR RWZI + pand;typefunctioneelgebied;zuiveringsinstallatie;Gebouwen op rioolwaterzuivering (RWZI);36;164;Selecteer BAG-gebouwen op een actieve rioolwaterzuiveringsinstallatie.;Nog vast te stellen;3, 6–7;TOP10NL-NGR-BAG-001
+TOP10NL;top10nl_functioneel_gebied_multivlak;typefunctioneelgebied;"attractiepark
+begraafplaats
+botanische tuin
+bungalowpark
+camping, kampeerterrein — camping + kampeerterrein
+caravanpark
+circuit
+crossbaan
+dierentuin, safaripark — dierentuin + safaripark
+erebegraafplaats
+golfterrein
+grafheuvel
+ijsbaan
+kartingbaan
+openluchttheater
+recreatiegebied
+skibaan
+slipschool
+sportterrein, sportcomplex — sportterrein + sportcomplex
+tennispark
+vakantiepark
+volkstuinen";Sport, recreatie, begraafplaatsen;77;205;;Nog vast te stellen;10, tabel 6;"TOP10NL-073
+TOP10NL-074
+TOP10NL-075
+TOP10NL-076
+TOP10NL-077
+TOP10NL-078
+TOP10NL-079
+TOP10NL-080
+TOP10NL-081
+TOP10NL-082
+TOP10NL-083
+TOP10NL-084
+TOP10NL-085
+TOP10NL-086
+TOP10NL-087
+TOP10NL-088
+TOP10NL-089
+TOP10NL-090
+TOP10NL-091
+TOP10NL-092
+TOP10NL-093
+TOP10NL-094"
+TOP10NL + NGR + BAG;top10nl_functioneel_gebied_multivlak + NGR RWZI + pand;typefunctioneelgebied;zuiveringsinstallatie;Gebouwen op rioolwaterzuivering (RWZI);36;164;Selecteer BAG-gebouwen op een actieve rioolwaterzuiveringsinstallatie.;Nog vast te stellen;3, 6–7;TOP10NL-NGR-BAG-002
+TOP10NL + BAG;Drinkwaterproductieterrein + pand (precieze laag nog kiezen);Nog vast te stellen;"Nog vast te stellen
+Gebouwen op drinkwaterproductielocatie";Gebouwen op drinkwaterproductieterrein;37;165;"Selecteer gebouwen voor drinkwaterproductie; bronselectie nog vastleggen.";Nog vast te stellen;3, 7;TOP10NL-BAG-002
+NGR;Gemalenbestand (dataset nog vastleggen);Capaciteitsveld nog vaststellen;"10 tot 20 m³/min
+Pompcapaciteit";Gemalen (10 tot 20 m³/min);38;166;Indeling in zes capaciteitsklassen vanaf 10 m³/min, volgens tabel 3.;Nog vast te stellen;4, 7, tabel 3;NGR-001
+NGR;Gemalenbestand (dataset nog vastleggen);Capaciteitsveld nog vaststellen;"20 tot 50 m³/min
+Pompcapaciteit";Gemalen (20 tot 50 m³/min);39;167;Indeling in zes capaciteitsklassen vanaf 10 m³/min, volgens tabel 3.;Nog vast te stellen;4, 7, tabel 3;NGR-002
+NGR;Gemalenbestand (dataset nog vastleggen);Capaciteitsveld nog vaststellen;"50 tot 100 m³/min
+Pompcapaciteit";Gemalen (50 tot 100 m³/min);40;168;Indeling in zes capaciteitsklassen vanaf 10 m³/min, volgens tabel 3.;Nog vast te stellen;4, 7, tabel 3;NGR-003
+NGR;Gemalenbestand (dataset nog vastleggen);Capaciteitsveld nog vaststellen;"100 tot 400 m³/min
+Pompcapaciteit";Gemalen (100 tot 400 m³/min);41;169;Indeling in zes capaciteitsklassen vanaf 10 m³/min, volgens tabel 3.;Nog vast te stellen;4, 7, tabel 3;NGR-004
+NGR;Gemalenbestand (dataset nog vastleggen);Capaciteitsveld nog vaststellen;"400 tot 1000 m³/min
+Pompcapaciteit";Gemalen (400 tot 1000 m³/min);42;170;Indeling in zes capaciteitsklassen vanaf 10 m³/min, volgens tabel 3.;Nog vast te stellen;4, 7, tabel 3;NGR-005
+NGR;Gemalenbestand (dataset nog vastleggen);Capaciteitsveld nog vaststellen;">1000 m³/min
+Pompcapaciteit";Gemalen (> 1000 m³/min);43;171;Indeling in zes capaciteitsklassen vanaf 10 m³/min, volgens tabel 3.;Nog vast te stellen;4, 7, tabel 3;NGR-006
+BRP;brp_gewas;gewascode;"174 — Bloemzaden open grond
+241 — Kapucijners (en grauwe erwten)
+242 — Bonen, bruine-
+244 — Erwten, groene/gele (groen te oogsten)
+246 — Karwijzaad
+247 — Blauwmaanzaad
+258 — Luzerne
+308 — Erwten (droog te oogsten)
+311 — Bonen, veld- (onder andere duiven-, paarden-, wierbonen)
+346 — Tagetes erecta (Afrikaantje)
+347 — Tagetes patula (Afrikaantje)
+428 — Gele mosterd
+511 — Cichorei
+515 — Zonnebloemen
+636 — Saffloer
+637 — Vrouwenmantel
+654 — Brandnetel
+655 — Zwarte mosterd
+656 — Zonnekroon
+657 — Drachtplanten
+662 — Bos (SBL-regeling)
+663 — Lupinen, niet bittere
+665 — Sojabonen
+666 — Vlas, olie-. Lijnzaad niet van vezelvlas
+670 — Japanse haver
+671 — Raketblad (aaltjesvanggewas)
+794 — Woudbomen met korte omlooptijd (excl. Wilgenhakhout)
+795 — Wilgenhakhout
+796 — Kerstbomen
+800 — Rolklaver
+802 — Wikke, bonte
+803 — Wikke, voeder-
+853 — Bonen, tuin- (droog te oogsten) (geen consumptie)
+854 — Bonen, tuin- (groen te oogsten)
+964 — Dahlia, overige bloemkwekerijgewassen
+965 — Dahlia, droogbloemen
+967 — Gladiool, overige bloemkwekerijgewassen
+970 — Hyacint, overige bloemkwekerijgewassen
+973 — Iris, overige bloemkwekerijgewassen
+979 — Lelie, overige bloemkwekerijgewassen
+982 — Narcis, overige bloemkwekerijgewassen
+983 — Narcis, droogbloemen
+985 — Tulp, overige bloemkwekerijgewassen
+986 — Tulp, droogbloemen
+988 — Zantedeschia, overige bloemkwekerijgewassen
+991 — Overige bloemen, overige bloemkwekerijgewassen
+992 — Overige bloemen, droogbloemen
+997 — Dahlia, bloembollen en - knollen
+998 — Gladiool, bloembollen en - knollen
+999 — Hyacint, bloembollen en - knollen
+1001 — Krokus, bloembollen en - knollen
+1002 — Lelie, bloembollen en -knollen
+1003 — Narcis, bloembollen en -knollen
+1004 — Tulp, bloembollen en -knollen
+1005 — Zantedeschia, bloembollen en -knollen
+1006 — Overige bloemen, bloembollen en -knollen
+1007 — Amaryllis, bloembollen en -knollen
+1010 — Sierui, overige bloemkwekerijgewassen
+1012 — Sierui, bloembollen en -knollen
+1013 — Blauw druifje, overige bloemkwekerijgewassen
+1015 — Blauw druifje, bloembollen en -knollen
+1019 — Valeriaan, productie
+1020 — Valeriaan, zaden en opkweekmateriaal
+1021 — Knoflook
+1023 — Pastinaak, productie
+1024 — Pastinaak, zaden en opkweekmateriaal
+1025 — Pioenroos, overige bloemkwekerijgewassen
+1026 — Pioenroos, droogbloemen
+1028 — Lavas (Maggiplant), productie
+1030 — Wilde marjolein (Oregano), productie
+1032 — Goudsbloem
+1033 — Igniscum Candy
+1034 — Kanariezaad
+1035 — Naaldaar (Setaria)
+1036 — Wortelpeterselie
+1037 — Peterselie, productie
+1038 — Peterselie, zaden en opkweekmateriaal
+1039 — Chrysant, overige bloemkwekerijgewassen
+1042 — Angelica, productie
+1043 — Angelica, zaden en opkweekmateriaal
+1044 — Papaver (klaproos)
+1045 — Adonis
+1047 — Cranberry
+1048 — Echinacea (zonnehoed), productie
+1049 — Echinacea (zonnehoed), zaden en opkweekmateriaal
+1050 — Leeuwenbekjes
+1051 — Iris, Bolvormend
+1052 — Iris, Rhizoomvormend
+1053 — Palmen, pot- en containervelden
+1054 — Pioenroos, vermeerdering
+1067 — Bos- en haagplanten, open grond
+1068 — Buxus, open grond
+1069 — Ericaceae (Zoals erica, calluna, rododendron, azalea), open grond
+1070 — Laanbomen/parkbomen, onderstammen, open grond
+1071 — Laanbomen/parkbomen, opzetters, open grond
+1072 — Laanbomen/parkbomen, spillen, open grond
+1073 — Rozenstruiken (incl, zaailingen en onderstammen), open grond
+1074 — Sierconiferen, open grond
+1075 — Sierheesters en klimplanten, open grond
+1076 — Trek- en besheesters, open grond
+1077 — Vruchtbomen, moerbomen, open grond
+1078 — Vruchtbomen, onderstammen, open grond
+1079 — Vruchtbomen, overig, open grond
+1080 — Vaste planten, open grond
+1081 — Bos- en haagplanten, pot- en containerveld
+1082 — Buxus, pot- en containerveld
+1083 — Ericaceae (Zoals erica, calluna, rododendron, azalea), pot- en containerveld
+1084 — Laanbomen/parkbomen, onderstammen, pot- en containerveld
+1085 — Laanbomen/parkbomen, opzetters, pot- en containerveld
+1086 — Laanbomen/parkbomen, spillen, pot- en containerveld
+1087 — Rozenstruiken (incl, zaailingen en onderstammen), pot- en containerveld
+1088 — Sierconiferen, pot- en containerveld
+1089 — Sierheesters en klimplanten, pot- en containerveld
+1090 — Trek- en besheesters, pot- en containerveld
+1091 — Vruchtbomen, moerbomen, pot- en containerveld
+1092 — Vruchtbomen, onderstammen, pot- en containerveld
+1093 — Vruchtbomen, overig, pot- en containerveld
+1094 — Vaste planten, pot- en containerteelt
+1095 — Appels. Aangeplant lopende seizoen.
+1096 — Appels. Aangeplant voorafgaande aan lopende seizoen.
+1097 — Peren. Aangeplant lopende seizoen.
+1098 — Peren. Aangeplant voorafgaande aan lopende seizoen.
+1099 — Wijndruiven
+1100 — Overige pit- en steenvruchten (zoals perziken, tafeldruiven)
+1869 — Bessen, blauwe
+1870 — Pruimen
+1872 — Kersen, zuur (opbrengst bestemd voor verwerkende industrie)
+1873 — Bessen, zwarte (opbrengst verwerkt voor verwerkende industrie)
+1874 — Overig kleinfruit (zoals kruisbessen, kiwi's)
+1876 — Snijgroen
+1921 — Graszoden
+1949 — Aardperen
+2325 — Bessen, rode
+2326 — Frambozen
+2327 — Bramen
+2328 — Kersen, zoet
+2645 — Notenbomen
+2700 — Aardbeien open grond, vermeerdering
+2701 — Aardbeien open grond, wachtbed
+2702 — Aardbeien open grond, productie
+2703 — Aardbeien open grond, zaden en opkweekmateriaal
+2704 — Aardbeien op stellingen, vermeerdering
+2705 — Aardbeien op stellingen, wachtbed
+2706 — Aardbeien op stellingen, productie
+2707 — Aardbeien op stellingen, zaden en opkweekmateriaal
+2708 — Andijvie, productie
+2709 — Andijvie, zaden en opkweekmateriaal
+2710 — Asperges, oppervlakte die productie oplevert
+2711 — Asperges, oppervlakte die nog geen productie oplevert
+2712 — Asperges, zaden en opkweekmateriaal
+2715 — Boerenkool, productie
+2716 — Boerenkool, zaden en opkweekmateriaal
+2717 — Bospeen, productie
+2719 — Broccoli, productie
+2720 — Broccoli, zaden en opkweekmateriaal
+2721 — Chinese kool, productie
+2722 — Chinese kool, zaden en opkweekmateriaal
+2723 — Courgette, productie
+2724 — Courgette, zaden en opkweekmateriaal
+2725 — Knolselderij, productie
+2726 — Knolselderij, zaden en opkweekmateriaal
+2727 — Knolvenkel/venkel, productie
+2728 — Knolvenkel/venkel, zaden en opkweekmateriaal
+2729 — Komkommer, productie
+2730 — Komkommer, zaden en opkweekmateriaal
+2731 — Augurk, productie
+2732 — Augurk, zaden en opkweekmateriaal
+2733 — Meloen, productie
+2735 — Pompoen, productie
+2736 — Pompoen, zaden en opkweekmateriaal
+2737 — Koolraap, productie
+2739 — Koolrabi, productie
+2740 — Koolrabi, zaden en opkweekmateriaal
+2741 — Kroten/rode bieten, productie
+2742 — Kroten/rode bieten, zaden en opkweekmateriaal
+2743 — Kruiden, productie
+2744 — Kruiden, zaden en opkweekmateriaal
+2745 — Paksoi, productie
+2747 — Peulen, productie
+2748 — Peulen, zaden en opkweekmateriaal
+2751 — Pronkbonen, productie
+2752 — Pronkbonen, zaden en opkweekmateriaal
+2753 — Raapstelen, productie
+2754 — Raapstelen, zaden en opkweekmateriaal
+2755 — Rabarber, productie
+2756 — Rabarber, zaden en opkweekmateriaal
+2757 — Radijs, productie
+2758 — Radijs, zaden en opkweekmateriaal
+2759 — Rodekool, productie
+2761 — Savooiekool, productie
+2762 — Savooiekool, zaden en opkweekmateriaal
+2763 — Schorseneren, productie
+2765 — Selderij, bleek- en groen-, productie
+2766 — Selderij, bleek- en groen-, zaden en opkweekmateriaal
+2767 — Sla, ijsberg-, productie
+2768 — Sla, ijsberg-, zaden en opkweekmateriaal
+2769 — Sla, radicchio rosso, productie
+2771 — Sla, overig, productie
+2772 — Sla, overig, zaden en opkweekmateriaal
+2773 — Spinazie, productie
+2774 — Spinazie, zaden en opkweekmateriaal
+2775 — Spitskool, productie
+2777 — Spruitkool/spruitjes, productie
+2778 — Spruitkool/spruitjes, zaden en opkweekmateriaal
+2779 — Stamsperziebonen (=stamslabonen), productie
+2780 — Stamsperziebonen (=stamslabonen), zaden en opkweekmateriaal
+2781 — Stoksnijbonen en stokslabonen, productie
+2782 — Stoksnijbonen en stokslabonen, zaden en opkweekmateriaal
+2783 — Waspeen, productie
+2784 — Waspeen, zaden en opkweekmateriaal
+2785 — Winterpeen, productie
+2786 — Winterpeen, zaden en opkweekmateriaal
+2787 — Witlofwortel, productie
+2788 — Witlofwortel, zaden en opkweekmateriaal
+2789 — Witte kool, productie
+2790 — Witte kool, zaden en opkweekmateriaal
+2791 — Overige niet genoemde bladgewassen, productie
+2792 — Overige niet genoemde bladgewassen, zaden en opkweekmateriaal
+2793 — Overige niet genoemde groenten, productie
+2794 — Overige niet genoemde groenten, zaden en opkweekmateriaal
+2795 — Bloemkool, winter, productie
+2796 — Bloemkool, winter, zaden en opkweekmateriaal
+2797 — Bloemkool, zomer, productie
+2798 — Bloemkool, zomer, zaden en opkweekmateriaal
+2799 — Prei, winter, productie
+2800 — Prei, winter, zaden en opkweekmateriaal
+2801 — Prei, zomer, productie
+2802 — Prei, zomer, zaden en opkweekmateriaal
+3055 — Lisdodde
+6767 — Linzen
+6792 — Zeekraal
+6794 — Groene braak, spontane opkomst
+6795 — Liatris, bloembollen en -knollen
+6797 — Liatris, overige bloemkwekerijgewassen
+6802 — Sedum
+6803 — Sneeuwklokje, bloembollen en -knollen
+7121 — Bonen, witte-
+7122 — Yacon
+7124 — Raapzaad, winter
+7134 — Riet in water, anders dan een subsidiabele sloot
+7135 — Riet in een subsidiabele sloot
+7137 — Bonen, overig
+7138 — Palmkool";Overige land- en tuinbouwgewassen;53;181;Overige gewassen volgens de notitie.;Nog vast te stellen;9, tabel 5;BRP-001
+BRP;brp_gewas;gewascode;"233 — Tarwe, winter-
+234 — Tarwe, zomer-
+235 — Gerst, winter-
+236 — Gerst, zomer-
+238 — Haver
+259 — Mais, snij-
+314 — Triticale
+316 — Mais, korrel-
+317 — Mais, corncob mix
+375 — Hop
+381 — Teff
+382 — Spelt
+814 — Mais, suiker-
+1022 — Quinoa
+1922 — Koolzaad, winter (incl. boterzaad)
+1923 — Koolzaad, zomer (incl. boterzaad)
+1935 — Maiskolvensilage
+2032 — Mais, energie-
+2652 — Granen, overig
+6636 — Naakte haver
+7129 — Rogge, groenvoedergewas
+7130 — Rogge, korrelgewas
+7131 — Rogge, groenbemesting, vanggewas";Gerst, tarwe, mais (+ overige granen);51;179;;Nog vast te stellen;9, tabel 5;"BRP-002
+BRP-003
+BRP-004
+BRP-005
+BRP-006
+BRP-015
+BRP-021
+BRP-022
+BRP-023
+BRP-031
+BRP-032
+BRP-033
+BRP-058
+BRP-093
+BRP-161
+BRP-162
+BRP-168
+BRP-177
+BRP-203
+BRP-314
+BRP-369
+BRP-370
+BRP-371"
+BRP;brp_gewas;gewascode;"256 — Bieten, suiker-
+257 — Bieten, voeder-
+263 — Uien, zilver-
+1927 — Overige akkerbouwgewassen
+1932 — Uien, poot en plant, 1e jaars
+1933 — Uien, poot en plant, 2e jaars
+1934 — Sjalotten
+2014 — Aardappelen, consumptie
+2015 — Aardappelen, poot NAK
+2016 — Aardappelen, poot TBM
+2017 — Aardappelen, zetmeel
+2025 — Aardappelen, bestrijdingsmaatregel AM
+6632 — Zoete aardappelen
+6660 — Uien, gele zaai-
+6664 — Uien, rode zaai-";Aardappelen, suikerbieten, uien;52;180;;Nog vast te stellen;9, tabel 5;"BRP-012
+BRP-013
+BRP-016
+BRP-164
+BRP-165
+BRP-166
+BRP-167
+BRP-172
+BRP-173
+BRP-174
+BRP-175
+BRP-176
+BRP-313
+BRP-315
+BRP-316"
+BRP;brp_gewas;gewascode;"265 — Grasland, blijvend
+266 — Grasland, tijdelijk";Agrarisch grasland (+ groenbemesters);50;182;Agrarisch gras buitendijks valt onder overig gras/natuur zonder schade (notitie p. 9).;Nog vast te stellen;9, tabel 5;"BRP-017
+BRP-018"
+BRP;brp_gewas;gewascode;"426 — Overige groenbemesters, vlinderbloemige-
+516 — Miscanthus (olifantsgras)
+801 — Esparcette
+944 — Hennep, vezel-
+3502 — Bladkool
+3503 — Niet aangetroffen in lokale BRP-2025; naam niet ingevuld
+3504 — Bladrammenas
+3505 — Deder
+3507 — Ethiopische mosterd
+3508 — Facelia
+3510 — Boekweit
+3517 — Sarepta mosterd/Caliente
+3518 — Niet aangetroffen in lokale BRP-2025; naam niet ingevuld
+3519 — Soedangras/Sorghum
+3520 — Niet aangetroffen in lokale BRP-2025; naam niet ingevuld
+3521 — Stoppelknollen
+3736 — Vlas, vezel-
+6746 — Beemdlangbloem, graszaad
+6748 — Beemdlangbloem, groenbemesting, vanggewas
+6749 — Bieslook
+6750 — Engels raaigras, graszaad
+6751 — Engels raaigras, groenbemesting, vanggewas
+6752 — Festulolium, graszaad
+6753 — Festulolium, groenbemesting, vanggewas
+6754 — Italiaans raaigras, graszaad
+6755 — Italiaans raaigras, groenbemesting, vanggewas
+6756 — Klaver, Alexandrijnse, groenbemesting, vanggewas
+6757 — Klaver, Alexandrijnse, klaverzaad
+6758 — Klaver, incarnaat, groenbemesting, vanggewas
+6759 — Klaver, incarnaat, klaverzaad
+6760 — Klaver, Perzische, groenbemesting, vanggewas
+6761 — Klaver, Perzische, klaverzaad
+6762 — Klaver, rode, groenbemesting, vanggewas
+6763 — Klaver, rode, klaverzaad
+6764 — Klaver, witte, groenbemesting, vanggewas
+6765 — Klaver, witte, klaverzaad
+6768 — Overig graszaad
+6769 — Overig klaverzaad
+6782 — Rietzwenkgras, graszaad
+6783 — Rietzwenkgras, groenbemesting, vanggewas
+6784 — Roodzwenkgras, graszaad
+6785 — Roodzwenkgras, groenbemesting, vanggewas
+6786 — Timothee, graszaad
+6787 — Timothee, groenbemesting, vanggewas
+6788 — Veldbeemdgras, graszaad
+6789 — Veldbeemdgras, groenbemesting, vanggewas
+6790 — Westerwolds raaigras, graszaad
+6791 — Westerwolds raaigras, groenbemesting, vanggewas
+7125 — Overige groenbemesters, niet-vlinderbloemige-, niet zijnde gras
+7126 — Overige gras, groenbemesting, vanggewas";Agrarisch grasland (+ groenbemesters);50;178;Overige gewassen uit rij 50/178 van tabel 5. Agrarisch gras (265, 266) staat apart vanwege de buitendijkse uitzondering.;Nog vast te stellen;9, tabel 5;"BRP-034
+BRP-038
+BRP-055
+BRP-062
+BRP-296
+BRP-297
+BRP-298
+BRP-299
+BRP-300
+BRP-301
+BRP-302
+BRP-303
+BRP-304
+BRP-305
+BRP-306
+BRP-307
+BRP-308
+BRP-317
+BRP-318
+BRP-319
+BRP-320
+BRP-321
+BRP-322
+BRP-323
+BRP-324
+BRP-325
+BRP-326
+BRP-327
+BRP-328
+BRP-329
+BRP-330
+BRP-331
+BRP-332
+BRP-333
+BRP-334
+BRP-335
+BRP-337
+BRP-338
+BRP-339
+BRP-340
+BRP-341
+BRP-342
+BRP-343
+BRP-344
+BRP-345
+BRP-346
+BRP-347
+BRP-348
+BRP-365
+BRP-366"
+BRP;brp_gewas;gewascode;"331 — Grasland, natuurlijk. Met landbouwactiviteiten.
+332 — Grasland, natuurlijk. Hoofdfunctie natuur.
+335 — Natuurterreinen (incl. heide)
+338 — Rand, liggend op bouwland en direct grenzend aan bos. Geen landbouwproductie.
+863 — Bos zonder herplantplicht
+1926 — Agrarisch natuurmengsel
+1936 — Bos, blijvend, met herplantplicht
+1940 — Voedselbos
+2300 — Onbeteelde grond vanwege een teeltverbod/ontheffing
+2617 — Boomgroep
+2618 — Windhaag, in een perceel fruitteelt
+2619 — Bossingel
+2620 — Poel en klein historisch water
+2621 — Houtwal en houtsingel
+2622 — Elzensingel
+2624 — Knip- of scheerheg
+2625 — Struweelhaag
+2626 — Laan
+2628 — Hoogstamboomgaard
+2629 — Struweelrand
+2630 — Hakhoutbosje
+2631 — Griendje
+2634 — Natuurvriendelijke oever
+2636 — Leibomen
+2637 — Schurvelingen en zandwallen
+2638 — Niet aangetroffen in lokale BRP-2025; naam niet ingevuld
+2639 — Water, overig
+2642 — Bosje
+3801 — Tijdelijk onbeteelde grond, i.v.m. publieke werken
+3802 — Tijdelijk onbeteelde grond, anders dan voor publieke werken
+3805 — Rietzwenkgras, industriegras
+6522 — Riet
+6793 — Graften
+6798 — Perceel bedekt met gewasresten (mulching)
+6800 — Ruigtes op landbouwpercelen
+6801 — Schouwpad
+6807 — Stroken wild gras
+6808 — Tuunwallen
+6809 — Voederhaag
+7127 — Rietland
+7128 — Niet aangetroffen in lokale BRP-2025; naam niet ingevuld";Overig gras/natuur (geen schade);54;182;;Nog vast te stellen;9, tabel 5;"BRP-024
+BRP-025
+BRP-026
+BRP-027
+BRP-061
+BRP-163
+BRP-169
+BRP-170
+BRP-178
+BRP-183
+BRP-184
+BRP-185
+BRP-186
+BRP-187
+BRP-188
+BRP-189
+BRP-190
+BRP-191
+BRP-192
+BRP-193
+BRP-194
+BRP-195
+BRP-196
+BRP-197
+BRP-198
+BRP-199
+BRP-200
+BRP-201
+BRP-309
+BRP-310
+BRP-311
+BRP-312
+BRP-350
+BRP-354
+BRP-355
+BRP-356
+BRP-359
+BRP-360
+BRP-361
+BRP-367
+BRP-368"
+BRP;brp_gewas;gewascode;"343
+Sloot";Overig gras/natuur (geen schade);54;182;BGT-water gaat voor op het BRP-perceel.;Nog vast te stellen;9, tabel 5;BRP-028
+BRP;brp_gewas;gewascode;"OVERIGE GELDIGE CODES
+Ook codes uit toekomstige BRP-versies";Overige land- en tuinbouwgewassen;53;181;Overige gewassen volgens de notitie.;Nog vast te stellen;9;BRP-376
+BGT;bgt_wegdeel;bgt-functie;baan voor vliegverkeer;Vliegvelden;70;198;;Nog vast te stellen;10, tabel 6;BGT-001
+BGT;bgt_wegdeel;bgt-functie;"overweg
+spoorbaan";Spoorwegen;71;199;;Nog vast te stellen;10, tabel 6;"BGT-002
+BGT-003"
+BGT;bgt_wegdeel;bgt-functie;"rijbaan autosnelweg
+rijbaan autoweg";Snelwegen;72;200;;Nog vast te stellen;10, tabel 6;"BGT-004
+BGT-005"
+BGT;bgt_wegdeel;bgt-functie;rijbaan regionale weg;Regionale wegen;73;201;;Nog vast te stellen;10, tabel 6;BGT-006
+BGT;bgt_wegdeel;bgt-functie;rijbaan lokale weg;Lokale wegen;74;202;;Nog vast te stellen;10, tabel 6;BGT-007
+BGT;bgt_wegdeel;bgt-functie;OV-baan;Lokale wegen;74;202;;Nog vast te stellen;10, tabel 6;BGT-008
+BGT;bgt_wegdeel;bgt-functie;"fietspad
+inrit
+parkeervlak
+voetgangersgebied
+voetpad
+voetpad op trap
+woonerf";Overige wegdelen;75;203;;Nog vast te stellen;10, tabel 6;"BGT-009
+BGT-010
+BGT-011
+BGT-012
+BGT-013
+BGT-014
+BGT-015"
+BGT;bgt_wegdeel;bgt-functie;ruiterpad;Bermen, overig gras, bos, natuur;78;206;;Nog vast te stellen;10, tabel 6;BGT-016
+BGT;bgt_ondersteunendwegdeel.gml;bgt-functie;verkeerseiland;Overige wegdelen;75;203;;Nog vast te stellen;10, tabel 6;BGT-017
+BGT;bgt_ondersteunendwegdeel.gml;bgt-functie;berm;Bermen, overig gras, bos, natuur;78;206;;Nog vast te stellen;10, tabel 6;BGT-018
+BGT;bgt_begroeidterreindeel.gml;bgt-fysiekVoorkomen;"duin
+gemengd bos
+grasland overig
+groenvoorziening
+heide
+houtwal
+kwelder
+loofbos
+moeras
+naaldbos
+rietland
+struiken";Bermen, overig gras, bos, natuur;78;206;;Nog vast te stellen;10, tabel 6;"BGT-019
+BGT-020
+BGT-021
+BGT-022
+BGT-023
+BGT-024
+BGT-025
+BGT-026
+BGT-027
+BGT-028
+BGT-029
+BGT-030"
+BGT;bgt_begroeidterreindeel.gml;bgt-fysiekVoorkomen;"grasland agrarisch
+Aanvulling op BRP-gras";Agrarisch grasland (+ groenbemesters);50;182;BGT-gras vult de BRP-landbouwpercelen aan.;Nog vast te stellen;9, tabel 5;BGT-031
+BGT;bgt_onbegroeidterreindeel.gml;Geen filterveld voorgeschreven;"ALLE OBJECTEN IN LAAG
+Onbegroeid terreindeel";Erf;76;204;Nog bevestigen: welke onbegroeide terreindelen als erf meetellen.;Nog vast te stellen;10, tabel 6;BGT-032
+BGT;bgt_waterdeel;Geen subtypefilter voorgeschreven;"ALLE WATERDELEN
+Waterdeel";Water;100;228;;Nog vast te stellen;10, tabel 6;BGT-033
