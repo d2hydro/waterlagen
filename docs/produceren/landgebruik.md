@@ -57,20 +57,28 @@ De taak voert het meegeleverde script uit. Rechtstreeks starten kan ook:
 pixi run --locked python ./scripts/functioneel_landgebruik.py
 ```
 
-Alle productie-instellingen staan bovenaan `scripts/functioneel_landgebruik.py`:
+De rekeninstellingen staan bovenaan `scripts/functioneel_landgebruik.py`:
 
 | Instelling | Huidige waarde |
 |---|---|
-| `WORKERS` | 32 |
+| `WORKERS` | 16; instelbaar via `FUNCTIONEEL_LANDGEBRUIK_WORKERS` |
 | `RESOLUTION_M` | 0,5 meter |
 | `TEGELGROOTTE_M` | 5.000 meter |
-| `UITVOERMAP` | `functioneel_landgebruik_20260925_actuele_bgt` |
 | `BGT_BESTAND` | `bgt.gpkg` |
-| `TEGELS_OVERSCHRIJVEN` | `True`: rastertegels opnieuw berekenen |
-| `COG_OVERSCHRIJVEN` | `False`: bestaande landelijke TIFF behouden |
 | `CONTROLE_OPSLAAN` | `True`: NoData-controle schrijven |
 
-Het script hergebruikt het tegelrooster en de voorbereide actuele BGT. De BGT
+Stel het aantal workers desgewenst in via `.env` in de map van waaruit u het
+script start (normaal de repositoryhoofdmap):
+
+```dotenv
+FUNCTIONEEL_LANDGEBRUIK_WORKERS=8
+```
+
+Zonder instelling worden 16 workers gebruikt. De waarde moet een geheel getal
+van minstens 1 zijn. Een omgevingsvariabele met dezelfde naam heeft voorrang
+op `.env`. Start het script opnieuw na een wijziging.
+
+Het script hergebruikt de voorbereide actuele BGT. De BGT
 moet de vijf gebruikte lagen en de einddatumvelden bevatten. De gebruikte CSV
 wordt in de uitvoermap bewaard; bij een afwijkende CSV moet u een nieuwe
 uitvoermap kiezen.
@@ -82,13 +90,16 @@ en expliciet `geometrie2d` te gebruiken in plaats van een kruinlijn. De bestaand
 ZIP kan worden hergebruikt. Alleen het script opnieuw starten herstelt een
 eerder verkeerd omgezet GeoPackage niet: dat bronbestand wordt hergebruikt.
 
-Let op: met `COG_OVERSCHRIJVEN=False` wordt een bestaande landelijke TIFF niet
-vernieuwd na het herberekenen van tegels. De VRT verwijst wel naar die tegels.
-Zet deze instelling op `True` als ook de bestaande landelijke TIFF moet worden vernieuwd.
+Standaard ontstaat een nieuwe runmap. Met `--run-id NAAM --resume` hervat u
+een compatibele run en worden aanwezige resultaten hergebruikt.
+`--run-id NAAM --overwrite` vernieuwt zowel het tegelrooster, de rastertegels
+als de landelijke TIFF. Er zijn geen afzonderlijke overschrijfopties meer voor
+tegels en TIFF. Zie [productiemappen](configuratie.md#productiemappen) voor de
+gedeelde naamgeving en controles.
 
 ## Resultaten
 
-Onder `processed_data/<UITVOERMAP>` in uw datastore vindt u:
+Onder `processed_data/functioneel_landgebruik/nederland/<run-id>` in uw datastore vindt u:
 
 - `tiles/`: de berekende rastertegels;
 - `functioneel_landgebruik.vrt`: de tegels samengevoegd als virtueel raster;
@@ -96,6 +107,7 @@ Onder `processed_data/<UITVOERMAP>` in uw datastore vindt u:
 - `functioneel_landgebruik.qml`: legenda voor het landelijke raster in QGIS;
 - `nodata.gpkg`: NoData-vlakken met bron en reden;
 - `status.json`: voortgang en eventuele foutmelding;
+- `run.json`: rekeninstellingen, bronidentiteit, pakketversie en runstatus;
 - `landgebruik_met_code.csv`: de gebruikte codetabel.
 
 Het logbestand is `productie.log` in dezelfde uitvoermap. Open het resultaat
@@ -363,10 +375,11 @@ gebruiken:
 pixi run python scripts/functioneel_landgebruik.py --mapping-csv mijn_landgebruik.csv
 ```
 
-Kies na een wijziging een nieuwe `UITVOERMAP` in het script. De bestaande
-uitvoermap accepteert alleen exact dezelfde CSV-bytes; ook sorteren of opnieuw
-opslaan in Excel kan die bytes wijzigen. Zo blijven de opgeslagen tabel,
-rastertegels en landelijke TIFF bij dezelfde productie horen.
+Kies na een wijziging een nieuwe run-ID (of start zonder `--run-id` voor een
+nieuwe tijdstempel). Een bestaande run accepteert alleen exact dezelfde
+CSV-bytes; ook sorteren of opnieuw opslaan in Excel kan die bytes wijzigen.
+Zo blijven de opgeslagen tabel, rastertegels en landelijke TIFF bij dezelfde
+productie horen. Zie [productiemappen](configuratie.md#productiemappen).
 
 #### Bewerken in Excel
 
@@ -425,9 +438,9 @@ Zie ook de [functionele verwerking](../bewerkingen/functioneel-landgebruik.md#co
 
 Sorteren verandert classificatie, kleuren en legendalabels niet.
 
-Bestaande rasters worden bij `overwrite=False` hergebruikt en veranderen niet
-mee met de CSV. Gebruik voor een nieuwe codering een nieuwe uitvoermap, of
-bereken de betrokken tegels en het eindraster opnieuw met `overwrite=True`.
+Bestaande rasters worden bij `--resume` hergebruikt en veranderen niet
+mee met de CSV. Gebruik voor een nieuwe codering een nieuwe run-ID.
+In eigen Python-workflows blijven de `overwrite`-parameters beschikbaar.
 De BAG-controle vernieuwt bij rechtstreeks starten wel het controlebestand.
 
 De BGT-GeoPackage moet nu ook `bgt_begroeidterreindeel`,

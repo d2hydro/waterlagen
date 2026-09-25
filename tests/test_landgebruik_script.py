@@ -1,8 +1,11 @@
+import hashlib
 import importlib.util
 from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+
+from waterlagen import _production
 
 
 def _load_landgebruik_script():
@@ -14,6 +17,43 @@ def _load_landgebruik_script():
     assert spec.loader is not None
     spec.loader.exec_module(module)
     return module
+
+
+def test_csv_mismatch_explains_runfolder_and_recovery(tmp_path, monkeypatch):
+    landgebruik = _load_landgebruik_script()
+    store = SimpleNamespace(processed_data_dir=tmp_path / "processed")
+    output = store.processed_data_dir / "functioneel_landgebruik" / "nederland" / "test"
+    with _production.production_run(
+        store.processed_data_dir,
+        "functioneel_landgebruik",
+        "nederland",
+        run_id="test",
+        parameters={
+            "crs": landgebruik.settings.crs,
+            "resolution_m": landgebruik.RESOLUTION_M,
+            "tile_size_m": landgebruik.TEGELGROOTTE_M,
+            "diagnostics": landgebruik.CONTROLE_OPSLAAN,
+            "csv_sha256": hashlib.sha256(
+                landgebruik.LANDGEBRUIK_CSV.read_bytes()
+            ).hexdigest(),
+        },
+    ):
+        pass
+    csv_path = output / "landgebruik_met_code.csv"
+    csv_path.write_text("Andere CSV", encoding="utf-8")
+    monkeypatch.setattr(landgebruik, "configure_logging", lambda **kwargs: None)
+
+    with pytest.raises(ValueError) as error:
+        landgebruik.main(data_store=store, run_id="test", resume=True)
+
+    message = str(error.value)
+    assert str(output.resolve()) in message
+    assert str(csv_path.resolve()) in message
+    assert str(landgebruik.LANDGEBRUIK_CSV.resolve()) in message
+    assert "Verwijder" in message
+    assert "--run-id" in message
+    assert "--overwrite" in message
+    assert csv_path.read_text(encoding="utf-8") == "Andere CSV"
 
 
 @pytest.mark.parametrize("configured_default", [False, True])
@@ -28,10 +68,13 @@ def test_landgebruik_script_builds_tiles_vrt_and_cog_in_order(
     missing_bgt,
 ):
     landgebruik = _load_landgebruik_script()
+    monkeypatch.setattr(_production, "default_run_id", lambda: "test")
     events = []
     processed_dir = tmp_path / "processed"
     data_dir_root = tmp_path / "data"
-    tiles_path = processed_dir / landgebruik.UITVOERMAP / "tiles.gpkg"
+    tiles_path = (
+        processed_dir / "functioneel_landgebruik" / "nederland" / "test" / "tiles.gpkg"
+    )
     tile_files = [
         processed_dir / "functioneel_landgebruik" / "tiles" / "tile-a.tif",
         processed_dir / "functioneel_landgebruik" / "tiles" / "tile-b.tif",
@@ -93,7 +136,7 @@ def test_landgebruik_script_builds_tiles_vrt_and_cog_in_order(
         (bgt_path or default_bgt).unlink()
         with pytest.raises(FileNotFoundError, match="bgt_actuele_vlakken.py"):
             landgebruik.main(data_store=data_store, bgt_path=bgt_path)
-        assert [event for event, _kwargs in events] == ["build_tiles"]
+        assert events == []
         return
     if configured_default:
         monkeypatch.chdir(tmp_path)
@@ -109,7 +152,7 @@ def test_landgebruik_script_builds_tiles_vrt_and_cog_in_order(
     else:
         result = landgebruik.main(data_store=data_store, bgt_path=bgt_path)
 
-    data_dir = processed_dir / landgebruik.UITVOERMAP
+    data_dir = processed_dir / "functioneel_landgebruik" / "nederland" / "test"
     tiles_dir = data_dir / "tiles"
     vrt_file = data_dir / "functioneel_landgebruik.vrt"
     cog_file = data_dir / "functioneel_landgebruik.tif"
@@ -131,7 +174,7 @@ def test_landgebruik_script_builds_tiles_vrt_and_cog_in_order(
     assert events[1][1]["sources"].bgt_gpkg == (
         bgt_path or tmp_path / "source/bgt" / landgebruik.BGT_BESTAND
     )
-    assert events[1][1]["overwrite"] is True
+    assert events[1][1]["overwrite"] is False
     assert events[1][1]["diagnostics_path"] == data_dir / "nodata.gpkg"
     assert events[1][1]["download_missing_sources"] is False
     assert events[2][1] == {"vrt_file": vrt_file, "directory": tiles_dir}
@@ -152,3 +195,15 @@ def test_landgebruik_script_builds_tiles_vrt_and_cog_in_order(
     assert (
         data_dir / "landgebruik_met_code.csv"
     ).read_bytes() == landgebruik.LANDGEBRUIK_CSV.read_bytes()
+
+    for mode in ("resume", "overwrite"):
+        events.clear()
+        assert (
+            landgebruik.main(
+                data_store=data_store, bgt_path=bgt_path, run_id="test", **{mode: True}
+            )
+            == cog_file
+        )
+        assert events[0][1]["overwrite"] is (mode == "overwrite")
+        assert events[1][1]["overwrite"] is (mode == "overwrite")
+        assert events[3][1]["overwrite"] is (mode == "overwrite")

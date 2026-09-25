@@ -19,6 +19,76 @@ pixi run --locked controleer
 
 Kies daarna een productie bij [Zelf produceren](index.md).
 
+## Productiemappen
+
+De huidige productiescripts voor `autos`, `inwoners`, `afwateringseenheden` en
+`functioneel_landgebruik` gebruiken één conventie:
+
+```text
+processed_data/<dataset>/<werkgebied>/<run-id>/
+```
+
+| Dataset | Werkgebied | Voorbeeld van een resultaat |
+| --- | --- | --- |
+| `autos` | `nederland` | `autos/nederland/20260925T120000Z/autos.gpkg` |
+| `inwoners` | `nederland` | `inwoners/nederland/20260925T120000Z/inwoners.gpkg` |
+| `afwateringseenheden` | `waterschap_<code>` | `afwateringseenheden/waterschap_38/20260925T120000Z/afwateringseenheden.gpkg` |
+| `functioneel_landgebruik` | `nederland` | `functioneel_landgebruik/nederland/20260925T120000Z/functioneel_landgebruik.tif` |
+
+Zonder opties maakt iedere opdracht een nieuwe run met een UTC-tijdstempel
+`YYYYMMDDTHHMMSSZ`. Die tijd duidt de productie aan, niet het peiljaar van de
+bron. Meerdere waterschappen binnen één opdracht krijgen dezelfde run-ID,
+elk onder hun eigen werkgebied. Een naamconflict geeft een foutmelding;
+een bestaande map wordt nooit stilzwijgend hergebruikt.
+
+Alle vier de scripts accepteren dezelfde opties:
+
+| Optie | Gedrag |
+| --- | --- |
+| `--run-id NAAM` | Maak een nieuwe run met een eigen naam, bijvoorbeeld `20260925T120000Z_alternatieve_mapping`. |
+| `--run-id NAAM --resume` | Hervat die bestaande run en hergebruik aanwezige resultaten waar de workflow dat ondersteunt. |
+| `--run-id NAAM --overwrite` | Bereken de uitvoer in die bestaande run opnieuw, met dezelfde instellingen en bronnen. |
+
+Gebruik voor een naam 1–100 letters, cijfers, underscores of koppeltekens,
+beginnend met een letter of cijfer; geef geen pad op. `--resume` en `--overwrite`
+vereisen een expliciete run-ID en kunnen niet samen worden gebruikt.
+
+Bijvoorbeeld, vanuit de repositoryhoofdmap:
+
+```console
+pixi run python scripts/functioneel_landgebruik.py --run-id proef
+pixi run python scripts/functioneel_landgebruik.py --run-id proef --resume
+pixi run python scripts/functioneel_landgebruik.py --run-id proef --overwrite
+```
+
+De uitvoermap wordt bij aanvang gelogd. Productielogs en `run.json` staan bij
+de resultaten. `run.json` registreert de geïnstalleerde pakketversie,
+rekeninstellingen, bronpaden, bronidentiteit en de status `running`, `complete`
+of `failed`. Landgebruik bewaart daarnaast de CSV en registreert zijn SHA-256.
+Herstarten met andere instellingen, een andere pakketversie, gewijzigde
+bronbestanden of een andere mapping vereist een **nieuwe run-ID**, ook met
+`--overwrite`. Het aantal workers mag bij hervatten wel veranderen.
+
+Voor grote bronbestanden vergelijkt de controle pad, grootte en wijzigingstijd;
+het is geen volledige inhoudscontrole. Lokale VRT's worden op inhoud en hun
+bronverwijzingen gecontroleerd. Codewijzigingen binnen dezelfde pakketversie
+worden niet automatisch herkend: kies daarvoor zelf een nieuwe run-ID.
+Een achtergebleven `.run.lock` mag alleen worden verwijderd als er geen
+productie meer actief is.
+
+Downloads en gedeelde tussenproducten, zoals `processed_data/vbo_buurt`, blijven
+op hun bestaande locaties en worden niet per run gekopieerd. De runcontrole
+registreert die bestanden, maar vervangt hun eigen cachevoorwaarden niet.
+Vernieuw verouderde tussenproducten dus afzonderlijk voordat u een nieuwe
+productie start.
+
+Bestaande uitvoermappen worden niet verplaatst of automatisch als nieuwe run
+overgenomen. De Python-pakketfuncties en vaste `DataStore`-paden blijven
+beschikbaar voor bestaande workflows. Geef in vervolganalyses expliciet de
+resultaten van de gewenste run op; er wordt geen automatische “laatste run”
+gekozen. Deze conventie geldt voor de huidige scripts; oudere gedownloade
+productiepakketten kunnen nog de eerdere mapindeling gebruiken.
+
 ## Gegevens ergens anders bewaren
 
 Wilt u bijvoorbeeld een andere schijf gebruiken omdat daar meer ruimte is?
