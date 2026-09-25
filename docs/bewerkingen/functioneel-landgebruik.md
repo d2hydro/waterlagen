@@ -82,8 +82,27 @@ De codes en omschrijvingen komen uit
 `src/waterlagen/functioneel_landgebruik/landgebruik_met_code.csv`.
 De tabel is gebaseerd op de notitie van 17 september 2025 en wordt met het
 pakket meegeleverd. Een eigen tabel kan via `mapping_csv` worden opgegeven.
-De kolommen `Binnen` en `Buiten` moeten gehele getallen bevatten; toelichtingen
-horen in `Toelichting`. Code 0 is gereserveerd voor NoData.
+De kolommen `LGB-code_binnendijks` en `LGB-code_buitendijks` bevatten gehele
+getallen van 1 t/m 255; code 0 is gereserveerd voor NoData. `LGB_beschrijving`
+levert de klassenaam. `Toelichting` en `Documentatie` beïnvloeden de indeling niet.
+De tabel onderscheidt directe bronwaardekoppelingen (`mapping`) en vaste
+Python-regels (`functie`, geïdentificeerd door `Koppel-ID`). Elke nieuwe tabelrij
+bevat één bronwaarde. Zie [de codetabel aanpassen](../produceren/landgebruik.md#de-codetabel-aanpassen)
+voor het bestandsformaat en de bewerkbare kolommen.
+
+Een expliciete waarde gaat voor het vangnet `*`. Met een bronveld vangt dit
+alleen geldige, niet-lege waarden op; BRP vereist positieve gehele gewascodes.
+Zonder bronveld geldt de regel voor alle verder geschikte objecten. Die variant
+wordt gebruikt voor BGT-water en onbegroeide terreindelen. Ontbrekende of lege
+attribuutwaarden krijgen bij een veldgebonden koppeling geen klasse uit die laag.
+
+De CSV-volgorde bepaalt noch de classificatie, noch de presentatie. Als meerdere
+bronnen dezelfde code gebruiken, is de kleurvoorrang: BGT-water, gebouwen,
+BRP, TOP10NL, BGT-wegen en overige terreinen/gemalen. Dit is uitsluitend een
+kleurkeuze, geen rastervoorrang. Voor een gedeelde buitencode krijgt de
+beschrijving van de rij met `buitencode = binnencode + 128` voorrang. Ontbreekt
+zo'n rij, dan worden de verschillende beschrijvingen alfabetisch samengevoegd.
+Die voorkeur bepaalt alleen het legendalabel, niet de uitvoercode.
 
 - **BAG:** de functiekeuze en berekening van bouwlagen blijven afzonderlijke
   stappen. De uitkomst kiest een vaste koppeling-ID; de CSV levert daarna de

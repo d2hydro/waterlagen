@@ -26,22 +26,33 @@ def build_colormap(table: LanduseTable) -> dict[int, tuple[int, int, int, int]]:
         determine classification or overlap priority.
     """
     colors = {0: (0, 0, 0, 0)}
+    # Fixed source precedence preserves the bundled palette, regardless of CSV
+    # order: water, buildings, BRP, TOP10NL, roads, other terrain/pumps.
+    candidates = {}
     for row in table.rows:
         if row.layer == "bgt_waterdeel":
+            priority = 0
             color = (0, 130, 255, 255)
         elif row.source == "BAG" or "+ BAG" in row.source:
+            priority = 1
             color = (235, 180, 65, 255)
         elif row.source == "BRP":
+            priority = 2
             color = (125, 190, 90, 255)
         elif row.source == "TOP10NL":
+            priority = 3
             color = (185, 105, 185, 255)
         elif row.layer in {"bgt_wegdeel", "bgt_ondersteunendwegdeel"}:
+            priority = 4
             color = (210, 85, 70, 255)
         else:
+            priority = 5
             color = (100, 155, 90, 255)
         for code in (row.inside, row.outside):
-            if code is not None:
-                colors.setdefault(code, color)
+            candidate = (priority, color)
+            if code not in candidates or candidate < candidates[code]:
+                candidates[code] = candidate
+    colors.update({code: candidate[1] for code, candidate in candidates.items()})
     return colors
 
 
@@ -64,11 +75,11 @@ def write_qgis_style(raster_path: Path, table: LanduseTable) -> Path:
     labels = {0: "0 — NoData / niet ingedeeld"}
     for row in table.rows:
         labels[row.inside] = f"{row.inside} — {row.description} (binnendijks)"
-    for row in table.rows:
-        # Prefer the class's own outside label over a redirected input class:
-        # agricultural grass outside dikes becomes nature (182).
-        if row.outside not in labels or row.outside == row.inside + 128:
-            labels[row.outside] = f"{row.outside} — {row.description} (buitendijks)"
+    for code in sorted({row.outside for row in table.rows}):
+        rows = [row for row in table.rows if row.outside == code]
+        preferred = [row for row in rows if row.outside == row.inside + 128]
+        descriptions = sorted({row.description for row in preferred or rows})
+        labels[code] = f"{code} — {'; '.join(descriptions)} (buitendijks)"
 
     root = ET.Element("qgis", version="3.40", styleCategories="Symbology")
     pipe = ET.SubElement(root, "pipe")

@@ -1,5 +1,6 @@
 """Landelijke productie: bronnen hergebruiken, tegels opnieuw maken, COG hergebruiken."""
 
+import argparse
 import hashlib
 import json
 import shutil
@@ -145,4 +146,9 @@ def main(
 
 if __name__ == "__main__":
     freeze_support()
-    main()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--mapping-csv", type=Path, help="Eigen UTF-8-codetabel met puntkomma's."
+    )
+    arguments = parser.parse_args()
+    main(mapping_csv=arguments.mapping_csv)

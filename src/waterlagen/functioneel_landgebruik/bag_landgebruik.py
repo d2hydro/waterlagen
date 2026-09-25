@@ -12,6 +12,7 @@ import pandas as pd
 from waterlagen.functioneel_landgebruik.landgebruikstabel import (
     LanduseMapping,
     LanduseTable,
+    _validate_function,
     load_landuse_table,
 )
 
@@ -73,32 +74,11 @@ FLOOR_MAPPING_IDS = {
 
 def _validated_bag_mappings(table: LanduseTable) -> dict[str, LanduseMapping]:
     """Controleer vaste ID's op bron en functie; codes en omschrijvingen zijn vrij."""
-    expected_functions = {}
-    for function, floor_mappings in FLOOR_MAPPING_IDS.items():
-        for mapping_id in floor_mappings.values():
-            expected_functions[mapping_id] = function
-    expected_functions.update(
-        {
-            "BAG-031": "woonfunctie",  # Appartementencomplex.
-            "BAG-032": "overige gebruiksfunctie",  # Meer dan 100 m².
-            "BAG-033": "overige gebruiksfunctie",  # Maximaal 100 m².
-            "BAG-034": None,  # Aparte bronwaarde voor ontbrekend gebruiksdoel.
-        }
-    )
     mappings = {}
-    for mapping_id, expected_function in expected_functions.items():
+    for number in range(1, 35):
+        mapping_id = f"BAG-{number:03d}"
         mapping = table.by_id(mapping_id)
-        if mapping.source != "BAG":
-            raise ValueError(
-                f"CSV {table.path}: {mapping_id} verwacht bron BAG, "
-                f"maar heeft bron {mapping.source!r}."
-            )
-        if expected_function is not None and mapping.values != (expected_function,):
-            raise ValueError(
-                f"CSV {table.path}: {mapping_id} verwacht Bronwaarde "
-                f"{expected_function!r}, maar heeft {mapping.values!r}. "
-                "Geef een bestaande koppeling-ID geen andere functie."
-            )
+        _validate_function(mapping, context=f"CSV {table.path}")
         mappings[mapping_id] = mapping
     return mappings
 

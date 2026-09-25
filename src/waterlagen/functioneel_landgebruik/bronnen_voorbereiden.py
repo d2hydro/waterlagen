@@ -73,6 +73,7 @@ def _assign_source_codes(
         keys = numbers.where(valid).astype("Int64").astype("string")
     else:
         keys = result[field].astype("string").str.strip().str.casefold()
+        keys = keys.mask(keys.eq(""))
 
     matched = keys.map(mappings)
     fallback = mappings.get("*")
@@ -82,7 +83,7 @@ def _assign_source_codes(
             logger.warning(
                 "%s bronwaarden gebruiken CSV-vangnet %s: %s",
                 int(remaining.sum()),
-                fallback.ids[0],
+                fallback.ids[0] if fallback.ids else f"{source}/{source_layer}/*",
                 sorted(keys[remaining].unique())[:10],
             )
             matched.loc[remaining] = pd.Series(
@@ -304,7 +305,7 @@ def prepare_bgt_layer(
     """
     table = table or load_landuse_table()
     mappings = table.source_values("BGT", mapping_layer)
-    field = None if set(mappings) == {"*"} else _mapping_field(mappings)
+    field = _mapping_field(mappings) or None
     columns = ["bgt-status", "eindRegistratie", "objectEindTijd", "geometry"]
     if field is not None:
         columns.append(field)

@@ -338,20 +338,85 @@ aan; standaard wordt het herstelde `bgt.gpkg` gebruikt.
 
 De standaardtabel staat in
 `src/waterlagen/functioneel_landgebruik/landgebruik_met_code.csv`.
-Deze CSV is onderdeel van de codeversie. De documentatiemap kan een kopie
-bevatten; wijzigingen daarin worden niet automatisch naar de pakketversie
-gekopieerd. Geef het betreffende pad expliciet op om die kopie te gebruiken.
+Deze CSV is onderdeel van de codeversie. Gebruik de pakketversie als
+uitgangspunt voor je eigen tabel.
+Kopieer de meegeleverde tabel naar een eigen bestand, zodat pakketupdates je
+aanpassingen niet vervangen:
+
+```python
+from pathlib import Path
+from shutil import copyfile
+from waterlagen.functioneel_landgebruik.landgebruikstabel import DEFAULT_MAPPING_CSV
+
+copyfile(DEFAULT_MAPPING_CSV, Path("mijn_landgebruik.csv"))
+```
 
 Beide startscripts hebben bovenin `LANDGEBRUIK_CSV`. Stel daar desgewenst een
 eigen `Path(...)` in. Het productiescript bewaart de gebruikte CSV in de uitvoermap.
 Vanuit Python kan dit ook met `main(mapping_csv=Path(...))` of met
 `bouw_functioneel_landgebruik(..., mapping_csv=Path(...))`.
 
-Gebruik puntkomma's als scheidingsteken en behoud de kolomnamen en vaste
-koppeling-ID's. Rijen mogen worden verplaatst; hun positie bepaalt de klasse
-niet. Onjuiste codes, ontbrekende BAG-koppelingen en dubbele ID's geven een
-foutmelding. `landgebruik_zonder_code.csv` is een overzicht voor beoordeling
-en wordt niet als codetabel ingelezen.
+Vanaf de repositoryhoofdmap kan het productiescript ook direct een eigen tabel
+gebruiken:
+
+```console
+pixi run python scripts/functioneel_landgebruik.py --mapping-csv mijn_landgebruik.csv
+```
+
+Kies na een wijziging een nieuwe `UITVOERMAP` in het script. De bestaande
+uitvoermap accepteert alleen exact dezelfde CSV-bytes; ook sorteren of opnieuw
+opslaan in Excel kan die bytes wijzigen. Zo blijven de opgeslagen tabel,
+rastertegels en landelijke TIFF bij dezelfde productie horen.
+
+#### Bewerken in Excel
+
+De meegeleverde CSV kun je gewoon in Excel openen en bewerken. Sla het bestand daarna weer op als CSV, niet als .xlsx.
+
+Controleer bij het opslaan dat Excel ; als scheidingsteken gebruikt. Afhankelijk van je regionale instellingen kan Excel automatisch , gebruiken. Komma's binnen een bronwaarde horen bij de tekst zelf en mogen dus niet als kolomscheiding worden gebruikt.
+
+| Kolom | Gebruik |
+| --- | --- |
+| `Koppelmethode` | `mapping` voor een directe bronwaarde; `functie` voor een ingebouwde Python-regel. |
+| `Koppel-ID` | Verplicht en vast voor `functie`; mag leeg blijven voor `mapping`. |
+| `Bron`, `Bronlaag`, `Bronveld` | Ondersteunde bron, laag en attribuut voor directe koppelingen. Bij functies beschrijven ze de invoer; de BAG-identiteit wordt gecontroleerd. |
+| `Bronwaarde` | Precies één volledige waarde per rij, of `*` als vangnet. |
+| `LGB-code_binnendijks`, `LGB-code_buitendijks` | Bewerkbare uitvoercodes van 1 t/m 255; 0 blijft NoData. Binnen- en buitencodes mogen niet overlappen. |
+| `LGB_beschrijving` | Bewerkbare klassenaam voor uitvoer en legenda. Dezelfde binnencode vereist dezelfde beschrijving. |
+| `Toelichting` | Optionele vrije tekst, zonder invloed op verwerking. |
+| `Documentatie` | Optionele documentatie-URL; wordt tijdens verwerking niet opgehaald. |
+
+Pas normaal de twee codes en de beschrijving aan. Kopieer voor een nieuwe
+directe koppeling een `mapping`-rij uit dezelfde bronlaag, laat `Koppel-ID` leeg
+en vul één nieuwe bronwaarde in. Herhaal een doelcode gerust voor meerdere
+bronwaarden, met een consistente beschrijving. Dubbele bronwaarden binnen
+dezelfde bronlaag zijn niet toegestaan, ook niet bij gelijke uitvoercodes.
+
+**Let op (!)**. Bij regels met `Koppelmethode == functie` kun je alleen de `LGB-code_binnendijks`, `LGB-code_buitendijks`, `LGB_beschrijving`, `Toelichting` en `Documentatie` aanpassen.
+
+De functie zelf ligt vast in de software en wordt herkend via Koppel-ID. Je kunt via de CSV dus geen nieuwe Python-functies of nieuwe rekenregels toevoegen.
+
+De ondersteunde directe combinaties zijn:
+
+| Bron | Bronlaag | Bronveld |
+| --- | --- | --- |
+| BRP | `brp_gewas` | `gewascode` |
+| TOP10NL | `top10nl_functioneel_gebied_vlak`, `top10nl_functioneel_gebied_multivlak` | `typefunctioneelgebied` |
+| BGT | `bgt_wegdeel`, `bgt_ondersteunendwegdeel` | `bgt-functie` |
+| BGT | `bgt_begroeidterreindeel` | `bgt-fysiekVoorkomen` |
+| BGT | `bgt_onbegroeidterreindeel`, `bgt_waterdeel` | Leeg, uitsluitend `*` |
+
+Een willekeurige nieuwe bron, laag of attribuut kan niet alleen door een CSV-rij
+worden toegevoegd. Niet-ondersteunde combinaties geven een foutmelding.
+
+`*` vangt geldige bronwaarden op waarvoor geen expliciete koppeling bestaat.
+Expliciete waarden gaan altijd voor, ongeacht de rijvolgorde. Lege waarden,
+witruimte en ontbrekende waarden vallen hierbuiten. Voor BRP moet de
+waarde bovendien een positief geheel getal zijn. Een leeg `Bronveld` betekent
+geen attribuutfilter: alle verder geschikte objecten worden gekoppeld. Dit is
+alleen ondersteund voor de twee genoemde BGT-lagen en vereist `Bronwaarde = *`.
+Zie ook de [functionele verwerking](../bewerkingen/functioneel-landgebruik.md#codes-uit-de-csv).
+
+Sorteren verandert classificatie, kleuren en legendalabels niet.
 
 Bestaande rasters worden bij `overwrite=False` hergebruikt en veranderen niet
 mee met de CSV. Gebruik voor een nieuwe codering een nieuwe uitvoermap, of

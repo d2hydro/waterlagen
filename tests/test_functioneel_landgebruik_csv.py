@@ -1,6 +1,7 @@
 """Check CSV edits through actual classification, not just the table reader."""
 
 import csv
+from pathlib import Path
 
 import geopandas as gpd
 import pytest
@@ -27,7 +28,8 @@ from waterlagen.raster.config import RasterOutputConfig
 
 
 def _changed_csv(tmp_path, mapping_id, **changes):
-    with DEFAULT_MAPPING_CSV.open(encoding="utf-8-sig", newline="") as stream:
+    legacy_csv = Path(__file__).parent / "fixtures" / "landgebruik_legacy.csv"
+    with legacy_csv.open(encoding="utf-8-sig", newline="") as stream:
         rows = list(csv.DictReader(stream, delimiter=";"))
     row = next(row for row in rows if mapping_id in row["Koppeling-ID"].splitlines())
     row.update(changes)
@@ -314,9 +316,35 @@ def test_full_build_uses_csv_and_water_wins_over_building(tmp_path):
     )
     with rasterio.open(output) as raster:
         values = raster.read(1)
+        colors = raster.colormap(1)
         assert values[3, 0] == 110  # Water still wins over both TOP10NL layers.
         assert values[3, 2] == 77  # Separate part of the inside multivlak.
         assert values[3, 4] == 205
         assert values[1, 4] == 205  # Both parts of the outside multivlak.
         assert raster.colormap(1)[110][:3] == (0, 130, 255)
         assert raster.nodata == 0
+    style = output.with_suffix(".qml").read_bytes()
+    with DEFAULT_MAPPING_CSV.open(encoding="utf-8-sig", newline="") as stream:
+        rows = list(csv.DictReader(stream, delimiter=";"))
+    water = next(row for row in rows if row["Bronlaag"] == "bgt_waterdeel")
+    water["LGB-code_binnendijks"] = "110"
+    for reverse in (False, True):
+        if reverse:
+            rows.reverse()
+        with csv_path.open("w", encoding="utf-8-sig", newline="") as stream:
+            writer = csv.DictWriter(stream, fieldnames=list(rows[0]), delimiter=";")
+            writer.writeheader()
+            writer.writerows(rows)
+        custom_output = bouw_functioneel_landgebruik(
+            tmp_path / f"custom_{reverse}.tif",
+            bounds=(0, 0, 6, 4),
+            resolution_m=1,
+            sources=sources,
+            download_missing_sources=False,
+            mapping_csv=csv_path,
+            output_config=RasterOutputConfig(block_size=16, overview_factors=()),
+        )
+        with rasterio.open(custom_output) as raster:
+            assert (raster.read(1) == values).all()
+            assert raster.colormap(1) == colors
+        assert custom_output.with_suffix(".qml").read_bytes() == style
