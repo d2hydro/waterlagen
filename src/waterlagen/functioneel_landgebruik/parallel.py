@@ -1,23 +1,34 @@
 from __future__ import annotations
 
+import logging
 import os
 from collections.abc import Collection
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import dataclass
 from pathlib import Path
+from time import perf_counter
 
 import geopandas as gpd
 import pandas as pd
 from tqdm.auto import tqdm
 
-from waterlagen.functioneel_landgebruik.build import (
+from waterlagen import datastore as default_datastore
+from waterlagen._crs import same_crs
+from waterlagen.datastore import DataStore
+from waterlagen.functioneel_landgebruik.bag_zoekindex import ensure_bag_link_index
+from waterlagen.functioneel_landgebruik.landgebruik_berekenen import (
     FunctioneelLandgebruikLayers,
     FunctioneelLandgebruikSources,
     _download_missing_sources,
     _validate_sources_exist,
     bouw_functioneel_landgebruik,
 )
-from waterlagen.datastore import DataStore
+from waterlagen.functioneel_landgebruik.landgebruikstabel import load_landuse_table
+from waterlagen.functioneel_landgebruik.nodata_verklaren import (
+    extract_diagnostics,
+    merge_diagnostics,
+    validate_diagnostics,
+)
 from waterlagen.logger import get_logger
 from waterlagen.raster.config import RasterOutputConfig
 from waterlagen.raster.tiles import Tile, read_tiles, tile_filename
@@ -54,21 +65,53 @@ class FunctioneelLandgebruikTileJob:
     sources: FunctioneelLandgebruikSources
     layers: FunctioneelLandgebruikLayers
     output_config: RasterOutputConfig
+    mapping_csv: Path | None = None
+    diagnostics_path: Path | None = None
 
 
 def _build_tile_worker(job: FunctioneelLandgebruikTileJob) -> Path:
-    """Build one tile inside a worker process without downloading sources."""
-    return bouw_functioneel_landgebruik(
-        target_path=job.target_path,
-        bounds=job.bounds,
-        resolution_m=job.resolution_m,
-        crs=job.crs,
-        sources=job.sources,
-        layers=job.layers,
-        output_config=job.output_config,
-        overwrite=job.overwrite,
-        download_missing_sources=False,
+    """Build one tile; write worker details to its own log instead of the terminal."""
+    log_path = job.target_path.parent / "logs" / f"{job.target_path.stem}.log"
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    worker_logger = get_logger("waterlagen")
+    old_handlers = worker_logger.handlers[:]
+    old_level = worker_logger.level
+    old_propagate = worker_logger.propagate
+    handler = logging.FileHandler(log_path, encoding="utf-8")
+    handler.setFormatter(
+        logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s")
     )
+    worker_logger.handlers = [handler]
+    worker_logger.setLevel(logging.INFO)
+    worker_logger.propagate = False
+    started = perf_counter()
+    try:
+        logger.info("Start tegel %s; uitsnede %s", job.tile_id, job.bounds)
+        result = bouw_functioneel_landgebruik(
+            target_path=job.target_path,
+            bounds=job.bounds,
+            resolution_m=job.resolution_m,
+            crs=job.crs,
+            sources=job.sources,
+            layers=job.layers,
+            output_config=job.output_config,
+            overwrite=job.overwrite,
+            download_missing_sources=False,
+            mapping_csv=job.mapping_csv,
+            diagnostics_path=job.diagnostics_path,
+        )
+        logger.info(
+            "Tegel %s gereed in %.1f seconden", job.tile_id, perf_counter() - started
+        )
+        return result
+    except Exception:
+        logger.exception("Berekening tegel %s mislukt", job.tile_id)
+        raise
+    finally:
+        worker_logger.handlers = old_handlers
+        worker_logger.setLevel(old_level)
+        worker_logger.propagate = old_propagate
+        handler.close()
 
 
 def _resolve_workers(workers: int | None) -> int:
@@ -88,6 +131,10 @@ def _validate_tile_index(tiles: gpd.GeoDataFrame) -> None:
         raise ValueError(f"Tile index is missing required column(s): {labels}")
     if tiles.empty:
         raise ValueError("Tile index is empty")
+    if tiles.crs is None or not same_crs(tiles.crs, settings.crs):
+        raise ValueError(
+            f"CRS van tegelrooster ({tiles.crs}) verschilt van {settings.crs}."
+        )
 
 
 def _select_tiles(
@@ -132,6 +179,8 @@ def _job_from_row(
     sources: FunctioneelLandgebruikSources,
     layers: FunctioneelLandgebruikLayers,
     output_config: RasterOutputConfig,
+    mapping_csv: Path | None = None,
+    diagnostics_dir: Path | None = None,
 ) -> FunctioneelLandgebruikTileJob:
     """Convert one tile-index row to the job object submitted to a worker."""
     tile = _tile_from_row(row)
@@ -145,6 +194,12 @@ def _job_from_row(
         sources=sources,
         layers=layers,
         output_config=output_config,
+        mapping_csv=mapping_csv,
+        diagnostics_path=(
+            diagnostics_dir / f"{tile.tile_id}.gpkg"
+            if diagnostics_dir is not None
+            else None
+        ),
     )
 
 
@@ -158,6 +213,7 @@ def _prepare_sources_once(
     if download_missing_sources:
         _download_missing_sources(sources, layers)
     _validate_sources_exist(sources)
+    ensure_bag_link_index(sources.bag_gpkg, layer=layers.bag_verblijfsobject)
 
 
 def bouw_functioneel_landgebruik_tiles(
@@ -175,6 +231,8 @@ def bouw_functioneel_landgebruik_tiles(
     output_config: RasterOutputConfig | None = None,
     download_missing_sources: bool = True,
     show_progress: bool = True,
+    mapping_csv: Path | None = None,
+    diagnostics_path: Path | None = None,
 ) -> list[Path]:
     """Build functional land-use GeoTIFF tiles from a tile index.
 
@@ -210,8 +268,8 @@ def bouw_functioneel_landgebruik_tiles(
     resolution_m : float, optional
         Raster cell size passed to each tile build, by default 0.5.
     crs : str, optional
-        CRS for tile bounds and raster output, by default
-        :data:`waterlagen.settings.settings.crs`.
+        CRS voor tegelgrenzen en uitvoer. Moet overeenkomen met het
+        tegelrooster en :data:`waterlagen.settings.settings.crs`.
     sources : FunctioneelLandgebruikSources, optional
         Explicit source GeoPackage paths. Mutually exclusive with
         ``data_store``.
@@ -227,6 +285,13 @@ def bouw_functioneel_landgebruik_tiles(
         are started, by default True.
     show_progress : bool, optional
         Whether to show a tqdm progress bar for selected tiles.
+    mapping_csv : Path, optional
+        CSV with land-use codes, passed unchanged to every worker.
+    diagnostics_path : Path, optional
+        GeoPackage met één laag ``nodata`` en de kolommen ``bron`` en ``reden``.
+        Tijdelijke tegelcontroles worden na succesvol samenvoegen verwijderd.
+        Bij hergebruik worden ze uit het bestaande eindbestand gehaald.
+        Zonder passende controle is opnieuw berekenen nodig.
 
     Returns
     -------
@@ -240,6 +305,8 @@ def bouw_functioneel_landgebruik_tiles(
     datasets, writes tile GeoTIFFs through worker processes, and logs skipped,
     completed, and failed tiles.
     """
+    if not same_crs(crs, settings.crs):
+        raise ValueError(f"Raster-CRS {crs} verschilt van project-CRS {settings.crs}.")
     worker_count = _resolve_workers(workers)
     target_dir = Path(target_dir)
     target_dir.mkdir(parents=True, exist_ok=True)
@@ -248,10 +315,12 @@ def bouw_functioneel_landgebruik_tiles(
     sources = sources or (
         FunctioneelLandgebruikSources.from_datastore(data_store)
         if data_store is not None
-        else FunctioneelLandgebruikSources()
+        else FunctioneelLandgebruikSources.from_datastore(default_datastore)
     )
     layers = layers or FunctioneelLandgebruikLayers()
     output_config = output_config or RasterOutputConfig()
+    if mapping_csv is not None:
+        mapping_csv = Path(mapping_csv).resolve()
 
     tiles = read_tiles(tiles_path)
     _validate_tile_index(tiles)
@@ -268,6 +337,10 @@ def bouw_functioneel_landgebruik_tiles(
             sources=sources,
             layers=layers,
             output_config=output_config,
+            mapping_csv=mapping_csv,
+            diagnostics_dir=target_dir / ".nodata_controle"
+            if diagnostics_path is not None
+            else None,
         )
         for _, row in selected.iterrows()
     ]
@@ -276,6 +349,15 @@ def bouw_functioneel_landgebruik_tiles(
     jobs_to_submit: list[FunctioneelLandgebruikTileJob] = []
     for job in jobs:
         if job.target_path.exists() and not overwrite:
+            if job.diagnostics_path is not None:
+                if (
+                    not job.diagnostics_path.exists()
+                    and Path(diagnostics_path).exists()
+                ):
+                    extract_diagnostics(
+                        Path(diagnostics_path), job.diagnostics_path, job.target_path
+                    )
+                validate_diagnostics(job.diagnostics_path, job.target_path)
             logger.info(
                 "Skipping existing functioneel-landgebruik tile %s", job.tile_id
             )
@@ -301,6 +383,7 @@ def bouw_functioneel_landgebruik_tiles(
         )
     try:
         if jobs_to_submit:
+            load_landuse_table(mapping_csv)
             _prepare_sources_once(
                 sources,
                 layers,
@@ -340,6 +423,13 @@ def bouw_functioneel_landgebruik_tiles(
 
     if failures:
         raise TileBuildError(failures)
+
+    if diagnostics_path is not None:
+        merge_diagnostics(
+            [job.diagnostics_path for job in jobs if job.diagnostics_path is not None],
+            diagnostics_path,
+            remove_sources=True,
+        )
 
     logger.info(
         "Completed %s functioneel-landgebruik tile(s)",
