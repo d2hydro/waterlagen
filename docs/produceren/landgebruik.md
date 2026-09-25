@@ -395,6 +395,13 @@ dezelfde bronlaag zijn niet toegestaan, ook niet bij gelijke uitvoercodes.
 
 De functie zelf ligt vast in de software en wordt herkend via Koppel-ID. Je kunt via de CSV dus geen nieuwe Python-functies of nieuwe rekenregels toevoegen.
 
+Houd bij het aanpassen van codes rekening met
+[overlap en rastervoorrang](../bewerkingen/functioneel-landgebruik.md#overlap-en-rastervoorrang).
+CSV-rijvolgorde en codehoogte bepalen niet welke bron bij overlap wint.
+Bij bijzondere gebouwregels kan een gewijzigd codepaar bovendien een conflict
+veroorzaken of oplossen; voor gekoppelde gemalen geldt een strengere uitzondering.
+Zie [conflicten tussen bijzondere gebouwregels](../bewerkingen/functioneel-landgebruik.md#conflicten-tussen-bijzondere-gebouwregels).
+
 De ondersteunde directe combinaties zijn:
 
 | Bron | Bronlaag | Bronveld |

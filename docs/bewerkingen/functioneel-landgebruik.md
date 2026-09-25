@@ -133,12 +133,46 @@ Die voorkeur bepaalt alleen het legendalabel, niet de uitvoercode.
   `zonnepark` wordt daardoor niet via het woord `park` geclassificeerd.
   Bronwaarden zonder koppeling worden gelogd en niet ingetekend.
 
-De rastervolgorde van laag naar hoog is: BGT-terreinen, TOP10NL-functionele
-gebieden, BRP, BGT-ondersteunende wegdelen, BGT-wegen, BAG, BGT-water.
-Water gaat daarmee voor gebouwen, wegen en landbouw. De overige volgorde is
-het huidige gedrag van de verwerking; hiermee zijn niet alle inhoudelijke
-vragen over overlap opgelost. Ook water krijgt de binnen- of buitendijkse
-CSV-code (standaard 100/228).
+### Overlap en rastervoorrang
+
+Bij `mapping` krijgt een bronobject maximaal één koppeling: een expliciete
+bronwaarde gaat voor `*`. Dubbele bronwaarden binnen dezelfde bronlaag geven
+een foutmelding. Een object zonder koppeling wordt niet ingetekend en wist dus
+geen eerder ingetekende klasse.
+
+Verschillende bronobjecten kunnen wel dezelfde rastercel raken. Alle door een
+geometrie geraakte cellen worden ingetekend (`all_touched=True`), waardoor ook
+aangrenzende vlakken een cel kunnen delen. Voor zowel `mapping` als `functie`
+geldt deze tekenvolgorde; een latere laag overschrijft een eerdere laag:
+
+1. BGT-begroeide terreindelen, daarna onbegroeide terreindelen.
+2. TOP10NL-functionele gebieden: eerst `vlak`, daarna `multivlak`.
+3. BRP.
+4. BGT-ondersteunende wegdelen.
+5. BGT-wegdelen.
+6. BAG-panden met hun uiteindelijke gebouwklasse.
+7. Gemalen die als punt zijn behouden.
+8. BGT-waterdelen.
+
+Een BGT-weg die dezelfde cel raakt als BRP-gras overschrijft dus de grascode.
+Water gaat vervolgens voor wegen, gebouwen en landbouw en krijgt de binnen- of
+buitendijkse CSV-code (standaard 100/228). De overige volgorde is het huidige
+gedrag van de verwerking; hiermee zijn niet alle inhoudelijke vragen over
+overlap opgelost.
+
+Binnen één laag wint het laatst ingetekende object in de aangeleverde
+objectvolgorde. Er is geen algemene conflictcontrole of keuze op basis van
+grootste oppervlak. Bij overlappende objecten kan een gewijzigde bronvolgorde
+dus een ander raster opleveren. De volgorde van de CSV-rijen en de hoogte van
+de LGB-codes bepalen deze voorrang niet. De kleurvoorrang in de legenda staat
+hier eveneens los van.
+
+Voor `functie` wordt eerst de gebouwklasse bepaald. De gewone BAG-regels
+kiezen één uitkomst; onopgeloste functiekeuzes blijven open. Bijzondere
+gebouwregels hebben daarnaast de conflictcontrole hieronder. Een onopgelost
+gebouw krijgt code 0 (NoData): de gebouwgeometrie wist daarmee eerder
+ingetekende terreinklassen. Later ingetekende gemaalpunten of water kunnen
+die cellen alsnog overschrijven.
 
 ### Bijzondere gebouwen en gemalen (stap 6)
 
@@ -163,9 +197,36 @@ Bij meerdere afzonderlijke gemalen in hetzelfde geschikte pand worden de
 capaciteiten opgeteld. Dezelfde `globalid` telt eenmaal; tegenstrijdige capaciteiten
 bij dezelfde ID, ontbrekende capaciteiten of ontbrekende IDs bij meerdere gemalen
 verhinderen een automatische som. De puntrecords blijven dan zichtbaar. Er worden
-geen pomp-records bij gemaalcapaciteiten opgeteld. Verschillende bijzondere
-gebouwfuncties op één pand blijven zonder definitieve klasse totdat hun voorrang
-is bepaald.
+geen pomp-records bij gemaalcapaciteiten opgeteld.
+
+#### Conflicten tussen bijzondere gebouwregels
+
+Een passende kas-, RWZI- of drinkwaterregel vervangt de gewone BAG-klasse.
+Als meerdere van deze regels bij hetzelfde pand passen, zijn ze alleen
+verenigbaar als hun volledige codeparen
+(`LGB-code_binnendijks`, `LGB-code_buitendijks`) gelijk zijn. Beide codes
+moeten overeenkomen, ook als het pand uitsluitend binnendijks ligt. Bij gelijke
+paren wordt dat paar gebruikt; de vaste verwerkingsvolgorde van de regels
+bepaalt de gerapporteerde `Koppel-ID`, terwijl alle passende IDs in de controle
+bewaard blijven. De CSV-volgorde bepaalt deze keuze niet.
+
+Bij verschillende codeparen blijft het pand `nog te beoordelen`, zonder
+definitieve klasse. De verwerking valt dan niet terug op de gewone BAG-klasse;
+het pand wordt als NoData ingetekend volgens de
+[rastervoorrang](#overlap-en-rastervoorrang).
+
+Bijvoorbeeld: een pand past zowel bij de kasregel met codes `(35, 163)` als bij
+de RWZI-regel met `(36, 164)`. Dit levert een conflict op. Als beide regels in
+de CSV hetzelfde paar `(35, 163)` krijgen, is hun uitkomst verenigbaar. Alleen
+de binnencodes gelijk maken is onvoldoende. Het aanpassen van codes kan dus
+ook veranderen of een pand een definitieve klasse krijgt.
+
+Voor een aan een pand gekoppeld gemaal geldt een strengere regel. Een geldige
+gemaalklasse kan de gewone BAG-klasse vervangen, maar een gelijktijdige kas-,
+RWZI- of drinkwaterkoppeling maakt het pand onopgelost, **ook bij gelijke
+codeparen**. Er is geen automatische voorrang tussen het gemaal en die
+bijzondere gebouwfuncties. Een ruimtelijk onduidelijke gemaalkoppeling kiest
+geen pand; het gemaal blijft dan een punt.
 
 De zes capaciteitsintervallen zijn **10 ≤ Q < 20**, **20 ≤ Q < 50**,
 **50 ≤ Q < 100**, **100 ≤ Q < 400**, **400 ≤ Q ≤ 1000** en **Q > 1000**.
