@@ -1,3 +1,16 @@
 categorie,x,y,indiender,opmerking,github_issue
-,174434.25,491590.25,,,
-,165252.75,450364.25,,,
+,174434.25,491590.25,DT,evt zonneparken (discussie TUD/Deltares),https://github.com/d2hydro/waterlagen/issues/31
+,165252.75,450364.25,NG,Opgeheven BGT waterdeel,https://github.com/d2hydro/waterlagen/issues/60
+,168243.81,450275.79,NG,BAG pandstatus Pand in gebruik (niet ingemeten),https://github.com/d2hydro/waterlagen/issues/60
+,165186.326,450339.648,NG,Sliver BAG-BGT,https://github.com/d2hydro/waterlagen/issues/60
+,150109.615,414808.640,NG,Flik-Flak; meerdere functies in 1 VBO,https://github.com/d2hydro/waterlagen/issues/60
+,80752.884,462741.553,DT,Nodata aan de randen,https://github.com/d2hydro/waterlagen/issues/33
+,90553.270,438031.402,DT,Dierentuinen zijn voor recreate,https://github.com/d2hydro/waterlagen/issues/32
+,110751.223,480862.462,DT,Landingsbanen zijn vliegvelden,https://github.com/d2hydro/waterlagen/issues/34
+,78458.998,446939.227,DT,Kassen zitten nu in LGB,https://github.com/d2hydro/waterlagen/issues/35
+,135849.616,532150.870,DT,Gemalen en capaciteit opgenomen uit NHI-GKW HyDAMO:gemalen, https://github.com/d2hydro/waterlagen/issues/60
+,138130.714,521266.789,DT,Gemalen die niet kunnen worden gekoppeld aan een BAG-geometrie opnemen als punt, https://github.com/d2hydro/waterlagen/issues/60
+,175791.860,535963.099,DT,meerdere functies in 1 VBO (vergelijkbaar aan Flik-Flak),https://github.com/d2hydro/waterlagen/issues/60
+,148966.397,410910.973,DT, >3 VBO goed specificeren,https://github.com/d2hydro/waterlagen/issues/60
+,171575.247,449179.942,DT,Exact gelijke VBO-oppervlaktes (446m2 industrie en winkel),https://github.com/d2hydro/waterlagen/issues/60
+,172324.989,449085.270,DT,Exact gelijke VBO-oppervlaktes (50m2 industrie en kantoor),https://github.com/d2hydro/waterlagen/issues/60
