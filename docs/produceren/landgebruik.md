@@ -304,10 +304,14 @@ wordt niet automatisch gekoppeld.
 Aanvullende bronnen zijn optioneel en worden niet automatisch gedownload.
 Voor het controlescript geef je `special_sources=SpecialBuildingSources(...)`
 op, uit `waterlagen.functioneel_landgebruik.kassen_rwzi_drinkwater`. Naast
-`top10nl_gpkg` kun je `rwzi_gpkg`, `rwzi_layer`, `rwzi_status_column`,
-`rwzi_active_value`, `drinking_water_gpkg` en `drinking_water_layer` instellen.
-Gebruik alleen een statuswaarde waarvan vaststaat dat deze operationeel
-gebruik aangeeft. Met `gemalen_gpkg` kun je een eigen HyDAMO-bestand aanwijzen.
+`top10nl_gpkg` kun je `rwzi_gpkg`, `rwzi_layer`, `drinking_water_gpkg` en
+`drinking_water_layer` instellen. De RWZI-bron is de laag `rwzi` uit
+[Waterketen DAMO](../bronnen/waterketen-damo.md). Download deze vooraf met de
+[downloadinstructies](waterketen-damo.md). Controle en rasterproductie gebruiken
+automatisch `source_data/waterketen_damo/waterketen_damo.gpkg` als dit bestand
+aanwezig is. Er geldt geen statusfilter; de oudere opties `rwzi_status_column`
+en `rwzi_active_value` blijven geaccepteerd maar worden niet gebruikt.
+Met `gemalen_gpkg` kun je een eigen HyDAMO-bestand aanwijzen.
 
 Voor rasterproductie staan de optionele paden op `FunctioneelLandgebruikSources`
 (`rwzi_gpkg`, `drinking_water_gpkg`, `gemalen_gpkg`) en de bijbehorende laag- en

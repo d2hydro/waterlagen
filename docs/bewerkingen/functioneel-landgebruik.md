@@ -12,6 +12,7 @@ Deze bewerking maakt een geclassificeerd raster voor functioneel landgebruik.
 - [BAG](../bronnen/bag.md)
 - [Dijkringen](../bronnen/dijkringen.md)
 - [GKW HYDAMO](../bronnen/hydamo.md) voor gemaalpunten en capaciteit
+- [Waterketen DAMO](../bronnen/waterketen-damo.md) voor bevestiging van RWZI-terreinen
 
 ## Werkwijze
 
@@ -223,7 +224,7 @@ in `basis_...`-kolommen, naast de uiteindelijke klasse en reden.
 | Onderwerp | Selectie en resultaat |
 | --- | --- |
 | Kassen | TOP10NL-gebouwtype `kas, warenhuis`, ook als afzonderlijke waarde in een combinatie met `\|`. Als deze geometrie meer dan de helft van een BAG-pand bedekt, krijgt dat pand de kassenklasse. De BAG-geometrie blijft behouden. |
-| RWZI | TOP10NL-terrein `zuiveringsinstallatie`, bevestigd door een RWZI-record met bedrijfsstatus `in gebruik`. BAG-panden waarvan het representatieve punt binnen het terrein ligt krijgen de RWZI-klasse. |
+| RWZI | Polygonen uit `top10nl_functioneel_gebied_vlak` met exact `typefunctioneelgebied == "zuiveringsinstallatie"`, die een object uit Waterketen DAMO-laag `rwzi` snijden. BAG-panden met hun representatieve punt strikt binnen zo'n terrein krijgen `RWZI (gebouw op RWZI-terrein)`, codes 36/164. Er geldt geen statusfilter. |
 | Drinkwater | BAG-panden waarvan het representatieve punt binnen een aangeleverd drinkwaterproductieterrein ligt krijgen de drinkwaterklasse. |
 | Gemalen | Capaciteit in m³/min bepaalt de klasse. Gebruik een BAG-pand als het gemaalpunt binnen precies één geselecteerd pand ligt en het pand uitsluitend industrie-/overige gebruiksfunctie heeft, geen gekoppeld VBO heeft, of uitsluitend lege gebruiksdoelen heeft. Wonen, andere bekende functies, onbekende bronwaarden en deels ontbrekende doelen sluiten automatische pandkoppeling uit; het gemaal blijft dan een punt. |
 
@@ -232,6 +233,15 @@ schrijft geen overlappercentage of exacte koppelprocedure voor. Ook een kleine
 woonfunctie binnen een verder industrieel pand blokkeert automatische koppeling
 van een gemaal aan het gehele pand. Deels ontbrekende gebruiksdoelen en andere functies
 blijven eveneens als punt ter beoordeling. Er wordt geen dichtstbijzijnd pand gekozen.
+
+Voor RWZI wordt het volledige TOP10NL-terrein gebruikt: het bevestigende DAMO-object
+mag buiten de verwerkte tegel of pandbegrenzing liggen. Een DAMO-object op de
+terreinrand bevestigt het terrein door `intersects`. Alleen raken van een terrein
+door een BAG-pand is onvoldoende; ook een representatief pandpunt op de rand
+wordt uitgesloten. De laag `top10nl_functioneel_gebied_multivlak` doet niet mee
+aan deze gebouwregel. De vaste koppeling-ID blijft `TOP10NL-NGR-BAG-001` voor
+compatibiliteit met bestaande codetabellen; de bron is nu DAMO. Eigen codetabellen
+blijven de codes en omschrijving bepalen.
 
 Bij meerdere afzonderlijke gemalen in hetzelfde geschikte pand worden de
 capaciteiten opgeteld. Dezelfde `globalid` telt eenmaal; tegenstrijdige capaciteiten
@@ -282,8 +292,9 @@ een punt op water kan in het samengestelde raster door water worden overschreven
 en meerdere punten kunnen in dezelfde rastercel vallen.
 
 Kassen worden standaard gecontroleerd. Een aanwezige `hydamo/hydamo.gpkg`
-wordt bij gebruik van de datastore meegenomen voor gemalen. Er is nog geen
-standaardbron voor RWZI-bedrijfsstatus of drinkwaterproductieterreinen ingesteld.
+wordt bij gebruik van de datastore meegenomen voor gemalen. Een aanwezige
+`waterketen_damo/waterketen_damo.gpkg` wordt gebruikt voor RWZI-terreinen.
+Drinkwaterproductieterreinen moeten afzonderlijk worden ingesteld.
 Zonder die bronnen worden de betreffende selecties overgeslagen en gelogd;
 de gewone BAG-klasse blijft staan. `Gerealiseerd` geldt niet automatisch als
 `in gebruik`. De status van gemaalobjecten blijft in de controle zichtbaar;

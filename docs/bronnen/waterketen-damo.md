@@ -27,7 +27,8 @@ De waterschapscode bij een object verwijst naar de betreffende gegevensleveranci
 ## Gebruik in Waterlagen
 
 De bron is beschikbaar als afzonderlijke download onder `waterketen_damo` in
-de DataStore. Er is nog geen afgeleide verwerking aan gekoppeld. Zie
+de DataStore. De laag `rwzi` bevestigt TOP10NL-zuiveringsterreinen voor de
+[RWZI-gebouwclassificatie bij functioneel landgebruik](../bewerkingen/functioneel-landgebruik.md#bijzondere-gebouwen-en-gemalen-stap-6). Zie
 [Waterketen DAMO downloaden](../produceren/waterketen-damo.md) voor het gebruik
 en de [API-referentie](../reference/waterketen_damo.md).
 

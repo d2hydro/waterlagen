@@ -163,8 +163,12 @@ def main(
 
     data_store = data_store or DataStore()
     if stap >= 6:
+        damo_path = (
+            data_store.source_data_dir / "waterketen_damo" / "waterketen_damo.gpkg"
+        )
         special_sources = special_sources or SpecialBuildingSources(
-            top10nl_gpkg=data_store.top10nl_dir / "top10nl_Compleet.gpkg"
+            top10nl_gpkg=data_store.top10nl_dir / "top10nl_Compleet.gpkg",
+            rwzi_gpkg=damo_path if damo_path.is_file() else None,
         )
         default_gemalen = data_store.source_data_dir / "hydamo" / "hydamo.gpkg"
         if gemalen_gpkg is None and default_gemalen.is_file():

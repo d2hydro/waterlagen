@@ -324,8 +324,13 @@ def test_full_build_uses_csv_and_water_wins_over_building(tmp_path):
         assert raster.colormap(1)[110][:3] == (0, 130, 255)
         assert raster.nodata == 0
     style = output.with_suffix(".qml").read_bytes()
+    legacy_table = load_landuse_table(csv_path)
     with DEFAULT_MAPPING_CSV.open(encoding="utf-8-sig", newline="") as stream:
         rows = list(csv.DictReader(stream, delimiter=";"))
+    # Compare equivalent labels: the historical fixture predates the DAMO RWZI name.
+    for row in rows:
+        if row["Koppel-ID"] in {"TOP10NL-NGR-BAG-001", "TOP10NL-NGR-BAG-002"}:
+            row["LGB_beschrijving"] = legacy_table.by_id(row["Koppel-ID"]).description
     water = next(row for row in rows if row["Bronlaag"] == "bgt_waterdeel")
     water["LGB-code_binnendijks"] = "110"
     for reverse in (False, True):

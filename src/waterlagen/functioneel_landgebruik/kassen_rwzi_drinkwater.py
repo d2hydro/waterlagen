@@ -31,8 +31,8 @@ logger = get_logger(__name__)
 class SpecialBuildingSources:
     """Sources for step 6; optional sites are never downloaded implicitly.
 
-    RWZI records need an explicit operating status. The default is 'in gebruik';
-    DAMO 'gerealiseerd' is not automatically treated as an operating status.
+    RWZI records from DAMO confirm TOP10NL treatment sites by intersection.
+    The legacy status fields are retained for compatibility and are ignored.
     Drinking-water input must contain verified production-site polygons.
     """
 
@@ -120,49 +120,28 @@ def _match_site_buildings(
     return _source_ids_per_pand(matches)
 
 
-def _active_rwzi_sites(
+def _damo_rwzi_sites(
     sources: SpecialBuildingSources, *, bounds: tuple, crs
 ) -> gpd.GeoDataFrame:
-    """Keep complete TOP10NL treatment sites confirmed by operating RWZI records."""
-    sites = []
-    # Beide geometrievormen volgen dezelfde regel. De ID verwijst naar de CSV.
-    site_layers = {
-        "top10nl_functioneel_gebied_vlak": "TOP10NL-NGR-BAG-001",
-        "top10nl_functioneel_gebied_multivlak": "TOP10NL-NGR-BAG-002",
-    }
-    for layer, mapping_id in site_layers.items():
-        data = _read_layer(sources.top10nl_gpkg, layer, bounds=bounds, crs=crs)
-        selected = _contains_source_value(
-            data["typefunctioneelgebied"], "zuiveringsinstallatie"
-        )
-        selected_sites = data.loc[selected, ["lokaalid", "geometry"]].copy()
-        selected_sites["mapping_id"] = mapping_id
-        sites.append(selected_sites)
-    sites = gpd.GeoDataFrame(pd.concat(sites, ignore_index=True), crs=crs)
+    """Keep complete TOP10NL treatment polygons intersecting DAMO RWZI features."""
+    data = _read_layer(
+        sources.top10nl_gpkg, "top10nl_functioneel_gebied_vlak", bounds=bounds, crs=crs
+    )
+    sites = data.loc[data["typefunctioneelgebied"].eq("zuiveringsinstallatie"),].copy()
     if sites.empty:
         return sites
-    # A site's status point can be outside the requested tile. Read its full extent.
+    # Validate polygon geometry and retain source IDs where available.
+    sites = _polygons_with_source_ids(sites).rename(columns={"bron_id": "lokaalid"})
+    # The confirming DAMO feature may be outside the building/tile extent.
     records = _read_layer(
         sources.rwzi_gpkg, sources.rwzi_layer, bounds=tuple(sites.total_bounds), crs=crs
     )
-    field = sources.rwzi_status_column
-    if field not in records:
-        raise ValueError(
-            f"RWZI-bedrijfsstatus ontbreekt: {field}. 'Gerealiseerd' is niet automatisch 'in gebruik'."
-        )
-    status = records[field].astype("string").str.strip().str.casefold()
-    active = records.loc[status == sources.rwzi_active_value.strip().casefold()]
-    if not records.empty and active.empty:
-        logger.warning(
-            "Geen RWZI-records met bedrijfsstatus %r; geen RWZI-gebouwklasse toegekend",
-            sources.rwzi_active_value,
-        )
-    if not active.geometry.geom_type.isin(
-        ["Point", "MultiPoint", "Polygon", "MultiPolygon"]
-    ).all():
-        raise ValueError("RWZI-statusbron moet punten of polygonen bevatten.")
-    matches = gpd.sjoin(sites, active[["geometry"]], predicate="intersects")
-    return sites.loc[sites.index.isin(matches.index)]
+    matches = gpd.sjoin(sites, records[["geometry"]], predicate="intersects")
+    validated = sites.loc[sites.index.isin(matches.index)]
+    logger.info(
+        "RWZI-terreinen: %s van %s bevestigd door DAMO", len(validated), len(sites)
+    )
+    return validated
 
 
 def apply_special_building_classes(
@@ -178,7 +157,7 @@ def apply_special_building_classes(
     panden : geopandas.GeoDataFrame
         Selected BAG panden after step 5, in the source CRS. Unique index required.
     sources : SpecialBuildingSources
-        TOP10NL and optional RWZI operating-status and drinking-water site sources.
+        TOP10NL and optional DAMO RWZI and drinking-water site sources.
     table : LanduseTable, optional
         Codes and descriptions from the editable CSV.
 
@@ -222,14 +201,13 @@ def apply_special_building_classes(
         _contains_source_value(buildings["typegebouw"], "kas, warenhuis")
     ]
     candidates = {"TOP10NL-BAG-001": _match_greenhouses(result, greenhouses)}
-    # 6b. RWZI: alleen terreinen bevestigd door een bedrijfsstatusbron (p. 6-7).
+    # 6b. RWZI: TOP10NL-terreinen bevestigd door DAMO, zonder statusfilter.
     if sources.rwzi_gpkg is not None:
-        sites = _active_rwzi_sites(sources, bounds=bounds, crs=result.crs)
-        for mapping_id, group in sites.groupby("mapping_id"):
-            candidates[mapping_id] = _match_site_buildings(result, group)
+        sites = _damo_rwzi_sites(sources, bounds=bounds, crs=result.crs)
+        candidates["TOP10NL-NGR-BAG-001"] = _match_site_buildings(result, sites)
     else:
         logger.warning(
-            "RWZI-gebouwselectie overgeslagen: bron met bedrijfsstatus ontbreekt"
+            "RWZI-gebouwselectie overgeslagen: DAMO-waterketenbron ontbreekt"
         )
     # 6c. Drinkwater: alleen aangeleverde productieterreinen (p. 7).
     if sources.drinking_water_gpkg is not None:
@@ -246,7 +224,7 @@ def apply_special_building_classes(
         )
     reasons = {
         "TOP10NL-BAG-001": "Meer dan 50% van BAG-pand overlapt TOP10NL kas, warenhuis; BAG-geometrie behouden.",
-        "TOP10NL-NGR-BAG-001": "Pandpunt ligt op TOP10NL-zuiveringsterrein, bevestigd door RWZI-bron met bedrijfsstatus in gebruik.",
+        "TOP10NL-NGR-BAG-001": "Representatief pandpunt ligt binnen TOP10NL-zuiveringsterrein dat een DAMO RWZI-object snijdt.",
         "TOP10NL-BAG-002": "Pandpunt ligt binnen aangeleverd drinkwaterproductieterrein.",
     }
     reasons["TOP10NL-NGR-BAG-002"] = reasons["TOP10NL-NGR-BAG-001"]
