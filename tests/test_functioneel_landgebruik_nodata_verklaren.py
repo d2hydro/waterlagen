@@ -22,6 +22,16 @@ from waterlagen.functioneel_landgebruik.nodata_verklaren import (
 )
 
 
+@pytest.fixture(autouse=True)
+def landgebied(monkeypatch):
+    boundary = gpd.GeoDataFrame(geometry=[box(-10000, -10000, 10000, 10000)], crs=28992)
+    monkeypatch.setattr(
+        "waterlagen.functioneel_landgebruik.nodata_verklaren.read_landsgrens",
+        lambda: boundary,
+    )
+    return boundary
+
+
 def test_unused_bgt_only_current_polygons_and_concrete_reason(tmp_path):
     path = tmp_path / "extra.gpkg"
     _write(
@@ -428,3 +438,37 @@ def test_oever_verbergt_alleen_overlappend_functioneelgebied():
     gebied = result.loc[result.geometry.covers(Point(1.5, 0.5))].iloc[0]
     assert gebied.reden == "bgt_functioneelgebied: niet-bgt; laag niet verwerkt."
     assert result.area.sum() == 2
+
+
+@pytest.mark.parametrize(
+    "extent,area",
+    [
+        ((-1, -1, 3, 3), 4),
+        ((0.25, 0.25, 1.75, 1.75), 2.25),
+        ((5, 5, 6, 6), 0),
+        ((2, 0, 3, 2), 0),
+    ],
+)
+def test_nodata_clipped_to_landgebied(tmp_path, landgebied, extent, area):
+    landgebied.geometry = [box(*extent)]
+    raster_path = tmp_path / "landgebruik.tif"
+    with rasterio.open(
+        raster_path,
+        "w",
+        driver="GTiff",
+        width=2,
+        height=2,
+        count=1,
+        dtype="uint8",
+        nodata=0,
+        crs=28992,
+        transform=rasterio.transform.from_origin(0, 2, 1, 1),
+    ) as dst:
+        dst.write(np.zeros((2, 2), dtype="uint8"), 1)
+    original = raster_path.read_bytes()
+    target = tmp_path / "nodata.gpkg"
+    LanduseDiagnostics().write(target, raster_path=raster_path)
+    result = gpd.read_file(target, layer="nodata")
+    assert result.geometry.area.sum() == pytest.approx(area)
+    assert result.geometry.covered_by(landgebied.geometry.iloc[0]).all()
+    assert raster_path.read_bytes() == original

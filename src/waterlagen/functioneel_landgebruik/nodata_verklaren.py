@@ -23,12 +23,13 @@ from shapely.geometry import box, shape
 from waterlagen import _geopandas as wgpd
 from waterlagen._crs import same_crs
 from waterlagen._downloads import validate_geopackage
+from waterlagen.administratieve_gebieden import read_landsgrens
 from waterlagen.logger import get_logger
 
 logger = get_logger(__name__)
 
 LAYER = "nodata"
-FORMAT_VERSION = "3"
+FORMAT_VERSION = "4"
 NO_SOURCE_REASON = "Geen bron vult deze plek."
 UNUSED_BGT_LAYERS = (
     "bgt_ondersteunendwaterdeel",
@@ -137,6 +138,12 @@ class LanduseDiagnostics:
         ) as work:
             temporary = Path(work) / target_path.name
             with rio.open(raster_path) as raster:
+                landgebied = read_landsgrens()
+                if landgebied.crs is None:
+                    raise ValueError("Landgebied heeft geen CRS.")
+                if not same_crs(landgebied.crs, raster.crs):
+                    landgebied = landgebied.to_crs(raster.crs)
+                land_geometry = landgebied.geometry.make_valid().union_all()
                 records = _reason_records(self.parts, raster.crs)
                 terrains = _terrain_context(top10nl_gpkg, raster.bounds, raster.crs)
                 unused_bgt = _unused_bgt(bgt_gpkg, raster.bounds, raster.crs)
@@ -154,6 +161,10 @@ class LanduseDiagnostics:
                             min(2048, raster.width - col),
                             min(2048, raster.height - row),
                         )
+                        if not land_geometry.intersects(
+                            box(*raster.window_bounds(window))
+                        ):
+                            continue
                         nodata = raster.read(1, window=window) == raster.nodata
                         if not nodata.any():
                             continue
@@ -169,7 +180,15 @@ class LanduseDiagnostics:
                             terrains=terrains,
                             unused_bgt=unused_bgt,
                         )
-                        _write_layer(polygons, temporary, append=True)
+                        polygons = gpd.clip(
+                            polygons, land_geometry, keep_geom_type=True
+                        )
+                        polygons = polygons.explode(ignore_index=True)
+                        polygons = polygons.loc[
+                            ~polygons.geometry.is_empty & (polygons.geometry.area > 0)
+                        ]
+                        if not polygons.empty:
+                            _write_layer(polygons, temporary, append=True)
             validate_geopackage(temporary)
             temporary.replace(target_path)
         logger.info("Controle-uitvoer geschreven: %s", target_path)

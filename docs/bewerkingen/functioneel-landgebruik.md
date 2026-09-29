@@ -359,3 +359,11 @@ vooraf door de workflow worden gedownload.
 Volg [Functioneel landgebruik produceren](../produceren/landgebruik.md) voor
 de workflow met het productiepakket. Voor eigen Python-workflows gebruikt u
 `bouw_functioneel_landgebruik`; zie de [API-referentie](../reference/functioneel_landgebruik.md).
+
+
+De NoData-controle wordt afgeknipt op de laag `landgebied` uit
+[Bestuurlijke gebieden](../bronnen/bestuurlijke-gebieden.md), dezelfde landsgrensbron
+als het tegelrooster. NoData buiten deze polygonen is toegestaan en verschijnt
+niet in `nodata.gpkg`. Grensoverschrijdende controlevlakken behouden alleen het
+gedeelte binnen landgebied; het landgebruikraster zelf verandert niet.
+Oudere controlebestanden moeten opnieuw worden gemaakt met `overwrite=True`.
