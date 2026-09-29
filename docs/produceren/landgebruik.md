@@ -307,9 +307,11 @@ Het script schrijft standaard
 [opslaglocatie](configuratie.md). Daarna gebruiken BAG-controle en
 rasterproductie het bestand automatisch. Bestaande uitvoer wordt hergebruikt;
 gebruik `--overwrite` om OSM opnieuw op te halen. Met
-`--cache-dir <map>` worden de Overpass-antwoorden bewaard en met
+`--cache-dir <map>` wordt het Overpass-antwoord bewaard en met
 `--offline --cache-dir <map>` opnieuw gebruikt. De bronselectie en de
 beperkingen staan bij [OSM-drinkwaterlocaties](../bronnen/osm-drinkwater.md).
+De meegeleverde broncontrole bepaalt welke 54 locaties worden opgehaald;
+gebruik `--beoordelingen <bestand>` voor een aangepaste beoordeling.
 
 Het GeoPackage bevat de laag `drinkwaterproductieterrein` voor de koppeling
 met BAG-panden en daarnaast afzonderlijke controlelagen voor terreinen en

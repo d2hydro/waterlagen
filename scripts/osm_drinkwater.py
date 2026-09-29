@@ -18,6 +18,11 @@ def main() -> Path:
         type=Path,
         help="Uitvoerpad; standaard source_data/osm/drinkwaterlocaties.gpkg.",
     )
+    parser.add_argument(
+        "--beoordelingen",
+        type=Path,
+        help="JSON met beoordeelde locaties; standaard de meegeleverde beoordeling.",
+    )
     parser.add_argument("--endpoint", default=OVERPASS_ENDPOINT)
     parser.add_argument("--timeout", type=float, default=150)
     parser.add_argument("--cache-dir", type=Path)
@@ -34,6 +39,7 @@ def main() -> Path:
     configure_logging()
     return download_osm_drinkwater(
         target_path=arguments.output,
+        reviews_path=arguments.beoordelingen,
         endpoint=arguments.endpoint,
         cache_dir=arguments.cache_dir,
         offline=arguments.offline,

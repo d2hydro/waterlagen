@@ -2,10 +2,8 @@
 
 ## Beschrijving
 
-OpenStreetMap (OSM) bevat door vrijwilligers ingetekende locaties voor
-drinkwaterbereiding. Waterlagen gebruikt polygonen rond deze locaties als
-aanwijzing voor gebouwen op een drinkwaterproductielocatie. De vlakken zijn
-geen geverifieerde terreingrenzen en de selectie is geen volledige inventaris.
+Waterlagen gebruikt beoordeelde OpenStreetMap-vlakken van
+drinkwaterzuiveringen om BAG-panden aan deze locaties te koppelen.
 
 ## Leverancier
 
@@ -13,20 +11,12 @@ OpenStreetMap-bijdragers. Waterlagen leest de gegevens via de Overpass API.
 
 ## Dataset of service
 
-Het script selecteert in Europees Nederland objecten met
-`man_made=water_works`, een naam en een naam of exploitant die overeenkomt met
-een van de in het script opgenomen drinkwaterbedrijven. Het gebruikt bestaande
-OSM-vlakken; voor punten zonder passend vlak wordt geen grens verzonnen.
-Dubbele of twijfelachtige objecten die in het aangeleverde script zijn
-benoemd, zijn expliciet uitgesloten. Die uitzonderingen zijn niet onafhankelijk
-geverifieerd. De OSM-gegevens kunnen wijzigen.
-
-Het GeoPackage onder `source_data/osm/drinkwaterlocaties.gpkg` heeft een
-`drinkwaterproductieterrein`-laag voor de BAG-koppeling en afzonderlijke
-lagen `terreinen_waterbedrijven` en `gebouwcontouren` voor controle.
-Standaard bevat de koppellaag alleen terreinen. Losse gebouwcontouren zijn
-beschikbaar als een terreinbegrenzing ontbreekt, maar zijn niet automatisch
-een volledig productieterrein.
+Het script haalt de OSM-vlakken op die in `drinkwater_beoordelingen.json` als
+`drinkwaterzuivering` zijn geselecteerd. De uitvoer staat in
+`source_data/osm/drinkwaterlocaties.gpkg`. De laag `drinkwaterproductieterrein`
+bevat standaard de terreinen voor de BAG-koppeling; `terreinen_waterbedrijven`
+en `gebouwcontouren` zijn controlelagen. De uitvoer vermeldt per vlak de
+OSM-ID en controledatum.
 
 ## Gebruik in Waterlagen
 

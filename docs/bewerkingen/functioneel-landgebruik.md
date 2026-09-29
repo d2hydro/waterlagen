@@ -236,7 +236,7 @@ in `basis_...`-kolommen, naast de uiteindelijke klasse en reden.
 | --- | --- |
 | Kassen | TOP10NL-gebouwtype `kas, warenhuis`, ook als afzonderlijke waarde in een combinatie met `\|`. Als deze geometrie meer dan de helft van een BAG-pand bedekt, krijgt dat pand de kassenklasse. De BAG-geometrie blijft behouden. |
 | RWZI | Polygonen uit `top10nl_functioneel_gebied_vlak` met exact `typefunctioneelgebied == "zuiveringsinstallatie"`, die een object uit Waterketen DAMO-laag `rwzi` snijden. BAG-panden met hun representatieve punt strikt binnen zo'n terrein krijgen `RWZI (gebouw op RWZI-terrein)`, codes 36/164. Er geldt geen statusfilter. |
-| Drinkwater | BAG-panden waarvan het representatieve punt binnen een OSM-drinkwaterlocatie in de koppellaag ligt krijgen de drinkwaterklasse 37/165. De BAG-pandgeometrie blijft behouden. |
+| Drinkwater | BAG-panden waarvan het representatieve punt binnen een beoordeeld OSM-terrein met drinkwaterzuivering ligt krijgen de drinkwaterklasse 37/165. De BAG-pandgeometrie blijft behouden. Gebouwcontouren worden alleen op verzoek aan de koppellaag toegevoegd. |
 | Gemalen | Capaciteit in m³/min bepaalt de klasse. Gebruik een BAG-pand als het gemaalpunt binnen precies één geselecteerd pand ligt en het pand uitsluitend industrie-/overige gebruiksfunctie heeft, geen gekoppeld VBO heeft, of uitsluitend lege gebruiksdoelen heeft. Wonen, andere bekende functies, onbekende bronwaarden en deels ontbrekende doelen sluiten automatische pandkoppeling uit; het gemaal blijft dan een punt. |
 
 De ruimtelijke grenzen voor deze koppelingen zijn uitvoeringskeuzes; de notitie

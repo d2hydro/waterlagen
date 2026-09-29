@@ -1,0 +1,524 @@
+[
+  {
+    "locatie_id": "node/2683044645",
+    "naam": "Amersfoort Berg",
+    "exploitant": "Vitens",
+    "vlak_type": "gebouw",
+    "osm_ids": "way/262635477",
+    "oordeel": "drinkwaterzuivering",
+    "controle_datum": "2026-09-29"
+  },
+  {
+    "locatie_id": "node/3993388531",
+    "naam": "Amersfoort Hogeweg",
+    "exploitant": "Vitens",
+    "vlak_type": "gebouw",
+    "osm_ids": "way/261810139",
+    "oordeel": "drinkwaterzuivering",
+    "controle_datum": "2026-09-29"
+  },
+  {
+    "locatie_id": "node/4732460422",
+    "naam": "Vitens Vechterweerd",
+    "exploitant": "Vitens",
+    "vlak_type": "gebouw",
+    "osm_ids": "way/480242778",
+    "oordeel": "drinkwaterzuivering",
+    "controle_datum": "2026-09-29"
+  },
+  {
+    "locatie_id": "way/270017861",
+    "naam": "Braakman",
+    "exploitant": "Evides",
+    "vlak_type": "gebouw",
+    "osm_ids": "way/270017861",
+    "oordeel": "drinkwaterzuivering",
+    "controle_datum": "2026-09-29"
+  },
+  {
+    "locatie_id": "way/278690787",
+    "naam": "Huijbergen",
+    "exploitant": "Evides",
+    "vlak_type": "gebouw",
+    "osm_ids": "way/278690787",
+    "oordeel": "drinkwaterzuivering",
+    "controle_datum": "2026-09-29"
+  },
+  {
+    "locatie_id": "way/53153097",
+    "naam": "Culemborg",
+    "exploitant": "Vitens",
+    "vlak_type": "gebouw",
+    "osm_ids": "way/53153097",
+    "oordeel": "drinkwaterzuivering",
+    "controle_datum": "2026-09-29"
+  },
+  {
+    "locatie_id": "way/53427257",
+    "naam": "Wierden",
+    "exploitant": "Vitens",
+    "vlak_type": "gebouw",
+    "osm_ids": "way/53427257",
+    "oordeel": "drinkwaterzuivering",
+    "controle_datum": "2026-09-29"
+  },
+  {
+    "locatie_id": "relation/12565283",
+    "naam": "Berenplaat",
+    "exploitant": "Evides",
+    "vlak_type": "terrein",
+    "osm_ids": "relation/12565283",
+    "oordeel": "drinkwaterzuivering",
+    "controle_datum": "2026-09-29"
+  },
+  {
+    "locatie_id": "way/34912626",
+    "naam": "Kralingen",
+    "exploitant": "Evides",
+    "vlak_type": "terrein",
+    "osm_ids": "way/34912626",
+    "oordeel": "drinkwaterzuivering",
+    "controle_datum": "2026-09-29"
+  },
+  {
+    "locatie_id": "way/1361114963",
+    "naam": "Baanhoek",
+    "exploitant": "",
+    "vlak_type": "terrein",
+    "osm_ids": "way/1361114963",
+    "oordeel": "drinkwaterzuivering",
+    "controle_datum": "2026-09-29"
+  },
+  {
+    "locatie_id": "relation/18021690",
+    "naam": "Pompstation Onnen",
+    "exploitant": "Waterbedrijf Groningen",
+    "vlak_type": "terrein",
+    "osm_ids": "relation/18021690",
+    "oordeel": "drinkwaterzuivering",
+    "controle_datum": "2026-09-29"
+  },
+  {
+    "locatie_id": "way/446687457",
+    "naam": "Jan Lagrand (Heemskerk)",
+    "exploitant": "",
+    "vlak_type": "terrein",
+    "osm_ids": "way/446687457",
+    "oordeel": "deelzuivering",
+    "controle_datum": "2026-09-29"
+  },
+  {
+    "locatie_id": "way/1487136894",
+    "naam": "Schiermonnikoog",
+    "exploitant": "Vitens",
+    "vlak_type": "terrein",
+    "osm_ids": "way/1487136894",
+    "oordeel": "drinkwaterzuivering",
+    "controle_datum": "2026-09-29"
+  },
+  {
+    "locatie_id": "way/945553493",
+    "naam": "Archemerberg",
+    "exploitant": "Vitens",
+    "vlak_type": "terrein",
+    "osm_ids": "way/945553493",
+    "oordeel": "drinkwaterzuivering",
+    "controle_datum": "2026-09-29"
+  },
+  {
+    "locatie_id": "way/1259665461",
+    "naam": "Bremerberg",
+    "exploitant": "Vitens",
+    "vlak_type": "terrein",
+    "osm_ids": "way/1259665461",
+    "oordeel": "drinkwaterzuivering",
+    "controle_datum": "2026-09-29"
+  },
+  {
+    "locatie_id": "way/685078960",
+    "naam": "La Cabine",
+    "exploitant": "Vitens",
+    "vlak_type": "terrein",
+    "osm_ids": "way/685078960",
+    "oordeel": "drinkwaterzuivering",
+    "controle_datum": "2026-09-29"
+  },
+  {
+    "locatie_id": "way/1106586435",
+    "naam": "Vlierden",
+    "exploitant": "Brabant Water",
+    "vlak_type": "terrein",
+    "osm_ids": "way/1106586435",
+    "oordeel": "drinkwaterzuivering",
+    "controle_datum": "2026-09-29"
+  },
+  {
+    "locatie_id": "way/1058788079",
+    "naam": "Schalterberg",
+    "exploitant": "Vitens",
+    "vlak_type": "terrein",
+    "osm_ids": "way/1058788079",
+    "oordeel": "drinkwaterzuivering",
+    "controle_datum": "2026-09-29"
+  },
+  {
+    "locatie_id": "way/1058830052",
+    "naam": "Harderwijk",
+    "exploitant": "Vitens",
+    "vlak_type": "terrein",
+    "osm_ids": "way/1058830052",
+    "oordeel": "drinkwaterzuivering",
+    "controle_datum": "2026-09-29"
+  },
+  {
+    "locatie_id": "way/1530853970",
+    "naam": "Fikkersdries II",
+    "exploitant": "Vitens",
+    "vlak_type": "terrein",
+    "osm_ids": "way/1530853970",
+    "oordeel": "drinkwaterzuivering",
+    "controle_datum": "2026-09-29"
+  },
+  {
+    "locatie_id": "way/1018342956",
+    "naam": "Eerbeek",
+    "exploitant": "Vitens",
+    "vlak_type": "terrein",
+    "osm_ids": "way/1018342956",
+    "oordeel": "drinkwaterzuivering",
+    "controle_datum": "2026-09-29"
+  },
+  {
+    "locatie_id": "way/1058801539",
+    "naam": "Ellecom",
+    "exploitant": "Vitens",
+    "vlak_type": "terrein",
+    "osm_ids": "way/1058801539",
+    "oordeel": "drinkwaterzuivering",
+    "controle_datum": "2026-09-29"
+  },
+  {
+    "locatie_id": "way/828242788",
+    "naam": "Hanik",
+    "exploitant": "WML",
+    "vlak_type": "terrein",
+    "osm_ids": "way/828242788",
+    "oordeel": "drinkwaterzuivering",
+    "controle_datum": "2026-09-29"
+  },
+  {
+    "locatie_id": "way/1270316468",
+    "naam": "Oosterhout",
+    "exploitant": "Brabant Water",
+    "vlak_type": "terrein",
+    "osm_ids": "way/1270316468",
+    "oordeel": "drinkwaterzuivering",
+    "controle_datum": "2026-09-29"
+  },
+  {
+    "locatie_id": "way/1507213751",
+    "naam": "Aquaterp",
+    "exploitant": "Vitens",
+    "vlak_type": "terrein",
+    "osm_ids": "way/1507213751",
+    "oordeel": "geen_zuivering",
+    "controle_datum": "2026-09-29"
+  },
+  {
+    "locatie_id": "way/277137307",
+    "naam": "IJzeren Kuilen",
+    "exploitant": "WML",
+    "vlak_type": "gebouw",
+    "osm_ids": "way/277137307",
+    "oordeel": "drinkwaterzuivering",
+    "controle_datum": "2026-09-29"
+  },
+  {
+    "locatie_id": "way/445239858",
+    "naam": "Leiduin",
+    "exploitant": "Waternet",
+    "vlak_type": "terrein",
+    "osm_ids": "way/445239858",
+    "oordeel": "drinkwaterzuivering",
+    "controle_datum": "2026-09-29"
+  },
+  {
+    "locatie_id": "node/2851423170",
+    "naam": "Someren",
+    "exploitant": "Brabant Water",
+    "vlak_type": "terrein",
+    "osm_ids": "way/1024431488",
+    "oordeel": "drinkwaterzuivering",
+    "controle_datum": "2026-09-29"
+  },
+  {
+    "locatie_id": "way/1456520694",
+    "naam": "Tilburg / Gilzerbaan",
+    "exploitant": "Brabant Water",
+    "vlak_type": "terrein",
+    "osm_ids": "way/1456520694",
+    "oordeel": "drinkwaterzuivering",
+    "controle_datum": "2026-09-29"
+  },
+  {
+    "locatie_id": "way/1261517680",
+    "naam": "C. Rodenhuis",
+    "exploitant": "Oasen",
+    "vlak_type": "terrein",
+    "osm_ids": "way/1261517680",
+    "oordeel": "drinkwaterzuivering",
+    "controle_datum": "2026-09-29"
+  },
+  {
+    "locatie_id": "way/550011779",
+    "naam": "Kamerik (voorheen De Hooge Boom)",
+    "exploitant": "Oasen",
+    "vlak_type": "gebouw",
+    "osm_ids": "way/1278860150",
+    "oordeel": "drinkwaterzuivering",
+    "controle_datum": "2026-09-29"
+  },
+  {
+    "locatie_id": "way/251646919",
+    "naam": "De Laak",
+    "exploitant": "Oasen",
+    "vlak_type": "terrein",
+    "osm_ids": "way/251646919",
+    "oordeel": "drinkwaterzuivering",
+    "controle_datum": "2026-09-29"
+  },
+  {
+    "locatie_id": "way/907251236",
+    "naam": "Nieuw-Lekkerland (De Put)",
+    "exploitant": "Oasen",
+    "vlak_type": "gebouw",
+    "osm_ids": "way/907251236",
+    "oordeel": "drinkwaterzuivering",
+    "controle_datum": "2026-09-29"
+  },
+  {
+    "locatie_id": "way/267647905",
+    "naam": "De Steeg",
+    "exploitant": "Oasen NV.",
+    "vlak_type": "terrein",
+    "osm_ids": "way/6319312",
+    "oordeel": "drinkwaterzuivering",
+    "controle_datum": "2026-09-29"
+  },
+  {
+    "locatie_id": "way/267443468",
+    "naam": "Reijerwaard",
+    "exploitant": "Oasen NV",
+    "vlak_type": "gebouw",
+    "osm_ids": "way/267443468",
+    "oordeel": "drinkwaterzuivering",
+    "controle_datum": "2026-09-29"
+  },
+  {
+    "locatie_id": "way/50036962",
+    "naam": "Roosteren",
+    "exploitant": "WML",
+    "vlak_type": "gebouw",
+    "osm_ids": "way/50036962",
+    "oordeel": "drinkwaterzuivering",
+    "controle_datum": "2026-09-29"
+  },
+  {
+    "locatie_id": "way/133779498",
+    "naam": "Schuwacht",
+    "exploitant": "Oasen",
+    "vlak_type": "terrein",
+    "osm_ids": "way/133779498",
+    "oordeel": "drinkwaterzuivering",
+    "controle_datum": "2026-09-29"
+  },
+  {
+    "locatie_id": "node/2880073776",
+    "naam": "Engelse Werk",
+    "exploitant": "Vitens",
+    "vlak_type": "gebouw",
+    "osm_ids": "way/284264176",
+    "oordeel": "drinkwaterzuivering",
+    "controle_datum": "2026-09-29"
+  },
+  {
+    "locatie_id": "way/1486872323",
+    "naam": "De Punt",
+    "exploitant": "Waterbedrijf Groningen",
+    "vlak_type": "terrein",
+    "osm_ids": "way/1486872323",
+    "oordeel": "drinkwaterzuivering",
+    "controle_datum": "2026-09-29"
+  },
+  {
+    "locatie_id": "way/1486875978",
+    "naam": "Nietap",
+    "exploitant": "Waterbedrijf Groningen",
+    "vlak_type": "terrein",
+    "osm_ids": "way/1486875978",
+    "oordeel": "drinkwaterzuivering",
+    "controle_datum": "2026-09-29"
+  },
+  {
+    "locatie_id": "way/1163007218",
+    "naam": "Sellingen",
+    "exploitant": "Waterbedrijf Groningen",
+    "vlak_type": "terrein",
+    "osm_ids": "way/1163007218",
+    "oordeel": "drinkwaterzuivering",
+    "controle_datum": "2026-09-29"
+  },
+  {
+    "locatie_id": "way/1154314999",
+    "naam": "Sint Jansklooster",
+    "exploitant": "",
+    "vlak_type": "terrein",
+    "osm_ids": "way/1154314999",
+    "oordeel": "drinkwaterzuivering",
+    "controle_datum": "2026-09-29"
+  },
+  {
+    "locatie_id": "way/1547780198",
+    "naam": "Witharen",
+    "exploitant": "",
+    "vlak_type": "terrein",
+    "osm_ids": "way/1547780198",
+    "oordeel": "drinkwaterzuivering",
+    "controle_datum": "2026-09-29"
+  },
+  {
+    "locatie_id": "relation/19331358",
+    "naam": "Bergambacht (Dunea)",
+    "exploitant": "Dunea",
+    "vlak_type": "terrein",
+    "osm_ids": "relation/19331358",
+    "oordeel": "deelzuivering",
+    "controle_datum": "2026-09-29"
+  },
+  {
+    "locatie_id": "way/37255139",
+    "naam": "Katwijk",
+    "exploitant": "Dunea",
+    "vlak_type": "terrein",
+    "osm_ids": "way/37255139",
+    "oordeel": "drinkwaterzuivering",
+    "controle_datum": "2026-09-29"
+  },
+  {
+    "locatie_id": "way/6319595",
+    "naam": "Scheveningen",
+    "exploitant": "Dunea",
+    "vlak_type": "terrein",
+    "osm_ids": "way/6319595",
+    "oordeel": "drinkwaterzuivering",
+    "controle_datum": "2026-09-29"
+  },
+  {
+    "locatie_id": "way/1234055077",
+    "naam": "Tull en 't Waal",
+    "exploitant": "Vitens",
+    "vlak_type": "terrein",
+    "osm_ids": "way/1234055077",
+    "oordeel": "drinkwaterzuivering",
+    "controle_datum": "2026-09-29"
+  },
+  {
+    "locatie_id": "way/6320344",
+    "naam": "Andijk",
+    "exploitant": "PWN",
+    "vlak_type": "terrein",
+    "osm_ids": "way/6320344",
+    "oordeel": "drinkwaterzuivering",
+    "controle_datum": "2026-09-29"
+  },
+  {
+    "locatie_id": "way/1470362212",
+    "naam": "Epe",
+    "exploitant": "Vitens",
+    "vlak_type": "terrein",
+    "osm_ids": "way/1470362212",
+    "oordeel": "drinkwaterzuivering",
+    "controle_datum": "2026-09-29"
+  },
+  {
+    "locatie_id": "way/759630805",
+    "naam": "De Meern",
+    "exploitant": "",
+    "vlak_type": "terrein",
+    "osm_ids": "way/759630805",
+    "oordeel": "drinkwaterzuivering",
+    "controle_datum": "2026-09-29"
+  },
+  {
+    "locatie_id": "way/424694747",
+    "naam": "Oldeholtpade",
+    "exploitant": "Vitens",
+    "vlak_type": "terrein",
+    "osm_ids": "way/424694747",
+    "oordeel": "drinkwaterzuivering",
+    "controle_datum": "2026-09-29"
+  },
+  {
+    "locatie_id": "way/608956910",
+    "naam": "Boele",
+    "exploitant": "Vitens N.V.",
+    "vlak_type": "terrein",
+    "osm_ids": "way/608956910",
+    "oordeel": "drinkwaterzuivering",
+    "controle_datum": "2026-09-29"
+  },
+  {
+    "locatie_id": "way/1383642246",
+    "naam": "Druten",
+    "exploitant": "",
+    "vlak_type": "terrein",
+    "osm_ids": "way/1383642246",
+    "oordeel": "drinkwaterzuivering",
+    "controle_datum": "2026-09-29"
+  },
+  {
+    "locatie_id": "way/1163003693",
+    "naam": "De Groeve",
+    "exploitant": "Waterbedrijf Groningen",
+    "vlak_type": "terrein",
+    "osm_ids": "way/1163003693",
+    "oordeel": "drinkwaterzuivering",
+    "controle_datum": "2026-09-29"
+  },
+  {
+    "locatie_id": "way/28147781",
+    "naam": "Weesperkarspel",
+    "exploitant": "Waternet",
+    "vlak_type": "terrein",
+    "osm_ids": "way/28147781",
+    "oordeel": "drinkwaterzuivering",
+    "controle_datum": "2026-09-29"
+  },
+  {
+    "locatie_id": "way/700421720",
+    "naam": "Heel",
+    "exploitant": "WML",
+    "vlak_type": "terrein",
+    "osm_ids": "way/700421720",
+    "oordeel": "drinkwaterzuivering",
+    "controle_datum": "2026-09-29"
+  },
+  {
+    "locatie_id": "way/165302710",
+    "naam": "Vlijmen",
+    "exploitant": "Brabant Water",
+    "vlak_type": "terrein",
+    "osm_ids": "way/165302710",
+    "oordeel": "drinkwaterzuivering",
+    "controle_datum": "2026-09-29"
+  },
+  {
+    "locatie_id": "way/168917369",
+    "naam": "Schinveld",
+    "exploitant": "WML",
+    "vlak_type": "terrein",
+    "osm_ids": "way/168917369",
+    "oordeel": "drinkwaterzuivering",
+    "controle_datum": "2026-09-29"
+  }
+]

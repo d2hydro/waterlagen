@@ -2,7 +2,6 @@
 
 import json
 import os
-import re
 import tempfile
 import time
 from dataclasses import dataclass
@@ -14,7 +13,7 @@ import pandas as pd
 import pyogrio
 import requests
 from pyproj import Transformer
-from shapely.geometry import MultiPolygon, Point, Polygon
+from shapely.geometry import MultiPolygon, Polygon
 from shapely.geometry.base import BaseGeometry
 from shapely.ops import transform, unary_union
 
@@ -31,41 +30,27 @@ OVERPASS_ENDPOINT = "https://overpass-api.de/api/interpreter"
 DRINKWATER_LAYER = "drinkwaterproductieterrein"
 SITE_LAYER = "terreinen_waterbedrijven"
 BUILDING_LAYER = "gebouwcontouren"
-SELECTION_QUERY = (
-    "[out:json][timeout:90][maxsize:33554432];"
-    'area["ISO3166-1"="NL"][admin_level=2]->.nl;'
-    'nwr["man_made"="water_works"](area.nl)(50,3,54,8);out center tags;'
-)
-WATER_COMPANIES = re.compile(
-    r"Vitens|Evides|Brabant Water|Dunea|PWN|Waternet|"
-    r"Waterbedrijf Groningen|\bWML\b|\bWMD\b|Oasen|"
-    r"Waterleiding Maatschappij Limburg",
-    re.IGNORECASE,
-)
+REVIEWS_PATH = Path(__file__).with_name("drinkwater_beoordelingen.json")
 
-# Explicit exclusions from the supplied script. Recheck them when OSM changes.
-EXCLUDED_OSM_IDS = {
-    "node/2867768111": "Dubbele locatie Oosterhout; way/1270316468 gebruiken",
-    "way/6319053": "Onderdeel van site-relatie Berenplaat",
-    "way/389228061": "Pompput Vroendaal",
-    "way/389228063": "Pompput Heer",
-    "way/382909828": "Historisch pompstation Craubeek",
-    "way/1561031319": "Transport-/suppletiepompstation Gouda",
-    "relation/11721437": "Ruwwaterinname Cornelis Biemond",
-}
-
-# A point alone cannot define a site. These references came with the supplied script.
-EXPLICIT_POLYGONS = {
-    "node/2683044645": ("way/262635477", "gebouw"),
-    "node/2708430044": ("way/265176673", "gebouw"),
-    "node/2851423170": ("way/1024431488", "terrein"),
-    "node/2880073776": ("way/284264176", "gebouw"),
-    "node/3993388531": ("way/261810139", "gebouw"),
-    "node/4732460422": ("way/480242778", "gebouw"),
-    "way/267647905": ("way/6319312", "terrein"),
+# Deze twee locaties blijven buiten de selectie op verzoek van de gebruiker.
+EXCLUDED_POLYGON_IDS = {
+    "way/265176673": "Gebouw Amersfoort-Koedijkerweg",
+    "way/1487136894": "Terrein Waterwinning Schiermonnikoog",
 }
 
 OsmElement = dict[str, Any]
+
+
+@dataclass(frozen=True)
+class ReviewedLocation:
+    """One location from the supplied, dated source review."""
+
+    name: str
+    operator: str
+    kind: str
+    location_id: str
+    polygon_id: str
+    review_date: str
 
 
 @dataclass(frozen=True)
@@ -77,16 +62,12 @@ class DrinkingWaterPolygon:
     kind: str
     location_id: str
     polygon_id: str
+    review_date: str
     geometry: BaseGeometry
 
 
 def _osm_id(element: OsmElement) -> str:
     return f"{element['type']}/{element['id']}"
-
-
-def _location(element: OsmElement) -> Point:
-    point = element if element["type"] == "node" else element["center"]
-    return Point(point["lon"], point["lat"])
 
 
 def _validate_response(payload: object, description: str) -> dict[str, Any]:
@@ -158,42 +139,52 @@ def _read_overpass(
     return result
 
 
-def _select_locations(payload: dict[str, Any]) -> list[OsmElement]:
+def _read_reviews(path: Path) -> list[ReviewedLocation]:
+    """Select only confirmed treatment sites from the supplied source review."""
+    try:
+        records = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError(
+            f"Drinkwaterbeoordelingen ontbreken of zijn ongeldig: {path}"
+        ) from exc
+    if not isinstance(records, list):
+        raise TypeError("Drinkwaterbeoordelingen moeten een lijst zijn.")
+
     selected = []
-    for element in payload["elements"]:
-        tags = element.get("tags", {})
-        reference = _osm_id(element)
-        if reference in EXCLUDED_OSM_IDS:
-            logger.info(
-                "OSM-locatie uitgesloten: %s (%s)",
-                reference,
-                EXCLUDED_OSM_IDS[reference],
+    seen = set()
+    for record in records:
+        if record["oordeel"] != "drinkwaterzuivering":
+            continue
+        polygon_id = record["osm_ids"]
+        if polygon_id in EXCLUDED_POLYGON_IDS:
+            logger.info("OSM-vlak uitgesloten: %s", polygon_id)
+            continue
+        if polygon_id in seen:
+            raise ValueError(f"Dubbel beoordeeld OSM-vlak: {polygon_id}")
+        if record["vlak_type"] not in {"gebouw", "terrein"}:
+            raise ValueError(f"Onbekend drinkwatervlaktype: {polygon_id}")
+        seen.add(polygon_id)
+        selected.append(
+            ReviewedLocation(
+                name=record["naam"],
+                operator=record["exploitant"],
+                kind=record["vlak_type"],
+                location_id=record["locatie_id"],
+                polygon_id=polygon_id,
+                review_date=record["controle_datum"],
             )
-            continue
-        if tags.get("man_made") != "water_works" or not tags.get("name"):
-            continue
-        if "industriewater" in tags["name"].casefold():
-            continue
-        if not WATER_COMPANIES.search(tags["name"] + " " + tags.get("operator", "")):
-            continue
-        point = _location(element)
-        if 3 < point.x < 8 and 50 < point.y < 54:
-            selected.append(element)
-    return sorted(
-        selected,
-        key=lambda element: (element["tags"]["name"].casefold(), _osm_id(element)),
-    )
+        )
+    if not selected:
+        raise ValueError("Geen beoordeelde drinkwaterzuiveringen gevonden.")
+    return selected
 
 
-def _detail_query(selected: list[OsmElement]) -> str:
-    references = {_osm_id(element) for element in selected}
-    references.update(
-        EXPLICIT_POLYGONS[reference][0]
-        for reference in tuple(references)
-        if reference in EXPLICIT_POLYGONS
-    )
+def _detail_query(reviews: list[ReviewedLocation]) -> str:
+    references = {review.polygon_id for review in reviews}
+    if "relation/12565283" in references:
+        references.add("relation/19326342")  # Reservoirmultipolygoon Berenplaat.
     selectors = []
-    for kind in ("node", "way", "relation"):
+    for kind in ("way", "relation"):
         identifiers = sorted(
             int(reference.split("/")[1])
             for reference in references
@@ -201,27 +192,10 @@ def _detail_query(selected: list[OsmElement]) -> str:
         )
         if identifiers:
             selectors.append(f"{kind}(id:{','.join(map(str, identifiers))});")
-    points = [
-        _location(element)
-        for element in selected
-        if element["type"] == "node" or element["tags"].get("building")
-    ]
-    if points:
-        areas = "".join(f"is_in({point.y},{point.x});" for point in points)
-        nearby = (
-            f"({areas})->.a;"
-            "(way(pivot.a)[landuse=industrial];rel(pivot.a)[landuse=industrial];"
-            "way(pivot.a)[building];rel(pivot.a)[building];"
-            "way(pivot.a)[man_made=water_works];"
-            "rel(pivot.a)[man_made=water_works];)->.near;"
-        )
-    else:
-        nearby = "()->.near;"
     return (
         "[out:json][timeout:90][maxsize:67108864];"
         f"({''.join(selectors)})->.roots;"
-        + nearby
-        + "way(r.roots)->.members;(.roots;.near;.members;"
+        "way(r.roots)->.members;(.roots;.members;"
         "rel(bw.members)[type=multipolygon];);out geom;"
     )
 
@@ -337,93 +311,37 @@ def _polygon(element: OsmElement, objects: dict[str, OsmElement]) -> BaseGeometr
     return result
 
 
-def _choose_polygon(
-    element: OsmElement, objects: dict[str, OsmElement]
-) -> tuple[BaseGeometry, str, str] | None:
-    reference = _osm_id(element)
-    point = _location(element)
-    if reference in EXPLICIT_POLYGONS:
-        polygon_ref, kind = EXPLICIT_POLYGONS[reference]
-        geometry = _polygon(objects[polygon_ref], objects)
-        if not geometry.covers(point):
-            raise ValueError(
-                f"Vastgelegd OSM-vlak is gewijzigd: {reference} -> {polygon_ref}"
-            )
-        return geometry, kind, polygon_ref
-    if element["type"] != "node":
-        kind = "gebouw" if element["tags"].get("building") else "terrein"
-        return _polygon(objects[reference], objects), kind, reference
-    candidates = []
-    for polygon_ref, candidate in objects.items():
-        tags = candidate.get("tags", {})
-        is_building = tags.get("building") not in (None, "no")
-        is_site = (
-            tags.get("landuse") == "industrial" or tags.get("man_made") == "water_works"
-        ) and WATER_COMPANIES.search(
-            tags.get("name", "") + " " + tags.get("operator", "")
-        )
-        if candidate["type"] == "node" or not (is_building or is_site):
-            continue
-        geometry = _polygon(candidate, objects)
-        if geometry.covers(point):
-            candidates.append(
-                (
-                    1 if is_building else 0,
-                    geometry.area,
-                    geometry,
-                    "gebouw" if is_building else "terrein",
-                    polygon_ref,
-                )
-            )
-    if not candidates:
-        return None
-    _, _, geometry, kind, polygon_ref = min(candidates, key=lambda item: item[:2])
-    return geometry, kind, polygon_ref
-
-
 def _collect_polygons(
-    selected: list[OsmElement], detail: dict[str, Any]
+    reviews: list[ReviewedLocation], detail: dict[str, Any]
 ) -> list[DrinkingWaterPolygon]:
     objects = {_osm_id(element): element for element in detail["elements"]}
-    missing = {_osm_id(element) for element in selected} - set(objects)
+    missing = {review.polygon_id for review in reviews} - set(objects)
     if missing:
         raise ValueError(
-            f"OSM-geometrieantwoord mist locaties: {', '.join(sorted(missing))}"
+            f"OSM-geometrieantwoord mist vlakken: {', '.join(sorted(missing))}"
         )
     transformer = Transformer.from_crs(
         "EPSG:4326", settings.crs, always_xy=True, allow_ballpark=False
     )
     polygons = []
-    used = set()
-    for element in selected:
-        chosen = _choose_polygon(element, objects)
-        if chosen is None:
-            logger.warning(
-                "Geen OSM-vlak voor %s (%s)", element["tags"]["name"], _osm_id(element)
-            )
-            continue
-        geometry, kind, polygon_ref = chosen
-        if polygon_ref in used:
-            logger.info("Dubbel OSM-vlak overgeslagen: %s", polygon_ref)
-            continue
-        used.add(polygon_ref)
+    for review in reviews:
+        geometry = _polygon(objects[review.polygon_id], objects)
         projected = transform(transformer.transform, geometry)
         if not projected.is_valid or projected.is_empty:
-            raise ValueError(f"Ongeldige projectie voor OSM-vlak {polygon_ref}")
+            raise ValueError(f"Ongeldige projectie voor OSM-vlak {review.polygon_id}")
         if isinstance(projected, Polygon):
             projected = MultiPolygon([projected])
         polygons.append(
             DrinkingWaterPolygon(
-                name=element["tags"]["name"],
-                operator=element["tags"].get("operator", ""),
-                kind=kind,
-                location_id=_osm_id(element),
-                polygon_id=polygon_ref,
+                name=review.name,
+                operator=review.operator,
+                kind=review.kind,
+                location_id=review.location_id,
+                polygon_id=review.polygon_id,
+                review_date=review.review_date,
                 geometry=projected,
             )
         )
-    if not polygons:
-        raise ValueError("Geen bruikbare OSM-drinkwatervlakken gevonden.")
     return polygons
 
 
@@ -435,8 +353,8 @@ def _frame(polygons: list[DrinkingWaterPolygon], timestamp: str) -> gpd.GeoDataF
             "vlak_type": polygon.kind,
             "osm_locatie_id": polygon.location_id,
             "osm_ids": polygon.polygon_id,
-            "osm_urls": f"https://www.openstreetmap.org/{polygon.polygon_id}",
-            "omschrijving": "OSM-drinkwaterlocatie",
+            "omschrijving": "Beoordeelde drinkwaterzuivering",
+            "controle_datum": polygon.review_date,
             "opmerking": (
                 "Gebouwcontour; geen volledige terreingrens."
                 if polygon.kind == "gebouw"
@@ -444,7 +362,6 @@ def _frame(polygons: list[DrinkingWaterPolygon], timestamp: str) -> gpd.GeoDataF
             ),
             "bron": "OpenStreetMap contributors",
             "licentie": "ODbL 1.0",
-            "licentie_url": "https://www.openstreetmap.org/copyright",
             "osm_peildatum_utc": timestamp,
             "geometry": polygon.geometry,
         }
@@ -456,12 +373,11 @@ def _frame(polygons: list[DrinkingWaterPolygon], timestamp: str) -> gpd.GeoDataF
         "vlak_type",
         "osm_locatie_id",
         "osm_ids",
-        "osm_urls",
         "omschrijving",
+        "controle_datum",
         "opmerking",
         "bron",
         "licentie",
-        "licentie_url",
         "osm_peildatum_utc",
         "geometry",
     ]
@@ -526,6 +442,7 @@ def download_osm_drinkwater(
     target_path: Path | None = None,
     *,
     data_store: DataStore | None = None,
+    reviews_path: Path | None = None,
     endpoint: str = OVERPASS_ENDPOINT,
     cache_dir: Path | None = None,
     offline: bool = False,
@@ -541,12 +458,14 @@ def download_osm_drinkwater(
         GeoPackage output. Defaults to source_data/osm/drinkwaterlocaties.gpkg.
     data_store : DataStore, optional
         Configured Waterlagen data store.
+    reviews_path : pathlib.Path, optional
+        JSON with reviewed locations. Defaults to the bundled source review.
     endpoint : str, optional
         Overpass API endpoint.
     cache_dir : pathlib.Path, optional
         Directory for validated raw Overpass JSON responses.
     offline : bool, optional
-        Read both responses from cache without network access.
+        Read the geometry response from cache without network access.
     overwrite : bool, optional
         Replace a validated existing GeoPackage. Otherwise reuse it.
     include_buildings : bool, optional
@@ -573,26 +492,26 @@ def download_osm_drinkwater(
             or not same_crs(info["crs"], settings.crs)
         ):
             raise ValueError(f"Bestaande OSM-drinkwaterlaag is ongeldig: {target}")
+        if "controle_datum" not in info["fields"] or {
+            "bewijs",
+            "bronnen_functie",
+            "osm_urls",
+            "licentie_url",
+        } & set(info["fields"]):
+            raise ValueError(
+                f"Bestaande OSM-drinkwaterlaag gebruikt de oude selectie: {target}. "
+                "Gebruik --overwrite."
+            )
         logger.info("Bestaande OSM-drinkwaterlocaties hergebruikt: %s", target)
         return target
     if offline and cache_dir is None:
         raise ValueError("Offline gebruik vereist cache_dir.")
     if timeout <= 0:
         raise ValueError("timeout moet positief zijn.")
-    selection = _read_overpass(
-        SELECTION_QUERY,
-        "selectie",
-        endpoint=endpoint,
-        cache_dir=cache_dir,
-        offline=offline,
-        timeout=timeout,
-    )
-    selected = _select_locations(selection)
-    if not selected:
-        raise ValueError("Geen OSM-drinkwaterlocaties geselecteerd.")
-    logger.info("%s OSM-drinkwaterlocaties geselecteerd", len(selected))
+    reviews = _read_reviews(Path(reviews_path or REVIEWS_PATH))
+    logger.info("%s beoordeelde drinkwaterzuiveringen geselecteerd", len(reviews))
     detail = _read_overpass(
-        _detail_query(selected),
+        _detail_query(reviews),
         "geometrie",
         endpoint=endpoint,
         cache_dir=cache_dir,
@@ -602,7 +521,7 @@ def download_osm_drinkwater(
     timestamp = detail.get("osm3s", {}).get("timestamp_osm_base")
     if not isinstance(timestamp, str) or not timestamp:
         raise ValueError("Overpass-geometrieantwoord mist de OSM-peildatum.")
-    polygons = _collect_polygons(selected, detail)
+    polygons = _collect_polygons(reviews, detail)
     sites = _frame(
         [polygon for polygon in polygons if polygon.kind == "terrein"], timestamp
     )
