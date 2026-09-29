@@ -13,6 +13,8 @@ Deze bewerking maakt een geclassificeerd raster voor functioneel landgebruik.
 - [LIWO](../bronnen/liwo.md)
 - [GKW HYDAMO](../bronnen/hydamo.md) voor gemaalpunten en capaciteit
 - [Waterketen DAMO](../bronnen/waterketen-damo.md) voor bevestiging van RWZI-terreinen
+- [OpenStreetMap-drinkwaterlocaties](../bronnen/osm-drinkwater.md) voor
+  drinkwaterproductielocaties
 
 ## Werkwijze
 
@@ -230,7 +232,7 @@ in `basis_...`-kolommen, naast de uiteindelijke klasse en reden.
 | --- | --- |
 | Kassen | TOP10NL-gebouwtype `kas, warenhuis`, ook als afzonderlijke waarde in een combinatie met `\|`. Als deze geometrie meer dan de helft van een BAG-pand bedekt, krijgt dat pand de kassenklasse. De BAG-geometrie blijft behouden. |
 | RWZI | Polygonen uit `top10nl_functioneel_gebied_vlak` met exact `typefunctioneelgebied == "zuiveringsinstallatie"`, die een object uit Waterketen DAMO-laag `rwzi` snijden. BAG-panden met hun representatieve punt strikt binnen zo'n terrein krijgen `RWZI (gebouw op RWZI-terrein)`, codes 36/164. Er geldt geen statusfilter. |
-| Drinkwater | BAG-panden waarvan het representatieve punt binnen een aangeleverd drinkwaterproductieterrein ligt krijgen de drinkwaterklasse. |
+| Drinkwater | BAG-panden waarvan het representatieve punt binnen een OSM-drinkwaterlocatie in de koppellaag ligt krijgen de drinkwaterklasse 37/165. De BAG-pandgeometrie blijft behouden. |
 | Gemalen | Capaciteit in m³/min bepaalt de klasse. Gebruik een BAG-pand als het gemaalpunt binnen precies één geselecteerd pand ligt en het pand uitsluitend industrie-/overige gebruiksfunctie heeft, geen gekoppeld VBO heeft, of uitsluitend lege gebruiksdoelen heeft. Wonen, andere bekende functies, onbekende bronwaarden en deels ontbrekende doelen sluiten automatische pandkoppeling uit; het gemaal blijft dan een punt. |
 
 De ruimtelijke grenzen voor deze koppelingen zijn uitvoeringskeuzes; de notitie
@@ -299,10 +301,11 @@ en meerdere punten kunnen in dezelfde rastercel vallen.
 Kassen worden standaard gecontroleerd. Een aanwezige `hydamo/hydamo.gpkg`
 wordt bij gebruik van de datastore meegenomen voor gemalen. Een aanwezige
 `waterketen_damo/waterketen_damo.gpkg` wordt gebruikt voor RWZI-terreinen.
-Drinkwaterproductieterreinen moeten afzonderlijk worden ingesteld.
-Zonder die bronnen worden de betreffende selecties overgeslagen en gelogd;
-de gewone BAG-klasse blijft staan. `Gerealiseerd` geldt niet automatisch als
-`in gebruik`. De status van gemaalobjecten blijft in de controle zichtbaar;
+`osm/drinkwaterlocaties.gpkg` wordt gebruikt voor drinkwatergebouwen;
+dit bestand wordt niet automatisch gedownload. Zonder de betreffende bronnen
+worden de selecties overgeslagen en gelogd;
+de gewone BAG-klasse blijft staan. De RWZI-koppeling geeft geen oordeel over
+de bedrijfsstatus. De status van gemaalobjecten blijft in de controle zichtbaar;
 de capaciteitsindeling op zichzelf bevestigt niet dat een gemaal operationeel is.
 
 Alle gebruikte BGT-lagen worden alleen verwerkt als de status `bestaand` is

@@ -290,6 +290,27 @@ gebruikt dezelfde tabel en BAG-beslisregels.
 
 ### Stap 6 controleren
 
+Maak desgewenst eerst de OSM-vlakken voor drinkwaterproductielocaties:
+
+```powershell
+pixi run python scripts/osm_drinkwater.py
+```
+
+Het script schrijft standaard
+`source_data/osm/drinkwaterlocaties.gpkg` binnen de geconfigureerde
+[opslaglocatie](configuratie.md). Daarna gebruiken BAG-controle en
+rasterproductie het bestand automatisch. Bestaande uitvoer wordt hergebruikt;
+gebruik `--overwrite` om OSM opnieuw op te halen. Met
+`--cache-dir <map>` worden de Overpass-antwoorden bewaard en met
+`--offline --cache-dir <map>` opnieuw gebruikt. De bronselectie en de
+beperkingen staan bij [OSM-drinkwaterlocaties](../bronnen/osm-drinkwater.md).
+
+Het GeoPackage bevat de laag `drinkwaterproductieterrein` voor de koppeling
+met BAG-panden en daarnaast afzonderlijke controlelagen voor terreinen en
+losse gebouwcontouren. Standaard koppelen alleen de terreinen. Met
+`--include-building-contours --overwrite` worden ook losse gebouwcontouren
+in de koppellaag opgenomen; controleer die keuze per locatie.
+
 De TOP10NL-GeoPackage moet `top10nl_gebouw_vlak` bevatten. Kassen worden daarin
 automatisch opgezocht. De standaardvoorbeelden hoeven geen kas of gemaal te
 bevatten; kies daarvoor een passende `bounds`.
@@ -324,6 +345,8 @@ Voor rasterproductie staan de optionele paden op `FunctioneelLandgebruikSources`
 (`rwzi_gpkg`, `drinking_water_gpkg`, `gemalen_gpkg`) en de bijbehorende laag- en
 veldnamen op `FunctioneelLandgebruikLayers`. Gebruik `dataclasses.replace` om
 de paden van `FunctioneelLandgebruikSources.from_datastore(...)` aan te vullen.
+De OSM-bron uit de standaardopslag wordt door `from_datastore(...)`
+automatisch gevonden als het bestand bestaat.
 Controleer de [selectieregels en beperkingen](../bewerkingen/functioneel-landgebruik.md#bijzondere-gebouwen-en-gemalen-stap-6)
 voordat je de uitkomsten gebruikt.
 

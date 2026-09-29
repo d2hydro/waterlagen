@@ -95,6 +95,11 @@ class FunctioneelLandgebruikSources:
         )
         if not rwzi_gpkg.is_file():
             rwzi_gpkg = None
+        drinking_water_gpkg = (
+            data_store.source_data_dir / "osm" / "drinkwaterlocaties.gpkg"
+        )
+        if not drinking_water_gpkg.is_file():
+            drinking_water_gpkg = None
         return cls(
             bgt_gpkg=data_store.bgt_dir / "bgt.gpkg",
             bag_gpkg=data_store.bag_dir / "bag-light.gpkg",
@@ -103,6 +108,7 @@ class FunctioneelLandgebruikSources:
             buitendijks_gpkg=data_store.source_data_dir
             / "liwo"
             / "buitendijks_gebied_uit_liwo.gpkg",
+            drinking_water_gpkg=drinking_water_gpkg,
             gemalen_gpkg=gemalen_gpkg,
             rwzi_gpkg=rwzi_gpkg,
         )
