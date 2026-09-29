@@ -9,6 +9,7 @@ die kunnen worden gedownload. Voor datasets die uit bronnen worden afgeleid zie 
 - Beheerregister waterschappen: [GKW HYDAMO](hydamo.md)
 - Waterketengegevens waterschappen: [Waterketen DAMO](waterketen-damo.md)
 - Dijkringen: [Dijkringen](dijkringen.md)
+- Overstromingsgevoelige gebieden: [LIWO](liwo.md)
 - Administratieve grenzen: [Bestuurlijke gebieden](bestuurlijke-gebieden.md) en
   [Waterschapsgrenzen](waterschapsgrenzen.md)
 - CBS: [Wijk- en Buurtkaart en Kerncijfers](cbs.md)
