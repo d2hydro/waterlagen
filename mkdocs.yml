@@ -26,6 +26,7 @@ nav:
       - TOP10NL: bronnen/top10nl.md
       - Dijkringen: bronnen/dijkringen.md
       - GKW HYDAMO: bronnen/hydamo.md
+      - Waterketen DAMO: bronnen/waterketen-damo.md
       - Bestuurlijke gebieden: bronnen/bestuurlijke-gebieden.md
       - Waterschapsgrenzen: bronnen/waterschapsgrenzen.md
       - CBS Wijk- en Buurtkaart en Kerncijfers: bronnen/cbs.md
@@ -45,6 +46,7 @@ nav:
       - Afwateringseenheden: produceren/afwateringseenheden.md
       - Functioneel landgebruik: produceren/landgebruik.md
       - BGT-vlakken voor QGIS: produceren/bgt-vlakken.md
+      - Waterketen DAMO downloaden: produceren/waterketen-damo.md
       - Inwoners en personenauto's: produceren/inwoners-personenautos.md
   - API-referentie:
       - AHN: reference/ahn.md
@@ -58,6 +60,7 @@ nav:
       - Afwateringseenheden: reference/afwateringseenheden.md
       - Functioneel landgebruik: reference/functioneel_landgebruik.md
       - HYDAMO: reference/hydamo.md
+      - Waterketen DAMO: reference/waterketen_damo.md
       - DataStore: reference/datastore.md
       - Rasters: reference/raster.md
   - Bijdragen:
