@@ -24,7 +24,7 @@ def test_worker_logs_details_to_file_and_restores_logger(
             crs="EPSG:28992",
         )
         _assign_source_codes(
-            data, {}, field="type", dike_area=None, source_layer="bgt_terrein"
+            data, {}, field="type", buitendijks_area=None, source_layer="bgt_terrein"
         )
         if fails:
             raise ValueError("testfout")

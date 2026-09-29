@@ -18,7 +18,7 @@ from waterlagen.raster.config import RasterOutputConfig
 def _patch_sources(monkeypatch, prepared_sources=()):
     monkeypatch.setattr(build_mod, "_download_missing_sources", lambda *args: None)
     monkeypatch.setattr(build_mod, "_validate_sources_exist", lambda sources: None)
-    monkeypatch.setattr(build_mod, "_read_dike_area", lambda *args: object())
+    monkeypatch.setattr(build_mod, "_read_buitendijks_area", lambda *args: object())
     monkeypatch.setattr(
         build_mod,
         "_prepare_priority_sources",
@@ -33,14 +33,16 @@ def test_output_crs_must_match_project(tmp_path):
     assert not target.exists()
 
 
-def test_dike_crs_must_match_project(tmp_path):
-    path = tmp_path / "dikes.gpkg"
+def test_liwo_crs_must_match_project(tmp_path):
+    path = tmp_path / "liwo.gpkg"
     gpd.GeoDataFrame(geometry=[box(0, 0, 1, 1)], crs=4326).to_file(
-        path, layer="dijkring_v_2012", driver="GPKG"
+        path, layer="buitendijks_gebied_uit_liwo", driver="GPKG"
     )
-    sources = FunctioneelLandgebruikSources(dijkringen_gpkg=path)
-    with pytest.raises(ValueError, match="CRS van dijkringen"):
-        build_mod._read_dike_area(sources, build_mod.FunctioneelLandgebruikLayers())
+    sources = FunctioneelLandgebruikSources(buitendijks_gpkg=path)
+    with pytest.raises(ValueError, match="CRS van LIWO buitendijks"):
+        build_mod._read_buitendijks_area(
+            sources, build_mod.FunctioneelLandgebruikLayers()
+        )
 
 
 def test_sources_are_derived_from_injected_datastore(tmp_path):
@@ -54,8 +56,8 @@ def test_sources_are_derived_from_injected_datastore(tmp_path):
         data_store.brp_dir / "brpgewaspercelen_definitief_2025.gpkg"
     )
     assert sources.top10nl_gpkg == data_store.top10nl_dir / "top10nl_Compleet.gpkg"
-    assert sources.dijkringen_gpkg == (
-        data_store.dijkringen_dir / "dijkringen_historie_2012.gpkg"
+    assert sources.buitendijks_gpkg == (
+        data_store.source_data_dir / "liwo" / "buitendijks_gebied_uit_liwo.gpkg"
     )
 
 

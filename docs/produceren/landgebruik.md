@@ -7,6 +7,13 @@ de klassen, bronnen en bewerkingen staat bij
 
 ## Vooraf
 
+Maak eerst de [LIWO-selectie](../bewerkingen/liwo-selectie.md) met
+`pixi run python scripts/liwo_overstromingsgevoelige_gebieden.py`. Het bestand
+`source_data/liwo/buitendijks_gebied_uit_liwo.gpkg` is verplicht en wordt niet
+automatisch gedownload door de landgebruikproductie. Een afwijkend pad kan via
+`sources.buitendijks_gpkg`; de standaardlaag is `buitendijks_gebied_uit_liwo`
+(`layers.buitendijks`). Dijkringen zijn niet meer nodig.
+
 De losse rasterfunctie en de parallelle tegelverwerking gebruiken dezelfde
 standaardbronnen uit de datastore. Als `source_data/hydamo/hydamo.gpkg`
 aanwezig is, worden de gemalen meegenomen. Met een expliciet `sources`-object

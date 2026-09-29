@@ -200,8 +200,9 @@ def test_control_and_national_raster_use_same_pump_decisions(tmp_path):
         gpd.GeoDataFrame({field: []}, geometry=[], crs=panden.crs).to_file(
             sources.top10nl_gpkg, layer=layer, driver="GPKG"
         )
-    gpd.GeoDataFrame(geometry=[box(-1, -1, 30, 20)], crs=panden.crs).to_file(
-        sources.dijkringen_gpkg, layer="dijkring_v_2012", driver="GPKG"
+    sources.buitendijks_gpkg.parent.mkdir(parents=True, exist_ok=True)
+    gpd.GeoDataFrame(geometry=[], crs=panden.crs).to_file(
+        sources.buitendijks_gpkg, layer="buitendijks_gebied_uit_liwo", driver="GPKG"
     )
     script = runpy.run_path(
         str(Path(__file__).parents[1] / "scripts/controle_bag_landgebruik.py")

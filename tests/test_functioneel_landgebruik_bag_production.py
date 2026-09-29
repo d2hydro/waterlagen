@@ -60,7 +60,7 @@ def test_production_matches_control_and_masks_unresolved_panden(
         pand_layer="pand",
         verblijfsobject_layer="verblijfsobject",
         bounds=bounds,
-        dike_area=box(-1, -1, 11, 11),
+        buitendijks_area=box(11, -1, 30, 11),
         include_details=True,
     )
     common = [column for column in production if column in control]

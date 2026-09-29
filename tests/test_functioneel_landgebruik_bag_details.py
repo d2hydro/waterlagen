@@ -34,7 +34,7 @@ def test_bag_details_preserve_classification(tmp_path, empty):
         "pand_layer": "pand",
         "verblijfsobject_layer": "verblijfsobject",
         "bounds": bounds,
-        "dike_area": box(-5, -5, 15, 15),
+        "buitendijks_area": box(15, -5, 35, 15),
     }
     normal = prepare_bag(path, **kwargs)
     details = prepare_bag(path, include_details=True, **kwargs)

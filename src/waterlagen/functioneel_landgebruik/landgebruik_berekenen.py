@@ -19,7 +19,6 @@ from waterlagen.bag import download_bag_light
 from waterlagen.bgt import download_bgt
 from waterlagen.brp import download_brp
 from waterlagen.datastore import DataStore
-from waterlagen.dijkringen import download_dijkringen
 from waterlagen.functioneel_landgebruik.bag_panden_en_verblijfsobjecten import (
     _bounds_including_panden,
 )
@@ -74,9 +73,11 @@ class FunctioneelLandgebruikSources:
     top10nl_gpkg: Path = field(
         default_factory=lambda: default_datastore.top10nl_dir / "top10nl_Compleet.gpkg"
     )
-    dijkringen_gpkg: Path = field(
+    buitendijks_gpkg: Path = field(
         default_factory=lambda: (
-            default_datastore.dijkringen_dir / "dijkringen_historie_2012.gpkg"
+            default_datastore.source_data_dir
+            / "liwo"
+            / "buitendijks_gebied_uit_liwo.gpkg"
         )
     )
     rwzi_gpkg: Path | None = None
@@ -99,7 +100,9 @@ class FunctioneelLandgebruikSources:
             bag_gpkg=data_store.bag_dir / "bag-light.gpkg",
             brp_gpkg=data_store.brp_dir / "brpgewaspercelen_definitief_2025.gpkg",
             top10nl_gpkg=data_store.top10nl_dir / "top10nl_Compleet.gpkg",
-            dijkringen_gpkg=data_store.dijkringen_dir / "dijkringen_historie_2012.gpkg",
+            buitendijks_gpkg=data_store.source_data_dir
+            / "liwo"
+            / "buitendijks_gebied_uit_liwo.gpkg",
             gemalen_gpkg=gemalen_gpkg,
             rwzi_gpkg=rwzi_gpkg,
         )
@@ -118,7 +121,7 @@ class FunctioneelLandgebruikLayers:
     bag_verblijfsobject: str = "verblijfsobject"
     brp: str = "brp_gewas"
     top10nl_functioneel_gebied: str = "top10nl_functioneel_gebied_vlak"
-    dijkringen: str = "dijkring_v_2012"
+    buitendijks: str = "buitendijks_gebied_uit_liwo"
     top10nl_gebouw: str = "top10nl_gebouw_vlak"
     rwzi: str = "rwzi"
     rwzi_status_column: str = "status"
@@ -157,6 +160,10 @@ def _download_missing_sources(
     layers: FunctioneelLandgebruikLayers,
 ) -> None:
     """Download source datasets that are missing from the configured paths."""
+    if not sources.buitendijks_gpkg.is_file():
+        raise FileNotFoundError(
+            f"LIWO source missing: {sources.buitendijks_gpkg}. Run scripts/liwo_overstromingsgevoelige_gebieden.py first."
+        )
     if not sources.bgt_gpkg.exists():
         download_bgt(
             download_dir=sources.bgt_gpkg.parent,
@@ -184,13 +191,6 @@ def _download_missing_sources(
     if not sources.top10nl_gpkg.exists():
         download_top10nl(download_dir=sources.top10nl_gpkg.parent, overwrite=False)
 
-    if not sources.dijkringen_gpkg.exists():
-        download_dijkringen(
-            download_dir=sources.dijkringen_gpkg.parent,
-            target_path=sources.dijkringen_gpkg,
-            overwrite=False,
-        )
-
 
 def _validate_sources_exist(sources: FunctioneelLandgebruikSources) -> None:
     """Raise a clear error when one or more configured source datasets are absent."""
@@ -204,17 +204,23 @@ def _validate_sources_exist(sources: FunctioneelLandgebruikSources) -> None:
         raise FileNotFoundError(f"Missing source dataset(s): {labels}")
 
 
-def _read_dike_area(
+def _read_buitendijks_area(
     sources: FunctioneelLandgebruikSources,
     layers: FunctioneelLandgebruikLayers,
 ) -> BaseGeometry:
-    """Read and dissolve the dike-ring geometry used for inside/outside classes."""
-    dijkringen = wgpd.read_file(sources.dijkringen_gpkg, layer=layers.dijkringen)
-    if dijkringen.crs is None or not same_crs(dijkringen.crs, settings.crs):
+    """Read and dissolve LIWO polygons used as the sole outside-area source."""
+    buitendijks = wgpd.read_file(sources.buitendijks_gpkg, layer=layers.buitendijks)
+    if buitendijks.crs is None or not same_crs(buitendijks.crs, settings.crs):
         raise ValueError(
-            f"CRS van dijkringen ({dijkringen.crs}) verschilt van {settings.crs}."
+            f"CRS van LIWO buitendijks ({buitendijks.crs}) verschilt van {settings.crs}."
         )
-    return dijkringen.geometry.make_valid().union_all()
+    if (
+        not buitendijks.geometry.dropna()
+        .geom_type.isin(["Polygon", "MultiPolygon"])
+        .all()
+    ):
+        raise ValueError("LIWO buitendijks moet polygonen bevatten")
+    return buitendijks.geometry.dropna().make_valid().union_all()
 
 
 def _prepare_buildings_and_pumps(
@@ -222,7 +228,7 @@ def _prepare_buildings_and_pumps(
     layers: FunctioneelLandgebruikLayers,
     *,
     bounds: tuple[float, float, float, float],
-    dike_area: BaseGeometry,
+    buitendijks_area: BaseGeometry,
     table: LanduseTable,
     diagnostics: LanduseDiagnostics | None = None,
 ) -> list[gpd.GeoDataFrame]:
@@ -242,7 +248,7 @@ def _prepare_buildings_and_pumps(
         pand_layer=layers.bag_pand,
         verblijfsobject_layer=layers.bag_verblijfsobject,
         bounds=bounds,
-        dike_area=dike_area,
+        buitendijks_area=buitendijks_area,
         table=table,
         special_sources=special_sources,
         include_details=True,
@@ -257,7 +263,7 @@ def _prepare_buildings_and_pumps(
             capacity_column=layers.gemaal_capacity_column,
             bounds=pump_bounds,
             crs=settings.crs,
-            dike_area=dike_area,
+            buitendijks_area=buitendijks_area,
             table=table,
             include_details=True,
             diagnostics=diagnostics,
@@ -305,7 +311,7 @@ def _prepare_priority_sources(
     layers: FunctioneelLandgebruikLayers,
     *,
     bounds: tuple[float, float, float, float],
-    dike_area: BaseGeometry,
+    buitendijks_area: BaseGeometry,
     table: LanduseTable,
     diagnostics: LanduseDiagnostics | None = None,
 ) -> list[gpd.GeoDataFrame]:
@@ -330,7 +336,7 @@ def _prepare_priority_sources(
         sources,
         layers,
         bounds=bounds,
-        dike_area=dike_area,
+        buitendijks_area=buitendijks_area,
         table=table,
         diagnostics=diagnostics,
     )
@@ -340,7 +346,7 @@ def _prepare_priority_sources(
             layer=actual_layer,
             mapping_layer=mapping_layer,
             bounds=bounds,
-            dike_area=dike_area,
+            buitendijks_area=buitendijks_area,
             table=table,
             diagnostics=diagnostics,
         )
@@ -354,7 +360,7 @@ def _prepare_priority_sources(
             sources.top10nl_gpkg,
             layer=layer,
             bounds=bounds,
-            dike_area=dike_area,
+            buitendijks_area=buitendijks_area,
             table=table,
             diagnostics=diagnostics,
         )
@@ -367,7 +373,7 @@ def _prepare_priority_sources(
         sources.brp_gpkg,
         layer=layers.brp,
         bounds=bounds,
-        dike_area=dike_area,
+        buitendijks_area=buitendijks_area,
         table=table,
         diagnostics=diagnostics,
     )
@@ -376,7 +382,7 @@ def _prepare_priority_sources(
         layer=layers.bgt_ondersteunendwegdeel,
         mapping_layer="bgt_ondersteunendwegdeel",
         bounds=bounds,
-        dike_area=dike_area,
+        buitendijks_area=buitendijks_area,
         table=table,
         diagnostics=diagnostics,
     )
@@ -384,7 +390,7 @@ def _prepare_priority_sources(
         sources.bgt_gpkg,
         layer=layers.bgt_wegdeel,
         bounds=bounds,
-        dike_area=dike_area,
+        buitendijks_area=buitendijks_area,
         table=table,
         diagnostics=diagnostics,
     )
@@ -392,7 +398,7 @@ def _prepare_priority_sources(
         sources.bgt_gpkg,
         layer=layers.bgt_water,
         bounds=bounds,
-        dike_area=dike_area,
+        buitendijks_area=buitendijks_area,
         table=table,
         diagnostics=diagnostics,
     )
@@ -433,8 +439,8 @@ def bouw_functioneel_landgebruik(
     rasterizes them in priority order, and writes a paletted GeoTIFF with
     overviews. Source geometries are read with the requested bounds as a bbox
     filter. Top10NL, BRP, BGT roads, and BAG classes are additionally adjusted
-    for whether their representative point lies inside the configured dike-ring
-    area.
+    using representative points covered by the LIWO outside-area polygons
+    (including boundaries). All other locations use inside codes.
 
     Parameters
     ----------
@@ -480,7 +486,7 @@ def bouw_functioneel_landgebruik(
 
     Side Effects
     ------------
-    May download missing BGT, BAG, BRP, Top10NL, and dijkringen source files to
+    May download missing BGT, BAG, BRP and Top10NL source files to
     the configured datastore paths. The GeoTIFF is written to a temporary file
     beside ``target_path`` and atomically replaces the target after successful
     raster creation. A same-stem QGIS ``.qml`` file with category labels is
@@ -522,7 +528,7 @@ def bouw_functioneel_landgebruik(
     target_path.parent.mkdir(parents=True, exist_ok=True)
     grid = RasterGrid.from_bounds(bounds, resolution=resolution_m, crs=crs)
     profile = _profile_for_grid(grid, output_config=output_config)
-    dike_area = _read_dike_area(sources, layers)
+    buitendijks_area = _read_buitendijks_area(sources, layers)
 
     nodata = 0
     raster = np.full(
@@ -535,7 +541,7 @@ def bouw_functioneel_landgebruik(
         sources,
         layers,
         bounds=grid.bounds,
-        dike_area=dike_area,
+        buitendijks_area=buitendijks_area,
         table=table,
         diagnostics=diagnostics,
     ):

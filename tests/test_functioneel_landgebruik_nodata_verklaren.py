@@ -91,7 +91,7 @@ def sources(tmp_path):
         bag_gpkg=tmp_path / "bag.gpkg",
         brp_gpkg=tmp_path / "brp.gpkg",
         top10nl_gpkg=tmp_path / "top10.gpkg",
-        dijkringen_gpkg=tmp_path / "dikes.gpkg",
+        buitendijks_gpkg=tmp_path / "liwo.gpkg",
         gemalen_gpkg=tmp_path / "gemalen.gpkg",
     )
     for layer, geometries, field, values, end in [
@@ -174,7 +174,7 @@ def sources(tmp_path):
         [box(0, 0, 2, 2), box(4, 0, 6, 2)],
         gewascode=[2014.0, np.nan],
     )
-    _write(source.dijkringen_gpkg, "dijkring_v_2012", [box(-1, -1, 20, 20)])
+    _write(source.buitendijks_gpkg, "buitendijks_gebied_uit_liwo", [])
     _write(
         source.gemalen_gpkg,
         "gemaal",

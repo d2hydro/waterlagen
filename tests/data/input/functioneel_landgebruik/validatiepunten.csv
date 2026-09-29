@@ -12,5 +12,6 @@ categorie,x,y,indiender,opmerking,github_issue
 ,138130.714,521266.789,DT,Gemalen die niet kunnen worden gekoppeld aan een BAG-geometrie opnemen als punt, https://github.com/d2hydro/waterlagen/issues/60
 ,175791.860,535963.099,DT,meerdere functies in 1 VBO (vergelijkbaar aan Flik-Flak),https://github.com/d2hydro/waterlagen/issues/60
 ,148966.397,410910.973,DT, >3 VBO goed specificeren,https://github.com/d2hydro/waterlagen/issues/60
-,171575.247,449179.942,DT,Exact gelijke VBO-oppervlaktes (446m2 industrie en winkel),https://github.com/d2hydro/waterlagen/issues/60
-,172324.989,449085.270,DT,Exact gelijke VBO-oppervlaktes (50m2 industrie en kantoor),https://github.com/d2hydro/waterlagen/issues/60
+,171575.247,449179.942,DT,Exact gelijke VBO-oppervlaktes (446m2 industrie en winkel) wordt winkel,https://github.com/d2hydro/waterlagen/issues/60
+,172324.989,449085.270,DT,Exact gelijke VBO-oppervlaktes (50m2 industrie en kantoor) wordt kantoor,https://github.com/d2hydro/waterlagen/issues/60
+,161348.470,440677.608,DT,Fruiteelt opgevult met Top10NL_terrein_vlak,https://github.com/d2hydro/waterlagen/issues/60

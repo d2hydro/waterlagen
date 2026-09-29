@@ -10,7 +10,7 @@ als in de repository bij die release. Pas de instellingen aan uw toepassing aan.
 Gebruik steeds de scripts en het Pixi-lockbestand uit hetzelfde pakket.
 
 De broncoderepository bevat aanvullende workflows voor onder meer BGT, BRP,
-TOP10NL, dijkringen en HYDAMO. Deze zitten niet allemaal in het productiepakket.
+TOP10NL, LIWO en HYDAMO. Deze zitten niet allemaal in het productiepakket.
 Gebruik daarvoor de [ontwikkelomgeving](../bijdragen/ontwikkelomgeving.md).
 
 ## LIWO-gebieden downloaden en polygoniseren
@@ -22,7 +22,7 @@ pixi run python scripts/liwo_overstromingsgevoelige_gebieden.py
 ```
 
 Het script downloadt het nationale GeoTIFF naar `source_data/liwo/` en schrijft
-`source_data/liwo/buitendijks_gebied.gpkg`, onder de
+`source_data/liwo/buitendijks_gebied_uit_liwo.gpkg`, onder de
 geconfigureerde [DataStore](configuratie.md). De geselecteerde klassen en methode
 staan bij [LIWO-selectie](../bewerkingen/liwo-selectie.md).
 

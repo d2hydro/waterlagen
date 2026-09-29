@@ -196,7 +196,7 @@ def test_brp_fallback_only_for_valid_integer_values(tmp_path, rows):
         table.source_values("BRP", "brp_gewas"),
         field="gewascode",
         numeric_values=True,
-        dike_area=None,
+        buitendijks_area=None,
     )
     assert result.index.tolist() == [0, 1, 2, 3]
     assert result["code"].tolist() == [50, 50, 50, 53]
@@ -239,7 +239,7 @@ def test_text_fallback_excludes_empty_values(
         {field: values}, geometry=[box(i, 0, i + 1, 1) for i in range(5)], crs=28992
     )
     result = _assign_source_codes(
-        data, table.source_values(source, layer), field=field, dike_area=None
+        data, table.source_values(source, layer), field=field, buitendijks_area=None
     )
     assert result.index.tolist() == [0, 1]
     assert result["code"].tolist() == [int(row["LGB-code_binnendijks"]), 110]
@@ -248,7 +248,7 @@ def test_text_fallback_excludes_empty_values(
             data.drop(columns=field),
             table.source_values(source, layer),
             field=field,
-            dike_area=None,
+            buitendijks_area=None,
         )
 
 
@@ -269,7 +269,7 @@ def test_blank_field_all_objects(tmp_path):
         layer="bgt_waterdeel",
         mapping_layer="bgt_waterdeel",
         bounds=(-1, -1, 4, 2),
-        dike_area=box(-1, -1, 4, 2),
+        buitendijks_area=box(100, 100, 101, 101),
     )
     assert result["code"].tolist() == [100, 100]
 

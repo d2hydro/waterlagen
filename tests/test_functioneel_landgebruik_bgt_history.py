@@ -30,7 +30,7 @@ def test_bgt_current_registration_only(tmp_path, roads, missing_field):
     prepare = prepare_wegen if roads else prepare_water
     kwargs = {"layer": layer, "bounds": (-1, -1, 20, 2)}
     if roads:
-        kwargs["dike_area"] = box(-1, -1, 20, 2)
+        kwargs["buitendijks_area"] = box(100, 100, 101, 101)
     if missing_field:
         with pytest.raises(ValueError, match=missing_field):
             prepare(path, **kwargs)

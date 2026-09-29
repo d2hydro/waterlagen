@@ -18,6 +18,7 @@ from waterlagen.functioneel_landgebruik.bag_panden_en_verblijfsobjecten import (
     read_bag_source_data,
 )
 from waterlagen.functioneel_landgebruik.bag_verdiepingen import determine_bag_floors
+from waterlagen.functioneel_landgebruik.dijkligging import _buitendijks_mask
 from waterlagen.functioneel_landgebruik.gemalen import (
     classify_pumping_stations,
 )
@@ -50,7 +51,7 @@ def _assign_source_codes(
     mappings: dict[str, LanduseMapping],
     *,
     field: str | None,
-    dike_area: BaseGeometry | None,
+    buitendijks_area: BaseGeometry | None,
     numeric_values: bool = False,
     source_layer: str = "onbekend",
     diagnostics: LanduseDiagnostics | None = None,
@@ -129,8 +130,8 @@ def _assign_source_codes(
     result = result.loc[~unknown].copy()
     matched = matched.loc[~unknown]
     inside = pd.Series(True, index=result.index)
-    if dike_area is not None:
-        inside = result.geometry.representative_point().covered_by(dike_area)
+    if buitendijks_area is not None:
+        inside = ~_buitendijks_mask(result, buitendijks_area)
     inside_codes = matched.map(lambda row: row.inside)
     outside_codes = matched.map(lambda row: row.outside)
     result["code"] = inside_codes.where(inside, outside_codes).astype("uint8")
@@ -142,7 +143,7 @@ def prepare_functionele_gebieden(
     *,
     layer: str,
     bounds: tuple[float, float, float, float],
-    dike_area: BaseGeometry,
+    buitendijks_area: BaseGeometry,
     table: LanduseTable | None = None,
     diagnostics: LanduseDiagnostics | None = None,
 ) -> gpd.GeoDataFrame:
@@ -156,8 +157,8 @@ def prepare_functionele_gebieden(
         Functional-area layer to read (vlak or multivlak).
     bounds : tuple of float
         Read bounds in the source CRS.
-    dike_area : BaseGeometry
-        Dike-ring union in the same CRS.
+    buitendijks_area : BaseGeometry
+        LIWO outside-area union in the same CRS.
     table : LanduseTable, optional
         Defaults to the packaged CSV.
     diagnostics : LanduseDiagnostics, optional
@@ -188,7 +189,7 @@ def prepare_functionele_gebieden(
         data,
         mappings,
         field=field,
-        dike_area=dike_area,
+        buitendijks_area=buitendijks_area,
         source_layer=layer,
         diagnostics=diagnostics,
         source="TOP10NL",
@@ -201,7 +202,7 @@ def prepare_brp(
     *,
     layer: str,
     bounds: tuple[float, float, float, float],
-    dike_area: BaseGeometry,
+    buitendijks_area: BaseGeometry,
     table: LanduseTable | None = None,
     diagnostics: LanduseDiagnostics | None = None,
 ) -> gpd.GeoDataFrame:
@@ -215,8 +216,8 @@ def prepare_brp(
         Crop-parcel layer.
     bounds : tuple of float
         Read bounds in the source CRS.
-    dike_area : BaseGeometry
-        Dike-ring union in the same CRS.
+    buitendijks_area : BaseGeometry
+        LIWO outside-area union in the same CRS.
     table : LanduseTable, optional
         Defaults to the packaged CSV. An explicit fallback row may map unknown
         positive crop codes; missing/invalid crop codes do not use it.
@@ -242,7 +243,7 @@ def prepare_brp(
         data,
         mappings,
         field=field,
-        dike_area=dike_area,
+        buitendijks_area=buitendijks_area,
         numeric_values=True,
         source_layer=layer,
         diagnostics=diagnostics,
@@ -275,7 +276,7 @@ def prepare_bgt_layer(
     layer: str,
     mapping_layer: str,
     bounds: tuple[float, float, float, float],
-    dike_area: BaseGeometry | None,
+    buitendijks_area: BaseGeometry | None,
     table: LanduseTable | None = None,
     diagnostics: LanduseDiagnostics | None = None,
 ) -> gpd.GeoDataFrame:
@@ -291,8 +292,8 @@ def prepare_bgt_layer(
         Corresponding BGT layer name in the CSV, without .gml.
     bounds : tuple of float
         Read bounds in the source CRS.
-    dike_area : BaseGeometry or None
-        Dike-ring union. None selects inside codes for standalone use only.
+    buitendijks_area : BaseGeometry or None
+        LIWO outside-area union. None selects inside codes for standalone use only.
     table : LanduseTable, optional
         Defaults to the packaged CSV.
     diagnostics : LanduseDiagnostics, optional
@@ -351,7 +352,7 @@ def prepare_bgt_layer(
         current,
         mappings,
         field=field,
-        dike_area=dike_area,
+        buitendijks_area=buitendijks_area,
         source_layer=layer,
         diagnostics=diagnostics,
         source="BGT",
@@ -364,7 +365,7 @@ def prepare_water(
     *,
     layer: str,
     bounds: tuple[float, float, float, float],
-    dike_area: BaseGeometry | None = None,
+    buitendijks_area: BaseGeometry | None = None,
     table: LanduseTable | None = None,
     diagnostics: LanduseDiagnostics | None = None,
 ) -> gpd.GeoDataFrame:
@@ -378,8 +379,8 @@ def prepare_water(
         Water layer name.
     bounds : tuple of float
         Read bounds in the source CRS.
-    dike_area : BaseGeometry, optional
-        Dike-ring union. Omitted for compatibility with standalone calls,
+    buitendijks_area : BaseGeometry, optional
+        LIWO outside-area union. Omitted for compatibility with standalone calls,
         which then use the inside code. Production always provides it.
     table : LanduseTable, optional
         Defaults to the packaged CSV.
@@ -396,7 +397,7 @@ def prepare_water(
         layer=layer,
         mapping_layer="bgt_waterdeel",
         bounds=bounds,
-        dike_area=dike_area,
+        buitendijks_area=buitendijks_area,
         table=table,
         diagnostics=diagnostics,
     )
@@ -407,7 +408,7 @@ def prepare_wegen(
     *,
     layer: str,
     bounds: tuple[float, float, float, float],
-    dike_area: BaseGeometry,
+    buitendijks_area: BaseGeometry,
     table: LanduseTable | None = None,
     diagnostics: LanduseDiagnostics | None = None,
 ) -> gpd.GeoDataFrame:
@@ -421,8 +422,8 @@ def prepare_wegen(
         Road layer name.
     bounds : tuple of float
         Read bounds in the source CRS.
-    dike_area : BaseGeometry
-        Dike-ring union in the same CRS.
+    buitendijks_area : BaseGeometry
+        LIWO outside-area union in the same CRS.
     table : LanduseTable, optional
         Defaults to the packaged CSV.
     diagnostics : LanduseDiagnostics, optional
@@ -438,7 +439,7 @@ def prepare_wegen(
         layer=layer,
         mapping_layer="bgt_wegdeel",
         bounds=bounds,
-        dike_area=dike_area,
+        buitendijks_area=buitendijks_area,
         table=table,
         diagnostics=diagnostics,
     )
@@ -524,7 +525,7 @@ def prepare_bag(
     pand_layer: str,
     verblijfsobject_layer: str,
     bounds: tuple[float, float, float, float],
-    dike_area: BaseGeometry,
+    buitendijks_area: BaseGeometry,
     include_details: bool = False,
     table: LanduseTable | None = None,
     special_sources: SpecialBuildingSources | None = None,
@@ -541,9 +542,9 @@ def prepare_bag(
     bounds : tuple of float
         Pand selection in EPSG:28992. Linked VBOs are also read outside bounds;
         pand geometries are not clipped before calculating their area.
-    dike_area : shapely.geometry.base.BaseGeometry
-        Dike-ring geometry in EPSG:28992. A representative point determines
-        the inside/outside code for the entire pand.
+    buitendijks_area : shapely.geometry.base.BaseGeometry
+        LIWO outside-area geometry in the project CRS. A covered representative
+        point selects the outside code; otherwise the inside code is used.
     include_details : bool, optional
         Keep source and decision columns. Excluded statuses remain excluded.
 
@@ -592,10 +593,9 @@ def prepare_bag(
             id_column="identificatie",
         )
 
-    # Preserve the existing representative-point rule for dike location.
-    classes["binnendijks"] = classes.geometry.representative_point().covered_by(
-        dike_area
-    )
+    # LIWO coverage of the representative point determines the entire building.
+    classes["buitendijks"] = _buitendijks_mask(classes, buitendijks_area)
+    classes["binnendijks"] = ~classes["buitendijks"]
     classes["code"] = (
         classes["lgb_code_binnendijks"]
         .where(classes["binnendijks"], classes["lgb_code_buitendijks"])
@@ -620,7 +620,7 @@ def prepare_gemalen(
     capacity_column: str = "maximalecapaciteit",
     bounds: tuple[float, float, float, float],
     crs: str,
-    dike_area: BaseGeometry | None = None,
+    buitendijks_area: BaseGeometry | None = None,
     table: LanduseTable | None = None,
     include_details: bool = False,
     diagnostics: LanduseDiagnostics | None = None,
@@ -637,8 +637,8 @@ def prepare_gemalen(
         Read bounds in the given CRS.
     crs : str
         Expected source and bounds CRS; mismatches raise ValueError.
-    dike_area : BaseGeometry, optional
-        Inside/outside classification. Omitted for control of both possible codes.
+    buitendijks_area : BaseGeometry, optional
+        LIWO outside-area geometry; everything else is inside. Omitted for control of both possible codes.
     table : LanduseTable, optional
         CSV codes; defaults to the packaged table.
     include_details : bool, optional
@@ -652,7 +652,7 @@ def prepare_gemalen(
     geopandas.GeoDataFrame
         Classified points, or all source and decision columns when requested.
         Points retain their original location and rasterize to one cell, without
-        a buffer or BAG match. Without dike_area no final code is assigned.
+        a buffer or BAG match. Without buitendijks_area no final code is assigned.
     """
     source_crs = pyogrio.read_info(gpkg, layer=layer)["crs"]
     if source_crs is None or not same_crs(source_crs, crs):
@@ -665,8 +665,9 @@ def prepare_gemalen(
     result = classify_pumping_stations(
         data, capacity_column=capacity_column, table=table
     )
-    if dike_area is not None:
-        result["binnendijks"] = result.geometry.covered_by(dike_area)
+    if buitendijks_area is not None:
+        result["buitendijks"] = _buitendijks_mask(result, buitendijks_area)
+        result["binnendijks"] = ~result["buitendijks"]
         result["code"] = result["lgb_code_binnendijks"].where(
             result["binnendijks"], result["lgb_code_buitendijks"]
         )
@@ -675,6 +676,6 @@ def prepare_gemalen(
         int(result["lgb_koppeling_id"].notna().sum()),
         len(result),
     )
-    if include_details or dike_area is None:
+    if include_details or buitendijks_area is None:
         return result
     return result.loc[result["code"].notna(), ["geometry", "code"]]

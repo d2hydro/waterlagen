@@ -104,7 +104,6 @@ def test_landgebruik_script_builds_tiles_vrt_and_cog_in_order(
         bag_dir=tmp_path / "source/bag",
         brp_dir=tmp_path / "source/brp",
         top10nl_dir=tmp_path / "source/top10nl",
-        dijkringen_dir=tmp_path / "source/dijkringen",
     )
     monkeypatch.setattr(landgebruik, "WORKERS", 2)
     monkeypatch.setattr(landgebruik, "configure_logging", lambda **kwargs: None)

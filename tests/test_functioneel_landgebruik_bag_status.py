@@ -46,7 +46,7 @@ def test_bag_keeps_only_notitie_statuses(tmp_path, with_vbo):
         "pand_layer": "pand",
         "verblijfsobject_layer": "verblijfsobject",
         "bounds": (-1, -1, 30, 2),
-        "dike_area": box(-1, -1, 30, 2),
+        "buitendijks_area": box(100, 100, 101, 101),
         "include_details": True,
     }
     result = prepare_bag(path, **kwargs)

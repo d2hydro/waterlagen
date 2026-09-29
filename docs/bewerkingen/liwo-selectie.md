@@ -31,7 +31,9 @@ Bij een lege selectie bevat de uitvoer een lege polygonenlaag.
 ## Beperkingen
 
 Polygonen volgen exact de rastercellen; er wordt niet vereenvoudigd of gladgestreken.
-Deze selectie vervangt niet automatisch de dijkringenbron in andere workflows.
+Deze selectie is de enige bron voor de binnen-/buitendijkse ligging bij
+[functioneel landgebruik](functioneel-landgebruik.md): representatieve punten
+binnen of op de grens zijn buitendijks; alle overige punten zijn binnendijks.
 
 ## Zelf produceren
 

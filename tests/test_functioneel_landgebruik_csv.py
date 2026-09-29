@@ -74,7 +74,12 @@ def test_source_crs_must_match_project(tmp_path, source):
         prepare = prepare_water
     data.set_crs(4326, allow_override=True).to_file(path, layer=layer, driver="GPKG")
     with pytest.raises(ValueError, match="CRS.*verschilt"):
-        prepare(path, layer=layer, bounds=(-1, -1, 2, 2), dike_area=box(-1, -1, 2, 2))
+        prepare(
+            path,
+            layer=layer,
+            bounds=(-1, -1, 2, 2),
+            buitendijks_area=box(100, 100, 101, 101),
+        )
 
 
 def test_csv_codes_not_offsets_or_row_order_determine_bag_class(tmp_path):
@@ -154,7 +159,7 @@ def test_brp_exact_codes_grass_exception_and_explicit_fallback(tmp_path, outside
         path,
         layer="brp_gewas",
         bounds=(-1, -1, 30, 2),
-        dike_area=box(100, 100, 101, 101) if outside else box(-1, -1, 30, 2),
+        buitendijks_area=box(-1, -1, 30, 5) if outside else box(100, 100, 101, 101),
     )
     expected = (
         [182, 182, 178, 180, 181, 182, 182, 181]
@@ -189,7 +194,7 @@ def test_top10_matches_whole_values_not_fragments(tmp_path, layer_suffix, outsid
         path,
         layer=layer,
         bounds=(-1, -1, 30, 5),
-        dike_area=box(100, 100, 101, 101) if outside else box(-1, -1, 30, 5),
+        buitendijks_area=box(-1, -1, 30, 5) if outside else box(100, 100, 101, 101),
     )
     assert result["code"].tolist() == [205 if outside else 77] * 3
     assert result.geometry.iloc[0].bounds[0] == 4
@@ -215,7 +220,7 @@ def test_bgt_road_values_and_water_follow_csv(tmp_path):
     _current(_data(["water"], "naam")).to_file(
         path, layer="bgt_waterdeel", driver="GPKG"
     )
-    kwargs = {"bounds": (-1, -1, 30, 2), "dike_area": box(100, 100, 101, 101)}
+    kwargs = {"bounds": (-1, -1, 30, 2), "buitendijks_area": box(-1, -1, 30, 5)}
     assert prepare_wegen(path, layer="bgt_wegdeel", **kwargs)["code"].tolist() == [
         198,
         199,
@@ -241,7 +246,7 @@ def test_current_terrain_replaces_ended_road(tmp_path):
     _current(_data(["gemengd bos"], "bgt-fysiekVoorkomen")).to_file(
         path, layer="bgt_begroeidterreindeel", driver="GPKG"
     )
-    kwargs = {"bounds": (-1, -1, 2, 2), "dike_area": box(-1, -1, 2, 2)}
+    kwargs = {"bounds": (-1, -1, 2, 2), "buitendijks_area": box(100, 100, 101, 101)}
     assert prepare_wegen(path, layer="bgt_wegdeel", **kwargs).empty
     terrain = prepare_bgt_layer(
         path,
@@ -258,7 +263,7 @@ def test_full_build_uses_csv_and_water_wins_over_building(tmp_path):
         bag_gpkg=tmp_path / "bag.gpkg",
         brp_gpkg=tmp_path / "brp.gpkg",
         top10nl_gpkg=tmp_path / "top10.gpkg",
-        dijkringen_gpkg=tmp_path / "dikes.gpkg",
+        buitendijks_gpkg=tmp_path / "liwo.gpkg",
     )
     # All sources overlap; a custom water code must win in the produced raster.
     for layer, field, value in [
@@ -301,8 +306,8 @@ def test_full_build_uses_csv_and_water_wins_over_building(tmp_path):
     _data(["kas, warenhuis"], "typegebouw").to_file(
         sources.top10nl_gpkg, layer="top10nl_gebouw_vlak", driver="GPKG"
     )
-    gpd.GeoDataFrame(geometry=[box(-1, -1, 3.5, 4)], crs="EPSG:28992").to_file(
-        sources.dijkringen_gpkg, layer="dijkring_v_2012", driver="GPKG"
+    gpd.GeoDataFrame(geometry=[box(3.5, -1, 7, 5)], crs="EPSG:28992").to_file(
+        sources.buitendijks_gpkg, layer="buitendijks_gebied_uit_liwo", driver="GPKG"
     )
     csv_path = _changed_csv(tmp_path, "BGT-033", Binnen="110")
     output = bouw_functioneel_landgebruik(

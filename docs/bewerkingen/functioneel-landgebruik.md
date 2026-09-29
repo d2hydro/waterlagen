@@ -10,7 +10,7 @@ Deze bewerking maakt een geclassificeerd raster voor functioneel landgebruik.
 - [BRP](../bronnen/brp.md)
 - [BGT](../bronnen/bgt.md)
 - [BAG](../bronnen/bag.md)
-- [Dijkringen](../bronnen/dijkringen.md)
+- [LIWO](../bronnen/liwo.md)
 - [GKW HYDAMO](../bronnen/hydamo.md) voor gemaalpunten en capaciteit
 - [Waterketen DAMO](../bronnen/waterketen-damo.md) voor bevestiging van RWZI-terreinen
 
@@ -20,7 +20,12 @@ Waterlagen leest de benodigde vectorlagen binnen het gevraagde gebied,
 classificeert bronattributen naar de functionele-landgebruiklegenda en
 rasteriseert de lagen in een vaste prioriteitsvolgorde. TOP10NL, BRP, BGT
 en BAG-klassen worden onderscheiden naar binnen- en buitendijks op basis van
-hun representatieve punt en de dijkringgeometrie.
+hun representatieve punt en uitsluitend de LIWO-selectie
+`source_data/liwo/buitendijks_gebied_uit_liwo.gpkg`. Een punt binnen of op de
+grens van deze polygonen (`covered_by`) is buitendijks; alle overige punten
+zijn binnendijks. Alleen overlap van een object met een polygoon is dus niet
+voldoende. Objecten worden niet op de grens opgeknipt. Dijkringen worden
+hiervoor niet gebruikt. Zie [LIWO-selectie](liwo-selectie.md).
 
 Bronnen, tegelrooster en uitvoer moeten hetzelfde project-CRS gebruiken
 (`settings.crs`, standaard `EPSG:28992`). Bij een afwijking stopt de verwerking;

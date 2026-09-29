@@ -231,7 +231,7 @@ def test_rwzi_production_codes_and_excluded_bag_status(tmp_path):
         pand_layer="pand",
         verblijfsobject_layer="verblijfsobject",
         bounds=(0, 0, 15, 5),
-        dike_area=box(0, 0, 5, 5),
+        buitendijks_area=box(5, 0, 15, 5),
         include_details=True,
         special_sources=SpecialBuildingSources(top, rwzi_gpkg=damo),
     )
