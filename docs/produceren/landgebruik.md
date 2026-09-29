@@ -23,8 +23,13 @@ Bij parallelle productie staan de detailmeldingen per tegel in
 `tiles/logs/<rasterbestandsnaam>.log`. Dit omvat ontbrekende CSV-koppelingen
 met bronlaag, veld en aantallen per bronwaarde, overgeslagen bronnen,
 rekentijd en eventuele foutdetails. Deze worker-meldingen verschijnen niet
-tussen de voortgangsbalk in de terminal. Afgeronde tegels en fouten blijven
+in de hoofdvoortgang in de terminal. Afgeronde tegels en fouten blijven
 zichtbaar in de hoofdvoortgang en, indien ingesteld, het productielog.
+Standaard is de tegelvoortgangsbalk uitgeschakeld. Afgeronde tegels melden
+`Completed functioneel-landgebruik tile xmin_ymin_xmax_ymax (afgerond/totaal)`.
+Hergebruikte tegels tellen mee en krijgen een afzonderlijke overslaanmelding;
+fouten verhogen de teller niet. Met `show_progress=True` op
+`bouw_functioneel_landgebruik_tiles` kan de balk expliciet worden ingeschakeld.
 
 Voor de BAG-koppeling maakt de verwerking eenmalig `bag-light.pand_vbo.sqlite`
 naast `bag-light.gpkg`. Dit is een afgeleid zoekbestand; de oorspronkelijke BAG

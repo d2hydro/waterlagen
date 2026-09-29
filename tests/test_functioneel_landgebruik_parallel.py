@@ -550,6 +550,7 @@ def test_parallel_build_progress_starts_with_skipped_tiles(tmp_path, monkeypatch
         target_dir=tmp_path,
         workers=1,
         overwrite=False,
+        show_progress=True,
     )
 
     assert len(progress.instances) == 1
@@ -579,7 +580,9 @@ def test_parallel_build_progress_updates_for_successful_and_failed_tiles(
     progress = _patch_progress(monkeypatch)
 
     with pytest.raises(TileBuildError):
-        bouw_functioneel_landgebruik_tiles(target_dir=tmp_path, workers=2)
+        bouw_functioneel_landgebruik_tiles(
+            target_dir=tmp_path, workers=2, show_progress=True
+        )
 
     bar = progress.instances[0]
     assert bar.updates == [1, 1, 1]
@@ -589,7 +592,8 @@ def test_parallel_build_progress_updates_for_successful_and_failed_tiles(
     assert "000000_002000_002000_004000" in progress.writes[1]
 
 
-def test_parallel_build_can_disable_progress(tmp_path, monkeypatch):
+@pytest.mark.parametrize("options", [{}, {"show_progress": False}])
+def test_parallel_build_can_disable_progress(tmp_path, monkeypatch, options):
     _patch_read_tiles(monkeypatch, _tiles_gdf().iloc[:1].copy())
     _patch_sources(monkeypatch)
     _patch_executor(monkeypatch)
@@ -603,5 +607,43 @@ def test_parallel_build_can_disable_progress(tmp_path, monkeypatch):
     bouw_functioneel_landgebruik_tiles(
         target_dir=tmp_path,
         workers=1,
-        show_progress=False,
+        **options,
+    )
+
+
+@pytest.mark.parametrize("fails", [False, True])
+def test_completion_logs_count_successes_and_reused_tiles(
+    tmp_path, monkeypatch, caplog, fails
+):
+    tiles = _tiles_gdf()
+    _patch_read_tiles(monkeypatch, tiles)
+    _patch_sources(monkeypatch)
+    _patch_executor(monkeypatch, reverse_completed=True)
+    failed_id = tiles.iloc[1].tile_id
+    _patch_builder(monkeypatch, failing_tile_ids={failed_id} if fails else set())
+    existing = tmp_path / f"functioneel_landgebruik_{tiles.iloc[0].tile_id}.tif"
+    existing.write_text("existing")
+    caplog.set_level("INFO", logger=parallel_mod.__name__)
+    if fails:
+        with pytest.raises(TileBuildError):
+            bouw_functioneel_landgebruik_tiles(tmp_path, workers=2, overwrite=False)
+    else:
+        bouw_functioneel_landgebruik_tiles(tmp_path, workers=2, overwrite=False)
+    completed = [
+        message
+        for message in caplog.messages
+        if message.startswith("Completed functioneel-landgebruik tile ")
+    ]
+    assert (
+        completed[0]
+        == f"Completed functioneel-landgebruik tile {tiles.iloc[2].tile_id} (2/3)"
+    )
+    assert len(completed) == (1 if fails else 2)
+    if not fails:
+        assert (
+            completed[1] == f"Completed functioneel-landgebruik tile {failed_id} (3/3)"
+        )
+    assert (
+        f"Skipping existing functioneel-landgebruik tile {tiles.iloc[0].tile_id} (1/3)"
+        in caplog.messages
     )

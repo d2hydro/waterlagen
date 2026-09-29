@@ -230,7 +230,7 @@ def bouw_functioneel_landgebruik_tiles(
     layers: FunctioneelLandgebruikLayers | None = None,
     output_config: RasterOutputConfig | None = None,
     download_missing_sources: bool = True,
-    show_progress: bool = True,
+    show_progress: bool = False,
     mapping_csv: Path | None = None,
     diagnostics_path: Path | None = None,
 ) -> list[Path]:
@@ -284,7 +284,9 @@ def bouw_functioneel_landgebruik_tiles(
         Whether missing shared source datasets are downloaded before workers
         are started, by default True.
     show_progress : bool, optional
-        Whether to show a tqdm progress bar for selected tiles.
+        Whether to show a tqdm progress bar for selected tiles, by default False.
+        Completion logs always include successful and reused tiles / total;
+        failed tiles do not increase the completed count.
     mapping_csv : Path, optional
         CSV with land-use codes, passed unchanged to every worker.
     diagnostics_path : Path, optional
@@ -358,10 +360,13 @@ def bouw_functioneel_landgebruik_tiles(
                         Path(diagnostics_path), job.diagnostics_path, job.target_path
                     )
                 validate_diagnostics(job.diagnostics_path, job.target_path)
-            logger.info(
-                "Skipping existing functioneel-landgebruik tile %s", job.tile_id
-            )
             results_by_tile_id[job.tile_id] = job.target_path
+            logger.info(
+                "Skipping existing functioneel-landgebruik tile %s (%s/%s)",
+                job.tile_id,
+                len(results_by_tile_id),
+                len(jobs),
+            )
             continue
         jobs_to_submit.append(job)
 
@@ -400,8 +405,10 @@ def bouw_functioneel_landgebruik_tiles(
                     try:
                         results_by_tile_id[job.tile_id] = future.result()
                         logger.info(
-                            "Completed functioneel-landgebruik tile %s",
+                            "Completed functioneel-landgebruik tile %s (%s/%s)",
                             job.tile_id,
+                            len(results_by_tile_id),
+                            len(jobs),
                         )
                     except Exception as exc:
                         failures[job.tile_id] = exc
