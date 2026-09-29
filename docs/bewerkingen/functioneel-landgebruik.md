@@ -68,59 +68,7 @@ maar uitsluitend voor de niet-woonfuncties.
     [de huidige uitvoering](#huidige-uitvoering-van-de-gebouwclassificatie)
     voor de regels die de geproduceerde datasets nu volgen.
 
-```mermaid
-flowchart TD
-    A["Pand"] --> B{"Heeft het pand<br/>een woonfunctie?"}
-
-    B -->|Nee| N1["Sommeer vloeroppervlak<br/>per gebruiksfunctie"]
-    N1 --> N2{"Aantal gebruiksfuncties"}
-
-    N2 -->|"1"| N3["Kies deze gebruiksfunctie"]
-    N2 -->|"> 1"| N4{"Alleen overigegebruiksfunctie<br/>en NULL?"}
-
-    N4 -->|Ja| N5["Kies overigegebruiksfunctie"]
-    N4 -->|Nee| N6["Sorteer gebruiksfuncties<br/>op vloeroppervlak, groot → klein"]
-
-    N6 --> N7{"Grootste resterende functie"}
-    N7 -->|NULL| N8["Overslaan"]
-    N7 -->|"overigegebruiksfunctie<br/>< 100 m²"| N8
-    N7 -->|Anders| N9["Kies deze gebruiksfunctie"]
-    N8 --> N7
-
-    B -->|Ja| W1{"Aantal VBO's<br/>in het pand"}
-
-    W1 -->|"≤ 3"| W2{"Aantal VBO's met<br/>andere functie dan wonen"}
-    W2 -->|"0"| W3["Woning"]
-    W2 -->|"1"| W4{"Welke andere<br/>gebruiksfunctie?"}
-    W4 -->|"overigegebruiksfunctie<br/>of NULL"| W3
-    W4 -->|"andere gebruiksfunctie"| W5["Kies deze gebruiksfunctie"]
-
-    W2 -->|"≥ 2"| W6["Sommeer vloeroppervlak<br/>per niet-woonfunctie"]
-    W6 --> W7{"Aantal niet-woonfuncties"}
-    W7 -->|"1"| W8["Kies deze gebruiksfunctie"]
-    W7 -->|"> 1"| W9{"Alleen overigegebruiksfunctie<br/>en NULL?"}
-    W9 -->|Ja| W10["Kies overigegebruiksfunctie"]
-    W9 -->|Nee| W11["Sorteer niet-woonfuncties<br/>op vloeroppervlak, groot → klein"]
-    W11 --> W12{"Grootste resterende functie"}
-    W12 -->|NULL| W13["Overslaan"]
-    W12 -->|"overigegebruiksfunctie<br/>< 100 m²"| W13
-    W12 -->|Anders| W14["Kies deze gebruiksfunctie"]
-    W13 --> W12
-
-    W1 -->|"≥ 4"| A1{"Aantal VBO's met<br/>andere functie dan wonen"}
-    A1 -->|"0 of 1"| A2["Appartementencomplex"]
-    A1 -->|"≥ 2"| A3["Sommeer vloeroppervlak<br/>per niet-woonfunctie"]
-    A3 --> A4{"Aantal niet-woonfuncties"}
-    A4 -->|"1"| A5["Kies deze gebruiksfunctie"]
-    A4 -->|"> 1"| A6{"Alleen overigegebruiksfunctie<br/>en NULL?"}
-    A6 -->|Ja| A7["Kies overigegebruiksfunctie"]
-    A6 -->|Nee| A8["Sorteer niet-woonfuncties<br/>op vloeroppervlak, groot → klein"]
-    A8 --> A9{"Grootste resterende functie"}
-    A9 -->|NULL| A10["Overslaan"]
-    A9 -->|"overigegebruiksfunctie<br/>< 100 m²"| A10
-    A9 -->|Anders| A11["Kies deze gebruiksfunctie"]
-    A10 --> A9
-```
+[![Beslisboom voor de gebouwfunctie op basis van BAG-verblijfsobjecten](../images/beslisboom_bag_vbo.svg)](../images/beslisboom_bag_vbo.svg)
 
 ### Huidige uitvoering van de gebouwclassificatie
 
