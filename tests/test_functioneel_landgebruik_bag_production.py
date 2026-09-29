@@ -3,6 +3,7 @@ from pathlib import Path
 
 import geopandas as gpd
 import numpy as np
+import pytest
 from geopandas.testing import assert_geodataframe_equal
 from rasterio.transform import from_origin
 from shapely.geometry import Point, box
@@ -15,7 +16,16 @@ from waterlagen.functioneel_landgebruik.landgebruikstabel import load_landuse_ta
 from waterlagen.functioneel_landgebruik.rasteriseren import rasterize_features
 
 
-def test_production_matches_control_and_masks_unresolved_panden(tmp_path):
+@pytest.mark.parametrize(
+    "other_goal,other_code",
+    [
+        ("onderwijsfunctie,sportfunctie", 152),
+        ("onderwijsfunctie,onbekend", 0),
+    ],
+)
+def test_production_matches_control_and_masks_unresolved_panden(
+    tmp_path, other_goal, other_code
+):
     path = tmp_path / "bag.gpkg"
     panden = gpd.GeoDataFrame(
         {"identificatie": ["shop", "open"], "status": ["Pand in gebruik"] * 2},
@@ -29,7 +39,7 @@ def test_production_matches_control_and_masks_unresolved_panden(tmp_path):
             "gebruiksdoel": [
                 "woonfunctie",
                 "winkelfunctie",
-                "onderwijsfunctie,sportfunctie",
+                other_goal,
             ],
             "oppervlakte": [150, 50, 200],
         },
@@ -55,11 +65,11 @@ def test_production_matches_control_and_masks_unresolved_panden(tmp_path):
     )
     common = [column for column in production if column in control]
     assert_geodataframe_equal(production[common], control[common], check_dtype=False)
-    assert production["code"].tolist() == [30, 0]
+    assert production["code"].tolist() == [30, other_code]
     raster = np.full((10, 20), 95, dtype="uint8")
     rasterize_features(raster, production, from_origin(0, 10, 1, 1))
     assert raster[5, 5] == 30
-    assert raster[5, 15] == 0
+    assert raster[5, 15] == other_code
 
 
 def test_note_legend_has_distinct_building_road_and_water_codes():

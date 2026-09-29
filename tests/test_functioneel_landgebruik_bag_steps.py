@@ -48,19 +48,24 @@ def test_combined_control_preserves_sources_and_explains_exclusion(tmp_path, all
     assert len(result) == 3
     assert result["meegenomen_stap2"].tolist() == [allowed, False, False]
     assert "ontbreekt" in result.iloc[2]["reden_statusselectie"]
-    assert result["lgb_code_binnendijks"].isna().all()
-    assert result["lgb_code_buitendijks"].isna().all()
+    assert result.iloc[1:]["lgb_code_binnendijks"].isna().all()
+    assert result.iloc[1:]["lgb_code_buitendijks"].isna().all()
     assert result.iloc[1]["klasse_status"] == "niet uitgevoerd: uitgesloten in stap 2"
     assert result.iloc[1]["bron_aantal_vbo"] == 0
     assert "Uitgesloten:" in result.iloc[1]["toelichting_resultaat"]
     if allowed:
         assert result.iloc[0]["berekend_aantal_bouwlagen"] == 9345
-        assert result.iloc[0]["klasse_status"] == "nog te beoordelen"
+        assert result.iloc[0]["klasse_status"] == "ingedeeld"
+        assert result.iloc[0]["lgb_code_binnendijks"] == 25
+        assert result.iloc[0]["lgb_code_buitendijks"] == 153
         assert (
-            "onderwijsfunctie, sportfunctie: 9.345 m² niet uitgesplitst"
-            in result.iloc[0]["toelichting_resultaat"]
+            "onderwijsfunctie, sportfunctie → onderwijsfunctie volgens prioriteit"
+            in result.iloc[0]["reden_functiekeuze"]
         )
         assert "onderwijsfunctie,sportfunctie" in result.iloc[0]["bron_vbo_overzicht"]
+    else:
+        assert result["lgb_code_binnendijks"].isna().all()
+        assert result["lgb_code_buitendijks"].isna().all()
     original = wgpd.read_file(path, layer="pand")
     assert_geodataframe_equal(result[list(original.columns)], original)
     output_bytes = target.read_bytes()

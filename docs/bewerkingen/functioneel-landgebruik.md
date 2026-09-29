@@ -39,7 +39,33 @@ Een VBO is een verblijfsobject; `NULL` betekent een ontbrekende gebruiksfunctie.
 De diagramterm `overigegebruiksfunctie` komt overeen met
 `overige gebruiksfunctie` in de code en de overige documentatie.
 
-Eerst wordt onderscheid gemaakt tussen panden met en zonder `woonfunctie`.
+Vooraf wordt per VBO één gebruiksfunctie gekozen. Bij meerdere, door komma's
+gescheiden doelen geldt deze prioriteit, van hoog naar laag:
+
+1. `gezondheidszorgfunctie`
+2. `winkelfunctie`
+3. `kantoorfunctie`
+4. `industriefunctie`
+5. `woonfunctie`
+6. `logiesfunctie`
+7. `onderwijsfunctie`
+8. `sportfunctie`
+9. `bijeenkomstfunctie`
+10. `celfunctie`
+11. `overige gebruiksfunctie`
+
+Hoofdletters, omliggende spaties, dubbele doelen en lege onderdelen beïnvloeden
+de keuze niet. Een onbekend doel laat de pandkeuze open, ook naast bekende doelen.
+Uitsluitend lege doelen blijven `NULL`. Het volledige VBO-oppervlak wordt voor
+de classificatie eenmaal aan de gekozen functie toegerekend; dit is geen gemeten
+verdeling van het vloeroppervlak. De oorspronkelijke doelen blijven bewaard,
+ook voor controles zoals de koppeling van gemalen. De prioriteitskeuze wordt
+toegelicht in de diagnostiek.
+
+De beslisboom hieronder gebruikt deze geselecteerde VBO-functies, ook voor
+de aanwezigheid van wonen en het aantal niet-woon-VBO's. Zo wordt
+`woonfunctie,winkelfunctie` één niet-woon-VBO met winkelfunctie.
+Eerst wordt onderscheid gemaakt tussen panden met en zonder geselecteerde `woonfunctie`.
 Zonder woonfunctie wordt het vloeroppervlak per gebruiksfunctie opgeteld.
 Eén functie wordt direct gekozen; bij meerdere functies met uitsluitend
 `overigegebruiksfunctie` en `NULL` wordt `overigegebruiksfunctie` gekozen.
@@ -63,7 +89,8 @@ maar uitsluitend voor de niet-woonfuncties.
 
 De BAG-voorbereiding gebruikt dezelfde functiekeuze, bouwlagenberekening en
 gebouwklassen als het controlescript en volgt de beslisboom hierboven.
-Meervoudige of onbekende doelen binnen een VBO blijven open. Bij rangschikking
+Onbekende doelen binnen een VBO blijven open. De prioriteit binnen een VBO
+is geen voorrangsregel tussen verschillende VBO's. Bij rangschikking
 blijven gelijke grootste totalen na uitsluiting open: de beslisboom geeft
 geen voorrang bij gelijke oppervlakten. Ontbrekende, ongeldige of over meerdere
 panden gedeelde oppervlakten blijven open wanneer ze nodig zijn voor de

@@ -147,7 +147,7 @@ def sources(tmp_path):
         [Point(x + 1, 3) for x in range(0, 10, 2)],
         identificatie=[f"v{i}" for i in range(5)],
         pand_identificatie=ids[:5],
-        gebruiksdoel=["onderwijsfunctie,sportfunctie"] * 4 + ["kantoorfunctie"],
+        gebruiksdoel=["onderwijsfunctie,onbekend"] * 4 + ["kantoorfunctie"],
         oppervlakte=[4.0, 4.0, 4.0, 4.0, np.nan],
     )
     _write(
@@ -223,9 +223,7 @@ def test_control_only_contains_empty_cells_and_reason(tmp_path, sources):
         selected = polygons.loc[polygons.geometry.covers(Point(x, y))]
         return " ".join(selected.reden)
 
-    assert "onderwijsfunctie, sportfunctie: 4 m² niet uitgesplitst" in reasons_at(
-        0.5, 3.5
-    )
+    assert "onbekend gebruiksdoel: onbekend" in reasons_at(0.5, 3.5)
     assert "BGT" not in reasons_at(0.5, 3.5)  # De directe BAG-oorzaak gaat voor.
     assert "oppervlakte" in reasons_at(8.5, 3.5).lower()
     assert "BGT" in reasons_at(2.5, 0.5)

@@ -33,13 +33,13 @@ from waterlagen.functioneel_landgebruik.bag_gebruiksfunctie import (
             False,
         ),
         (["overige gebruiksfunctie"], [150], "overige gebruiksfunctie", False),
-        (["woonfunctie,overige gebruiksfunctie"], [150], None, False),
+        (["woonfunctie,overige gebruiksfunctie"], [150], "woonfunctie", False),
         (["woonfunctie", None], [150, 50], "woonfunctie", False),
         (
             ["woonfunctie", "winkelfunctie,kantoorfunctie"],
             [150, 50],
-            None,
-            False,
+            "winkelfunctie",
+            True,
         ),
         (
             ["woonfunctie", "winkelfunctie", "kantoorfunctie"],

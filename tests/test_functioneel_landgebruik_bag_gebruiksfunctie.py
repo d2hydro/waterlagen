@@ -1,3 +1,5 @@
+from itertools import combinations
+
 import geopandas as gpd
 import pandas as pd
 import pytest
@@ -52,10 +54,10 @@ from waterlagen.functioneel_landgebruik.bag_landgebruik import determine_bag_cla
                 "sportfunctie",
             ],
             [9345, 237, 160, 1057],
-            None,
-            "nog te beoordelen",
+            "onderwijsfunctie",
+            "gekozen",
         ),
-        (["sportfunctie,onderwijsfunctie"], [9345], None, "nog te beoordelen"),
+        (["sportfunctie,onderwijsfunctie"], [9345], "onderwijsfunctie", "gekozen"),
         (
             ["kantoorfunctie", "onderwijsfunctie", "kantoorfunctie"],
             [100, 150, 100],
@@ -112,7 +114,7 @@ def test_step3_keeps_source_and_explains_choice(goals, areas, expected, status):
     multiple = any(isinstance(goal, str) and "," in goal for goal in goals)
     if multiple:
         reason = result.iloc[0]["reden_functiekeuze"]
-        assert "9.345 m² niet uitgesplitst" in reason
+        assert "→ onderwijsfunctie volgens prioriteit" in reason
         assert "onderwijsfunctie" in reason and "sportfunctie" in reason
         assert "bijeenkomstfunctie" not in reason
     if goals == ["kantoorfunctie", "onderwijsfunctie"] and areas == [100, 100]:
@@ -273,6 +275,85 @@ def test_shared_area_and_unknown_goals_stay_unresolved():
         ["winkelfunctie", "kantoorfunctie"], [100, 200], shared=True
     )
     assert result.iloc[0]["regel_functiekeuze"] == "verblijfsobject in meerdere panden"
-    for unknown in ["onbekend", "winkelfunctie,kantoorfunctie"]:
+    for unknown in ["onbekend", "winkelfunctie,onbekend"]:
         result = classify_functions(["woonfunctie", unknown], [100, 200])
         assert result.iloc[0]["functiekeuze_status"] == "nog te beoordelen"
+
+
+@pytest.mark.parametrize(
+    "higher,lower",
+    list(
+        combinations(
+            [
+                "gezondheidszorgfunctie",
+                "winkelfunctie",
+                "kantoorfunctie",
+                "industriefunctie",
+                "woonfunctie",
+                "logiesfunctie",
+                "onderwijsfunctie",
+                "sportfunctie",
+                "bijeenkomstfunctie",
+                "celfunctie",
+                "overige gebruiksfunctie",
+            ],
+            2,
+        )
+    ),
+)
+@pytest.mark.parametrize("reverse", [False, True])
+def test_all_vbo_priority_pairs(higher, lower, reverse):
+    functions = [higher, lower]
+    if reverse:
+        functions.reverse()
+    result = classify_functions([",".join(functions)], [100]).iloc[0]
+    assert result["gekozen_pandfunctie"] == higher
+    assert set(result["alle_bag_gebruiksdoelen"].split(",")) == {higher, lower}
+    assert f"→ {higher} volgens prioriteit" in result["reden_functiekeuze"]
+
+
+@pytest.mark.parametrize(
+    "value,expected",
+    [
+        (" WINKELFUNCTIE , woonfunctie, winkelfunctie, ", "winkelfunctie"),
+        ("woonfunctie,woonfunctie", "woonfunctie"),
+        (", ,", None),
+        ("woonfunctie,logiesfunctie,gezondheidszorgfunctie", "gezondheidszorgfunctie"),
+        ("onbekend,gezondheidszorgfunctie", None),
+    ],
+)
+def test_priority_normalization_and_unknown_goals(value, expected):
+    result = classify_functions([value], [100]).iloc[0]
+    assert result["gekozen_pandfunctie"] == expected
+    if "onbekend" in value:
+        assert result["functiekeuze_status"] == "nog te beoordelen"
+        assert "onbekend" in result["reden_functiekeuze"]
+
+
+@pytest.mark.parametrize(
+    "goals,areas,expected",
+    [
+        (["woonfunctie,winkelfunctie", "kantoorfunctie"], [200, 20], "winkelfunctie"),
+        (["woonfunctie,logiesfunctie", "kantoorfunctie"], [200, 20], "kantoorfunctie"),
+        (["woonfunctie"] * 3 + ["woonfunctie,winkelfunctie"], [100] * 4, "woonfunctie"),
+        (
+            ["woonfunctie"] * 2 + ["woonfunctie,winkelfunctie"] * 2,
+            [100] * 4,
+            "winkelfunctie",
+        ),
+        (
+            ["onderwijsfunctie,sportfunctie", "onderwijsfunctie", "kantoorfunctie"],
+            [60, 60, 100],
+            "onderwijsfunctie",
+        ),
+        (["onderwijsfunctie,sportfunctie", "kantoorfunctie"], [100, 100], None),
+    ],
+)
+def test_selected_goals_drive_building_counts_and_area_totals(goals, areas, expected):
+    result = classify_functions(goals, areas).iloc[0]
+    assert result["gekozen_pandfunctie"] == expected
+    if len(goals) == 3:
+        assert "onderwijsfunctie: 120 m²" in result["vergeleken_oppervlakten"]
+        assert "sportfunctie:" not in result["vergeleken_oppervlakten"]
+    if expected is None:
+        assert result["regel_functiekeuze"] == "gelijke grootste oppervlakten"

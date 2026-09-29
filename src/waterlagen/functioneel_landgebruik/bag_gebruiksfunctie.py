@@ -1,5 +1,6 @@
 """Stap 3: gebruiksfunctie kiezen (notitie p. 4-5).
 
+- Kies per VBO het gebruiksdoel met de hoogste prioriteit.
 - Splits panden met en zonder woonfunctie en tel niet-woon-VBO's.
 - Neem één kandidaatfunctie of uitsluitend overige met NULL direct over.
 - Rangschik anders de opgetelde oppervlakten, met uitsluiting van NULL en
@@ -20,19 +21,20 @@ from waterlagen.functioneel_landgebruik.bag_panden_en_verblijfsobjecten import (
     _shared_area_reason,
 )
 
-KNOWN_GOALS = {
-    "woonfunctie",
-    "bijeenkomstfunctie",
-    "celfunctie",
+GOAL_PRIORITY = (
     "gezondheidszorgfunctie",
-    "industriefunctie",
+    "winkelfunctie",
     "kantoorfunctie",
+    "industriefunctie",
+    "woonfunctie",
     "logiesfunctie",
     "onderwijsfunctie",
     "sportfunctie",
-    "winkelfunctie",
+    "bijeenkomstfunctie",
+    "celfunctie",
     "overige gebruiksfunctie",
-}
+)
+KNOWN_GOALS = set(GOAL_PRIORITY)
 
 
 @dataclass
@@ -107,40 +109,43 @@ def _choose_candidate_function(vbo: pd.DataFrame, goals: pd.Series) -> _Function
     )
 
 
-def _multiple_goal_reason(vbo: pd.DataFrame, goals: pd.Series) -> str:
-    """Noem alleen de gebruiksdoelen waarvan het gezamenlijke oppervlak niet is verdeeld."""
-    shared = goals.str.contains(",", regex=False)
-    areas = pd.to_numeric(vbo.loc[shared, "oppervlakte"], errors="coerce")
-    reasons = []
-    for goal, area in zip(goals.loc[shared], areas, strict=True):
-        functions = ", ".join(part.strip() for part in goal.split(","))
-        if pd.isna(area) or not np.isfinite(area) or area <= 0:
-            reasons.append(f"{functions}: oppervlakte ontbreekt of is ongeldig.")
-        else:
-            reasons.append(f"{functions}: {_format_area(area)} niet uitgesplitst.")
-    return " ".join(dict.fromkeys(reasons))
-
-
 def _choose_function(vbo: pd.DataFrame) -> _FunctionChoice:
-    """Loop de functieregels in vaste volgorde door voor één pand."""
-    # 3a. Eerst controleren of de bron een functiekeuze toelaat.
+    """Selecteer per VBO één doel en pas daarna de pandregels toe."""
     if vbo.empty:
         return _FunctionChoice(
             status="geen gebruiksdoel",
             rule="geen verblijfsobject",
             reason="Geen gekoppeld verblijfsobject in de bron.",
         )
-    goals = vbo["gebruiksdoel"].fillna("").astype(str).str.strip().str.lower()
-    if goals.str.contains(",", regex=False).any():
-        return _FunctionChoice(
-            rule="meerdere doelen per verblijfsobject",
-            reason=_multiple_goal_reason(vbo, goals),
-        )
-    if not (goals.isin(KNOWN_GOALS) | goals.eq("")).all():
-        return _FunctionChoice(
-            rule="ontbrekend of onbekend doel",
-            reason="Gebruiksdoel ontbreekt of is onbekend bij een VBO.",
-        )
+    selected = []
+    reasons = []
+    for identifier, value in zip(
+        vbo["identificatie"], vbo["gebruiksdoel"].fillna(""), strict=True
+    ):
+        functions = {part.strip().casefold() for part in str(value).split(",")}
+        functions.discard("")
+        unknown = functions - KNOWN_GOALS
+        if unknown:
+            return _FunctionChoice(
+                rule="ontbrekend of onbekend doel",
+                reason=f"VBO {identifier}: onbekend gebruiksdoel: {', '.join(sorted(unknown))}.",
+            )
+        function = next((goal for goal in GOAL_PRIORITY if goal in functions), "")
+        selected.append(function)
+        if len(functions) > 1:
+            reasons.append(
+                f"VBO {identifier}: {', '.join(sorted(functions))} → {function} volgens prioriteit; "
+                "het volledige VBO-oppervlak telt eenmaal mee bij de gekozen functie."
+            )
+    goals = pd.Series(selected, index=vbo.index, dtype="object")
+    choice = _choose_building_function(vbo, goals)
+    if reasons:
+        choice.reason = " ".join([*reasons, choice.reason])
+    return choice
+
+
+def _choose_building_function(vbo: pd.DataFrame, goals: pd.Series) -> _FunctionChoice:
+    """Pas de pandregels toe op de geselecteerde enkelvoudige VBO-functies."""
     non_residential = goals != "woonfunctie"
     has_residential = goals.eq("woonfunctie").any()
     if not has_residential:
@@ -206,7 +211,11 @@ def determine_bag_functions(
     opgeteld, zonder woonfunctie. Eén functie en uitsluitend overige met NULL
     worden direct gekozen. Bij rangschikking vallen NULL en overige onder
     100 m² af. Gelijke grootste resterende totalen blijven te beoordelen.
-    Ontbrekende doelen zijn NULL; onbekende en meervoudige doelen blijven open.
+    Meervoudige doelen worden eerst per VBO volgens ``GOAL_PRIORITY`` teruggebracht
+    tot één functie. Het volledige VBO-oppervlak telt eenmaal mee bij die functie.
+    De geselecteerde functies bepalen ook de aanwezigheid van wonen en de
+    aantallen niet-woon-VBO's. Bronwaarden blijven behouden.
+    Ontbrekende doelen zijn NULL; onbekende doelen blijven open.
     ``woonfunctie`` wordt in de daaropvolgende gebouwclassificatie op basis
     van het totale VBO-aantal een woning of appartementencomplex.
     """

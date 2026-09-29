@@ -141,8 +141,8 @@ Gevulde rastercellen en afzonderlijke bronobjecten staan niet in deze laag.
 Ook een punt zonder klasse verschijnt alleen als zijn rastercel leeg blijft.
 Zonder NoData is de laag leeg.
 
-Bij een open BAG-keuze staat de concrete reden, bijvoorbeeld meerdere
-gebruiksdoelen of een ontbrekende oppervlakte. Bij andere gaten worden de
+Bij een open BAG-keuze staat de concrete reden, bijvoorbeeld een onbekend
+gebruiksdoel of een ontbrekende oppervlakte. Bij andere gaten worden de
 gevonden bronuitsluitingen vermeld, zoals uitgefilterde BGT-historie of een
 ontbrekende CSV-koppeling. Meerdere aanwijzingen op dezelfde plek staan samen
 in de reden. Dit bewijst niet dat een uitgesloten bronobject die plek in de
@@ -216,10 +216,9 @@ inclusief de regels voor `NULL`, overige gebruiksfunctie en appartementencomplex
 Wonen blijft buiten de functieoppervlaktevergelijking, maar telt wel mee bij
 de bouwlagen.
 
-Bij meerdere doelen in een verblijfsobject blijft de gekozen functie leeg,
-met status `nog te beoordelen`. Hiervoor moeten we nog een beslisregel kiezen:
-de gezamenlijke oppervlakte is niet per gebruiksdoel uitgesplitst.
-Er wordt geen eerste doel gekozen of oppervlakte aan een doel toegewezen.
+Bij meerdere doelen in een verblijfsobject wordt eerst één functie geselecteerd
+volgens de prioriteit in de functionele beschrijving hierboven. De diagnostiek
+vermeldt deze keuze; het volledige VBO-oppervlak telt eenmaal mee bij die functie.
 
 Gelijke grootste oppervlakten na uitsluiting van kandidaatfuncties,
 ongeldige benodigde oppervlakten en niet-opgeloste combinaties krijgen
@@ -228,8 +227,9 @@ verblijfsobject dat aan meerdere panden is gekoppeld: de verdeling is onbekend.
 Er wordt geen oppervlakte tussen panden verdeeld. Panden zonder
 gekoppeld verblijfsobject krijgen `geen gebruiksdoel`, nog zonder klassecode.
 
-Flik-Flak blijft daarom nog te beoordelen: onderwijs en sport delen een
-verblijfsobject met 9.345 m². De bronwaarden blijven behouden.
+Voor het verblijfsobject van Flik-Flak met onderwijs en sport wordt
+onderwijsfunctie gekozen; de volledige 9.345 m² telt daarbij mee.
+De bronwaarden blijven behouden.
 Het winkel/woning-pand krijgt winkelfunctie ondanks het grotere
 woonoppervlak. De BAG-voorbereiding gebruikt dezelfde indelingsfuncties als deze controle.
 
@@ -245,8 +245,7 @@ Stap 4 voegt de volgende kolommen toe aan dezelfde laag:
 Dit volgt de berekening uit de notitie (p. 4-5). Ook woonoppervlakte telt mee
 als de gekozen functie winkel is. Een VBO met meerdere doelen telt eenmaal
 mee met zijn gezamenlijke oppervlakte. De functiekeuze uit stap 3 verandert
-hierdoor niet: Flik-Flak kan berekende bouwlagen hebben en tegelijk nog een
-openstaande functiekeuze. Het aantal bouwlagen is een schatting uit oppervlakten.
+hierdoor niet. Het aantal bouwlagen is een schatting uit oppervlakten.
 
 Zonder VBO, bij ontbrekende of ongeldige oppervlakten of bij een VBO dat aan
 meerdere panden is gekoppeld, blijft de berekening open. Er wordt geen
@@ -264,7 +263,7 @@ Voor de tien reguliere functies gelden 1, 2 of 3-plus bouwlagen.
 Een gekozen woonfunctie met maximaal 3 VBO's is een woning; vanaf 4 VBO's
 een appartementencomplex (code 4/132), onafhankelijk van de bouwlagen.
 Een openstaande functiekeuze blijft zonder klasse, ook als bouwlagen bekend zijn.
-Flik-Flak blijft dus open. De winkel/woning krijgt met 4 berekende bouwlagen
+De winkel/woning krijgt met 4 berekende bouwlagen
 de winkelklasse met 3 of meer bouwlagen (31/159).
 
 Bij panden met uitsluitend overige gebruiksfunctie wordt de som van alle
