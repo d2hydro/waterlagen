@@ -19,7 +19,7 @@ logger = get_logger(__name__)
 SERVICE_URL = "https://basisinformatie-overstromingen.nl/geoserver/ows"
 COVERAGE_ID = "LIWO_Basis__Overstromingsgevoelige_gebieden_grote_en_regionale_wateren"
 FILENAME = "overstromingsgevoelige_gebieden_grote_en_regionale_wateren.tif"
-OUTPUT_LAYER = "overstromingsgevoelige_gebieden_selectie"
+OUTPUT_LAYER = "buitendijks_gebied_uit_liwo"
 SELECTED_CLASSES = {
     1: "Buitendijks gebied (niet door primaire keringen beschermd)",
     6: "Extra overstroombaar gebied volgens regionaal onbeschermd",
@@ -212,7 +212,10 @@ def main() -> None:
     configure_logging()
     store = DataStore()
     raster_path = args.raster or store.source_data_dir / "liwo" / FILENAME
-    output_path = args.output or store.source_data_dir / "liwo" / "buitendijks_gebied.gpkg"
+    output_path = (
+        args.output
+        or store.source_data_dir / "liwo" / "buitendijks_gebied_uit_liwo.gpkg"
+    )
     if raster_path.resolve() == output_path.resolve():
         parser.error("--raster en --output moeten verschillende paden zijn")
     if args.timeout <= 0:

@@ -24,7 +24,7 @@ zodat de servicemetadata eerst opnieuw kan worden gecontroleerd.
 
 ## Resultaat
 
-Een GeoPackage met laag `overstromingsgevoelige_gebieden_selectie` en attributen
+Een GeoPackage met laag `buitendijks_gebied_uit_liwo` en attributen
 `klasse` en `omschrijving`. Het volledige gedownloade GeoTIFF blijft als bron bewaard.
 Bij een lege selectie bevat de uitvoer een lege polygonenlaag.
 
