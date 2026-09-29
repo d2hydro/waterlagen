@@ -495,4 +495,8 @@ mapping;;BGT;bgt_begroeidterreindeel;bgt-fysiekVoorkomen;rietland;78;206;Bermen,
 mapping;;BGT;bgt_begroeidterreindeel;bgt-fysiekVoorkomen;struiken;78;206;Bermen, overig gras, bos, natuur;Notitie p. 10, tabel 6;
 mapping;;BGT;bgt_begroeidterreindeel;bgt-fysiekVoorkomen;grasland agrarisch;50;182;Agrarisch grasland (+ groenbemesters);"BGT-gras vult de BRP-landbouwpercelen aan.; Aanvulling op BRP-gras; Notitie p. 9, tabel 5";
 mapping;;BGT;bgt_onbegroeidterreindeel;;*;76;204;Erf;"Nog bevestigen: welke onbegroeide terreindelen als erf meetellen.; Onbegroeid terreindeel; Notitie p. 10, tabel 6";
+mapping;;BGT;bgt_ondersteunendwaterdeel;bgt-type;oever, slootkant;78;206;Bermen, overig gras, bos, natuur;Toegevoegd na overleg TUD 20260928 t.b.v. oplossen NoData;
+mapping;;TOP10NL;top10nl_terrein_vlak;typelandgebruik;grasland;50;182;Agrarisch grasland (+ groenbemesters);Toegevoegd na overleg TUD 20260928 t.b.v. oplossen NoData in BRP;
+mapping;;TOP10NL;top10nl_terrein_vlak;typelandgebruik;akkerland;52;180;Aardappelen, suikerbieten, uien;Toegevoegd na overleg TUD 20260928 t.b.v. oplossen NoData in BRP;
+mapping;;TOP10NL;top10nl_terrein_vlak;typelandgebruik;fruitkwekerij;53;181;Overige land- en tuinbouwgewassen;Toegevoegd na overleg TUD 20260928 t.b.v. oplossen NoData in BRP;
 mapping;;BGT;bgt_waterdeel;;*;100;228;Water;"Waterdeel; Notitie p. 10, tabel 6";

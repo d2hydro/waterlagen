@@ -27,6 +27,8 @@ HEADER_ALIASES = {
     "LGB_beschrijving": "Landgebruik volgens notitie",
 }
 MAPPING_FIELDS = {
+    ("TOP10NL", "top10nl_terrein_vlak"): "typelandgebruik",
+    ("BGT", "bgt_ondersteunendwaterdeel"): "bgt-type",
     ("BRP", "brp_gewas"): "gewascode",
     ("TOP10NL", "top10nl_functioneel_gebied_vlak"): "typefunctioneelgebied",
     ("TOP10NL", "top10nl_functioneel_gebied_multivlak"): "typefunctioneelgebied",

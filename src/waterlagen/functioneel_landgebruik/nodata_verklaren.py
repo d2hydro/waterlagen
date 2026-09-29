@@ -138,7 +138,7 @@ class LanduseDiagnostics:
             temporary = Path(work) / target_path.name
             with rio.open(raster_path) as raster:
                 records = _reason_records(self.parts, raster.crs)
-                terrains = _unused_terrain(top10nl_gpkg, raster.bounds, raster.crs)
+                terrains = _terrain_context(top10nl_gpkg, raster.bounds, raster.crs)
                 unused_bgt = _unused_bgt(bgt_gpkg, raster.bounds, raster.crs)
                 _write_layer(
                     _empty_layer(raster.crs),
@@ -217,7 +217,7 @@ def _reason_records(parts: list[gpd.GeoDataFrame], crs) -> gpd.GeoDataFrame:
     return data[["geometry", "bron", "reden", "direct"]]
 
 
-def _unused_terrain(path, bounds, crs) -> gpd.GeoDataFrame:
+def _terrain_context(path, bounds, crs) -> gpd.GeoDataFrame:
     """Lees TOP10NL-terrein uitsluitend als aanwijzing voor onverklaarde gaten."""
     layer = "top10nl_terrein_vlak"
     if path is None or layer not in pyogrio.list_layers(path)[:, 0]:
@@ -228,7 +228,10 @@ def _unused_terrain(path, bounds, crs) -> gpd.GeoDataFrame:
     if not same_crs(data.crs, crs):
         raise ValueError("TOP10NL-terrein en raster moeten hetzelfde CRS hebben.")
     data = data.dropna(subset=["geometry", "typelandgebruik"]).copy()
-    data["reden"] = data["typelandgebruik"].str.strip() + ": terreinlaag niet gebruikt."
+    data["reden"] = (
+        data["typelandgebruik"].astype("string").str.strip()
+        + ": geen landgebruikscode op deze locatie."
+    )
     return data
 
 

@@ -103,6 +103,7 @@ def sources(tmp_path):
             [None, "2025-01-01"],
         ),
         ("bgt_wegdeel", [box(2, 0, 4, 2)], "bgt-functie", ["voetpad"], ["2025-01-01"]),
+        ("bgt_ondersteunendwaterdeel", [], "bgt-type", [], []),
         ("bgt_ondersteunendwegdeel", [], "bgt-functie", [], []),
         (
             "bgt_begroeidterreindeel",
@@ -174,6 +175,7 @@ def sources(tmp_path):
         [box(0, 0, 2, 2), box(4, 0, 6, 2)],
         gewascode=[2014.0, np.nan],
     )
+    _write(source.top10nl_gpkg, "top10nl_terrein_vlak", [], typelandgebruik=[])
     _write(source.buitendijks_gpkg, "buitendijks_gebied_uit_liwo", [])
     _write(
         source.gemalen_gpkg,
@@ -337,7 +339,7 @@ def test_unused_top10_terrain_explains_only_unknown_nodata(tmp_path):
     assert first.reden == "Functiekeuze ontbreekt."
     second = data.loc[data.geometry.covers(Point(1.5, 0.5))].iloc[0]
     assert second.bron == "TOP10NL"
-    assert second.reden == "grasland: terreinlaag niet gebruikt."
+    assert second.reden == "grasland: geen landgebruikscode op deze locatie."
     assert not data.geometry.covers(Point(2.5, 0.5)).any()
     last = data.loc[data.geometry.covers(Point(3.5, 0.5))].iloc[0]
     assert last.bron == "Niet vastgesteld"

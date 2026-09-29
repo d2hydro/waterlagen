@@ -125,6 +125,7 @@ def _produce(
         featuretypes = [
             "waterdeel",
             "wegdeel",
+            "ondersteunendwaterdeel",
             "ondersteunendwegdeel",
             "begroeidterreindeel",
             "onbegroeidterreindeel",

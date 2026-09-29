@@ -175,6 +175,28 @@ def prepare_functionele_gebieden(
         if layer.endswith("multivlak")
         else "top10nl_functioneel_gebied_vlak"
     )
+    return _prepare_top10nl_layer(
+        top10nl_gpkg,
+        layer=layer,
+        mapping_layer=mapping_layer,
+        bounds=bounds,
+        buitendijks_area=buitendijks_area,
+        table=table,
+        diagnostics=diagnostics,
+    )
+
+
+def _prepare_top10nl_layer(
+    top10nl_gpkg: Path,
+    *,
+    layer: str,
+    mapping_layer: str,
+    bounds: tuple[float, float, float, float],
+    buitendijks_area: BaseGeometry,
+    table: LanduseTable,
+    diagnostics: LanduseDiagnostics | None = None,
+) -> gpd.GeoDataFrame:
+    """Read a TOP10NL layer and apply its CSV mapping and LIWO location."""
     mappings = table.source_values("TOP10NL", mapping_layer)
     field = _mapping_field(mappings)
     data = wgpd.read_file(
@@ -184,7 +206,7 @@ def prepare_functionele_gebieden(
         columns=[field, "geometry"],
         fid_as_index=diagnostics is not None,
     )
-    logger.info("Read %s TOP10NL functional areas from layer %s", len(data), layer)
+    logger.info("Read %s TOP10NL objects from layer %s", len(data), layer)
     return _assign_source_codes(
         data,
         mappings,

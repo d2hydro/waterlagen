@@ -193,14 +193,18 @@ geometrie geraakte cellen worden ingetekend (`all_touched=True`), waardoor ook
 aangrenzende vlakken een cel kunnen delen. Voor zowel `mapping` als `functie`
 geldt deze tekenvolgorde; een latere laag overschrijft een eerdere laag:
 
-1. BGT-begroeide terreindelen, daarna onbegroeide terreindelen.
-2. TOP10NL-functionele gebieden: eerst `vlak`, daarna `multivlak`.
-3. BRP.
-4. BGT-ondersteunende wegdelen.
-5. BGT-wegdelen.
-6. BAG-panden met hun uiteindelijke gebouwklasse.
-7. Gemalen die als punt zijn behouden.
-8. BGT-waterdelen.
+1. BGT-ondersteunende waterdelen: `bgt-type = oever, slootkant`, volgens de CSV
+   code 78 binnendijks en 206 buitendijks. Deze laag heeft de laagste prioriteit.
+2. BGT-begroeide terreindelen, daarna onbegroeide terreindelen.
+3. TOP10NL-functionele gebieden: eerst `vlak`, daarna `multivlak`.
+4. TOP10NL-terreinvlakken (`typelandgebruik`): grasland, akkerland en
+   fruitkwekerij volgens de CSV. Deze vullen gaten in de BRP-dekking.
+5. BRP.
+6. BGT-ondersteunende wegdelen.
+7. BGT-wegdelen.
+8. BAG-panden met hun uiteindelijke gebouwklasse.
+9. Gemalen die als punt zijn behouden.
+10. BGT-waterdelen.
 
 Een BGT-weg die dezelfde cel raakt als BRP-gras overschrijft dus de grascode.
 Water gaat vervolgens voor wegen, gebouwen en landbouw en krijgt de binnen- of

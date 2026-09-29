@@ -10,6 +10,7 @@ from shapely.geometry import MultiPolygon, box
 
 from waterlagen.functioneel_landgebruik.bag_landgebruik import determine_bag_classes
 from waterlagen.functioneel_landgebruik.bronnen_voorbereiden import (
+    _prepare_top10nl_layer,
     prepare_bgt_layer,
     prepare_brp,
     prepare_functionele_gebieden,
@@ -33,6 +34,36 @@ def _changed_csv(tmp_path, mapping_id, **changes):
         rows = list(csv.DictReader(stream, delimiter=";"))
     row = next(row for row in rows if mapping_id in row["Koppeling-ID"].splitlines())
     row.update(changes)
+    # Extend historical-format input with the newly supported source layer.
+    rows.append(
+        dict.fromkeys(rows[0], "")
+        | {
+            "Bron": "BGT",
+            "Bronlaag": "bgt_ondersteunendwaterdeel",
+            "Bronveld": "bgt-type",
+            "Bronwaarde": "oever, slootkant",
+            "Binnen": "78",
+            "Buiten": "206",
+            "Landgebruik volgens notitie": "Bermen, overig gras, bos, natuur",
+        }
+    )
+    for value, inside, outside, label in [
+        ("grasland", "50", "182", "Agrarisch grasland (+ groenbemesters)"),
+        ("akkerland", "52", "180", "Aardappelen, suikerbieten, uien"),
+        ("fruitkwekerij", "53", "181", "Overige land- en tuinbouwgewassen"),
+    ]:
+        rows.append(
+            dict.fromkeys(rows[0], "")
+            | {
+                "Bron": "TOP10NL",
+                "Bronlaag": "top10nl_terrein_vlak",
+                "Bronveld": "typelandgebruik",
+                "Bronwaarde": value,
+                "Binnen": inside,
+                "Buiten": outside,
+                "Landgebruik volgens notitie": label,
+            }
+        )
     path = tmp_path / "codes.csv"
     with path.open("w", encoding="utf-8-sig", newline="") as stream:
         writer = csv.DictWriter(stream, fieldnames=list(rows[0]), delimiter=";")
@@ -267,6 +298,7 @@ def test_full_build_uses_csv_and_water_wins_over_building(tmp_path):
     )
     # All sources overlap; a custom water code must win in the produced raster.
     for layer, field, value in [
+        ("bgt_ondersteunendwaterdeel", "bgt-type", "oever, slootkant"),
         ("bgt_waterdeel", "naam", "water"),
         ("bgt_wegdeel", "bgt-functie", "voetpad"),
         ("bgt_ondersteunendwegdeel", "bgt-functie", "berm"),
@@ -276,6 +308,13 @@ def test_full_build_uses_csv_and_water_wins_over_building(tmp_path):
         _current(_data([value], field)).to_file(
             sources.bgt_gpkg, layer=layer, driver="GPKG"
         )
+    # Lowest-priority coverage includes gaps and overlaps every later source.
+    support = _current(_data(["oever, slootkant"] * 2, "bgt-type"))
+    support.geometry = [box(0, 0, 3, 4), box(4, 0, 6, 4)]
+    support.to_file(sources.bgt_gpkg, layer="bgt_ondersteunendwaterdeel", driver="GPKG")
+    terrain = _current(_data(["erf", "erf"], "naam"))
+    terrain.geometry = [box(0, 0, 1, 1), box(1, 2, 2, 3)]
+    terrain.to_file(sources.bgt_gpkg, layer="bgt_onbegroeidterreindeel", driver="GPKG")
     pand = _data(["p1"], "identificatie")
     pand["status"] = "Pand in gebruik"
     pand.to_file(sources.bag_gpkg, layer="pand", driver="GPKG")
@@ -309,6 +348,14 @@ def test_full_build_uses_csv_and_water_wins_over_building(tmp_path):
     gpd.GeoDataFrame(geometry=[box(3.5, -1, 7, 5)], crs="EPSG:28992").to_file(
         sources.buitendijks_gpkg, layer="buitendijks_gebied_uit_liwo", driver="GPKG"
     )
+    top10_terrain = _data(["akkerland", "grasland"], "typelandgebruik")
+    top10_terrain.geometry = [box(0, 1, 1, 2), box(4, 1, 5, 2)]
+    top10_terrain.to_file(
+        sources.top10nl_gpkg, layer="top10nl_terrein_vlak", driver="GPKG"
+    )
+    brp = _data([2014, 265], "gewascode")
+    brp.geometry = [box(0, 0, 1, 1), box(0, 1, 0.5, 2)]
+    brp.to_file(sources.brp_gpkg, layer="brp_gewas", driver="GPKG")
     csv_path = _changed_csv(tmp_path, "BGT-033", Binnen="110")
     output = bouw_functioneel_landgebruik(
         tmp_path / "result.tif",
@@ -322,6 +369,11 @@ def test_full_build_uses_csv_and_water_wins_over_building(tmp_path):
     with rasterio.open(output) as raster:
         values = raster.read(1)
         colors = raster.colormap(1)
+        assert values[2, 0] == 50  # BRP grass overwrites TOP10NL arable land.
+        assert values[2, 4] == 182  # TOP10NL fills a gap outside BRP.
+        assert values[1, 1] == 76  # Even terrain overwrites the bank.
+        assert values[0, 1] == 78  # Uncovered inside bank remains.
+        assert values[0, 5] == 206  # Uncovered outside bank remains.
         assert values[3, 0] == 110  # Water still wins over both TOP10NL layers.
         assert values[3, 2] == 77  # Separate part of the inside multivlak.
         assert values[3, 4] == 205
@@ -358,3 +410,44 @@ def test_full_build_uses_csv_and_water_wins_over_building(tmp_path):
             assert (raster.read(1) == values).all()
             assert raster.colormap(1) == colors
         assert custom_output.with_suffix(".qml").read_bytes() == style
+
+
+@pytest.mark.parametrize("outside,code", [(False, 78), (True, 206)])
+def test_supporting_water_uses_csv_type_and_current_objects(tmp_path, outside, code):
+    path = tmp_path / "bgt.gpkg"
+    data = _current(
+        _data(["oever, slootkant", "onbekend", "oever, slootkant"], "bgt-type")
+    )
+    data.loc[2, "eindRegistratie"] = "2025-01-01"
+    data.to_file(path, layer="bgt_ondersteunendwaterdeel", driver="GPKG")
+    result = prepare_bgt_layer(
+        path,
+        layer="bgt_ondersteunendwaterdeel",
+        mapping_layer="bgt_ondersteunendwaterdeel",
+        bounds=(-1, -1, 6, 2),
+        buitendijks_area=box(-1, -1, 6, 2) if outside else box(100, 100, 101, 101),
+    )
+    assert result["code"].tolist() == [code]
+
+
+@pytest.mark.parametrize(
+    "outside,codes", [(False, [50, 52, 53]), (True, [182, 180, 181])]
+)
+def test_top10nl_terrain_csv_mapping(tmp_path, outside, codes):
+    path = tmp_path / "top10.gpkg"
+    _data(
+        ["grasland", "akkerland", "fruitkwekerij", "onbekend"], "typelandgebruik"
+    ).to_file(
+        path,
+        layer="top10nl_terrein_vlak",
+        driver="GPKG",
+    )
+    result = _prepare_top10nl_layer(
+        path,
+        layer="top10nl_terrein_vlak",
+        mapping_layer="top10nl_terrein_vlak",
+        bounds=(-1, -1, 8, 2),
+        table=load_landuse_table(),
+        buitendijks_area=box(-1, -1, 8, 2) if outside else box(100, 100, 101, 101),
+    )
+    assert result["code"].tolist() == codes

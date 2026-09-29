@@ -23,6 +23,7 @@ from waterlagen.functioneel_landgebruik.bag_panden_en_verblijfsobjecten import (
     _bounds_including_panden,
 )
 from waterlagen.functioneel_landgebruik.bronnen_voorbereiden import (
+    _prepare_top10nl_layer,
     prepare_bag,
     prepare_bgt_layer,
     prepare_brp,
@@ -118,6 +119,7 @@ class FunctioneelLandgebruikSources:
 class FunctioneelLandgebruikLayers:
     """Layer names expected in the functional land-use source GeoPackages."""
 
+    bgt_ondersteunendwaterdeel: str = "bgt_ondersteunendwaterdeel"
     bgt_water: str = "bgt_waterdeel"
     bgt_wegdeel: str = "bgt_wegdeel"
     bgt_ondersteunendwegdeel: str = "bgt_ondersteunendwegdeel"
@@ -128,6 +130,7 @@ class FunctioneelLandgebruikLayers:
     brp: str = "brp_gewas"
     top10nl_functioneel_gebied: str = "top10nl_functioneel_gebied_vlak"
     buitendijks: str = "buitendijks_gebied_uit_liwo"
+    top10nl_terrein: str = "top10nl_terrein_vlak"
     top10nl_gebouw: str = "top10nl_gebouw_vlak"
     rwzi: str = "rwzi"
     rwzi_status_column: str = "status"
@@ -175,6 +178,7 @@ def _download_missing_sources(
             download_dir=sources.bgt_gpkg.parent,
             target_path=sources.bgt_gpkg,
             featuretypes=[
+                layers.bgt_ondersteunendwaterdeel.removeprefix("bgt_"),
                 layers.bgt_water.removeprefix("bgt_"),
                 layers.bgt_wegdeel.removeprefix("bgt_"),
                 layers.bgt_ondersteunendwegdeel.removeprefix("bgt_"),
@@ -323,6 +327,7 @@ def _prepare_priority_sources(
 ) -> list[gpd.GeoDataFrame]:
     """Bereid bronlagen voor; de laatste laag wint bij overlap in het raster."""
     required_layers = {
+        layers.bgt_ondersteunendwaterdeel,
         layers.bgt_water,
         layers.bgt_wegdeel,
         layers.bgt_ondersteunendwegdeel,
@@ -357,6 +362,7 @@ def _prepare_priority_sources(
             diagnostics=diagnostics,
         )
         for actual_layer, mapping_layer in [
+            (layers.bgt_ondersteunendwaterdeel, "bgt_ondersteunendwaterdeel"),
             (layers.bgt_begroeidterreindeel, "bgt_begroeidterreindeel"),
             (layers.bgt_onbegroeidterreindeel, "bgt_onbegroeidterreindeel"),
         ]
@@ -375,6 +381,15 @@ def _prepare_priority_sources(
             layers.top10nl_functioneel_gebied_multivlak,
         )
     ]
+    top10_terrain = _prepare_top10nl_layer(
+        sources.top10nl_gpkg,
+        layer=layers.top10nl_terrein,
+        mapping_layer="top10nl_terrein_vlak",
+        bounds=bounds,
+        buitendijks_area=buitendijks_area,
+        table=table,
+        diagnostics=diagnostics,
+    )
     agriculture = prepare_brp(
         sources.brp_gpkg,
         layer=layers.brp,
@@ -414,6 +429,7 @@ def _prepare_priority_sources(
     return [
         *terrains,
         *functional_areas,
+        top10_terrain,
         agriculture,
         road_support,
         roads,

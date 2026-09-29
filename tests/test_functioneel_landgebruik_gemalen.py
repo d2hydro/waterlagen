@@ -181,6 +181,7 @@ def test_control_and_national_raster_use_same_pump_decisions(tmp_path):
         ("bgt_waterdeel", "naam"),
         ("bgt_wegdeel", "bgt-functie"),
         ("bgt_ondersteunendwegdeel", "bgt-functie"),
+        ("bgt_ondersteunendwaterdeel", "bgt-type"),
         ("bgt_begroeidterreindeel", "bgt-fysiekVoorkomen"),
         ("bgt_onbegroeidterreindeel", "naam"),
     ]:
@@ -193,6 +194,7 @@ def test_control_and_national_raster_use_same_pump_decisions(tmp_path):
         sources.brp_gpkg, layer="brp_gewas", driver="GPKG"
     )
     for layer, field in [
+        ("top10nl_terrein_vlak", "typelandgebruik"),
         ("top10nl_gebouw_vlak", "typegebouw"),
         ("top10nl_functioneel_gebied_vlak", "typefunctioneelgebied"),
         ("top10nl_functioneel_gebied_multivlak", "typefunctioneelgebied"),
