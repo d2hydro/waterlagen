@@ -106,8 +106,8 @@ def _produce(
         "csv_sha256": hashlib.sha256(csv_path.read_bytes()).hexdigest(),
         "resolution_m": RESOLUTION_M,
         "workers": WORKERS,
-        "rwzi": "niet uitgevoerd: bedrijfsstatusbron ontbreekt",
-        "drinkwater": "niet uitgevoerd: terreinbron ontbreekt",
+        "rwzi": "nog te bepalen uit bronconfiguratie",
+        "drinkwater": "nog te bepalen uit bronconfiguratie",
     }
 
     def stage(name: str) -> None:
@@ -143,6 +143,16 @@ def _produce(
                 raise ValueError("Einddatumvelden ontbreken in " + name)
         sources = replace(
             FunctioneelLandgebruikSources.from_datastore(store), bgt_gpkg=bgt
+        )
+        status["rwzi"] = (
+            str(sources.rwzi_gpkg)
+            if sources.rwzi_gpkg is not None
+            else "niet uitgevoerd: terreinbron ontbreekt"
+        )
+        status["drinkwater"] = (
+            str(sources.drinking_water_gpkg)
+            if sources.drinking_water_gpkg is not None
+            else "niet uitgevoerd: terreinbron ontbreekt"
         )
         status["sources"] = {
             name: str(path) if path else None for name, path in vars(sources).items()

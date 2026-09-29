@@ -33,7 +33,8 @@ class SpecialBuildingSources:
 
     RWZI records from DAMO confirm TOP10NL treatment sites by intersection.
     The legacy status fields are retained for compatibility and are ignored.
-    Drinking-water input must contain verified production-site polygons.
+    Drinking-water input supplies production-site polygons; review OSM candidates
+    before relying on their BAG classifications.
     """
 
     top10nl_gpkg: Path
@@ -74,6 +75,10 @@ def _polygons_with_source_ids(polygons: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     targets = polygons[["geometry"]].reset_index(drop=True)
     if "lokaalid" in polygons:
         targets["bron_id"] = polygons["lokaalid"].astype(str).to_numpy()
+    elif "osm_vlak_id" in polygons:
+        targets["bron_id"] = polygons["osm_vlak_id"].astype(str).to_numpy()
+    elif "osm_ids" in polygons:
+        targets["bron_id"] = polygons["osm_ids"].astype(str).to_numpy()
     else:
         targets["bron_id"] = targets.index.astype(str)
     return targets

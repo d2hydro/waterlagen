@@ -94,12 +94,18 @@ class FunctioneelLandgebruikSources:
         )
         if not rwzi_gpkg.is_file():
             rwzi_gpkg = None
+        drinking_water_gpkg = (
+            data_store.source_data_dir / "osm" / "drinkwaterlocaties.gpkg"
+        )
+        if not drinking_water_gpkg.is_file():
+            drinking_water_gpkg = None
         return cls(
             bgt_gpkg=data_store.bgt_dir / "bgt.gpkg",
             bag_gpkg=data_store.bag_dir / "bag-light.gpkg",
             brp_gpkg=data_store.brp_dir / "brpgewaspercelen_definitief_2025.gpkg",
             top10nl_gpkg=data_store.top10nl_dir / "top10nl_Compleet.gpkg",
             dijkringen_gpkg=data_store.dijkringen_dir / "dijkringen_historie_2012.gpkg",
+            drinking_water_gpkg=drinking_water_gpkg,
             gemalen_gpkg=gemalen_gpkg,
             rwzi_gpkg=rwzi_gpkg,
         )
