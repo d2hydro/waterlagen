@@ -222,6 +222,7 @@ def test_control_and_national_raster_use_same_pump_decisions(tmp_path):
     assert control.iloc[0].gemaalcapaciteit_m3_min == 70
     output = bouw_functioneel_landgebruik(
         tmp_path / "result.tif",
+        gap_fill_distance_m=0,
         bounds=(0, 0, 25, 12),
         resolution_m=1,
         sources=sources,

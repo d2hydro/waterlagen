@@ -116,6 +116,7 @@ Onder `processed_data/functioneel_landgebruik/nederland/<run-id>` in uw datastor
 - `tiles/`: de berekende rastertegels;
 - `functioneel_landgebruik.vrt`: de tegels samengevoegd als virtueel raster;
 - `functioneel_landgebruik.tif`: het samengestelde Cloud Optimized GeoTIFF-raster.
+- `functioneel_landgebruik_bronnen.tif`: bronlaag per cel, met een JSON-legenda;
 - `functioneel_landgebruik.qml`: legenda voor het landelijke raster in QGIS;
 - `nodata.gpkg`: NoData-vlakken met bron en reden;
 - `status.json`: voortgang en eventuele foutmelding;
@@ -500,3 +501,25 @@ gebruik `main(overwrite=True)` om het te vernieuwen.
 Een vooraf voorbereid BGT-bestand kan aan `main(bgt_path=...)` in het
 startscript worden doorgegeven. Deze route downloadt of converteert geen BGT.
 Aanvullende vlaklagen in dat bestand worden gebruikt om NoData te verklaren.
+
+
+## Gaten aanvullen en bronnenraster
+
+Stel `GAP_FILL_DISTANCE_M` in `scripts/functioneel_landgebruik.py` in op de
+gewenste zoekafstand in meters (standaard `1.0`; `0` schakelt aanvullen uit).
+De losse en parallelle rasterfuncties hebben hiervoor `gap_fill_distance_m`.
+Zie [de aanvulregels en broncodes](../bewerkingen/functioneel-landgebruik.md#kleine-gaten-aanvullen-en-bronherkomst).
+
+De landelijke productie schrijft naast `functioneel_landgebruik.tif` ook
+`functioneel_landgebruik_bronnen.tif`, een bijbehorende VRT en
+`functioneel_landgebruik_bronnen.json` met bronlagen en donorinstellingen.
+Per tegel staat het bronnenraster in `tiles/bronnen/` met dezelfde bestandsnaam
+als de landgebruiktegel. Ook een losse rasterberekening schrijft een bronnenraster
+in de submap `bronnen/` naast het doelbestand. Beide rasters hebben hetzelfde
+rasterrooster en NoData-waarde 0.
+
+Hergebruik vereist een compleet rasterpaar met dezelfde aanvulinstellingen.
+Oudere tegels zonder bronraster moeten opnieuw worden berekend. Gebruik een
+nieuwe productie-run wanneer de zoekafstand verandert; de runparameters bewaken
+de consistentie bij hervatten. De lokale landsgrensbron is nodig wanneer
+het aanvullen ingeschakeld is.

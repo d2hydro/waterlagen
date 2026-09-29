@@ -17,6 +17,7 @@ from waterlagen.functioneel_landgebruik import (
     FunctioneelLandgebruikSources,
     bouw_functioneel_landgebruik_tiles,
 )
+from waterlagen.functioneel_landgebruik.aanvullen import DONOR_ALLOWED, SOURCE_LAYERS
 from waterlagen.functioneel_landgebruik.landgebruikstabel import (
     DEFAULT_MAPPING_CSV,
     LanduseTable,
@@ -31,6 +32,7 @@ from waterlagen.settings import settings
 # Instellingen voor landelijke productie.
 WORKERS = settings.functioneel_landgebruik_workers
 RESOLUTION_M = 0.5
+GAP_FILL_DISTANCE_M = 1.0
 TEGELGROOTTE_M = 5000
 BGT_BESTAND = "bgt.gpkg"
 LANDGEBRUIK_CSV = DEFAULT_MAPPING_CSV
@@ -61,6 +63,7 @@ def main(
         parameters={
             "crs": settings.crs,
             "resolution_m": RESOLUTION_M,
+            "gap_fill_distance_m": GAP_FILL_DISTANCE_M,
             "tile_size_m": TEGELGROOTTE_M,
             "diagnostics": CONTROLE_OPSLAAN,
             "csv_sha256": hashlib.sha256(mapping_csv.read_bytes()).hexdigest(),
@@ -105,6 +108,7 @@ def _produce(
         "output": str(output),
         "csv_sha256": hashlib.sha256(csv_path.read_bytes()).hexdigest(),
         "resolution_m": RESOLUTION_M,
+        "gap_fill_distance_m": GAP_FILL_DISTANCE_M,
         "workers": WORKERS,
         "rwzi": "nog te bepalen uit bronconfiguratie",
         "drinkwater": "nog te bepalen uit bronconfiguratie",
@@ -172,6 +176,7 @@ def _produce(
             tiles_path=tiles,
             workers=WORKERS,
             resolution_m=RESOLUTION_M,
+            gap_fill_distance_m=GAP_FILL_DISTANCE_M,
             sources=sources,
             download_missing_sources=False,
             overwrite=overwrite,
@@ -190,6 +195,27 @@ def _produce(
             overwrite=overwrite,
         )
         write_qgis_style(tif, table)
+        stage("Bronnenraster samenstellen")
+        sources_vrt = create_vrt_file(
+            vrt_file=output / "functioneel_landgebruik_bronnen.vrt",
+            directory=output / "tiles" / "bronnen",
+        )
+        sources_tif = create_cog_file(
+            vrt_file=sources_vrt,
+            cog_file=output / "functioneel_landgebruik_bronnen.tif",
+            overwrite=overwrite,
+        )
+        (output / "functioneel_landgebruik_bronnen.json").write_text(
+            json.dumps(
+                {
+                    code: {"source_layer": label, "donor_allowed": DONOR_ALLOWED[code]}
+                    for code, label in SOURCE_LAYERS.items()
+                },
+                indent=2,
+            ),
+            encoding="utf-8",
+        )
+        status["sources_raster"] = str(sources_tif)
         status["result"] = str(tif)
         stage("Voltooid")
         return tif

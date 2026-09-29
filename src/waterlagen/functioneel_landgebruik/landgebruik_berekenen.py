@@ -3,22 +3,34 @@
 import os
 import tempfile
 from dataclasses import dataclass, field
+from math import ceil
 from pathlib import Path
+from uuid import uuid4
 
 import geopandas as gpd
 import numpy as np
 import pyogrio
 import rasterio as rio
+from affine import Affine
 from rasterio.enums import Resampling
+from rasterio.features import geometry_mask
 from shapely.geometry.base import BaseGeometry
 
 from waterlagen import _geopandas as wgpd
 from waterlagen import datastore as default_datastore
 from waterlagen._crs import same_crs
+from waterlagen.administratieve_gebieden import read_landsgrens
 from waterlagen.bag import download_bag_light
 from waterlagen.bgt import download_bgt
 from waterlagen.brp import download_brp
 from waterlagen.datastore import DataStore
+from waterlagen.functioneel_landgebruik.aanvullen import (
+    _fill_gaps,
+    _fill_metadata,
+    _source_path,
+    _validate_outputs,
+    _validate_radius,
+)
 from waterlagen.functioneel_landgebruik.bag_panden_en_verblijfsobjecten import (
     _bounds_including_panden,
 )
@@ -426,7 +438,7 @@ def _prepare_priority_sources(
     # Water gaat voor wegen, gebouwen en landbouw (notitie p. 10).
     # De rest is de huidige verwerkingsvolgorde, geen volledige notitieregel.
     # Gebouwen met een open klasse schrijven NoData over eerder ingetekend terrein.
-    return [
+    prepared = [
         *terrains,
         *functional_areas,
         top10_terrain,
@@ -436,6 +448,13 @@ def _prepare_priority_sources(
         *buildings_and_pumps,
         water,
     ]
+    source_ids = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    if len(buildings_and_pumps) > 1:
+        source_ids.append(11)
+    source_ids.append(12)
+    for data, source_id in zip(prepared, source_ids, strict=True):
+        data["source_code"] = source_id
+    return prepared
 
 
 def bouw_functioneel_landgebruik(
@@ -443,6 +462,7 @@ def bouw_functioneel_landgebruik(
     *,
     bounds: tuple[float, float, float, float],
     resolution_m: float = 0.5,
+    gap_fill_distance_m: float = 1.0,
     crs: str = settings.crs,
     sources: FunctioneelLandgebruikSources | None = None,
     data_store: DataStore | None = None,
@@ -472,6 +492,9 @@ def bouw_functioneel_landgebruik(
         Output bounds as ``(xmin, ymin, xmax, ymax)`` in ``crs``.
     resolution_m : float, optional
         Raster cell size in map units, by default 0.5.
+    gap_fill_distance_m : float, optional
+        Maximum donor distance in metres, default 1.0; zero disables filling.
+        A source-ID raster is always written in the sibling ``bronnen`` directory.
     crs : str, optional
         CRS voor ``bounds`` en uitvoer. Moet bij een nieuwe berekening
         overeenkomen met :data:`waterlagen.settings.settings.crs`.
@@ -514,6 +537,7 @@ def bouw_functioneel_landgebruik(
     raster creation. A same-stem QGIS ``.qml`` file with category labels is
     written for newly produced rasters. Reused rasters and styles are unchanged.
     """
+    _validate_radius(gap_fill_distance_m)
     target_path = Path(target_path)
     if diagnostics_path is not None:
         diagnostics_path = Path(diagnostics_path)
@@ -536,6 +560,7 @@ def bouw_functioneel_landgebruik(
         )
 
     if target_path.exists() and not overwrite:
+        _validate_outputs(target_path, gap_fill_distance_m)
         if diagnostics_path is not None:
             validate_diagnostics(diagnostics_path, target_path)
         return target_path
@@ -552,23 +577,68 @@ def bouw_functioneel_landgebruik(
     profile = _profile_for_grid(grid, output_config=output_config)
     buitendijks_area = _read_buitendijks_area(sources, layers)
 
-    nodata = 0
-    raster = np.full(
-        (grid.height, grid.width),
-        fill_value=nodata,
-        dtype=np.uint8,
+    # Expand on the same pixel grid, then crop both products back to the tile.
+    pixel_width, pixel_height = grid.transform.a, -grid.transform.e
+    margin = (
+        ceil(gap_fill_distance_m / min(pixel_width, pixel_height)) + 1
+        if gap_fill_distance_m
+        else 0
     )
+    work_transform = grid.transform * Affine.translation(-margin, -margin)
+    work_width, work_height = grid.width + 2 * margin, grid.height + 2 * margin
+    xmin, ymax = work_transform * (0, 0)
+    xmax, ymin = work_transform * (work_width, work_height)
+    work_bounds = (xmin, ymin, xmax, ymax)
+    raster = np.zeros((work_height, work_width), dtype=np.uint8)
+    source_raster = np.zeros_like(raster)
     diagnostics = LanduseDiagnostics() if diagnostics_path is not None else None
     for data in _prepare_priority_sources(
         sources,
         layers,
-        bounds=grid.bounds,
+        bounds=work_bounds,
         buitendijks_area=buitendijks_area,
         table=table,
         diagnostics=diagnostics,
     ):
-        rasterize_features(raster, data, grid.transform)
+        rasterize_features(raster, data, work_transform)
+        rasterize_features(
+            source_raster, data, work_transform, value_column="source_code"
+        )
 
+    if gap_fill_distance_m:
+        landgebied = read_landsgrens()
+        if landgebied.crs is None:
+            raise ValueError("Landgebied heeft geen CRS.")
+        if not same_crs(landgebied.crs, crs):
+            landgebied = landgebied.to_crs(crs)
+        geometries = [
+            geometry
+            for geometry in landgebied.geometry.make_valid()
+            if geometry is not None and not geometry.is_empty
+        ]
+        land = (
+            geometry_mask(geometries, raster.shape, work_transform, invert=True)
+            if geometries
+            else np.zeros_like(raster, dtype=bool)
+        )
+        filled = _fill_gaps(
+            raster,
+            source_raster,
+            land,
+            radius_m=gap_fill_distance_m,
+            pixel_width=pixel_width,
+            pixel_height=pixel_height,
+        )
+        logger.info(
+            "Filled %s gap cells (including tile margin), radius %s m",
+            filled,
+            gap_fill_distance_m,
+        )
+    crop = np.s_[margin : margin + grid.height, margin : margin + grid.width]
+    raster = raster[crop]
+    source_raster = source_raster[crop]
+
+    metadata = _fill_metadata(gap_fill_distance_m) | {"output_pair": uuid4().hex}
     fd, tmp_name = tempfile.mkstemp(
         prefix=f".{target_path.name}.",
         suffix=target_path.suffix,
@@ -588,7 +658,29 @@ def bouw_functioneel_landgebruik(
                 resampling=Resampling.mode,
             )
             dst.set_band_description(1, "Landgebruik")
+            dst.update_tags(**metadata)
 
+        source_path = _source_path(target_path)
+        source_path.parent.mkdir(parents=True, exist_ok=True)
+        with tempfile.NamedTemporaryFile(
+            dir=source_path.parent, suffix=".tif", delete=False
+        ) as temporary:
+            source_tmp = Path(temporary.name)
+        try:
+            source_profile = dict(profile)
+            source_profile.pop("photometric", None)
+            with rio.open(source_tmp, "w", **source_profile) as dst:
+                dst.write(source_raster, 1)
+                dst.set_band_description(1, "Bron:laag")
+                dst.update_tags(**metadata)
+                build_raster_overviews(
+                    dst,
+                    factors=output_config.overview_factors,
+                    resampling=Resampling.nearest,
+                )
+            source_tmp.replace(source_path)
+        finally:
+            source_tmp.unlink(missing_ok=True)
         tmp_path.replace(target_path)
     except Exception:
         tmp_path.unlink(missing_ok=True)

@@ -107,6 +107,7 @@ def _patch_read_tiles(monkeypatch, tiles):
 
 
 def _patch_sources(monkeypatch):
+    monkeypatch.setattr(parallel_mod, "_validate_outputs", lambda *args: None)
     monkeypatch.setattr(
         parallel_mod, "ensure_bag_link_index", lambda *args, **kwargs: None
     )
@@ -647,3 +648,12 @@ def test_completion_logs_count_successes_and_reused_tiles(
         f"Skipping existing functioneel-landgebruik tile {tiles.iloc[0].tile_id} (1/3)"
         in caplog.messages
     )
+
+
+def test_gap_fill_radius_reaches_workers(tmp_path, monkeypatch):
+    _patch_read_tiles(monkeypatch, _tiles_gdf().iloc[:1])
+    _patch_sources(monkeypatch)
+    _patch_executor(monkeypatch)
+    calls = _patch_builder(monkeypatch)
+    bouw_functioneel_landgebruik_tiles(tmp_path, workers=1, gap_fill_distance_m=2.5)
+    assert calls[0]["gap_fill_distance_m"] == 2.5

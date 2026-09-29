@@ -359,6 +359,7 @@ def test_full_build_uses_csv_and_water_wins_over_building(tmp_path):
     csv_path = _changed_csv(tmp_path, "BGT-033", Binnen="110")
     output = bouw_functioneel_landgebruik(
         tmp_path / "result.tif",
+        gap_fill_distance_m=0,
         bounds=(0, 0, 6, 4),
         resolution_m=1,
         sources=sources,
@@ -380,6 +381,12 @@ def test_full_build_uses_csv_and_water_wins_over_building(tmp_path):
         assert values[1, 4] == 205  # Both parts of the outside multivlak.
         assert raster.colormap(1)[110][:3] == (0, 130, 255)
         assert raster.nodata == 0
+    with rasterio.open(output.parent / "bronnen" / output.name) as source_raster:
+        source_values = source_raster.read(1)
+        assert source_values[3, 0] == 12  # Water wins over all other sources.
+        assert source_values[2, 0] == 7  # BRP wins over TOP10NL terrain.
+        assert source_values[2, 4] == 6  # Terrain retains its own identity.
+        assert source_values[0, 1] == 1  # Supporting water fills the background.
     style = output.with_suffix(".qml").read_bytes()
     legacy_table = load_landuse_table(csv_path)
     with DEFAULT_MAPPING_CSV.open(encoding="utf-8-sig", newline="") as stream:
@@ -399,6 +406,7 @@ def test_full_build_uses_csv_and_water_wins_over_building(tmp_path):
             writer.writerows(rows)
         custom_output = bouw_functioneel_landgebruik(
             tmp_path / f"custom_{reverse}.tif",
+            gap_fill_distance_m=0,
             bounds=(0, 0, 6, 4),
             resolution_m=1,
             sources=sources,

@@ -15,6 +15,10 @@ from tqdm.auto import tqdm
 from waterlagen import datastore as default_datastore
 from waterlagen._crs import same_crs
 from waterlagen.datastore import DataStore
+from waterlagen.functioneel_landgebruik.aanvullen import (
+    _validate_outputs,
+    _validate_radius,
+)
 from waterlagen.functioneel_landgebruik.bag_zoekindex import ensure_bag_link_index
 from waterlagen.functioneel_landgebruik.landgebruik_berekenen import (
     FunctioneelLandgebruikLayers,
@@ -67,6 +71,7 @@ class FunctioneelLandgebruikTileJob:
     output_config: RasterOutputConfig
     mapping_csv: Path | None = None
     diagnostics_path: Path | None = None
+    gap_fill_distance_m: float = 1.0
 
 
 def _build_tile_worker(job: FunctioneelLandgebruikTileJob) -> Path:
@@ -91,6 +96,7 @@ def _build_tile_worker(job: FunctioneelLandgebruikTileJob) -> Path:
             target_path=job.target_path,
             bounds=job.bounds,
             resolution_m=job.resolution_m,
+            gap_fill_distance_m=job.gap_fill_distance_m,
             crs=job.crs,
             sources=job.sources,
             layers=job.layers,
@@ -181,11 +187,13 @@ def _job_from_row(
     output_config: RasterOutputConfig,
     mapping_csv: Path | None = None,
     diagnostics_dir: Path | None = None,
+    gap_fill_distance_m: float = 1.0,
 ) -> FunctioneelLandgebruikTileJob:
     """Convert one tile-index row to the job object submitted to a worker."""
     tile = _tile_from_row(row)
     return FunctioneelLandgebruikTileJob(
         tile_id=tile.tile_id,
+        gap_fill_distance_m=gap_fill_distance_m,
         bounds=tile.bounds,
         target_path=target_dir / tile_filename(LAYER_NAME, tile),
         overwrite=overwrite,
@@ -224,6 +232,7 @@ def bouw_functioneel_landgebruik_tiles(
     overwrite: bool = False,
     tile_ids: Collection[str] | None = None,
     resolution_m: float = 0.5,
+    gap_fill_distance_m: float = 1.0,
     crs: str = settings.crs,
     sources: FunctioneelLandgebruikSources | None = None,
     data_store: DataStore | None = None,
@@ -267,6 +276,8 @@ def bouw_functioneel_landgebruik_tiles(
         ``ValueError``.
     resolution_m : float, optional
         Raster cell size passed to each tile build, by default 0.5.
+    gap_fill_distance_m : float, optional
+        Maximum donor distance in metres, default 1.0; zero disables filling.
     crs : str, optional
         CRS voor tegelgrenzen en uitvoer. Moet overeenkomen met het
         tegelrooster en :data:`waterlagen.settings.settings.crs`.
@@ -332,6 +343,7 @@ def bouw_functioneel_landgebruik_tiles(
     jobs = [
         _job_from_row(
             row,
+            gap_fill_distance_m=gap_fill_distance_m,
             target_dir=target_dir,
             overwrite=overwrite,
             resolution_m=resolution_m,
@@ -347,10 +359,12 @@ def bouw_functioneel_landgebruik_tiles(
         for _, row in selected.iterrows()
     ]
 
+    _validate_radius(gap_fill_distance_m)
     results_by_tile_id: dict[str, Path] = {}
     jobs_to_submit: list[FunctioneelLandgebruikTileJob] = []
     for job in jobs:
         if job.target_path.exists() and not overwrite:
+            _validate_outputs(job.target_path, gap_fill_distance_m)
             if job.diagnostics_path is not None:
                 if (
                     not job.diagnostics_path.exists()

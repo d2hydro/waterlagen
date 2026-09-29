@@ -31,6 +31,7 @@ def test_csv_mismatch_explains_runfolder_and_recovery(tmp_path, monkeypatch):
         parameters={
             "crs": landgebruik.settings.crs,
             "resolution_m": landgebruik.RESOLUTION_M,
+            "gap_fill_distance_m": landgebruik.GAP_FILL_DISTANCE_M,
             "tile_size_m": landgebruik.TEGELGROOTTE_M,
             "diagnostics": landgebruik.CONTROLE_OPSLAAN,
             "csv_sha256": hashlib.sha256(
@@ -161,6 +162,8 @@ def test_landgebruik_script_builds_tiles_vrt_and_cog_in_order(
         "build_landgebruik_tiles",
         "create_vrt_file",
         "create_cog_file",
+        "create_vrt_file",
+        "create_cog_file",
     ]
     assert events[0][1] == {
         "target_path": tiles_path,
@@ -182,6 +185,13 @@ def test_landgebruik_script_builds_tiles_vrt_and_cog_in_order(
         "cog_file": cog_file,
         "overwrite": False,
     }
+    assert events[1][1]["gap_fill_distance_m"] == 1.0
+    assert events[4][1] == {
+        "vrt_file": data_dir / "functioneel_landgebruik_bronnen.vrt",
+        "directory": tiles_dir / "bronnen",
+    }
+    assert events[5][1]["cog_file"] == data_dir / "functioneel_landgebruik_bronnen.tif"
+    assert (data_dir / "functioneel_landgebruik_bronnen.json").is_file()
     assert result == cog_file
     assert cog_file.with_suffix(".qml").is_file()
 

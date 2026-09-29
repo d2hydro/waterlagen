@@ -202,6 +202,7 @@ def _build(tmp_path, sources, *, control=True, name="landgebruik"):
     control_path = tmp_path / f"{name}.gpkg"
     bouw_functioneel_landgebruik(
         raster,
+        gap_fill_distance_m=0,
         bounds=(0, 0, 12, 4),
         resolution_m=1,
         sources=sources,
@@ -254,12 +255,20 @@ def test_reuse_rejects_missing_or_stale_control(tmp_path, sources):
     )
     with pytest.raises(ValueError, match="huidige raster"):
         bouw_functioneel_landgebruik(
-            raster, bounds=(0, 0, 12, 4), overwrite=False, diagnostics_path=control
+            raster,
+            bounds=(0, 0, 12, 4),
+            overwrite=False,
+            diagnostics_path=control,
+            gap_fill_distance_m=0,
         )
     control.unlink()
     with pytest.raises(FileNotFoundError, match="opnieuw"):
         bouw_functioneel_landgebruik(
-            raster, bounds=(0, 0, 12, 4), overwrite=False, diagnostics_path=control
+            raster,
+            bounds=(0, 0, 12, 4),
+            overwrite=False,
+            diagnostics_path=control,
+            gap_fill_distance_m=0,
         )
 
 

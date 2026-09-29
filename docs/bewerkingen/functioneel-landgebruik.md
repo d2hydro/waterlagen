@@ -367,3 +367,50 @@ als het tegelrooster. NoData buiten deze polygonen is toegestaan en verschijnt
 niet in `nodata.gpkg`. Grensoverschrijdende controlevlakken behouden alleen het
 gedeelte binnen landgebied; het landgebruikraster zelf verandert niet.
 Oudere controlebestanden moeten opnieuw worden gemaakt met `overwrite=True`.
+
+
+## Kleine gaten aanvullen en bronherkomst
+
+Na het intekenen van alle bronnen vult de verwerking lege rastercellen aan met
+de klasse van de dichtstbijzijnde toegestane donorcel. De standaardzoekafstand
+is **1 meter**, gemeten tussen celmiddens. Van twee kanten kan hierdoor een gat
+van ongeveer 2 meter worden gevuld; ook randen van grotere gaten kunnen worden
+aangevuld. `gap_fill_distance_m=0` schakelt het aanvullen uit.
+
+Het bronnenraster `functioneel_landgebruik_bronnen.tif` registreert de winnende
+bronlaag per cel. Het gebruikt vaste codes, onafhankelijk van de CSV-volgorde:
+
+| Code | Bron:laag | Donor toegestaan |
+| --- | --- | --- |
+| 0 | Geen bron | Nee |
+| 1 | BGT:bgt_ondersteunendwaterdeel | Ja |
+| 2 | BGT:bgt_begroeidterreindeel | Ja |
+| 3 | BGT:bgt_onbegroeidterreindeel | Ja |
+| 4 | TOP10NL:top10nl_functioneel_gebied_vlak | Ja |
+| 5 | TOP10NL:top10nl_functioneel_gebied_multivlak | Ja |
+| 6 | TOP10NL:top10nl_terrein_vlak | Nee |
+| 7 | BRP:brp_gewas | Nee |
+| 8 | BGT:bgt_ondersteunendwegdeel | Ja |
+| 9 | BGT:bgt_wegdeel | Ja |
+| 10 | BAG:pand | Nee |
+| 11 | HyDAMO:gemaal | Ja |
+| 12 | BGT:bgt_waterdeel | Ja |
+
+Bijzonder geclassificeerde BAG-gebouwen, waaronder RWZI- en gemaalgebouwen,
+blijven broncode 10 houden: de broncode beschrijft de ingetekende geometrie,
+niet alle bronnen die de classificatie hebben be?nvloed. Ongekoppelde
+HYDAMO-punten hebben code 11.
+
+Alleen lege cellen zonder broncode en met hun celmidden binnen `landgebied`
+worden aangevuld. Bestaande klassen en expliciet oningedeelde BAG-panden blijven
+ongewijzigd. Een aangevulde cel krijgt de klasse ?n broncode van de donor.
+Nieuw aangevulde cellen dienen niet zelf als donor. Bij gelijke afstand wint
+de noordelijkste donor, daarna de westelijkste. Dit is een eenvoudige
+nabijheidsregel zonder barri?res: een donor kan over een smal tussenliggend
+object heen worden gekozen. De bestaande binnen-/buitendijkse klasse van de
+donor wordt meegekopieerd.
+
+Tegels worden met een overlappende marge berekend en daarna teruggesneden,
+zodat ook donoren in een aangrenzende tegel beschikbaar zijn. De NoData-controle
+wordt na het aanvullen gemaakt. Het bronnenraster onderscheidt oorspronkelijke
+en aangevulde cellen niet; de zoekafstand en donormapping staan in de metadata.

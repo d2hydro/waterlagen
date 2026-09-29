@@ -63,33 +63,29 @@ def test_sources_are_derived_from_injected_datastore(tmp_path):
 
 def test_build_allocates_one_full_tile_raster_and_reuses_it(tmp_path, monkeypatch):
     _patch_sources(monkeypatch, prepared_sources=["a", "b", "c"])
-    full_calls = []
     raster_ids = []
-    original_full = np.full
 
-    def fake_full(shape, fill_value, dtype):
-        full_calls.append((shape, fill_value, dtype))
-        return original_full(shape, fill_value, dtype=dtype)
-
-    def fake_rasterize(raster, data, transform):
-        raster_ids.append(id(raster))
-        raster[:, :] = len(raster_ids)
+    def fake_rasterize(raster, data, transform, *, value_column="code"):
+        if value_column == "code":
+            raster_ids.append(id(raster))
+            raster[:, :] = len(raster_ids)
+        else:
+            raster[:, :] = 12
         return raster
 
-    monkeypatch.setattr(build_mod.np, "full", fake_full)
     monkeypatch.setattr(build_mod, "rasterize_features", fake_rasterize)
-
     target = tmp_path / "landgebruik.tif"
     bouw_functioneel_landgebruik(
         target_path=target,
         bounds=(0, 0, 16, 16),
         resolution_m=1,
+        gap_fill_distance_m=0,
         output_config=RasterOutputConfig(block_size=16, overview_factors=(2,)),
         download_missing=False,
     )
-
-    assert full_calls == [((16, 16), 0, np.uint8)]
     assert len(set(raster_ids)) == 1
+    with rasterio.open(tmp_path / "bronnen" / target.name) as sources:
+        assert np.all(sources.read(1) == 12)
     palette = ET.parse(target.with_suffix(".qml")).findall(
         "./pipe/rasterrenderer/colorPalette/paletteEntry"
     )
@@ -109,6 +105,7 @@ def test_build_default_output_is_tiled_512_with_mode_overviews(tmp_path, monkeyp
 
     target = tmp_path / "landgebruik_default.tif"
     bouw_functioneel_landgebruik(
+        gap_fill_distance_m=0,
         target_path=target,
         bounds=(0, 0, 1024, 1024),
         resolution_m=1,
@@ -129,6 +126,7 @@ def test_build_accepts_custom_output_config(tmp_path, monkeypatch):
 
     target = tmp_path / "landgebruik_custom.tif"
     bouw_functioneel_landgebruik(
+        gap_fill_distance_m=0,
         target_path=target,
         bounds=(0, 0, 64, 64),
         resolution_m=1,
