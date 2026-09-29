@@ -32,9 +32,9 @@ ook `Pand in gebruik (niet ingemeten)`. Deze selectie geldt eveneens voor
 panden zonder gekoppeld verblijfsobject. Een ontbrekende statuskolom geeft een
 foutmelding.
 
-### Beoogde beslisboom voor de gebouwfunctie
+### Beslisboom voor de gebouwfunctie
 
-De onderstaande beslisboom beschrijft de beoogde classificatie per pand.
+De onderstaande beslisboom beschrijft de classificatie per pand.
 Een VBO is een verblijfsobject; `NULL` betekent een ontbrekende gebruiksfunctie.
 De diagramterm `overigegebruiksfunctie` komt overeen met
 `overige gebruiksfunctie` in de code en de overige documentatie.
@@ -57,48 +57,21 @@ appartementencomplex. Bij minstens twee niet-woon-VBO's geldt in beide takken
 dezelfde sommeer-, uitsluitings- en rangschikkingslogica als zonder woonfunctie,
 maar uitsluitend voor de niet-woonfuncties.
 
-!!! note "Beoogde regels en huidige uitvoering"
-
-    Deze beslisboom is nog niet volledig geïmplementeerd. De huidige uitvoering
-    laat combinaties met ontbrekende gebruiksdoelen open (uitsluitend ontbrekende
-    doelen krijgen de aparte categorie 'geen gebruiksdoel'), past de uitsluiting onder 100 m² bij
-    rangschikking nog niet toe en kiest bij uitsluitend wonen en overige altijd
-    wonen. Bij minstens vier VBO's met wonen en precies één niet-woon-VBO
-    anders dan overige blijft de keuze nog open. Zie
-    [de huidige uitvoering](#huidige-uitvoering-van-de-gebouwclassificatie)
-    voor de regels die de geproduceerde datasets nu volgen.
-
 [![Beslisboom voor de gebouwfunctie op basis van BAG-verblijfsobjecten](../images/beslisboom_bag_vbo.svg)](../images/beslisboom_bag_vbo.svg)
 
 ### Huidige uitvoering van de gebouwclassificatie
 
-Bij maximaal drie verblijfsobjecten, met minimaal één woonfunctie en precies
-één niet-woon-verblijfsobject, gaat de niet-woonfunctie voor. Dit geldt alleen
-als alle verblijfsobjecten één bekend gebruiksdoel hebben en de andere functie
-niet `overige gebruiksfunctie` is. De oppervlakteverhouding bepaalt in dit
-geval niet de functie. Hiermee wordt het winkel/wonen-voorbeeld uit de notitie
-toegepast. De afbakening tot precies één niet-woon-verblijfsobject is de
-gekozen uitwerking; complexere combinaties vallen buiten deze stap.
-
-Bij uitsluitend woonfunctie en overige gebruiksfunctie kiezen we woonfunctie,
-ongeacht het aantal VBO's of de oppervlakteverhouding. Dit is een aanvullende
-afspraak. Elk VBO moet één bekend gebruiksdoel hebben. Alle VBO's blijven
-meetellen voor de bouwlagen en de grens voor woning/appartementencomplex.
-
-Bij minstens twee niet-woon-VBO's wordt de oppervlakte per niet-woonfunctie
-opgeteld en wint het grootste totaal. Deze regel geldt ook bij meer dan drie
-VBO's. Wonen doet niet mee aan de vergelijking, maar de woonoppervlakte telt
-wel mee voor de bouwlagen. Dit is onze afgesproken interpretatie van de
-notitie, aansluitend op de toelichting over niet-woonfuncties op de begane grond;
-de code stelt niet vast op welke verdieping een functie werkelijk zit.
-
-Bij meer dan drie VBO's met wonen en slechts één niet-woon-VBO blijft de
-functiekeuze `nog te beoordelen`. Uitsluitend wonen geeft tot en met drie
-VBO's een woning en vanaf vier VBO's een appartementencomplex.
-
 De BAG-voorbereiding gebruikt dezelfde functiekeuze, bouwlagenberekening en
-gebouwklassen als het controlescript. Meervoudige doelen binnen een VBO,
-gelijke grootste oppervlakten en onopgeloste combinaties blijven open.
+gebouwklassen als het controlescript en volgt de beslisboom hierboven.
+Meervoudige of onbekende doelen binnen een VBO blijven open. Bij rangschikking
+blijven gelijke grootste totalen na uitsluiting open: de beslisboom geeft
+geen voorrang bij gelijke oppervlakten. Ontbrekende, ongeldige of over meerdere
+panden gedeelde oppervlakten blijven open wanneer ze nodig zijn voor de
+vergelijking. De oppervlakte van `NULL` is daarvoor niet nodig. Bij directe
+functiekeuzes wordt geen oppervlaktevergelijking uitgevoerd.
+Uitsluitend `NULL` onder de kandidaatfuncties geeft `geen gebruiksdoel`,
+evenals een pand zonder gekoppelde VBO's.
+De code stelt niet vast op welke verdieping een functie werkelijk zit.
 Bouwlagen volgen uit alle gekoppelde VBO-oppervlakten gedeeld door de volledige
 pandoppervlakte, naar boven afgerond. Vanaf vier VBO's krijgt een gekozen
 woonfunctie de appartementklasse. De gebouwcodes volgen tabel 1 van de notitie.

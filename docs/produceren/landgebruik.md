@@ -210,25 +210,18 @@ Standaard worden alle zes stappen uitgevoerd. Met `stap=5` bekijk je alleen
 de gewone BAG-indeling. De losse berekeningsfuncties
 blijven behouden, maar worden niet meer naar aparte bestanden of lagen geschreven.
 
-Een enkelvoudig, overal gelijk gebruiksdoel wordt overgenomen. Bij maximaal
-drie verblijfsobjecten met wonen en precies één niet-woon-verblijfsobject gaat
-de andere functie voor, behalve overige gebruiksfunctie. Dit is de gekozen
-afbakening van de wonen/andere-functie-regel. Bij minimaal twee niet-woon-
-verblijfsobjecten met verschillende eenduidige doelen worden de oppervlakten
-per niet-woonfunctie opgeteld en wordt het grootste totaal gekozen. Deze
-optelling geldt ook bij meer dan drie VBO's. Wonen blijft buiten de
-functieoppervlaktevergelijking, maar telt wel mee bij de bouwlagen. Dit is de
-afgesproken interpretatie van de notitie; zie de
-[functionele beschrijving](../bewerkingen/functioneel-landgebruik.md).
-Meer dan drie VBO's met wonen en slechts één niet-woon-VBO blijven
-`nog te beoordelen`.
+De functiekeuze volgt de
+[beslisboom voor de gebouwfunctie](../bewerkingen/functioneel-landgebruik.md#beslisboom-voor-de-gebouwfunctie),
+inclusief de regels voor `NULL`, overige gebruiksfunctie en appartementencomplexen.
+Wonen blijft buiten de functieoppervlaktevergelijking, maar telt wel mee bij
+de bouwlagen.
 
 Bij meerdere doelen in een verblijfsobject blijft de gekozen functie leeg,
 met status `nog te beoordelen`. Hiervoor moeten we nog een beslisregel kiezen:
 de gezamenlijke oppervlakte is niet per gebruiksdoel uitgesplitst.
 Er wordt geen eerste doel gekozen of oppervlakte aan een doel toegewezen.
 
-Gelijke grootste oppervlakten,
+Gelijke grootste oppervlakten na uitsluiting van kandidaatfuncties,
 ongeldige benodigde oppervlakten en niet-opgeloste combinaties krijgen
 `nog te beoordelen`. Bij een oppervlaktevergelijking geldt dit ook voor een
 verblijfsobject dat aan meerdere panden is gekoppeld: de verdeling is onbekend.

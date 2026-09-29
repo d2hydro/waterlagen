@@ -1,10 +1,10 @@
 """Stap 3: gebruiksfunctie kiezen (notitie p. 4-5).
 
-- Controleer ontbrekende en meervoudige gebruiksdoelen.
-- Neem één gezamenlijk gebruiksdoel over.
-- Pas de regel voor wonen met een andere gebruiksfunctie toe.
-- Vergelijk anders het vloeroppervlak van de niet-woonfuncties.
-- Laat combinaties zonder beslisregel open.
+- Splits panden met en zonder woonfunctie en tel niet-woon-VBO's.
+- Neem één kandidaatfunctie of uitsluitend overige met NULL direct over.
+- Rangschik anders de opgetelde oppervlakten, met uitsluiting van NULL en
+  overige gebruiksfunctie onder 100 m².
+- Laat ongeldige brongegevens en gelijke grootste resterende totalen open.
 """
 
 from dataclasses import dataclass
@@ -44,14 +44,34 @@ class _FunctionChoice:
     areas: str = ""
 
 
-def _choose_largest_non_residential_function(
-    vbo: pd.DataFrame, goals: pd.Series
-) -> _FunctionChoice:
-    """Kies de gebruiksfunctie met het grootste vloeroppervlak.
+def _choose_candidate_function(vbo: pd.DataFrame, goals: pd.Series) -> _FunctionChoice:
+    """Kies uit niet-woonfuncties; een lege doelwaarde vertegenwoordigt NULL."""
+    functions = set(goals)
+    if functions == {""}:
+        return _FunctionChoice(
+            status="geen gebruiksdoel",
+            rule="ontbrekend gebruiksdoel",
+            reason="Geen gebruiksdoel ingevuld bij de kandidaat-verblijfsobjecten.",
+        )
+    if len(functions) == 1:
+        return _FunctionChoice(
+            function=goals.iloc[0],
+            status="gekozen",
+            rule="één gebruiksdoel",
+            reason="Alle kandidaat-verblijfsobjecten hebben dezelfde functie.",
+        )
+    if functions == {"overige gebruiksfunctie", ""}:
+        return _FunctionChoice(
+            function="overige gebruiksfunctie",
+            status="gekozen",
+            rule="overige gebruiksfunctie met NULL",
+            reason="Alleen overige gebruiksfunctie en NULL: kies overige gebruiksfunctie ongeacht de oppervlakte.",
+        )
 
-    - Afspraak: woonfunctie telt niet mee in de vergelijking.
-    - Gedeeld oppervlak of gelijke grootste totalen: keuze blijft open.
-    """
+    # NULL kan nooit winnen; zijn oppervlakte is niet nodig voor de vergelijking.
+    known = goals.ne("")
+    vbo = vbo.loc[known]
+    goals = goals.loc[known]
     # De oppervlakte van een gedeeld VBO is niet per pand uitgesplitst.
     if vbo["pand_identificatie"].str.contains(",", regex=False).any():
         return _FunctionChoice(
@@ -66,7 +86,9 @@ def _choose_largest_non_residential_function(
         )
     totals = areas.groupby(goals).sum()
     overview = "; ".join(f"{goal}: {area:g} m²" for goal, area in totals.items())
-    winners = totals[totals == totals.max()]
+    ranked = totals.sort_values(ascending=False, kind="stable")
+    eligible = ranked[(ranked.index != "overige gebruiksfunctie") | (ranked >= 100)]
+    winners = eligible[eligible == eligible.iloc[0]]
     if len(winners) != 1:
         tied = "; ".join(
             f"{goal}: {_format_area(area)}" for goal, area in winners.items()
@@ -80,7 +102,7 @@ def _choose_largest_non_residential_function(
         function=str(winners.index[0]),
         status="gekozen",
         rule="grootste niet-woonoppervlakte",
-        reason="Minimaal 2 niet-woon-verblijfsobjecten, ook bij meer dan 3 VBO's in het pand. Kies de niet-woonfunctie met de grootste opgetelde oppervlakte. Woonoppervlakte telt niet mee voor deze keuze, wel voor de bouwlagen.",
+        reason="Kies de niet-woonfunctie met de grootste opgetelde oppervlakte na uitsluiting van NULL en overige gebruiksfunctie onder 100 m². Woonoppervlakte telt niet mee voor deze keuze, wel voor de bouwlagen.",
         areas=overview,
     )
 
@@ -109,72 +131,53 @@ def _choose_function(vbo: pd.DataFrame) -> _FunctionChoice:
             reason="Geen gekoppeld verblijfsobject in de bron.",
         )
     goals = vbo["gebruiksdoel"].fillna("").astype(str).str.strip().str.lower()
-    if goals.eq("").all():
-        return _FunctionChoice(
-            status="geen gebruiksdoel",
-            rule="ontbrekend gebruiksdoel",
-            reason="Geen gebruiksdoel ingevuld bij de gekoppelde verblijfsobjecten.",
-        )
     if goals.str.contains(",", regex=False).any():
         return _FunctionChoice(
             rule="meerdere doelen per verblijfsobject",
             reason=_multiple_goal_reason(vbo, goals),
         )
-    if not goals.isin(KNOWN_GOALS).all():
+    if not (goals.isin(KNOWN_GOALS) | goals.eq("")).all():
         return _FunctionChoice(
             rule="ontbrekend of onbekend doel",
             reason="Gebruiksdoel ontbreekt of is onbekend bij een VBO.",
         )
-    # 3b. Eén gebruiksdoel bij alle VBO's: geen oppervlaktevergelijking nodig.
-    if goals.nunique() == 1:
+    non_residential = goals != "woonfunctie"
+    has_residential = goals.eq("woonfunctie").any()
+    if not has_residential:
+        return _choose_candidate_function(vbo, goals)
+
+    non_residential_count = int(non_residential.sum())
+    if non_residential_count == 0:
         return _FunctionChoice(
-            function=goals.iloc[0],
+            function="woonfunctie",
             status="gekozen",
             rule="één gebruiksdoel",
             reason="Alle gekoppelde verblijfsobjecten hebben dezelfde functie.",
         )
-
-    # Afspraak: uitsluitend wonen en overige gebruiksfunctie wordt wonen.
-    if set(goals) == {"woonfunctie", "overige gebruiksfunctie"}:
+    if len(vbo) >= 4 and non_residential_count == 1:
         return _FunctionChoice(
             function="woonfunctie",
             status="gekozen",
-            rule="wonen met overige gebruiksfunctie",
-            reason="Alleen woonfunctie en overige gebruiksfunctie. Woonfunctie bepaalt de indeling.",
+            rule="appartementencomplex met één andere functie",
+            reason="Minimaal 4 verblijfsobjecten met wonen en precies één niet-woonverblijfsobject: appartementencomplex.",
         )
-
-    # 3c. Winkel/wonen-voorbeeld: tot en met 3 VBO's gaat de andere functie voor.
-    non_residential = goals != "woonfunctie"
-    has_residential = goals.eq("woonfunctie").any()
-    non_residential_count = int(non_residential.sum())
-    if len(vbo) <= 3 and has_residential and non_residential_count == 1:
+    if len(vbo) <= 3 and non_residential_count == 1:
         other = goals[non_residential].iloc[0]
-        if other != "overige gebruiksfunctie":
+        if other in {"overige gebruiksfunctie", ""}:
             return _FunctionChoice(
-                function=other,
+                function="woonfunctie",
                 status="gekozen",
-                rule="wonen met één andere functie",
-                reason="Maximaal 3 verblijfsobjecten, met wonen en precies één niet-woonverblijfsobject. Oppervlakteverhouding is niet bepalend.",
+                rule="wonen met overige gebruiksfunctie of NULL",
+                reason="Maximaal 3 verblijfsobjecten met precies één niet-woonverblijfsobject met overige gebruiksfunctie of NULL: woning, ongeacht de oppervlakte.",
             )
-
-    # Minstens twee niet-woon-VBO's: vergelijk hun oppervlakte per functie.
-    # Afgesproken uitwerking: wonen telt hier niet mee, ook bij meer dan 3 VBO's.
-    if non_residential_count >= 2:
-        return _choose_largest_non_residential_function(
-            vbo.loc[non_residential], goals[non_residential]
+        return _FunctionChoice(
+            function=other,
+            status="gekozen",
+            rule="wonen met één andere functie",
+            reason="Maximaal 3 verblijfsobjecten, met wonen en precies één niet-woonverblijfsobject. Oppervlakteverhouding is niet bepalend.",
         )
-    counts = " + ".join(
-        f"{count} {goal.removesuffix('functie')}-{'VBO' if count == 1 else 'VBO’s'}"
-        for goal, count in goals.value_counts().items()
-    )
-    if len(vbo) > 3:
-        reason = f"{counts}: voorrang bij meer dan 3 VBO’s nog te bepalen."
-    else:
-        reason = f"{counts}: voorrang nog te bepalen."
-    return _FunctionChoice(
-        rule="combinatie zonder beslisregel",
-        reason=reason,
-    )
+
+    return _choose_candidate_function(vbo.loc[non_residential], goals[non_residential])
 
 
 def determine_bag_functions(
@@ -195,6 +198,17 @@ def determine_bag_functions(
         - Gebruiksfunctie, toegepaste regel en reden.
         - Vergeleken vloeroppervlak per gebruiksfunctie.
         - Openstaande keuzes zonder toegewezen gebruiksfunctie.
+
+    Notes
+    -----
+    Woonfunctie met maximaal één niet-woon-VBO volgt de woning- en
+    appartementenregels. Anders worden kandidaatfuncties per oppervlakte
+    opgeteld, zonder woonfunctie. Eén functie en uitsluitend overige met NULL
+    worden direct gekozen. Bij rangschikking vallen NULL en overige onder
+    100 m² af. Gelijke grootste resterende totalen blijven te beoordelen.
+    Ontbrekende doelen zijn NULL; onbekende en meervoudige doelen blijven open.
+    ``woonfunctie`` wordt in de daaropvolgende gebouwclassificatie op basis
+    van het totale VBO-aantal een woning of appartementencomplex.
     """
     grouped = _group_verblijfsobjecten_by_pand(verblijfsobjecten)
     result = panden.copy()

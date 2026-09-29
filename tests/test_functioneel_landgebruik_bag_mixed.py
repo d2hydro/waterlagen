@@ -21,7 +21,7 @@ from waterlagen.functioneel_landgebruik.bag_gebruiksfunctie import (
         (
             ["woonfunctie"] * 3 + ["winkelfunctie"],
             [150, 150, 150, 50],
-            None,
+            "woonfunctie",
             False,
         ),
         (["woonfunctie", "overige gebruiksfunctie"], [150, 50], "woonfunctie", False),
@@ -29,12 +29,12 @@ from waterlagen.functioneel_landgebruik.bag_gebruiksfunctie import (
         (
             ["woonfunctie"] * 3 + ["overige gebruiksfunctie"] * 2,
             [50, 50, 50, 200, 200],
-            "woonfunctie",
+            "overige gebruiksfunctie",
             False,
         ),
         (["overige gebruiksfunctie"], [150], "overige gebruiksfunctie", False),
         (["woonfunctie,overige gebruiksfunctie"], [150], None, False),
-        (["woonfunctie", None], [150, 50], None, False),
+        (["woonfunctie", None], [150, 50], "woonfunctie", False),
         (
             ["woonfunctie", "winkelfunctie,kantoorfunctie"],
             [150, 50],
