@@ -133,21 +133,21 @@ def determine_bag_classes(
                 "Gekozen woonfunctie met 4 of meer verblijfsobjecten (notitie p. 4)."
             )
         elif function == "overige gebruiksfunctie":
-            # Uitsluitend overige gebruiksfunctie: toets totaal vloeroppervlak aan 100 m².
-            area = pand["som_vbo_oppervlakte_m2"]
-            only_other_use = (
-                pand.get("alle_bag_gebruiksdoelen", "") == "overige gebruiksfunctie"
-            )
-            if count != 1 and not only_other_use:
-                reason = "Gemengde functies: toepassing 100 m²-grens nog te bepalen."
-            elif pd.isna(area) or area <= 0:
+            # Gebruik alleen de VBO-oppervlakten van de gekozen functie.
+            area = pand.get("oppervlakte_overige_gebruiksfunctie_m2")
+            if area is None and (
+                count == 1
+                or pand.get("alle_bag_gebruiksdoelen") == "overige gebruiksfunctie"
+            ):
+                area = pand.get("som_vbo_oppervlakte_m2")
+            if pd.isna(area) or area <= 0:
                 reason = "100 m²-grens: VBO-oppervlakte ontbreekt of is ongeldig."
             else:
                 if area > 100:
                     mapping_id = "BAG-032"
                 else:
                     mapping_id = "BAG-033"
-                reason = "Som van de VBO-oppervlakten bij uitsluitend overige gebruiksfunctie vergeleken met 100 m2: boven 100 m2 groot, anders klein."
+                reason = "Som van de VBO-oppervlakten met overige gebruiksfunctie vergeleken met 100 m²: boven 100 m² groot, anders klein."
         elif function not in FLOOR_MAPPING_IDS:
             reason = "Geen gebouwklasse voor deze gebruiksfunctie."
         elif function == "woonfunctie" and (pd.isna(count) or count < 1):

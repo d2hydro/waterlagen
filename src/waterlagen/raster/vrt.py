@@ -66,7 +66,7 @@ class _GdalProgressBar:
         self._current = 0
 
     def callback(self, complete: float, message: str, data: object) -> int:
-        value = max(0, min(100, int(round(complete * 100))))
+        value = max(0, min(100, round(complete * 100)))
         if value > self._current:
             self._progress.update(value - self._current)
             self._current = value
@@ -195,7 +195,9 @@ def create_cog_file(
         tmp_file.unlink()
 
     vrt_dataset = _open_gdal_dataset(vrt_file)
-    progress = _GdalProgressBar(desc="VRT to COG") if show_progress else None
+    progress = (
+        _GdalProgressBar(desc=f"VRT to COG: {cog_file.name}") if show_progress else None
+    )
     try:
         vrt_band = vrt_dataset.GetRasterBand(1)
         translate_kwargs = {
@@ -220,6 +222,8 @@ def create_cog_file(
         dataset = None
         if progress is not None:
             progress.finish()
+            progress.close()
+            progress = None
 
         _validate_cog_file(tmp_file, vrt_dataset)
         tmp_file.replace(cog_file)

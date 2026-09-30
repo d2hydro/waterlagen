@@ -111,13 +111,11 @@ Bouwlagen volgen uit alle gekoppelde VBO-oppervlakten gedeeld door de volledige
 pandoppervlakte, naar boven afgerond. Vanaf vier VBO's krijgt een gekozen
 woonfunctie de appartementklasse. De gebouwcodes volgen tabel 1 van de notitie.
 
-Bij panden met uitsluitend `overige gebruiksfunctie` wordt de som van alle
-gekoppelde VBO-oppervlakten vergeleken met 100 m²: maximaal 100 m² geeft
-33/161, meer dan 100 m² geeft 32/160. Dit is de afgesproken uitwerking voor
-meerdere VBO's in één pand. Een ontbrekende of ongeldige oppervlakte wordt
-niet als nul meegeteld; de klasse blijft dan open. Bij gemengde functies wordt
-eerst de leidende functie bepaald. Als dat overige gebruiksfunctie is, staat
-de oppervlakteafbakening voor de 100 m²-grens nog open.
+Als `overige gebruiksfunctie` de gekozen pandfunctie is, wordt alleen de som
+van de VBO-oppervlakten met die gekozen functie vergeleken met 100 m²:
+maximaal 100 m² geeft 33/161, meer dan 100 m² geeft 32/160. Dit geldt ook
+bij gemengde functies. Een ontbrekende of ongeldige oppervlakte van deze VBO's
+wordt niet als nul meegeteld; de klasse blijft dan open.
 
 VBO's worden via hun pand-ID gekoppeld, ook als hun punt buiten de tegel ligt.
 Een openstaande klasse krijgt rastercode 0 (NoData); de gebouwgeometrie wist
@@ -197,8 +195,9 @@ geldt deze tekenvolgorde; een latere laag overschrijft een eerdere laag:
    code 78 binnendijks en 206 buitendijks. Deze laag heeft de laagste prioriteit.
 2. BGT-begroeide terreindelen, daarna onbegroeide terreindelen.
 3. TOP10NL-functionele gebieden: eerst `vlak`, daarna `multivlak`.
-4. TOP10NL-terreinvlakken (`typelandgebruik`): grasland, akkerland en
-   fruitkwekerij volgens de CSV. Deze vullen gaten in de BRP-dekking.
+4. TOP10NL-terreinvlakken (`typelandgebruik`): grasland, akkerland,
+   boomkwekerij, boomgaard en fruitkwekerij volgens de CSV. Deze vullen gaten
+   in de BRP-dekking.
 5. BRP.
 6. BGT-ondersteunende wegdelen.
 7. BGT-wegdelen.

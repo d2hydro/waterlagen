@@ -23,7 +23,10 @@ from waterlagen.functioneel_landgebruik.landgebruikstabel import (
     LanduseTable,
     load_landuse_table,
 )
-from waterlagen.functioneel_landgebruik.legenda import write_qgis_style
+from waterlagen.functioneel_landgebruik.legenda import (
+    write_qgis_style,
+    write_raster_attribute_table,
+)
 from waterlagen.logger import configure_logging, get_logger
 from waterlagen.raster.tiles import build_tiles
 from waterlagen.raster.vrt import create_cog_file, create_vrt_file
@@ -194,7 +197,8 @@ def _produce(
             cog_file=output / "functioneel_landgebruik.tif",
             overwrite=overwrite,
         )
-        write_qgis_style(tif, table)
+        style = write_qgis_style(tif, table)
+        write_raster_attribute_table(tif, style)
         stage("Bronnenraster samenstellen")
         sources_vrt = create_vrt_file(
             vrt_file=output / "functioneel_landgebruik_bronnen.vrt",

@@ -44,6 +44,7 @@ class _FunctionChoice:
     function: str | None = None
     status: str = "nog te beoordelen"
     areas: str = ""
+    other_use_area: float | None = None
 
 
 def _choose_candidate_function(vbo: pd.DataFrame, goals: pd.Series) -> _FunctionChoice:
@@ -139,6 +140,17 @@ def _choose_function(vbo: pd.DataFrame) -> _FunctionChoice:
             )
     goals = pd.Series(selected, index=vbo.index, dtype="object")
     choice = _choose_building_function(vbo, goals)
+    if choice.function == "overige gebruiksfunctie":
+        other_vbo = vbo.loc[goals == "overige gebruiksfunctie"]
+        areas = pd.to_numeric(other_vbo["oppervlakte"], errors="coerce")
+        shared = other_vbo["pand_identificatie"].str.contains(",", regex=False).any()
+        if (
+            not shared
+            and areas.notna().all()
+            and (areas > 0).all()
+            and np.isfinite(areas).all()
+        ):
+            choice.other_use_area = float(areas.sum())
     if reasons:
         choice.reason = " ".join([*reasons, choice.reason])
     return choice
@@ -202,6 +214,7 @@ def determine_bag_functions(
     geopandas.GeoDataFrame
         - Gebruiksfunctie, toegepaste regel en reden.
         - Vergeleken vloeroppervlak per gebruiksfunctie.
+        - Opgeteld oppervlak van de gekozen overige gebruiksfunctie.
         - Openstaande keuzes zonder toegewezen gebruiksfunctie.
 
     Notes
@@ -240,4 +253,7 @@ def determine_bag_functions(
     result["regel_functiekeuze"] = [c.rule for c in choices]
     result["reden_functiekeuze"] = [c.reason for c in choices]
     result["vergeleken_oppervlakten"] = [c.areas for c in choices]
+    result["oppervlakte_overige_gebruiksfunctie_m2"] = pd.Series(
+        [c.other_use_area for c in choices], index=result.index, dtype="float64"
+    )
     return result

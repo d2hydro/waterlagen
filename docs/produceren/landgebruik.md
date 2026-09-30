@@ -60,7 +60,7 @@ Open PowerShell in uw projectfolder
 en voer uit:
 
 ```powershell
-pixi run --locked landgebruik
+pixi run --locked functioneel_landgebruik
 ```
 
 De taak voert het meegeleverde script uit. Rechtstreeks starten kan ook:
@@ -116,6 +116,7 @@ Onder `processed_data/functioneel_landgebruik/nederland/<run-id>` in uw datastor
 - `tiles/`: de berekende rastertegels;
 - `functioneel_landgebruik.vrt`: de tegels samengevoegd als virtueel raster;
 - `functioneel_landgebruik.tif`: het samengestelde Cloud Optimized GeoTIFF-raster.
+- `functioneel_landgebruik.tif.aux.xml`: rasterattribuuttabel met pixelcode, omschrijving en kleur;
 - `functioneel_landgebruik_bronnen.tif`: bronlaag per cel, met een JSON-legenda;
 - `functioneel_landgebruik.qml`: legenda voor het landelijke raster in QGIS;
 - `nodata.gpkg`: NoData-vlakken met bron en reden;
@@ -126,14 +127,13 @@ Onder `processed_data/functioneel_landgebruik/nederland/<run-id>` in uw datastor
 Het logbestand is `productie.log` in dezelfde uitvoermap. Open het resultaat
 in QGIS en controleer de dekking en klassen voor uw toepassing.
 
-Bij nieuw berekende uitsneden en rastertegels wordt een `.qml`-bestand met
-dezelfde bestandsnaam geschreven. Dit bevat de categorienamen uit de gebruikte
-CSV, de landgebruikscodes en de binnen-/buitendijkse ligging. Bewaar TIFF en QML
-bij elkaar. Voeg de TIFF opnieuw toe aan QGIS om de legenda te laden. Bij een
-al geopende laag kunt u via **Laageigenschappen → Symbologie → Stijl → Stijl
-laden** het QML-bestand kiezen. Bestaande uitvoer die wordt hergebruikt krijgt
-niet automatisch een nieuwe stijl. Het landelijke startscript schrijft wel een
-eigen QML-bestand bij het eindraster, ook als die TIFF wordt hergebruikt.
+De QML bevat unieke pixelcodes met hun labels en kleuren. De landelijke TIFF
+krijgt dezelfde klassen in een rasterattribuuttabel, zodat QGIS bij identificeren
+ook de omschrijving toont. Bewaar bij delen de `.tif`, `.tif.aux.xml` en `.qml`
+met dezelfde bestandsnamen bij elkaar. Voeg de TIFF opnieuw toe aan QGIS om de
+legenda te laden. Bij een al geopende laag kunt u via **Laageigenschappen →
+Symbologie → Stijl → Stijl laden** het QML-bestand kiezen. Ook bij hergebruik van
+een landelijke TIFF worden QML en rasterattribuuttabel bijgewerkt.
 
 ## NoData controleren
 
@@ -279,13 +279,11 @@ Een openstaande functiekeuze blijft zonder klasse, ook als bouwlagen bekend zijn
 De winkel/woning krijgt met 4 berekende bouwlagen
 de winkelklasse met 3 of meer bouwlagen (31/159).
 
-Bij panden met uitsluitend overige gebruiksfunctie wordt de som van alle
-gekoppelde VBO-oppervlakten gebruikt:
-meer dan 100 m² geeft 32/160, maximaal 100 m² geeft 33/161.
-Bij gemengde functies wordt eerst de leidende functie bepaald in stap 3.
-Als overige gebruiksfunctie daarbij wint, staat de afbakening van de oppervlakte
-voor de 100 m²-grens nog open. Ontbrekende oppervlakten worden niet als nul
-meegeteld. Geen gebruiksdoel in stap 3 geeft de
+Als overige gebruiksfunctie de leidende functie is, telt alleen de oppervlakte
+van VBO's met die gekozen functie mee voor de grens van 100 m²:
+meer dan 100 m² geeft 32/160, maximaal 100 m² geeft 33/161. Dit geldt ook
+bij gemengde functies. Ontbrekende oppervlakten van deze VBO's worden niet als
+nul meegeteld. Geen gebruiksdoel in stap 3 geeft de
 aparte categorie 34/162, niet dezelfde categorie als een onopgeloste combinatie.
 
 Deze stap bepaalt nog geen binnen-/buitendijkse ligging. Er wordt geen

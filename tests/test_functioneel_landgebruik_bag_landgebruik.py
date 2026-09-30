@@ -86,7 +86,21 @@ def test_note_codes_and_unresolved_choices(
         (["overige gebruiksfunctie"] * 2, [60, -1], None),
         (["woonfunctie", "overige gebruiksfunctie"], [50, 150], 2),
         (["kantoorfunctie", "overige gebruiksfunctie"], [150, 50], 18),
-        (["kantoorfunctie", "overige gebruiksfunctie"], [50, 150], None),
+        (["kantoorfunctie", "overige gebruiksfunctie"], [50, 150], 32),
+        (["kantoorfunctie", "overige gebruiksfunctie"], [20, 100], 33),
+        (["kantoorfunctie", "overige gebruiksfunctie"], [20, 101], 32),
+        (
+            ["kantoorfunctie", "overige gebruiksfunctie", "overige gebruiksfunctie"],
+            [80, 50, 50],
+            33,
+        ),
+        (
+            ["kantoorfunctie", "overige gebruiksfunctie", "overige gebruiksfunctie"],
+            [80, 50, 51],
+            32,
+        ),
+        ([None, "overige gebruiksfunctie"], [900, 100], 33),
+        ([None, "overige gebruiksfunctie"], [None, 100], 33),
         (
             ["woonfunctie", "woonfunctie", "winkelfunctie", "kantoorfunctie"],
             [300, 300, 50, 100],
@@ -119,4 +133,12 @@ def test_other_use_total_after_function_selection(goals, areas, expected):
     else:
         assert result.lgb_code_binnendijks == expected
         assert result.lgb_code_buitendijks == expected + 128
-        assert result.som_vbo_oppervlakte_m2 == sum(areas)
+        if all(area is not None for area in areas):
+            assert result.som_vbo_oppervlakte_m2 == sum(areas)
+        if result.gekozen_pandfunctie == "overige gebruiksfunctie":
+            expected_area = sum(
+                area
+                for goal, area in zip(goals, areas, strict=True)
+                if goal == "overige gebruiksfunctie"
+            )
+            assert result.oppervlakte_overige_gebruiksfunctie_m2 == expected_area

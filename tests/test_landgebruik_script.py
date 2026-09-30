@@ -97,6 +97,14 @@ def test_landgebruik_script_builds_tiles_vrt_and_cog_in_order(
         events.append(("create_cog_file", kwargs))
         return kwargs["cog_file"]
 
+    def fake_write_raster_attribute_table(raster_path, style_path):
+        events.append(
+            (
+                "write_raster_attribute_table",
+                {"raster_path": raster_path, "style_path": style_path},
+            )
+        )
+
     data_store = SimpleNamespace(
         data_dir=data_dir_root,
         processed_data_dir=processed_dir,
@@ -124,6 +132,9 @@ def test_landgebruik_script_builds_tiles_vrt_and_cog_in_order(
     )
     monkeypatch.setattr(landgebruik, "create_vrt_file", fake_create_vrt_file)
     monkeypatch.setattr(landgebruik, "create_cog_file", fake_create_cog_file)
+    monkeypatch.setattr(
+        landgebruik, "write_raster_attribute_table", fake_write_raster_attribute_table
+    )
 
     default_bgt = data_store.bgt_dir / landgebruik.BGT_BESTAND
     default_bgt.parent.mkdir(parents=True)
@@ -162,6 +173,7 @@ def test_landgebruik_script_builds_tiles_vrt_and_cog_in_order(
         "build_landgebruik_tiles",
         "create_vrt_file",
         "create_cog_file",
+        "write_raster_attribute_table",
         "create_vrt_file",
         "create_cog_file",
     ]
@@ -185,12 +197,16 @@ def test_landgebruik_script_builds_tiles_vrt_and_cog_in_order(
         "cog_file": cog_file,
         "overwrite": False,
     }
-    assert events[1][1]["gap_fill_distance_m"] == 1.0
     assert events[4][1] == {
+        "raster_path": cog_file,
+        "style_path": cog_file.with_suffix(".qml"),
+    }
+    assert events[1][1]["gap_fill_distance_m"] == 1.0
+    assert events[5][1] == {
         "vrt_file": data_dir / "functioneel_landgebruik_bronnen.vrt",
         "directory": tiles_dir / "bronnen",
     }
-    assert events[5][1]["cog_file"] == data_dir / "functioneel_landgebruik_bronnen.tif"
+    assert events[6][1]["cog_file"] == data_dir / "functioneel_landgebruik_bronnen.tif"
     assert (data_dir / "functioneel_landgebruik_bronnen.json").is_file()
     assert result == cog_file
     assert cog_file.with_suffix(".qml").is_file()

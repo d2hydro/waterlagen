@@ -439,12 +439,20 @@ def test_supporting_water_uses_csv_type_and_current_objects(tmp_path, outside, c
 
 
 @pytest.mark.parametrize(
-    "outside,codes", [(False, [50, 52, 53]), (True, [182, 180, 181])]
+    "outside,codes", [(False, [50, 52, 53, 53, 53]), (True, [182, 180, 181, 181, 181])]
 )
 def test_top10nl_terrain_csv_mapping(tmp_path, outside, codes):
     path = tmp_path / "top10.gpkg"
     _data(
-        ["grasland", "akkerland", "fruitkwekerij", "onbekend"], "typelandgebruik"
+        [
+            "grasland",
+            "akkerland",
+            "boomkwekerij",
+            "boomgaard",
+            "fruitkwekerij",
+            "onbekend",
+        ],
+        "typelandgebruik",
     ).to_file(
         path,
         layer="top10nl_terrein_vlak",
@@ -454,8 +462,8 @@ def test_top10nl_terrain_csv_mapping(tmp_path, outside, codes):
         path,
         layer="top10nl_terrein_vlak",
         mapping_layer="top10nl_terrein_vlak",
-        bounds=(-1, -1, 8, 2),
+        bounds=(-1, -1, 12, 2),
         table=load_landuse_table(),
-        buitendijks_area=box(-1, -1, 8, 2) if outside else box(100, 100, 101, 101),
+        buitendijks_area=box(-1, -1, 12, 2) if outside else box(100, 100, 101, 101),
     )
     assert result["code"].tolist() == codes
