@@ -12,7 +12,8 @@ U hebt geen Git of toegang tot een private repository nodig.
    [Landgebruik](landgebruik.md) of [Inwoners en personenauto's](inwoners-personenautos.md).
 
 Andere workflows in de broncoderepository staan bij [Voorbeelden](voorbeelden.md).
-De [DEM-proef rond Alkmaar](dem.md) verwerkt vier bestaande landgebruiktegels.
+[DEM-productie](dem.md) verwerkt Nederland of vier Alkmaar-tegels en vindt of
+produceert automatisch het benodigde functionele landgebruik.
 Voor losse bronlagen in QGIS: [Actuele BGT-vlakken voorbereiden](bgt-vlakken.md).
 Waterketengegevens kunt u ophalen met [Waterketen DAMO downloaden](waterketen-damo.md).
 

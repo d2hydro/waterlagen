@@ -73,17 +73,28 @@ en voer uit:
 pixi run --locked functioneel_landgebruik
 ```
 
+Met `--area alkmaar` produceert dezelfde workflow uitsluitend vier Alkmaar-tegels:
+
+```powershell
+pixi run functioneel_landgebruik --area alkmaar --workers 2
+```
+
+De standaard is `--area nederland`. Uitvoer staat onder
+`processed_data/functioneel_landgebruik/<area>/<run-id>/`, op hetzelfde nationale
+grid. `--building-context-m` bepaalt de voorbereide buurcontext (standaard 5 m).
+[DEM-productie](dem.md) kan dezelfde workflow starten als geschikte tegels ontbreken.
+
 De taak voert het meegeleverde script uit. Rechtstreeks starten kan ook:
 
 ```powershell
 pixi run --locked python ./scripts/functioneel_landgebruik.py
 ```
 
-De rekeninstellingen staan bovenaan `scripts/functioneel_landgebruik.py`:
+De gedeelde productie gebruikt de volgende instellingen:
 
 | Instelling | Huidige waarde |
 |---|---|
-| `WORKERS` | 16; instelbaar via `FUNCTIONEEL_LANDGEBRUIK_WORKERS` |
+| Workers | 4; instelbaar via `FUNCTIONEEL_LANDGEBRUIK_WORKERS` of `--workers` |
 | `RESOLUTION_M` | 0,5 meter |
 | `TEGELGROOTTE_M` | 5.000 meter |
 | `BGT_BESTAND` | `bgt.gpkg` |
@@ -96,7 +107,8 @@ script start (normaal de repositoryhoofdmap):
 FUNCTIONEEL_LANDGEBRUIK_WORKERS=8
 ```
 
-Zonder instelling worden 16 workers gebruikt. De waarde moet een geheel getal
+Zonder instelling worden 4 workers gebruikt. `--workers` heeft voorrang.
+Er worden nooit meer workers gestart dan te verwerken tegels. De waarde moet een geheel getal
 van minstens 1 zijn. Een omgevingsvariabele met dezelfde naam heeft voorrang
 op `.env`. Start het script opnieuw na een wijziging.
 

@@ -22,7 +22,7 @@ Kies daarna een productie bij [Zelf produceren](index.md).
 ## Productiemappen
 
 De huidige productiescripts voor `autos`, `inwoners`, `afwateringseenheden` en
-`functioneel_landgebruik` gebruiken één conventie:
+`functioneel_landgebruik` en `dem` gebruiken één conventie:
 
 ```text
 processed_data/<dataset>/<werkgebied>/<run-id>/
@@ -33,7 +33,7 @@ processed_data/<dataset>/<werkgebied>/<run-id>/
 | `autos` | `nederland` | `autos/nederland/20260925T120000Z/autos.gpkg` |
 | `inwoners` | `nederland` | `inwoners/nederland/20260925T120000Z/inwoners.gpkg` |
 | `afwateringseenheden` | `waterschap_<code>` | `afwateringseenheden/waterschap_38/20260925T120000Z/afwateringseenheden.gpkg` |
-| `functioneel_landgebruik` | `nederland` | `functioneel_landgebruik/nederland/20260925T120000Z/functioneel_landgebruik.tif` |
+| `functioneel_landgebruik` | `nederland` of `alkmaar` | `functioneel_landgebruik/nederland/20260925T120000Z/functioneel_landgebruik.tif` |
 
 Zonder opties maakt iedere opdracht een nieuwe run met een UTC-tijdstempel
 `YYYYMMDDTHHMMSSZ`. Die tijd duidt de productie aan, niet het peiljaar van de
@@ -41,7 +41,7 @@ bron. Meerdere waterschappen binnen één opdracht krijgen dezelfde run-ID,
 elk onder hun eigen werkgebied. Een naamconflict geeft een foutmelding;
 een bestaande map wordt nooit stilzwijgend hergebruikt.
 
-Alle vier de scripts accepteren dezelfde opties:
+Deze scripts accepteren dezelfde opties:
 
 | Optie | Gedrag |
 | --- | --- |
@@ -85,8 +85,9 @@ productie start.
 Bestaande uitvoermappen worden niet verplaatst of automatisch als nieuwe run
 overgenomen. De Python-pakketfuncties en vaste `DataStore`-paden blijven
 beschikbaar voor bestaande workflows. Geef in vervolganalyses expliciet de
-resultaten van de gewenste run op; er wordt geen automatische “laatste run”
-gekozen. Deze conventie geldt voor de huidige scripts; oudere gedownloade
+resultaten van de gewenste run op. Een uitzondering is [DEM-productie](dem.md):
+die ontdekt een geschikte landgebruikproductie en legt de keuze vast voor hervatten.
+Deze conventie geldt voor de huidige scripts; oudere gedownloade
 productiepakketten kunnen nog de eerdere mapindeling gebruiken.
 
 ## Gegevens ergens anders bewaren
@@ -147,3 +148,11 @@ Gebruik steeds dezelfde opslaglocatie om downloads te hergebruiken.
     In de Python-code heet het onderdeel dat de opslaglocaties beheert
     `DataStore`. De [API-referentie](../reference/datastore.md) beschrijft de
     huidige broncode en kan nieuwer zijn dan uw gedownloade release.
+
+## Workers voor landgebruik en DEM
+
+`FUNCTIONEEL_LANDGEBRUIK_WORKERS` is standaard 4; `DEM_WORKERS` is standaard 1.
+Beide zijn positieve gehele getallen, instelbaar via `.env` of de omgeving.
+`--workers` heeft voorrang voor de aangeroepen workflow. Automatische
+landgebruikproductie vanuit DEM gebruikt de eigen landgebruikinstelling.
+Workers mogen bij hervatten veranderen zonder de uitvoer opnieuw te maken.

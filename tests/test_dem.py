@@ -20,6 +20,13 @@ from waterlagen.raster.config import RasterOutputConfig
 from waterlagen.raster.vrt import create_cog_file, create_vrt_file
 
 
+@pytest.fixture(autouse=True)
+def default_dem_workers(monkeypatch):
+    from waterlagen.settings import settings
+
+    monkeypatch.setattr(settings, "dem_workers", 1)
+
+
 def write_ahn(path, data, *, scale=1.0, offset=0.0):
     with rasterio.open(
         path,
@@ -363,3 +370,128 @@ def test_rejects_insufficient_prepared_building_context(tmp_path, landuse_inputs
 def test_dem_config_validation(kwargs):
     with pytest.raises(ValueError):
         DemConfig(**kwargs)
+
+
+def test_parallel_tiles_match_sequential_and_resume_with_different_workers(
+    tmp_path, landuse_inputs
+):
+    data = np.full((64, 64), 100, dtype="float32")
+    data[3:7, 30:34] = -9999
+    ahn = write_ahn(tmp_path / "parallel_ahn.tif", data)
+    config = DemConfig(interpolation_max_distance_m=3)
+    serial = bouw_dem_tiles(
+        tmp_path / "serial",
+        ahn_vrt_path=ahn,
+        landuse_tiles=landuse_inputs,
+        config=config,
+        workers=1,
+    )
+    parallel = bouw_dem_tiles(
+        tmp_path / "parallel",
+        ahn_vrt_path=ahn,
+        landuse_tiles=landuse_inputs,
+        config=config,
+        workers=2,
+    )
+    for name in ("dem.tif", "dem_bron.tif"):
+        np.testing.assert_array_equal(
+            read(serial.parent / name), read(parallel.parent / name)
+        )
+    before = parallel.stat().st_mtime_ns
+    bouw_dem_tiles(
+        parallel.parent,
+        ahn_vrt_path=ahn,
+        landuse_tiles=landuse_inputs,
+        config=config,
+        workers=1,
+    )
+    assert parallel.stat().st_mtime_ns == before
+
+
+def test_landuse_run_validation_checks_real_companions(
+    tmp_path, landuse_inputs, monkeypatch
+):
+    import hashlib
+    import json
+    import shutil
+
+    from waterlagen.areas import Area
+    from waterlagen.dem import inputs
+
+    run = tmp_path / "landuse_run"
+    shutil.copytree(landuse_inputs[0].parent, run / "tiles")
+    rows = []
+    for tile in landuse_inputs:
+        with rasterio.open(tile) as src:
+            x, y, xmax, ymax = map(int, src.bounds)
+        rows.append(
+            {
+                "tile_id": tile.stem,
+                "column": x // 32,
+                "row": y // 32,
+                "xmin": x,
+                "ymin": y,
+                "xmax": xmax,
+                "ymax": ymax,
+                "geometry": box(x, y, xmax, ymax),
+            }
+        )
+    gpd.GeoDataFrame(rows, crs=28992).to_file(run / "tiles.gpkg", layer="tiles")
+    (run / "landgebruik_met_code.csv").write_bytes(b"test mapping")
+    (run / "run.json").write_text(
+        json.dumps(
+            {
+                "dataset": "functioneel_landgebruik",
+                "created": "2026-01-01T00:00:00+00:00",
+                "scope": "nederland",
+                "status": "complete",
+                "parameters": {
+                    "resolution_m": 1,
+                    "csv_sha256": hashlib.sha256(b"test mapping").hexdigest(),
+                },
+            }
+        )
+    )
+    monkeypatch.setattr(inputs, "tile_filename", lambda _, tile: f"{tile.tile_id}.tif")
+    selected = inputs.validate_landuse_run(run, Area.nederland, 5)
+    assert len(selected.paths) == 4
+    # Exercise the default Nederland entry point and its pinned resume metadata
+    # on small real rasters; no national data or network access is involved.
+    import importlib.util
+    from pathlib import Path
+    from types import SimpleNamespace
+
+    script_path = Path(__file__).resolve().parents[1] / "scripts" / "dem.py"
+    spec = importlib.util.spec_from_file_location("dem_script", script_path)
+    script = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(script)
+    monkeypatch.setattr(script, "configure_logging", lambda **kwargs: None)
+    store = SimpleNamespace(processed_data_dir=tmp_path / "processed")
+    ahn = write_ahn(tmp_path / "entry_ahn.tif", np.ones((64, 64), dtype="float32"))
+    result = script.main(
+        data_store=store, landuse_run=run, ahn_vrt=ahn, workers=1, run_id="entry"
+    )
+    assert (
+        result == store.processed_data_dir / "dem" / "nederland" / "entry" / "dem.tif"
+    )
+    modified = result.stat().st_mtime_ns
+    script.main(
+        data_store=store,
+        landuse_run=run,
+        ahn_vrt=ahn,
+        workers=2,
+        run_id="entry",
+        resume=True,
+    )
+    assert result.stat().st_mtime_ns == modified
+    metadata = json.loads((result.parent / "run.json").read_text())
+    assert metadata["workers"] == 2
+    assert metadata["landuse_dependency"]["path"] == str(run.resolve())
+    with pytest.raises(ValueError, match="neighbour context"):
+        inputs.validate_landuse_run(run, Area.nederland, 6)
+    with rasterio.open(building_paths(selected.paths[0])[0], "r+") as ids:
+        values = ids.read(1)
+        values[0, 0] = 42
+        ids.write(values, 1)
+    with pytest.raises(ValueError, match="source code 10"):
+        inputs.validate_landuse_run(run, Area.nederland, 5)

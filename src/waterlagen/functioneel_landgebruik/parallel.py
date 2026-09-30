@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-import os
 from collections.abc import Collection
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import dataclass
@@ -136,7 +135,7 @@ def _build_tile_worker(job: FunctioneelLandgebruikTileJob) -> Path:
 
 def _resolve_workers(workers: int | None) -> int:
     if workers is None:
-        return min(4, os.cpu_count() or 1)
+        return settings.functioneel_landgebruik_workers
     if not isinstance(workers, int) or isinstance(workers, bool):
         raise TypeError("workers must be an integer or None")
     if workers < 1:
@@ -287,8 +286,8 @@ def bouw_functioneel_landgebruik_tiles(
         Tile-index dataset. When omitted, the default tile index from
         :func:`read_tiles` is used.
     workers : int, optional
-        Number of worker processes. Defaults to at most four workers, bounded
-        by ``os.cpu_count()``.
+        Number of worker processes. Defaults to ``settings.functioneel_landgebruik_workers``; bounded
+        by the number of tiles requiring processing.
     overwrite : bool, optional
         If False, existing target tiles are skipped and returned as-is.
     tile_ids : Collection[str], optional
@@ -447,6 +446,7 @@ def bouw_functioneel_landgebruik_tiles(
                     layers.bag_pand,
                 )
 
+            worker_count = min(worker_count, len(jobs_to_submit))
             with ProcessPoolExecutor(max_workers=worker_count) as executor:
                 futures = {
                     executor.submit(_build_tile_worker, job): job

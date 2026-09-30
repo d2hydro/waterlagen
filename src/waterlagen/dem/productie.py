@@ -1,8 +1,12 @@
 """Core-only DEM tiles, reusable building heights and ordered VRT/COG assembly."""
 
 import json
+import sqlite3
+from concurrent.futures import ProcessPoolExecutor
+from contextlib import closing
 from dataclasses import asdict
 from math import ceil
+from multiprocessing import get_context
 from pathlib import Path
 from uuid import uuid4
 
@@ -20,6 +24,7 @@ from waterlagen._crs import same_crs
 from waterlagen._geopackage import write_geopackage_layer_atomically
 from waterlagen._production import _file_identity
 from waterlagen.ahn import interpolate
+from waterlagen.areas import resolve_workers
 from waterlagen.functioneel_landgebruik.gebouwen import (
     building_paths,
     validate_buildings,
@@ -233,7 +238,7 @@ def _diagnostics(records: list[dict], crs) -> gpd.GeoDataFrame:
 def _build_tile(
     tile: Path,
     ahn: rasterio.io.DatasetReader,
-    heights: gpd.GeoDataFrame,
+    heights: pd.DataFrame,
     output: Path,
     config: DemConfig,
     overwrite: bool,
@@ -339,6 +344,105 @@ def _build_tile(
     return paths
 
 
+def _height_rows(path: Path, ids: set[int], *, geometry: bool = True) -> pd.DataFrame:
+    """Read only a tile's IDs, avoiding national tables in worker memory."""
+    chunks = []
+    ordered = sorted(ids)
+    for start in range(0, len(ordered), 900):
+        clause = ",".join(str(value) for value in ordered[start : start + 900])
+        chunks.append(
+            wgpd.read_file(
+                path,
+                layer="gebouwen",
+                where=f"gebouw_id IN ({clause})",
+                read_geometry=geometry,
+            )
+        )
+    if not chunks:
+        return wgpd.read_file(
+            path, layer="gebouwen", where="1=0", read_geometry=geometry
+        )
+    return pd.concat(chunks, ignore_index=True)
+
+
+def _prepare_heights(
+    tiles: list[Path],
+    ahn: rasterio.io.DatasetReader,
+    path: Path,
+    config: DemConfig,
+    overwrite: bool,
+) -> None:
+    """Sample complete footprints in tile-sized batches into one atomic table."""
+    reuse = path.exists() and not overwrite
+    temporary = path.with_suffix(".tmp.gpkg")
+    if not reuse:
+        temporary.unlink(missing_ok=True)
+    target = path if reuse else temporary
+    try:
+        for tile in tiles:
+            buildings, selected = _read_buildings(
+                [tile], config.building_max_search_distance_m
+            )
+            cached = _height_rows(target, selected) if target.exists() else None
+            known = set(cached.gebouw_id) if cached is not None else set()
+            if known:
+                expected = buildings.set_index("gebouw_id").loc[cached.gebouw_id]
+                if (
+                    expected.identificatie.astype(str).tolist()
+                    != cached.identificatie.astype(str).tolist()
+                    or expected.geometry.to_wkb().tolist()
+                    != cached.geometry.to_wkb().tolist()
+                ):
+                    raise ValueError(
+                        "Building identity/complete geometry differs between tiles"
+                    )
+            missing = selected - known
+            if reuse and missing:
+                raise ValueError("Stored building elevations do not match selected IDs")
+            if missing or not target.exists():
+                heights = calculate_building_elevations(buildings, missing, ahn, config)
+                heights.to_file(
+                    target,
+                    layer="gebouwen",
+                    driver="GPKG",
+                    mode="a" if target.exists() else "w",
+                )
+                with closing(sqlite3.connect(target)) as connection:
+                    connection.execute(
+                        "CREATE UNIQUE INDEX IF NOT EXISTS gebouw_id_lookup ON gebouwen (gebouw_id)"
+                    )
+                    connection.commit()
+        if not reuse:
+            # Read the final schema before publishing the complete table.
+            wgpd.read_file(target, layer="gebouwen", where="1=0")
+            target.replace(path)
+        logger.info(
+            "%s building elevations in %s", "Reusing" if reuse else "Stored", path
+        )
+    finally:
+        if not reuse:
+            temporary.unlink(missing_ok=True)
+
+
+def _tile_heights(tile: Path, height_path: Path) -> pd.DataFrame:
+    selected = set()
+    with rasterio.open(building_paths(tile)[0]) as ids:
+        for _, window in ids.block_windows(1):
+            selected.update(
+                int(value) for value in np.unique(ids.read(1, window=window)) if value
+            )
+    return _height_rows(height_path, selected, geometry=False)
+
+
+def _build_tile_worker(
+    arguments: tuple[Path, Path, Path, Path, DemConfig, bool],
+) -> tuple[Path, Path, Path, Path]:
+    tile, ahn_path, height_path, target_dir, config, overwrite = arguments
+    heights = _tile_heights(tile, height_path)
+    with rasterio.open(ahn_path) as ahn:
+        return _build_tile(tile, ahn, heights, target_dir, config, overwrite)
+
+
 def bouw_dem_tiles(
     target_dir: Path,
     *,
@@ -346,6 +450,7 @@ def bouw_dem_tiles(
     landuse_tiles: list[Path],
     config: DemConfig | None = None,
     overwrite: bool = False,
+    workers: int | None = None,
 ) -> Path:
     """Produce a DEM on exactly the supplied functional-land-use tile grid.
 
@@ -365,6 +470,10 @@ def bouw_dem_tiles(
         Rebuild products within the same input/configuration identity. Changed
         inputs or settings require a new output directory.
 
+    workers : int, optional
+        Parallel core tiles; defaults to settings.dem_workers. Building heights
+        are determined first. Worker count may change on resume.
+
     Returns
     -------
     pathlib.Path
@@ -372,6 +481,7 @@ def bouw_dem_tiles(
         persistent gebouwhoogten.gpkg and core-only intermediate rasters.
     """
     config = config or DemConfig()
+    workers = resolve_workers(workers, settings.dem_workers)
     target_dir = Path(target_dir)
     if not landuse_tiles or len({path.name for path in landuse_tiles}) != len(
         landuse_tiles
@@ -403,24 +513,45 @@ def bouw_dem_tiles(
         for tile in landuse_tiles:
             with rasterio.open(tile) as reference:
                 _validate_grid(ahn, reference)
-        buildings, selected = _read_buildings(
-            landuse_tiles, config.building_max_search_distance_m
-        )
         height_path = target_dir / "gebouwhoogten.gpkg"
-        if height_path.exists() and not overwrite:
-            heights = wgpd.read_file(height_path, layer="gebouwen")
-            if set(heights.gebouw_id) != selected:
-                raise ValueError("Stored building elevations do not match selected IDs")
-            logger.info("Reusing building elevations from %s", height_path)
+        _prepare_heights(landuse_tiles, ahn, height_path, config, overwrite)
+        worker_count = min(workers, len(landuse_tiles))
+        logger.info(
+            "Processing %s DEM tiles with %s workers", len(landuse_tiles), worker_count
+        )
+        if worker_count == 1:
+            paths = [
+                _build_tile(
+                    tile,
+                    ahn,
+                    _tile_heights(tile, height_path),
+                    target_dir,
+                    config,
+                    overwrite,
+                )
+                for tile in landuse_tiles
+            ]
         else:
-            heights = calculate_building_elevations(buildings, selected, ahn, config)
-            write_geopackage_layer_atomically(
-                heights, height_path, layer_name="gebouwen"
-            )
-        paths = [
-            _build_tile(tile, ahn, heights, target_dir, config, overwrite)
-            for tile in landuse_tiles
-        ]
+            arguments = [
+                (tile, ahn_vrt_path, height_path, target_dir, config, overwrite)
+                for tile in landuse_tiles
+            ]
+            with ProcessPoolExecutor(
+                max_workers=worker_count, mp_context=get_context("spawn")
+            ) as executor:
+                paths = []
+                for tile, result in zip(
+                    landuse_tiles,
+                    executor.map(_build_tile_worker, arguments),
+                    strict=True,
+                ):
+                    paths.append(result)
+                    logger.info(
+                        "Completed DEM tile %s (%s/%s)",
+                        tile.name,
+                        len(paths),
+                        len(landuse_tiles),
+                    )
         completion = target_dir / "dem_complete.json"
         core_identity = [_file_identity(path) for group in paths for path in group]
         products = [
@@ -445,7 +576,9 @@ def bouw_dem_tiles(
             wgpd.read_file(paths_for_tile[3], layer="nodata")
             for paths_for_tile in paths
         ]
-        unresolved = heights.loc[heights.hoogte_m.isna()].copy()
+        unresolved = wgpd.read_file(
+            height_path, layer="gebouwen", where="hoogte_m IS NULL"
+        )
         unresolved["bron"] = "Gebouw"
         unresolved["reden"] = (
             "Geen oorspronkelijke AHN-donor binnen maximale gebouwzoekafstand"

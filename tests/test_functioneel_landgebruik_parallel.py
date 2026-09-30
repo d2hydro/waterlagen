@@ -426,7 +426,7 @@ def test_parallel_build_rebuilds_existing_outputs_when_overwrite_true(
 
     assert result == [existing]
     assert existing.read_text() == "built"
-    assert executor.max_workers_seen == [2]
+    assert executor.max_workers_seen == [1]
     assert [job.tile_id for job in executor.submitted_jobs] == [
         "000000_000000_002000_002000"
     ]
@@ -446,7 +446,7 @@ def test_parallel_build_uses_requested_multiple_workers(tmp_path, monkeypatch):
 
     bouw_functioneel_landgebruik_tiles(target_dir=tmp_path, workers=3)
 
-    assert executor.max_workers_seen == [3]
+    assert executor.max_workers_seen == [1]
 
 
 def test_parallel_build_returns_paths_in_tile_index_order(tmp_path, monkeypatch):

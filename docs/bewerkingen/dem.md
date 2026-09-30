@@ -59,7 +59,7 @@ resolutie en pixeluitlijning hebben; de bewerking herschaalt ze niet stilzwijgen
 - `dem_bron.vrt` en COG `dem_bron.tif`: de herkomst per cel.
 - `nodata.gpkg`, laag `nodata`: onopgeloste gebouwen en resterende AHN-gaten.
 - `gebouwhoogten.gpkg`: herbruikbare hoogten per individueel gebouw.
-- `tiles.gpkg`: de vier geselecteerde tegelkernen bij de Alkmaar-scriptproductie.
+- `tiles.gpkg`: de geselecteerde tegelkernen van het productiegebied.
 - Tegelkernen onder `tiles/ahn_filled`, `tiles/gebouwen` en `tiles/dem_bron`.
 
 | `dem_bron` | Betekenis |
@@ -89,5 +89,5 @@ Bewaar de tegelbestanden zolang het VRT nodig is.
 
 ## Zelf produceren
 
-Begin met [de viertegelsproef rond Alkmaar](../produceren/dem.md).
+Begin met [DEM-productie voor Nederland of Alkmaar](../produceren/dem.md).
 De Python-interface staat bij [DEM-API](../reference/dem.md).

@@ -1,6 +1,4 @@
 import hashlib
-import importlib.util
-from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -9,14 +7,9 @@ from waterlagen import _production
 
 
 def _load_landgebruik_script():
-    script_path = (
-        Path(__file__).resolve().parents[1] / "scripts" / "functioneel_landgebruik.py"
-    )
-    spec = importlib.util.spec_from_file_location("landgebruik_script", script_path)
-    module = importlib.util.module_from_spec(spec)
-    assert spec.loader is not None
-    spec.loader.exec_module(module)
-    return module
+    from waterlagen.functioneel_landgebruik import productie
+
+    return productie
 
 
 def test_csv_mismatch_explains_runfolder_and_recovery(tmp_path, monkeypatch):
@@ -29,6 +22,8 @@ def test_csv_mismatch_explains_runfolder_and_recovery(tmp_path, monkeypatch):
         "nederland",
         run_id="test",
         parameters={
+            "building_ids": True,
+            "building_context_m": 5.0,
             "crs": landgebruik.settings.crs,
             "resolution_m": landgebruik.RESOLUTION_M,
             "gap_fill_distance_m": landgebruik.GAP_FILL_DISTANCE_M,
@@ -83,7 +78,22 @@ def test_landgebruik_script_builds_tiles_vrt_and_cog_in_order(
 
     def fake_build_tiles(**kwargs):
         events.append(("build_tiles", kwargs))
-        return tiles_path
+        import geopandas as gpd
+        from shapely.geometry import box
+
+        grid = gpd.GeoDataFrame(
+            {
+                "tile_id": ["a", "b"],
+                "xmin": [0, 5000],
+                "ymin": [0, 0],
+                "xmax": [5000, 10000],
+                "ymax": [5000, 5000],
+            },
+            geometry=[box(0, 0, 5000, 5000), box(5000, 0, 10000, 5000)],
+            crs=28992,
+        )
+        grid.to_file(kwargs["target_path"], layer="tiles")
+        return kwargs["target_path"]
 
     def fake_build_landgebruik_tiles(**kwargs):
         events.append(("build_landgebruik_tiles", kwargs))
@@ -114,16 +124,19 @@ def test_landgebruik_script_builds_tiles_vrt_and_cog_in_order(
         brp_dir=tmp_path / "source/brp",
         top10nl_dir=tmp_path / "source/top10nl",
     )
-    monkeypatch.setattr(landgebruik, "WORKERS", 2)
+    monkeypatch.setattr(landgebruik.settings, "functioneel_landgebruik_workers", 2)
     monkeypatch.setattr(landgebruik, "configure_logging", lambda **kwargs: None)
-    monkeypatch.setattr(
-        landgebruik.pyogrio,
-        "read_info",
-        lambda *args, **kwargs: {
-            "features": 2,
-            "fields": ["bgt-status", "eindRegistratie", "objectEindTijd"],
-        },
-    )
+    original_read_info = landgebruik.pyogrio.read_info
+
+    def read_info(*args, **kwargs):
+        if str(kwargs.get("layer", "")).startswith("bgt_"):
+            return {
+                "features": 2,
+                "fields": ["bgt-status", "eindRegistratie", "objectEindTijd"],
+            }
+        return original_read_info(*args, **kwargs)
+
+    monkeypatch.setattr(landgebruik.pyogrio, "read_info", read_info)
     monkeypatch.setattr(landgebruik, "build_tiles", fake_build_tiles)
     monkeypatch.setattr(
         landgebruik,
@@ -176,9 +189,10 @@ def test_landgebruik_script_builds_tiles_vrt_and_cog_in_order(
         "write_raster_attribute_table",
         "create_vrt_file",
         "create_cog_file",
+        "create_vrt_file",
     ]
     assert events[0][1] == {
-        "target_path": tiles_path,
+        "target_path": tiles_path.with_name("grid.gpkg"),
         "tile_size_m": 5000,
         "overwrite": False,
     }
@@ -221,6 +235,7 @@ def test_landgebruik_script_builds_tiles_vrt_and_cog_in_order(
         data_dir / "landgebruik_met_code.csv"
     ).read_bytes() == landgebruik.LANDGEBRUIK_CSV.read_bytes()
 
+    mapping_modified = (data_dir / "landgebruik_met_code.csv").stat().st_mtime_ns
     for mode in ("resume", "overwrite"):
         events.clear()
         assert (
@@ -232,3 +247,6 @@ def test_landgebruik_script_builds_tiles_vrt_and_cog_in_order(
         assert events[0][1]["overwrite"] is (mode == "overwrite")
         assert events[1][1]["overwrite"] is (mode == "overwrite")
         assert events[3][1]["overwrite"] is (mode == "overwrite")
+        assert (
+            data_dir / "landgebruik_met_code.csv"
+        ).stat().st_mtime_ns == mapping_modified

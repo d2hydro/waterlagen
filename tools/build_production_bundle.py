@@ -15,6 +15,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 PRODUCTION_SCRIPTS = (
     "afwateringseenheden.py",
     "functioneel_landgebruik.py",
+    "dem.py",
     "inwoners.py",
     "auto.py",
     "bag.py",

@@ -7,7 +7,9 @@ class Settings(BaseSettings):
     m_to_cm: bool = True
     crs: str = "EPSG:28992"
     afwateringseenheden_workers: int = Field(default=4, ge=1)
-    functioneel_landgebruik_workers: int = Field(default=16, ge=1)
+    functioneel_landgebruik_workers: int = Field(default=4, ge=1)
+
+    dem_workers: int = Field(default=1, ge=1)
 
 
 settings = Settings()
