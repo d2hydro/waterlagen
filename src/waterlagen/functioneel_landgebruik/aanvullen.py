@@ -1,11 +1,13 @@
 """Source provenance and bounded nearest-neighbour filling of land-use gaps."""
 
 import json
-from math import ceil, isfinite
+from math import isfinite
 from pathlib import Path
 
 import numpy as np
 import rasterio as rio
+
+from waterlagen.ahn import interpolate
 
 # Stable IDs, independent of CSV ordering, optional sources and burn priority.
 SOURCE_LAYERS = {
@@ -57,34 +59,18 @@ def _fill_gaps(
     donors = (values != 0) & np.isin(
         sources, [code for code, allowed in DONOR_ALLOWED.items() if allowed]
     )
-    pending = (values == 0) & (sources == 0) & land
-    if not donors.any() or not pending.any():
-        return 0
-    rows, cols = values.shape
-    offsets = []
-    for dy in range(-ceil(radius_m / pixel_height), ceil(radius_m / pixel_height) + 1):
-        for dx in range(
-            -ceil(radius_m / pixel_width), ceil(radius_m / pixel_width) + 1
-        ):
-            distance2 = (dy * pixel_height) ** 2 + (dx * pixel_width) ** 2
-            if 0 < distance2 <= radius_m**2:
-                offsets.append((distance2, dy, dx))
-    count = 0
-    for _, dy, dx in sorted(offsets):
-        y0, y1 = max(0, -dy), min(rows, rows - dy)
-        x0, x1 = max(0, -dx), min(cols, cols - dx)
-        if y0 >= y1 or x0 >= x1:
-            continue
-        target = np.s_[y0:y1, x0:x1]
-        donor = np.s_[y0 + dy : y1 + dy, x0 + dx : x1 + dx]
-        selected = pending[target] & donors[donor]
-        count += int(selected.sum())
-        values[target][selected] = values[donor][selected]
-        sources[target][selected] = sources[donor][selected]
-        pending[target][selected] = False
-        if not pending.any():
-            break
-    return count
+    result = interpolate.interpolate_masked(
+        values,
+        target_mask=(values == 0) & (sources == 0) & land,
+        donor_mask=donors,
+        max_distance_m=radius_m,
+        pixel_width=pixel_width,
+        pixel_height=pixel_height,
+        method="nearest",
+    )
+    sources[result.filled_mask] = sources.ravel()[result.donor_indices]
+    values[result.filled_mask] = result.values[result.filled_mask]
+    return int(result.filled_mask.sum())
 
 
 def _fill_metadata(radius_m: float) -> dict[str, str]:

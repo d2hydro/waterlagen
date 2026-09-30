@@ -1,3 +1,4 @@
+from math import isnan
 from pathlib import Path
 
 from osgeo import gdal, osr
@@ -20,8 +21,53 @@ COG_CREATION_OPTIONS = (
 )
 
 
-def create_vrt_file(vrt_file: Path, directory: Path | list[Path]):
-    """Create a vrt-file from tif-files in (a list of) directory(s)."""
+def create_vrt_file(
+    vrt_file: Path,
+    directory: Path | list[Path] | None = None,
+    *,
+    files: list[Path] | None = None,
+) -> Path:
+    """Create a mosaic, with later sources taking precedence over earlier ones.
+
+    Parameters
+    ----------
+    vrt_file : pathlib.Path
+        Destination VRT.
+    directory : pathlib.Path or list of pathlib.Path, optional
+        Directories containing TIFFs, in priority order.
+    files : list of pathlib.Path, optional
+        Explicit ordered sources, mutually exclusive with ``directory``.
+        Explicit lists are validated and the VRT is replaced atomically.
+
+    Returns
+    -------
+    pathlib.Path
+        Destination VRT.
+    """
+    if files is not None:
+        if directory is not None or not files:
+            raise ValueError("Provide a nonempty files list or directories")
+        if any(not path.is_file() for path in files):
+            raise FileNotFoundError("A VRT source is missing")
+        vrt_file.parent.mkdir(parents=True, exist_ok=True)
+        temporary = vrt_file.with_suffix(".tmp.vrt")
+        try:
+            dataset = gdal.BuildVRT(
+                str(temporary),
+                [str(path.resolve()) for path in files],
+                options=gdal.BuildVRTOptions(strict=True, separate=False, bandList=[1]),
+            )
+            if dataset is None:
+                raise ValueError("Could not build VRT")
+            dataset.FlushCache()
+            dataset = None
+            temporary.replace(vrt_file)
+        finally:
+            temporary.unlink(missing_ok=True)
+        logger.info("VRT file created %s", vrt_file)
+        return vrt_file
+    if directory is None:
+        raise ValueError("Provide files or directory")
     if isinstance(directory, Path):
         directory = [directory]
 
@@ -29,7 +75,9 @@ def create_vrt_file(vrt_file: Path, directory: Path | list[Path]):
 
     tif_files = []
     for dir in directory:
-        tif_files += [i.absolute().resolve().as_posix() for i in dir.glob("*.tif")]
+        tif_files += [
+            i.absolute().resolve().as_posix() for i in sorted(dir.glob("*.tif"))
+        ]
 
     if len(tif_files) > 0:
         vrt_options = gdal.BuildVRTOptions(
@@ -156,9 +204,35 @@ def _validate_cog_file(cog_file: Path, vrt_dataset) -> None:
                 f"COG validation failed for {cog_file}: dtype differs from VRT"
             )
 
-        if cog_band.GetNoDataValue() != vrt_band.GetNoDataValue():
+        cog_nodata, vrt_nodata = cog_band.GetNoDataValue(), vrt_band.GetNoDataValue()
+        same_nodata = cog_nodata == vrt_nodata or (
+            cog_nodata is not None
+            and vrt_nodata is not None
+            and isnan(cog_nodata)
+            and isnan(vrt_nodata)
+        )
+        if not same_nodata:
             raise ValueError(
                 f"COG validation failed for {cog_file}: nodata differs from VRT"
+            )
+        if (
+            cog_dataset.RasterXSize,
+            cog_dataset.RasterYSize,
+            cog_dataset.GetGeoTransform(),
+        ) != (
+            vrt_dataset.RasterXSize,
+            vrt_dataset.RasterYSize,
+            vrt_dataset.GetGeoTransform(),
+        ):
+            raise ValueError(
+                f"COG validation failed for {cog_file}: grid differs from VRT"
+            )
+        if (cog_band.GetScale() or 1.0, cog_band.GetOffset() or 0.0) != (
+            vrt_band.GetScale() or 1.0,
+            vrt_band.GetOffset() or 0.0,
+        ):
+            raise ValueError(
+                f"COG validation failed for {cog_file}: scale/offset differs from VRT"
             )
 
         if cog_band.GetOverviewCount() < 1:
@@ -177,8 +251,28 @@ def create_cog_file(
     *,
     overwrite: bool = False,
     show_progress: bool = True,
+    overview_resampling: str = "nearest",
 ) -> Path:
-    """Create a Cloud Optimized GeoTIFF directly from a VRT file."""
+    """Create a Cloud Optimized GeoTIFF directly from a VRT file.
+
+    Parameters
+    ----------
+    vrt_file, cog_file : pathlib.Path
+        Input VRT and output COG.
+    overwrite : bool
+        Replace an existing COG only after successful validation.
+    show_progress : bool
+        Show GDAL conversion progress.
+    overview_resampling : {"nearest", "average"}
+        Overview resampling; use nearest for IDs/classes, average for elevation.
+
+    Returns
+    -------
+    pathlib.Path
+        Written or reused COG.
+    """
+    if overview_resampling not in {"nearest", "average"}:
+        raise ValueError("overview_resampling must be nearest or average")
     vrt_file = Path(vrt_file)
     cog_file = Path(cog_file)
     tmp_file = cog_file.with_name(f"{cog_file.stem}.tmp{cog_file.suffix}")
@@ -204,11 +298,24 @@ def create_cog_file(
             "format": "COG",
             "creationOptions": list(COG_CREATION_OPTIONS),
         }
+        if overview_resampling != "nearest":
+            translate_kwargs["creationOptions"] = [
+                option
+                if not option.startswith("OVERVIEW_RESAMPLING=")
+                else "OVERVIEW_RESAMPLING=AVERAGE"
+                for option in COG_CREATION_OPTIONS
+            ]
         nodata = vrt_band.GetNoDataValue()
         if nodata is not None:
             translate_kwargs["noData"] = nodata
         if progress is not None:
             translate_kwargs["callback"] = progress.callback
+
+        if (
+            hasattr(vrt_dataset, "RasterXSize")
+            and 1 < max(vrt_dataset.RasterXSize, vrt_dataset.RasterYSize) <= 512
+        ):
+            translate_kwargs["creationOptions"].append("OVERVIEW_COUNT=1")
 
         options = gdal.TranslateOptions(**translate_kwargs)
         dataset = gdal.Translate(

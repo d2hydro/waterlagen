@@ -44,6 +44,11 @@ from waterlagen.functioneel_landgebruik.bronnen_voorbereiden import (
     prepare_water,
     prepare_wegen,
 )
+from waterlagen.functioneel_landgebruik.gebouwen import (
+    identify_buildings,
+    validate_buildings,
+    write_buildings,
+)
 from waterlagen.functioneel_landgebruik.gemalen import link_pumping_stations
 from waterlagen.functioneel_landgebruik.kassen_rwzi_drinkwater import (
     SpecialBuildingSources,
@@ -325,7 +330,7 @@ def _prepare_buildings_and_pumps(
         diagnostics.add_unclassified_buildings(
             buildings, source_path=sources.bag_gpkg, layer=layers.bag_pand
         )
-    return [buildings[["geometry", "code"]], *gemalen]
+    return [buildings[["geometry", "code", "identificatie"]], *gemalen]
 
 
 def _prepare_priority_sources(
@@ -336,6 +341,7 @@ def _prepare_priority_sources(
     buitendijks_area: BaseGeometry,
     table: LanduseTable,
     diagnostics: LanduseDiagnostics | None = None,
+    building_context_m: float = 0.0,
 ) -> list[gpd.GeoDataFrame]:
     """Bereid bronlagen voor; de laatste laag wint bij overlap in het raster."""
     required_layers = {
@@ -363,6 +369,26 @@ def _prepare_priority_sources(
         table=table,
         diagnostics=diagnostics,
     )
+    if building_context_m and not buildings_and_pumps[0].empty:
+        # Neighbours of complete crossing footprints are needed to exclude all
+        # building donors. The land-use work grid itself remains unchanged.
+        xmin, ymin, xmax, ymax = _bounds_including_panden(
+            bounds, buildings_and_pumps[0]
+        )
+        context_bounds = (
+            xmin - building_context_m,
+            ymin - building_context_m,
+            xmax + building_context_m,
+            ymax + building_context_m,
+        )
+        buildings_and_pumps = _prepare_buildings_and_pumps(
+            sources,
+            layers,
+            bounds=context_bounds,
+            buitendijks_area=buitendijks_area,
+            table=table,
+            diagnostics=None,
+        )
     terrains = [
         prepare_bgt_layer(
             sources.bgt_gpkg,
@@ -473,6 +499,8 @@ def bouw_functioneel_landgebruik(
     output_config: RasterOutputConfig | None = None,
     mapping_csv: Path | None = None,
     diagnostics_path: Path | None = None,
+    building_index_path: Path | None = None,
+    building_context_m: float = 5.0,
 ) -> Path:
     """Build a functional land-use GeoTIFF for one requested extent.
 
@@ -523,6 +551,13 @@ def bouw_functioneel_landgebruik(
         GeoPackage met uitsluitend NoData-vlakken en een reden per vlak.
         Alleen geschreven bij een nieuwe berekening. Bij hergebruik van een
         raster zonder controlebestand volgt een foutmelding.
+    building_index_path : Path, optional
+        Shared building identity lookup from ``ensure_building_index``. Writes
+        matched ``gebouw_ids`` rasters and complete prepared ``gebouwen``
+        footprints without changing the land-use rasterization or priority.
+    building_context_m : float, optional
+        Extra prepared neighbours around complete footprints for DEM donor
+        exclusion. Must cover the DEM's maximum building search distance.
 
     Returns
     -------
@@ -538,6 +573,7 @@ def bouw_functioneel_landgebruik(
     written for newly produced rasters. Reused rasters and styles are unchanged.
     """
     _validate_radius(gap_fill_distance_m)
+    _validate_radius(building_context_m)
     target_path = Path(target_path)
     if diagnostics_path is not None:
         diagnostics_path = Path(diagnostics_path)
@@ -561,6 +597,8 @@ def bouw_functioneel_landgebruik(
 
     if target_path.exists() and not overwrite:
         _validate_outputs(target_path, gap_fill_distance_m)
+        if building_index_path is not None:
+            validate_buildings(target_path, building_context_m)
         if diagnostics_path is not None:
             validate_diagnostics(diagnostics_path, target_path)
         return target_path
@@ -591,6 +629,14 @@ def bouw_functioneel_landgebruik(
     work_bounds = (xmin, ymin, xmax, ymax)
     raster = np.zeros((work_height, work_width), dtype=np.uint8)
     source_raster = np.zeros_like(raster)
+    building_ids = (
+        np.zeros(raster.shape, dtype="uint32")
+        if building_index_path is not None
+        else None
+    )
+    building_records = gpd.GeoDataFrame(
+        {"identificatie": [], "gebouw_id": []}, geometry=[], crs=crs
+    )
     diagnostics = LanduseDiagnostics() if diagnostics_path is not None else None
     for data in _prepare_priority_sources(
         sources,
@@ -599,11 +645,27 @@ def bouw_functioneel_landgebruik(
         buitendijks_area=buitendijks_area,
         table=table,
         diagnostics=diagnostics,
+        **(
+            # A donor pixel may touch a neighbour beyond its centre's search
+            # distance. Include one extra pixel for all_touched exclusion.
+            {"building_context_m": building_context_m + max(pixel_width, pixel_height)}
+            if building_index_path is not None
+            else {}
+        ),
     ):
         rasterize_features(raster, data, work_transform)
         rasterize_features(
             source_raster, data, work_transform, value_column="source_code"
         )
+        if (
+            building_ids is not None
+            and not data.empty
+            and data["source_code"].eq(10).all()
+        ):
+            building_records = identify_buildings(data, building_index_path)
+            rasterize_features(
+                building_ids, building_records, work_transform, value_column="gebouw_id"
+            )
 
     if gap_fill_distance_m:
         landgebied = read_landsgrens()
@@ -637,8 +699,15 @@ def bouw_functioneel_landgebruik(
     crop = np.s_[margin : margin + grid.height, margin : margin + grid.width]
     raster = raster[crop]
     source_raster = source_raster[crop]
+    if building_ids is not None:
+        building_ids = building_ids[crop].copy()
+        building_ids[source_raster != 10] = 0
+        if not np.array_equal(building_ids > 0, source_raster == 10):
+            raise ValueError("Building IDs do not match land-use source code 10")
 
     metadata = _fill_metadata(gap_fill_distance_m) | {"output_pair": uuid4().hex}
+    if building_ids is not None:
+        metadata["building_context_m"] = str(float(building_context_m))
     fd, tmp_name = tempfile.mkstemp(
         prefix=f".{target_path.name}.",
         suffix=target_path.suffix,
@@ -681,6 +750,15 @@ def bouw_functioneel_landgebruik(
             source_tmp.replace(source_path)
         finally:
             source_tmp.unlink(missing_ok=True)
+        if building_ids is not None:
+            write_buildings(
+                target_path,
+                building_ids,
+                building_records,
+                profile,
+                metadata,
+                output_config.overview_factors,
+            )
         tmp_path.replace(target_path)
     except Exception:
         tmp_path.unlink(missing_ok=True)

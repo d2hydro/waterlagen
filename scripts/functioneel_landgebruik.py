@@ -64,6 +64,7 @@ def main(
         resume=resume,
         overwrite=overwrite,
         parameters={
+            "building_ids": True,
             "crs": settings.crs,
             "resolution_m": RESOLUTION_M,
             "gap_fill_distance_m": GAP_FILL_DISTANCE_M,
@@ -175,6 +176,7 @@ def _produce(
         status["tile_count"] = int(pyogrio.read_info(tiles, layer="tiles")["features"])
         stage("Landelijke rastertegels berekenen")
         result = bouw_functioneel_landgebruik_tiles(
+            write_building_ids=True,
             target_dir=output / "tiles",
             tiles_path=tiles,
             workers=WORKERS,
@@ -220,6 +222,10 @@ def _produce(
             encoding="utf-8",
         )
         status["sources_raster"] = str(sources_tif)
+        create_vrt_file(
+            vrt_file=output / "functioneel_landgebruik_gebouw_ids.vrt",
+            directory=output / "tiles" / "gebouw_ids",
+        )
         status["result"] = str(tif)
         stage("Voltooid")
         return tif

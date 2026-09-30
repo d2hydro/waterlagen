@@ -20,6 +20,10 @@ from waterlagen.functioneel_landgebruik.aanvullen import (
     _validate_radius,
 )
 from waterlagen.functioneel_landgebruik.bag_zoekindex import ensure_bag_link_index
+from waterlagen.functioneel_landgebruik.gebouwen import (
+    ensure_building_index,
+    validate_buildings,
+)
 from waterlagen.functioneel_landgebruik.landgebruik_berekenen import (
     FunctioneelLandgebruikLayers,
     FunctioneelLandgebruikSources,
@@ -72,6 +76,8 @@ class FunctioneelLandgebruikTileJob:
     mapping_csv: Path | None = None
     diagnostics_path: Path | None = None
     gap_fill_distance_m: float = 1.0
+    building_index_path: Path | None = None
+    building_context_m: float = 5.0
 
 
 def _build_tile_worker(job: FunctioneelLandgebruikTileJob) -> Path:
@@ -105,6 +111,14 @@ def _build_tile_worker(job: FunctioneelLandgebruikTileJob) -> Path:
             download_missing_sources=False,
             mapping_csv=job.mapping_csv,
             diagnostics_path=job.diagnostics_path,
+            **(
+                {
+                    "building_index_path": job.building_index_path,
+                    "building_context_m": job.building_context_m,
+                }
+                if job.building_index_path is not None
+                else {}
+            ),
         )
         logger.info(
             "Tegel %s gereed in %.1f seconden", job.tile_id, perf_counter() - started
@@ -188,11 +202,15 @@ def _job_from_row(
     mapping_csv: Path | None = None,
     diagnostics_dir: Path | None = None,
     gap_fill_distance_m: float = 1.0,
+    building_index_path: Path | None = None,
+    building_context_m: float = 5.0,
 ) -> FunctioneelLandgebruikTileJob:
     """Convert one tile-index row to the job object submitted to a worker."""
     tile = _tile_from_row(row)
     return FunctioneelLandgebruikTileJob(
         tile_id=tile.tile_id,
+        building_index_path=building_index_path,
+        building_context_m=building_context_m,
         gap_fill_distance_m=gap_fill_distance_m,
         bounds=tile.bounds,
         target_path=target_dir / tile_filename(LAYER_NAME, tile),
@@ -242,6 +260,8 @@ def bouw_functioneel_landgebruik_tiles(
     show_progress: bool = False,
     mapping_csv: Path | None = None,
     diagnostics_path: Path | None = None,
+    write_building_ids: bool = False,
+    building_context_m: float = 5.0,
 ) -> list[Path]:
     """Build functional land-use GeoTIFF tiles from a tile index.
 
@@ -305,6 +325,12 @@ def bouw_functioneel_landgebruik_tiles(
         Tijdelijke tegelcontroles worden na succesvol samenvoegen verwijderd.
         Bij hergebruik worden ze uit het bestaande eindbestand gehaald.
         Zonder passende controle is opnieuw berekenen nodig.
+    write_building_ids : bool, optional
+        Also write exact building-ID rasters and complete prepared footprints.
+        Existing tiles without companions must be rebuilt explicitly.
+    building_context_m : float, optional
+        Neighbour context around complete footprints, default 5 m. Must cover
+        the maximum building search distance used in subsequent DEM production.
 
     Returns
     -------
@@ -344,6 +370,7 @@ def bouw_functioneel_landgebruik_tiles(
         _job_from_row(
             row,
             gap_fill_distance_m=gap_fill_distance_m,
+            building_context_m=building_context_m,
             target_dir=target_dir,
             overwrite=overwrite,
             resolution_m=resolution_m,
@@ -352,6 +379,9 @@ def bouw_functioneel_landgebruik_tiles(
             layers=layers,
             output_config=output_config,
             mapping_csv=mapping_csv,
+            building_index_path=target_dir / "gebouw_index.sqlite"
+            if write_building_ids
+            else None,
             diagnostics_dir=target_dir / ".nodata_controle"
             if diagnostics_path is not None
             else None,
@@ -365,6 +395,8 @@ def bouw_functioneel_landgebruik_tiles(
     for job in jobs:
         if job.target_path.exists() and not overwrite:
             _validate_outputs(job.target_path, gap_fill_distance_m)
+            if write_building_ids:
+                validate_buildings(job.target_path, building_context_m)
             if job.diagnostics_path is not None:
                 if (
                     not job.diagnostics_path.exists()
@@ -408,6 +440,12 @@ def bouw_functioneel_landgebruik_tiles(
                 layers,
                 download_missing_sources=download_missing_sources,
             )
+            if write_building_ids:
+                ensure_building_index(
+                    sources.bag_gpkg,
+                    target_dir / "gebouw_index.sqlite",
+                    layers.bag_pand,
+                )
 
             with ProcessPoolExecutor(max_workers=worker_count) as executor:
                 futures = {

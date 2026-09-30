@@ -370,6 +370,19 @@ Oudere controlebestanden moeten opnieuw worden gemaakt met `overwrite=True`.
 
 ## Kleine gaten aanvullen en bronherkomst
 
+De categorische aanvulling gebruikt dichtstbijzijnde toegestane oorspronkelijke donors.
+Het landmasker begrenst uitsluitend de doelcellen; donors kunnen uit de
+tegeloverlap komen. De hier beschreven bronuitsluitingen en prioriteiten blijven
+van toepassing.
+
+Voor [DEM-productie](dem.md) worden ook individuele gebouw-ID's bewaard. Het
+ID-raster gebruikt precies de gebouwcellen van broncode 10, ook bij een nog
+onbekende landgebruiksklasse. Dezelfde voorbereide geometrieën en rastervolgorde
+bepalen de IDs. Water of andere hogere bronprioriteiten verwijderen een
+overschreven gebouw-ID. Raakvlakken tussen panden voegen hun IDs niet samen.
+De oorspronkelijke BAG-identificatie en volledige pandgeometrie blijven
+beschikbaar in de begeleidende gebouwgegevens.
+
 Na het intekenen van alle bronnen vult de verwerking lege rastercellen aan met
 de klasse van de dichtstbijzijnde toegestane donorcel. De standaardzoekafstand
 is **1 meter**, gemeten tussen celmiddens. Van twee kanten kan hierdoor een gat

@@ -8,6 +8,7 @@ lagen. De gegevens zelf en hun leveranciers staan op [Bronnen](../bronnen/index.
 Voor de nieuwe WaterSchadeSchatter:
 
 - [AHN-interpolatie (raster)](ahn-interpoleren.md)
+- [DEM met gebouwen (raster)](dem.md)
 - [BAG-vloerpeilen (raster)](bag-vloerpeilen.md)
 - [Functioneel landgebruik (raster)](functioneel-landgebruik.md) 
 - [Woon-VBO's per CBS-buurt](vbo-buurt.md)

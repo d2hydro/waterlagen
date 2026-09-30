@@ -53,6 +53,16 @@ script en de functionele beschrijving voordat u de productie start.
 
 ## Starten
 
+Nieuwe scriptproducties schrijven naast de klassen en broncodes ook
+`tiles/gebouw_ids`, `tiles/gebouwen`, `tiles/gebouw_index.sqlite` en
+`functioneel_landgebruik_gebouw_ids.vrt`. Dit zijn inputs voor
+[DEM-productie](dem.md). De library-optie `write_building_ids=True` schakelt
+dezelfde uitvoer in bij een eigen tegelworkflow. Oudere tegels zonder deze
+companions worden daarvoor niet stilzwijgend hergebruikt.
+`building_context_m` bepaalt de extra voorbereide gebouwomgeving voor
+donoruitsluiting (standaard 5 m). Deze moet minstens zo groot zijn als de
+maximale gebouwzoekafstand van de DEM-bewerking.
+
 Bereid de BGT eenmalig voor met [BGT-vlakken voorbereiden](bgt-vlakken.md).
 Het landgebruikscript gebruikt dit bestand en maakt geen tweede BGT-GeoPackage.
 
