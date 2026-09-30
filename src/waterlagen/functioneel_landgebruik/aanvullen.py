@@ -8,6 +8,7 @@ import numpy as np
 import rasterio as rio
 
 from waterlagen.ahn import interpolate
+from waterlagen.functioneel_landgebruik.paths import source_path
 
 # Stable IDs, independent of CSV ordering, optional sources and burn priority.
 SOURCE_LAYERS = {
@@ -29,8 +30,8 @@ FILL_VERSION = "1"
 
 
 def _source_path(target: Path) -> Path:
-    # Separate directory prevents the land-use VRT from mixing the two products.
-    return target.parent / "bronnen" / target.name
+    """Resolve new tile-folder and legacy standalone companion names."""
+    return source_path(target)
 
 
 def _validate_radius(radius_m: float) -> None:

@@ -121,7 +121,7 @@ def _patch_builder(monkeypatch, *, failing_tile_ids=()):
 
     def fake_builder(**kwargs):
         calls.append(kwargs)
-        tile_id = kwargs["target_path"].stem.removeprefix("functioneel_landgebruik_")
+        tile_id = kwargs["target_path"].parent.name
         if tile_id in failures:
             raise RuntimeError(f"failed {tile_id}")
         kwargs["target_path"].write_text("built")
@@ -205,10 +205,10 @@ def test_parallel_passes_separate_control_paths_and_merges_selected_tiles(
     )
     control_paths = [call["diagnostics_path"] for call in calls]
     assert control_paths == [
-        tmp_path / "tiles" / ".nodata_controle" / f"{tile_id}.gpkg"
+        tmp_path / "tiles" / tile_id / "nodata.gpkg"
         for tile_id in tiles.tile_id.tolist()[:2]
     ]
-    assert merged == [(control_paths, target, {"remove_sources": True})]
+    assert merged == [(control_paths, target, {"remove_sources": False})]
 
 
 def test_parallel_does_not_publish_partial_control_after_failure(tmp_path, monkeypatch):
@@ -264,7 +264,7 @@ def test_parallel_reuses_merged_control_without_permanent_tile_controls(
         diagnostics_path=target,
         show_progress=False,
     )
-    assert not list((tmp_path / "tiles" / ".nodata_controle").glob("*.gpkg"))
+    assert len(list((tmp_path / "tiles").glob("*/nodata.gpkg"))) == 3
     original = gpd.read_file(target)
 
     def must_not_build(**kwargs):
@@ -278,7 +278,7 @@ def test_parallel_reuses_merged_control_without_permanent_tile_controls(
         show_progress=False,
     )
     assert reused == rasters
-    assert not list((tmp_path / "tiles" / ".nodata_controle").glob("*.gpkg"))
+    assert len(list((tmp_path / "tiles").glob("*/nodata.gpkg"))) == 3
     assert (
         gpd.read_file(target).geometry.union_all().equals(original.geometry.union_all())
     )
@@ -308,10 +308,10 @@ def test_parallel_build_reads_tiles_and_creates_jobs_with_bounds_and_filenames(
         (2000, 0, 4000, 2000),
         (0, 2000, 2000, 4000),
     ]
-    assert [path.name for path in result] == [
-        "functioneel_landgebruik_000000_000000_002000_002000.tif",
-        "functioneel_landgebruik_002000_000000_004000_002000.tif",
-        "functioneel_landgebruik_000000_002000_002000_004000.tif",
+    assert [path.relative_to(tmp_path).as_posix() for path in result] == [
+        "000000_000000_002000_002000/functioneel_landgebruik.tif",
+        "002000_000000_004000_002000/functioneel_landgebruik.tif",
+        "000000_002000_002000_004000/functioneel_landgebruik.tif",
     ]
     assert executor.max_workers_seen == [1]
     assert [job.tile_id for job in executor.submitted_jobs] == list(tiles["tile_id"])
@@ -333,9 +333,9 @@ def test_parallel_build_filters_tile_ids_preserving_index_order(tmp_path, monkey
         },
     )
 
-    assert [path.name for path in result] == [
-        "functioneel_landgebruik_000000_000000_002000_002000.tif",
-        "functioneel_landgebruik_000000_002000_002000_004000.tif",
+    assert [path.relative_to(tmp_path).as_posix() for path in result] == [
+        "000000_000000_002000_002000/functioneel_landgebruik.tif",
+        "000000_002000_002000_004000/functioneel_landgebruik.tif",
     ]
     assert [call["bounds"] for call in builder_calls] == [
         (0, 0, 2000, 2000),
@@ -386,7 +386,8 @@ def test_parallel_build_skips_existing_outputs(tmp_path, monkeypatch):
     _patch_sources(monkeypatch)
     executor = _patch_executor(monkeypatch)
     builder_calls = _patch_builder(monkeypatch)
-    existing = tmp_path / "functioneel_landgebruik_000000_000000_002000_002000.tif"
+    existing = tmp_path / "000000_000000_002000_002000" / "functioneel_landgebruik.tif"
+    existing.parent.mkdir(parents=True, exist_ok=True)
     existing.write_text("existing")
 
     result = bouw_functioneel_landgebruik_tiles(
@@ -395,9 +396,9 @@ def test_parallel_build_skips_existing_outputs(tmp_path, monkeypatch):
         overwrite=False,
     )
 
-    assert [path.name for path in result] == [
-        "functioneel_landgebruik_000000_000000_002000_002000.tif",
-        "functioneel_landgebruik_002000_000000_004000_002000.tif",
+    assert [path.relative_to(tmp_path).as_posix() for path in result] == [
+        "000000_000000_002000_002000/functioneel_landgebruik.tif",
+        "002000_000000_004000_002000/functioneel_landgebruik.tif",
     ]
     assert existing.read_text() == "existing"
     assert len(builder_calls) == 1
@@ -415,7 +416,8 @@ def test_parallel_build_rebuilds_existing_outputs_when_overwrite_true(
     _patch_sources(monkeypatch)
     executor = _patch_executor(monkeypatch)
     _patch_builder(monkeypatch)
-    existing = tmp_path / "functioneel_landgebruik_000000_000000_002000_002000.tif"
+    existing = tmp_path / "000000_000000_002000_002000" / "functioneel_landgebruik.tif"
+    existing.parent.mkdir(parents=True, exist_ok=True)
     existing.write_text("existing")
 
     result = bouw_functioneel_landgebruik_tiles(
@@ -458,10 +460,10 @@ def test_parallel_build_returns_paths_in_tile_index_order(tmp_path, monkeypatch)
 
     result = bouw_functioneel_landgebruik_tiles(target_dir=tmp_path, workers=2)
 
-    assert [path.name for path in result] == [
-        "functioneel_landgebruik_000000_000000_002000_002000.tif",
-        "functioneel_landgebruik_002000_000000_004000_002000.tif",
-        "functioneel_landgebruik_000000_002000_002000_004000.tif",
+    assert [path.relative_to(tmp_path).as_posix() for path in result] == [
+        "000000_000000_002000_002000/functioneel_landgebruik.tif",
+        "002000_000000_004000_002000/functioneel_landgebruik.tif",
+        "000000_002000_002000_004000/functioneel_landgebruik.tif",
     ]
 
 
@@ -488,7 +490,7 @@ def test_parallel_build_reports_all_failed_tiles_and_keeps_successful_outputs(
     assert "000000_000000_002000_002000" in message
     assert "000000_002000_002000_004000" in message
     assert (
-        tmp_path / "functioneel_landgebruik_002000_000000_004000_002000.tif"
+        tmp_path / "002000_000000_004000_002000" / "functioneel_landgebruik.tif"
     ).exists()
 
 
@@ -544,7 +546,8 @@ def test_parallel_build_progress_starts_with_skipped_tiles(tmp_path, monkeypatch
     _patch_executor(monkeypatch)
     _patch_builder(monkeypatch)
     progress = _patch_progress(monkeypatch)
-    existing = tmp_path / "functioneel_landgebruik_000000_000000_002000_002000.tif"
+    existing = tmp_path / "000000_000000_002000_002000" / "functioneel_landgebruik.tif"
+    existing.parent.mkdir(parents=True, exist_ok=True)
     existing.write_text("existing")
 
     bouw_functioneel_landgebruik_tiles(
@@ -622,7 +625,8 @@ def test_completion_logs_count_successes_and_reused_tiles(
     _patch_executor(monkeypatch, reverse_completed=True)
     failed_id = tiles.iloc[1].tile_id
     _patch_builder(monkeypatch, failing_tile_ids={failed_id} if fails else set())
-    existing = tmp_path / f"functioneel_landgebruik_{tiles.iloc[0].tile_id}.tif"
+    existing = tmp_path / tiles.iloc[0].tile_id / "functioneel_landgebruik.tif"
+    existing.parent.mkdir(parents=True, exist_ok=True)
     existing.write_text("existing")
     caplog.set_level("INFO", logger=parallel_mod.__name__)
     if fails:

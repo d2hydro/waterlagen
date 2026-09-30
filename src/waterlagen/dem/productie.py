@@ -4,7 +4,7 @@ import json
 import sqlite3
 from concurrent.futures import ProcessPoolExecutor
 from contextlib import closing
-from dataclasses import asdict
+from dataclasses import asdict, dataclass
 from math import ceil
 from multiprocessing import get_context
 from pathlib import Path
@@ -29,8 +29,10 @@ from waterlagen.functioneel_landgebruik.gebouwen import (
     building_paths,
     validate_buildings,
 )
-from waterlagen.logger import get_logger
+from waterlagen.functioneel_landgebruik.paths import source_path
+from waterlagen.logger import get_logger, tile_logging
 from waterlagen.raster.overviews import build_raster_overviews
+from waterlagen.raster.tiles import _tile_id
 from waterlagen.raster.vrt import create_cog_file, create_vrt_file
 from waterlagen.settings import settings
 
@@ -38,7 +40,7 @@ from .config import DemConfig
 from .gebouwen import aligned_window, calculate_building_elevations
 
 logger = get_logger(__name__)
-VERSION = "1"
+VERSION = "2"
 
 
 def _save_json(path: Path, content: dict) -> None:
@@ -185,24 +187,50 @@ def _stored_height(height: float, source: rasterio.io.DatasetReader):
     return stored
 
 
-def _tile_paths(output: Path, name: str) -> tuple[Path, Path, Path, Path]:
-    return (
-        output / "tiles" / "ahn_filled" / name,
-        output / "tiles" / "gebouwen" / name,
-        output / "tiles" / "dem_bron" / name,
-        output / "tiles" / "nodata" / Path(name).with_suffix(".gpkg"),
+@dataclass(frozen=True, slots=True)
+class DemTilePaths:
+    """The products of one core, stored together in a coordinate tile folder."""
+
+    terrain: Path
+    buildings: Path
+    provenance: Path
+    diagnostics: Path
+    ahn_provenance: Path
+
+    @property
+    def files(self) -> tuple[Path, ...]:
+        return (*self.rasters, self.diagnostics)
+
+    @property
+    def rasters(self) -> tuple[Path, ...]:
+        return self.terrain, self.buildings, self.provenance, self.ahn_provenance
+
+
+def _tile_paths(output: Path, tile: Path) -> DemTilePaths:
+    with rasterio.open(tile) as reference:
+        bounds = tuple(reference.bounds)
+    if not all(value == round(value) for value in bounds):
+        raise ValueError("DEM tile bounds must be whole-metre coordinates")
+    tile_id = _tile_id(*(int(value) for value in bounds))
+    folder = output / "tiles" / tile_id
+    return DemTilePaths(
+        folder / "ahn_aangevuld.tif",
+        folder / "gebouwhoogten.tif",
+        folder / "dem_bron.tif",
+        folder / "nodata.gpkg",
+        folder / "ahn_bron.tif",
     )
 
 
 def _reuse_tile(
-    paths: tuple[Path, Path, Path, Path],
+    paths: DemTilePaths,
     marker: Path,
     reference: rasterio.io.DatasetReader,
 ) -> bool:
-    if not marker.is_file() or not all(path.is_file() for path in paths):
+    if not marker.is_file() or not all(path.is_file() for path in paths.files):
         return False
     metadata = json.loads(marker.read_text(encoding="utf-8"))
-    for path in paths[:3]:
+    for path in paths.rasters:
         try:
             with rasterio.open(path) as src:
                 if src.tags().get("output_pair") != metadata["output_pair"] or (
@@ -242,14 +270,14 @@ def _build_tile(
     output: Path,
     config: DemConfig,
     overwrite: bool,
-) -> tuple[Path, Path, Path, Path]:
-    paths = _tile_paths(output, tile.name)
-    marker = output / "tiles" / "status" / tile.with_suffix(".json").name
+) -> DemTilePaths:
+    paths = _tile_paths(output, tile)
+    marker = paths.terrain.parent / "status.json"
     marker.parent.mkdir(parents=True, exist_ok=True)
     with rasterio.open(tile) as reference:
         _validate_grid(ahn, reference)
         if not overwrite and _reuse_tile(paths, marker, reference):
-            logger.info("Reusing DEM tile %s", tile.name)
+            logger.info("Reusing DEM tile %s", paths.terrain.parent.name)
             return paths
         marker.unlink(missing_ok=True)
         core = aligned_window(tuple(reference.bounds), ahn.transform)
@@ -281,6 +309,7 @@ def _build_tile(
         provenance = np.zeros(terrain.shape, dtype="uint8")
         provenance[original] = 1
         provenance[filled] = 3
+        ahn_provenance = provenance.copy()
         ids_path, _ = building_paths(tile)
         with rasterio.open(ids_path) as ids_src:
             ids = ids_src.read(1)
@@ -297,13 +326,10 @@ def _build_tile(
                 stored[index] = _stored_height(float(elevation), ahn)
                 resolved[index] = True
         building_values[building] = stored[inverse]
-        provenance[building] = np.where(resolved[inverse], 2, 0)
-        # A NoData building overlay otherwise falls through to the underlying
-        # terrain in GDAL VRT mosaics. Clear terrain at unresolved buildings.
-        unresolved = building & (provenance == 0)
-        terrain[unresolved] = _nodata(ahn)
+        # Failed building estimates leave the underlying terrain intact.
+        provenance[building] = np.where(resolved[inverse], 2, provenance[building])
         records = []
-        missing_ahn = (provenance == 0) & ~building
+        missing_ahn = provenance == 0
         for geometry, _ in shapes(
             missing_ahn.astype("uint8"), mask=missing_ahn, transform=reference.transform
         ):
@@ -318,12 +344,31 @@ def _build_tile(
                     "geometry": shape(geometry),
                 }
             )
+        failed_ids = {int(value) for value in unique[~resolved]}
+        if failed_ids:
+            _, footprints = building_paths(tile)
+            failures = wgpd.read_file(footprints, layer="gebouwen")
+            for row in failures[failures.gebouw_id.isin(failed_ids)].itertuples():
+                estimate = lookup.loc[row.gebouw_id]
+                records.append(
+                    {
+                        "bron": "Gebouw",
+                        "reden": "Geen oorspronkelijke AHN-donor binnen maximale gebouwzoekafstand",
+                        "identificatie": row.identificatie,
+                        "gebouw_id": row.gebouw_id,
+                        "zoekafstand_m": estimate.zoekafstand_m,
+                        "donor_aantal": estimate.donor_aantal,
+                        "geometry": row.geometry,
+                    }
+                )
         diagnostics = _diagnostics(records, reference.crs)
         pair = uuid4().hex
-        _write_tile(paths[0], terrain, ahn, reference.transform, config, pair)
-        _write_tile(paths[1], building_values, ahn, reference.transform, config, pair)
+        _write_tile(paths.terrain, terrain, ahn, reference.transform, config, pair)
         _write_tile(
-            paths[2],
+            paths.buildings, building_values, ahn, reference.transform, config, pair
+        )
+        _write_tile(
+            paths.provenance,
             provenance,
             ahn,
             reference.transform,
@@ -331,11 +376,29 @@ def _build_tile(
             pair,
             provenance=True,
         )
-        write_geopackage_layer_atomically(diagnostics, paths[3], layer_name="nodata")
-        _save_json(marker, {"output_pair": pair})
+        write_geopackage_layer_atomically(
+            diagnostics, paths.diagnostics, layer_name="nodata"
+        )
+        _write_tile(
+            paths.ahn_provenance,
+            ahn_provenance,
+            ahn,
+            reference.transform,
+            config,
+            pair,
+            provenance=True,
+        )
+        _save_json(
+            marker,
+            {
+                "output_pair": pair,
+                "version": VERSION,
+                "missing_cells": int(missing_ahn.sum()),
+            },
+        )
         logger.info(
             "DEM tile %s: %s original, %s interpolated, %s building, %s unresolved",
-            tile.name,
+            paths.terrain.parent.name,
             int((provenance == 1).sum()),
             int((provenance == 3).sum()),
             int((provenance == 2).sum()),
@@ -436,10 +499,13 @@ def _tile_heights(tile: Path, height_path: Path) -> pd.DataFrame:
 
 def _build_tile_worker(
     arguments: tuple[Path, Path, Path, Path, DemConfig, bool],
-) -> tuple[Path, Path, Path, Path]:
+) -> DemTilePaths:
     tile, ahn_path, height_path, target_dir, config, overwrite = arguments
     heights = _tile_heights(tile, height_path)
-    with rasterio.open(ahn_path) as ahn:
+    with (
+        tile_logging(_tile_paths(target_dir, tile).terrain.parent / "workflow.log"),
+        rasterio.open(ahn_path) as ahn,
+    ):
         return _build_tile(tile, ahn, heights, target_dir, config, overwrite)
 
 
@@ -477,22 +543,29 @@ def bouw_dem_tiles(
     Returns
     -------
     pathlib.Path
-        ``dem.tif`` COG, accompanied by dem.vrt, dem_bron.vrt/tif, nodata.gpkg,
+        ``dem.tif`` COG, accompanied by dem.vrt, dem_bron.vrt/tif, ahn_bron.vrt/tif, nodata.gpkg,
         persistent gebouwhoogten.gpkg and core-only intermediate rasters.
+        Failed building estimates retain the underlying terrain.
+
+    Raises
+    ------
+    ValueError
+        If inputs/configuration changed, grids disagree, or NoData remains
+        inside selected tile cores after the bounded interpolation and building
+        overlay. In the latter case, diagnostics and core products are retained
+        but no final DEM is published. Outside selected cores, NoData is allowed.
     """
     config = config or DemConfig()
     workers = resolve_workers(workers, settings.dem_workers)
     target_dir = Path(target_dir)
-    if not landuse_tiles or len({path.name for path in landuse_tiles}) != len(
-        landuse_tiles
-    ):
-        raise ValueError("Provide a nonempty list of uniquely named land-use tiles")
+    if not landuse_tiles or len(
+        {_tile_paths(target_dir, path).terrain for path in landuse_tiles}
+    ) != len(landuse_tiles):
+        raise ValueError("Provide a nonempty list of spatially distinct land-use tiles")
     target_dir.mkdir(parents=True, exist_ok=True)
     inputs = [ahn_vrt_path]
     for tile in landuse_tiles:
-        inputs.extend(
-            [tile, tile.parent / "bronnen" / tile.name, *building_paths(tile)]
-        )
+        inputs.extend([tile, source_path(tile), *building_paths(tile)])
     identity = {
         "version": VERSION,
         "config": asdict(config),
@@ -521,13 +594,8 @@ def bouw_dem_tiles(
         )
         if worker_count == 1:
             paths = [
-                _build_tile(
-                    tile,
-                    ahn,
-                    _tile_heights(tile, height_path),
-                    target_dir,
-                    config,
-                    overwrite,
+                _build_tile_worker(
+                    (tile, ahn_vrt_path, height_path, target_dir, config, overwrite)
                 )
                 for tile in landuse_tiles
             ]
@@ -548,12 +616,14 @@ def bouw_dem_tiles(
                     paths.append(result)
                     logger.info(
                         "Completed DEM tile %s (%s/%s)",
-                        tile.name,
+                        result.terrain.parent.name,
                         len(paths),
                         len(landuse_tiles),
                     )
         completion = target_dir / "dem_complete.json"
-        core_identity = [_file_identity(path) for group in paths for path in group]
+        core_identity = [
+            _file_identity(path) for group in paths for path in group.files
+        ]
         products = [
             target_dir / name
             for name in (
@@ -561,6 +631,8 @@ def bouw_dem_tiles(
                 "dem.tif",
                 "dem_bron.vrt",
                 "dem_bron.tif",
+                "ahn_bron.vrt",
+                "ahn_bron.tif",
                 "nodata.gpkg",
             )
         ]
@@ -573,7 +645,7 @@ def bouw_dem_tiles(
                 return target_dir / "dem.tif"
         completion.unlink(missing_ok=True)
         diagnostics = [
-            wgpd.read_file(paths_for_tile[3], layer="nodata")
+            wgpd.read_file(paths_for_tile.diagnostics, layer="nodata")
             for paths_for_tile in paths
         ]
         unresolved = wgpd.read_file(
@@ -583,6 +655,7 @@ def bouw_dem_tiles(
         unresolved["reden"] = (
             "Geen oorspronkelijke AHN-donor binnen maximale gebouwzoekafstand"
         )
+        diagnostics = [frame[frame.bron != "Gebouw"] for frame in diagnostics]
         diagnostics.append(unresolved.drop(columns="hoogte_m"))
         merged = gpd.GeoDataFrame(
             pd.concat(diagnostics, ignore_index=True), crs=ahn.crs
@@ -593,11 +666,37 @@ def bouw_dem_tiles(
         write_geopackage_layer_atomically(
             merged, target_dir / "nodata.gpkg", layer_name="nodata"
         )
+    missing_cells = 0
+    for tile_paths in paths:
+        with (
+            rasterio.open(tile_paths.terrain) as terrain,
+            rasterio.open(tile_paths.buildings) as buildings,
+        ):
+            for _, window in terrain.block_windows(1):
+                base = terrain.read(1, window=window, masked=True)
+                overlay = buildings.read(1, window=window, masked=True)
+                valid_base = ~np.ma.getmaskarray(base) & np.isfinite(base.data)
+                valid_overlay = ~np.ma.getmaskarray(overlay) & np.isfinite(overlay.data)
+                missing_cells += int(np.count_nonzero(~(valid_base | valid_overlay)))
+    if missing_cells:
+        # Never leave a previously published mosaic pointing at incomplete cores.
+        for name in ("dem.vrt", "dem.tif"):
+            (target_dir / name).unlink(missing_ok=True)
+        raise ValueError(
+            f"DEM contains {missing_cells} NoData cells inside selected tile cores; "
+            f"interpolation remains limited to {config.interpolation_max_distance_m} m. "
+            f"See {target_dir / 'nodata.gpkg'}. No final DEM published."
+        )
+    ahn_source_vrt = create_vrt_file(
+        target_dir / "ahn_bron.vrt", files=[p.ahn_provenance for p in paths]
+    )
+    create_cog_file(ahn_source_vrt, target_dir / "ahn_bron.tif", overwrite=True)
     dem_vrt = create_vrt_file(
-        target_dir / "dem.vrt", files=[p[0] for p in paths] + [p[1] for p in paths]
+        target_dir / "dem.vrt",
+        files=[p.terrain for p in paths] + [p.buildings for p in paths],
     )
     source_vrt = create_vrt_file(
-        target_dir / "dem_bron.vrt", files=[p[2] for p in paths]
+        target_dir / "dem_bron.vrt", files=[p.provenance for p in paths]
     )
     # Repair changed/incomplete products; matching complete products returned above.
     create_cog_file(source_vrt, target_dir / "dem_bron.tif", overwrite=True)

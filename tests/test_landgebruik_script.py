@@ -23,6 +23,7 @@ def test_csv_mismatch_explains_runfolder_and_recovery(tmp_path, monkeypatch):
         run_id="test",
         parameters={
             "building_ids": True,
+            "tile_layout_version": 2,
             "building_context_m": 5.0,
             "crs": landgebruik.settings.crs,
             "resolution_m": landgebruik.RESOLUTION_M,
@@ -205,7 +206,7 @@ def test_landgebruik_script_builds_tiles_vrt_and_cog_in_order(
     assert events[1][1]["overwrite"] is False
     assert events[1][1]["diagnostics_path"] == data_dir / "nodata.gpkg"
     assert events[1][1]["download_missing_sources"] is False
-    assert events[2][1] == {"vrt_file": vrt_file, "directory": tiles_dir}
+    assert events[2][1] == {"vrt_file": vrt_file, "files": tile_files}
     assert events[3][1] == {
         "vrt_file": vrt_file,
         "cog_file": cog_file,
@@ -218,7 +219,7 @@ def test_landgebruik_script_builds_tiles_vrt_and_cog_in_order(
     assert events[1][1]["gap_fill_distance_m"] == 1.0
     assert events[5][1] == {
         "vrt_file": data_dir / "functioneel_landgebruik_bronnen.vrt",
-        "directory": tiles_dir / "bronnen",
+        "files": [path.parent / "bronnen" / path.name for path in tile_files],
     }
     assert events[6][1]["cog_file"] == data_dir / "functioneel_landgebruik_bronnen.tif"
     assert (data_dir / "functioneel_landgebruik_bronnen.json").is_file()

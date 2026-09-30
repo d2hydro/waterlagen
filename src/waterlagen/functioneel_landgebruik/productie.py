@@ -28,6 +28,7 @@ from waterlagen.functioneel_landgebruik.legenda import (
     write_qgis_style,
     write_raster_attribute_table,
 )
+from waterlagen.functioneel_landgebruik.paths import building_paths, source_path
 from waterlagen.logger import configure_logging, get_logger
 from waterlagen.raster.tiles import build_tiles, read_tiles
 from waterlagen.raster.vrt import create_cog_file, create_vrt_file
@@ -109,6 +110,7 @@ def main(
         overwrite=overwrite,
         parameters={
             "building_ids": True,
+            "tile_layout_version": 2,
             **context_parameters,
             "crs": settings.crs,
             "resolution_m": RESOLUTION_M,
@@ -251,7 +253,7 @@ def _produce(
         status["completed_tiles"] = len(result)
         stage("VRT samenstellen")
         vrt = create_vrt_file(
-            vrt_file=output / "functioneel_landgebruik.vrt", directory=output / "tiles"
+            vrt_file=output / "functioneel_landgebruik.vrt", files=result
         )
         stage(f"GeoTIFF maken voor {area.value}")
         tif = create_cog_file(
@@ -264,7 +266,7 @@ def _produce(
         stage("Bronnenraster samenstellen")
         sources_vrt = create_vrt_file(
             vrt_file=output / "functioneel_landgebruik_bronnen.vrt",
-            directory=output / "tiles" / "bronnen",
+            files=[source_path(path) for path in result],
         )
         sources_tif = create_cog_file(
             vrt_file=sources_vrt,
@@ -284,7 +286,7 @@ def _produce(
         status["sources_raster"] = str(sources_tif)
         create_vrt_file(
             vrt_file=output / "functioneel_landgebruik_gebouw_ids.vrt",
-            directory=output / "tiles" / "gebouw_ids",
+            files=[building_paths(path)[0] for path in result],
         )
         status["result"] = str(tif)
         stage("Voltooid")

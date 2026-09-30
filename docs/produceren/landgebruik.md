@@ -20,7 +20,7 @@ aanwezig is, worden de gemalen meegenomen. Met een expliciet `sources`-object
 bepaal je zelf de bronpaden; `gemalen_gpkg=None` slaat gemalen over.
 
 Bij parallelle productie staan de detailmeldingen per tegel in
-`tiles/logs/<rasterbestandsnaam>.log`. Dit omvat ontbrekende CSV-koppelingen
+`tiles/<tile_id>/workflow.log`. Dit omvat ontbrekende CSV-koppelingen
 met bronlaag, veld en aantallen per bronwaarde, overgeslagen bronnen,
 rekentijd en eventuele foutdetails. Deze worker-meldingen verschijnen niet
 in de hoofdvoortgang in de terminal. Afgeronde tegels en fouten blijven
@@ -54,7 +54,8 @@ script en de functionele beschrijving voordat u de productie start.
 ## Starten
 
 Nieuwe scriptproducties schrijven naast de klassen en broncodes ook
-`tiles/gebouw_ids`, `tiles/gebouwen`, `tiles/gebouw_index.sqlite` en
+`tiles/<tile_id>/gebouw_ids.tif`, `tiles/<tile_id>/gebouwen.gpkg`,
+`gebouw_index.sqlite` in de runmap en
 `functioneel_landgebruik_gebouw_ids.vrt`. Dit zijn inputs voor
 [DEM-productie](dem.md). De library-optie `write_building_ids=True` schakelt
 dezelfde uitvoer in bij een eigen tegelworkflow. Oudere tegels zonder deze
@@ -135,7 +136,10 @@ gedeelde naamgeving en controles.
 
 Onder `processed_data/functioneel_landgebruik/nederland/<run-id>` in uw datastore vindt u:
 
-- `tiles/`: de berekende rastertegels;
+- `tiles/<tile_id>/`: per tegel `functioneel_landgebruik.tif`,
+  `functioneel_landgebruik_bronnen.tif`, `gebouw_ids.tif`, `gebouwen.gpkg`,
+  `nodata.gpkg`, `status.json` en `workflow.log`;
+  `<tile_id>` bevat `xmin_ymin_xmax_ymax`;
 - `functioneel_landgebruik.vrt`: de tegels samengevoegd als virtueel raster;
 - `functioneel_landgebruik.tif`: het samengestelde Cloud Optimized GeoTIFF-raster.
 - `functioneel_landgebruik.tif.aux.xml`: rasterattribuuttabel met pixelcode, omschrijving en kleur;
@@ -191,11 +195,10 @@ De controle verandert het raster niet. Grenzende vlakken kunnen gescheiden
 blijven bij tegel- en verwerkingsgrenzen. De vlakoppervlakken overlappen niet
 binnen de berekende tegel.
 
-Workers schrijven tijdelijk onder `tiles/.nodata_controle/`. Pas na succesvol
-samenvoegen verdwijnen deze losse bestanden: de uiteindelijke uitvoer is
-alleen `nodata.gpkg`. Bij een fout blijven de tussenbestanden
-beschikbaar voor hervatten. Een bestaand eindbestand kan bij hervatten de
-controle voor ongewijzigde rastertegels leveren.
+Workers schrijven `tiles/<tile_id>/nodata.gpkg`. Deze controles blijven na
+succesvol samenvoegen bewaard, naast het centrale `nodata.gpkg`. Bij een fout
+blijven de voltooide tegelcontroles beschikbaar voor hervatten. Een bestaand
+eindbestand kan ontbrekende controles voor ongewijzigde rastertegels leveren.
 
 Zonder `diagnostics_path` wordt geen controle gemaakt. Bestaande rasters zonder
 passende controle worden niet achteraf verklaard: bereken ze opnieuw met
@@ -535,10 +538,16 @@ Zie [de aanvulregels en broncodes](../bewerkingen/functioneel-landgebruik.md#kle
 De landelijke productie schrijft naast `functioneel_landgebruik.tif` ook
 `functioneel_landgebruik_bronnen.tif`, een bijbehorende VRT en
 `functioneel_landgebruik_bronnen.json` met bronlagen en donorinstellingen.
-Per tegel staat het bronnenraster in `tiles/bronnen/` met dezelfde bestandsnaam
-als de landgebruiktegel. Ook een losse rasterberekening schrijft een bronnenraster
-in de submap `bronnen/` naast het doelbestand. Beide rasters hebben hetzelfde
-rasterrooster en NoData-waarde 0.
+Per tegel staat het bronnenraster als `functioneel_landgebruik_bronnen.tif`
+naast `functioneel_landgebruik.tif` in `tiles/<tile_id>/`. Een losse berekening
+met die standaardnaam gebruikt eveneens deze namen. Andere losse bestandsnamen
+behouden de oude submap `bronnen/`. Beide rasters hebben hetzelfde rasterrooster
+en NoData-waarde 0. VRT's worden uit expliciete lijsten met hetzelfde product
+samengesteld, zodat bronrasters en gebouw-ID's niet in het landgebruik belanden.
+
+Gebruik een nieuwe run-ID voor de nieuwe tegelmapstructuur. Bestaande producties
+worden niet verplaatst of hernoemd; DEM kan geldige oude landgebruikinputs blijven
+lezen.
 
 Hergebruik vereist een compleet rasterpaar met dezelfde aanvulinstellingen.
 Oudere tegels zonder bronraster moeten opnieuw worden berekend. Gebruik een

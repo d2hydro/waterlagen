@@ -11,6 +11,7 @@ from waterlagen import _geopandas as wgpd
 from waterlagen.ahn import interpolate
 from waterlagen.dem import DemConfig, bouw_dem_tiles
 from waterlagen.dem.gebouwen import calculate_building_elevations
+from waterlagen.dem.productie import _tile_paths
 from waterlagen.functioneel_landgebruik import landgebruik_berekenen as landuse
 from waterlagen.functioneel_landgebruik.gebouwen import (
     building_paths,
@@ -128,9 +129,10 @@ def test_dem_pipeline_provenance_precedence_cogs_and_resume(
     data[28:36, 28:36] = -9999  # Crossing building samples original surrounding AHN.
     data[45:64, 0:23] = -9999  # Both touching buildings unresolved at 5 m.
     data[4, 31:34] = -9999  # AHN hole crosses a tile edge.
+    data[53:56, 9:15] = 100  # Original AHN under failed buildings must survive.
     ahn = write_ahn(tmp_path / "ahn.tif", data, scale=0.01, offset=2.0)
     config = DemConfig(
-        interpolation_max_distance_m=2,
+        interpolation_max_distance_m=32,
         output=RasterOutputConfig(block_size=16, overview_factors=(2,)),
     )
     calls = []
@@ -146,12 +148,16 @@ def test_dem_pipeline_provenance_precedence_cogs_and_resume(
     )
     assert calls == ["inverse_distance"] * 4
     dem, provenance = read(result), read(result.parent / "dem_bron.tif")
-    assert set(np.unique(provenance)) == {0, 1, 2, 3}
+    assert set(np.unique(provenance)) == {1, 2, 3}
+    assert np.all(dem != -9999)
+    ahn_provenance = read(result.parent / "ahn_bron.tif")
+    assert np.all(ahn_provenance[data != -9999] == 1)
+    assert np.all(ahn_provenance[data == -9999] == 3)
     np.testing.assert_array_equal(dem[provenance == 1], data[provenance == 1])
     assert np.all(dem[provenance == 2] == 200)
     assert np.all(dem[provenance == 0] == -9999)
     assert np.all(provenance[4, 31:34] == 3)
-    for name in ("dem", "dem_bron"):
+    for name in ("dem", "dem_bron", "ahn_bron"):
         np.testing.assert_array_equal(
             read(result.parent / f"{name}.vrt"), read(result.parent / f"{name}.tif")
         )
@@ -162,12 +168,22 @@ def test_dem_pipeline_provenance_precedence_cogs_and_resume(
     assert set(unresolved.identificatie) == {"9999999999999999", "9999999999999998"}
     assert unresolved.zoekafstand_m.eq(5).all()
     assert unresolved.geometry.notna().all()
+    # Failed buildings retain terrain provenance and are still diagnosed per tile.
+    for tile in landuse_inputs:
+        ids = read(building_paths(tile)[0])
+        products = _tile_paths(result.parent, tile)
+        failed = np.isin(ids, [2, 3])
+        np.testing.assert_array_equal(
+            read(products.provenance)[failed], read(products.ahn_provenance)[failed]
+        )
+        local = wgpd.read_file(products.diagnostics, layer="nodata")
+        assert set(local.loc[local.bron == "Gebouw", "gebouw_id"]) == set(
+            np.unique(ids[failed])
+        )
     # Every piece of the crossing building receives the same stored value.
     for tile in landuse_inputs:
         ids = read(building_paths(tile)[0])
-        assert np.all(
-            read(result.parent / "tiles" / "gebouwen" / tile.name)[ids == 1] == 200
-        )
+        assert np.all(read(_tile_paths(result.parent, tile).buildings)[ids == 1] == 200)
     before = (result.parent / "gebouwhoogten.gpkg").stat().st_mtime_ns
     calls.clear()
     bouw_dem_tiles(
@@ -175,7 +191,7 @@ def test_dem_pipeline_provenance_precedence_cogs_and_resume(
     )
     assert calls == []
     assert (result.parent / "gebouwhoogten.gpkg").stat().st_mtime_ns == before
-    (result.parent / "tiles" / "gebouwen" / landuse_inputs[0].name).unlink()
+    _tile_paths(result.parent, landuse_inputs[0]).buildings.unlink()
     bouw_dem_tiles(
         result.parent, ahn_vrt_path=ahn, landuse_tiles=landuse_inputs, config=config
     )
@@ -266,17 +282,22 @@ def test_dem_donor_only_in_neighbouring_tile(tmp_path, landuse_inputs):
     data[:, :32] = -9999
     ahn = write_ahn(tmp_path / "edge.tif", data)
     config = DemConfig(interpolation_max_distance_m=2)
-    result = bouw_dem_tiles(
-        tmp_path / "edge_dem",
-        ahn_vrt_path=ahn,
-        landuse_tiles=landuse_inputs,
-        config=config,
-    )
-    values = read(result)
-    provenance = read(result.parent / "dem_bron.tif")
-    assert values[5, 31] == 10  # No original donor anywhere in the left tile.
+    output = tmp_path / "edge_dem"
+    with pytest.raises(ValueError, match="NoData cells inside selected tile cores"):
+        bouw_dem_tiles(
+            output, ahn_vrt_path=ahn, landuse_tiles=landuse_inputs, config=config
+        )
+    assert not (output / "dem.tif").exists()
+    assert not (output / "dem.vrt").exists()
+    assert not (output / "dem_complete.json").exists()
+    assert (output / "nodata.gpkg").is_file()
+    # Upper left core has no donor itself; the right neighbour supplies its edge.
+    tile_paths = _tile_paths(output, landuse_inputs[2])
+    values = read(tile_paths.terrain)
+    provenance = read(tile_paths.ahn_provenance)
+    assert values[5, 31] == 10
     assert provenance[5, 31] == 3
-    assert provenance[5, 28] == 0
+    assert provenance[5, 29] == 0  # Three metres exceeds the hard two-metre limit.
     whole = interpolate.interpolate_masked(
         data,
         target_mask=data == -9999,
@@ -285,9 +306,7 @@ def test_dem_donor_only_in_neighbouring_tile(tmp_path, landuse_inputs):
         pixel_width=1,
         pixel_height=1,
     )
-    np.testing.assert_array_equal(
-        values[provenance == 3], whole.values[provenance == 3]
-    )
+    np.testing.assert_array_equal(values, whole.values[:32, :32])
 
 
 def test_landuse_calls_same_helper(monkeypatch):
@@ -393,7 +412,7 @@ def test_parallel_tiles_match_sequential_and_resume_with_different_workers(
         config=config,
         workers=2,
     )
-    for name in ("dem.tif", "dem_bron.tif"):
+    for name in ("dem.tif", "dem_bron.tif", "ahn_bron.tif"):
         np.testing.assert_array_equal(
             read(serial.parent / name), read(parallel.parent / name)
         )
@@ -408,8 +427,9 @@ def test_parallel_tiles_match_sequential_and_resume_with_different_workers(
     assert parallel.stat().st_mtime_ns == before
 
 
+@pytest.mark.parametrize("nested", [False, True])
 def test_landuse_run_validation_checks_real_companions(
-    tmp_path, landuse_inputs, monkeypatch
+    tmp_path, landuse_inputs, monkeypatch, nested
 ):
     import hashlib
     import json
@@ -453,6 +473,23 @@ def test_landuse_run_validation_checks_real_companions(
         )
     )
     monkeypatch.setattr(inputs, "tile_filename", lambda _, tile: f"{tile.tile_id}.tif")
+    if nested:
+        from waterlagen.functioneel_landgebruik.paths import source_path
+
+        for original in landuse_inputs:
+            old = run / "tiles" / original.name
+            new = run / "tiles" / original.stem / "functioneel_landgebruik.tif"
+            new.parent.mkdir()
+            for src, dst in zip(
+                [source_path(old), *building_paths(old), old],
+                [source_path(new), *building_paths(new), new],
+                strict=True,
+            ):
+                src.rename(dst)
+        metadata_path = run / "run.json"
+        metadata = json.loads(metadata_path.read_text())
+        metadata["parameters"]["tile_layout_version"] = 2
+        metadata_path.write_text(json.dumps(metadata))
     selected = inputs.validate_landuse_run(run, Area.nederland, 5)
     assert len(selected.paths) == 4
     # Exercise the default Nederland entry point and its pinned resume metadata
@@ -495,3 +532,79 @@ def test_landuse_run_validation_checks_real_companions(
         ids.write(values, 1)
     with pytest.raises(ValueError, match="source code 10"):
         inputs.validate_landuse_run(run, Area.nederland, 5)
+
+
+def test_dem_only_requires_coverage_inside_selected_cores(tmp_path, landuse_inputs):
+    ahn = write_ahn(tmp_path / "ahn.tif", np.ones((64, 64), dtype="float32"))
+    selected = [landuse_inputs[0], landuse_inputs[3]]
+    result = bouw_dem_tiles(
+        tmp_path / "diagonal", ahn_vrt_path=ahn, landuse_tiles=selected
+    )
+    with rasterio.open(result) as source:
+        missing = np.ma.getmaskarray(source.read(1, masked=True))
+    assert missing[:32, :32].all()
+    assert missing[32:, 32:].all()
+    assert not missing[:32, 32:].any()
+    assert not missing[32:, :32].any()
+    for tile in selected:
+        folder = _tile_paths(result.parent, tile).terrain.parent
+        assert (folder / "workflow.log").is_file()
+        assert (folder / "status.json").is_file()
+        assert (folder / "nodata.gpkg").is_file()
+
+
+@pytest.mark.parametrize("distance", [1.0, 2.0, 2.5])
+def test_interpolation_respects_radial_limit_without_chaining(distance):
+    data = np.full((11, 11), -9999, dtype="float32")
+    data[5, 5] = 10
+    result = interpolate.interpolate_masked(
+        data,
+        target_mask=data == -9999,
+        donor_mask=data != -9999,
+        max_distance_m=distance,
+        pixel_width=1,
+        pixel_height=1,
+    )
+    yy, xx = np.indices(data.shape)
+    outside = np.hypot(yy - 5, xx - 5) > distance
+    assert not result.filled_mask[outside].any()
+    assert (result.values[outside] == -9999).all()
+
+
+def test_landuse_writes_new_tile_folder_companions(tmp_path, landuse_inputs):
+    from waterlagen.functioneel_landgebruik.gebouwen import validate_buildings
+    from waterlagen.functioneel_landgebruik.paths import source_path
+
+    target = (
+        tmp_path
+        / "new_tiles"
+        / "000000_000000_000032_000032"
+        / "functioneel_landgebruik.tif"
+    )
+    landuse.bouw_functioneel_landgebruik(
+        target,
+        bounds=(0, 0, 32, 32),
+        resolution_m=1,
+        gap_fill_distance_m=0,
+        download_missing=False,
+        building_index_path=tmp_path / "gebouw_index.sqlite",
+        output_config=RasterOutputConfig(block_size=16, overview_factors=(2,)),
+    )
+    validate_buildings(target, 5)
+    assert source_path(target) == target.with_name(
+        "functioneel_landgebruik_bronnen.tif"
+    )
+    assert building_paths(target) == (
+        target.with_name("gebouw_ids.tif"),
+        target.with_name("gebouwen.gpkg"),
+    )
+    for new, old in zip(
+        [target, source_path(target), building_paths(target)[0]],
+        [
+            landuse_inputs[0],
+            source_path(landuse_inputs[0]),
+            building_paths(landuse_inputs[0])[0],
+        ],
+        strict=True,
+    ):
+        np.testing.assert_array_equal(read(new), read(old))

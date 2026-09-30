@@ -10,6 +10,8 @@ import numpy as np
 import rasterio
 
 from waterlagen._geopackage import write_geopackage_layer_atomically
+from waterlagen.functioneel_landgebruik.paths import building_paths as _building_paths
+from waterlagen.functioneel_landgebruik.paths import source_path
 from waterlagen.logger import get_logger
 from waterlagen.raster.overviews import build_raster_overviews
 
@@ -18,10 +20,7 @@ logger = get_logger(__name__)
 
 def building_paths(target: Path) -> tuple[Path, Path]:
     """Return companion ID raster and complete prepared footprint paths."""
-    return (
-        target.parent / "gebouw_ids" / target.name,
-        target.parent / "gebouwen" / target.with_suffix(".gpkg").name,
-    )
+    return _building_paths(target)
 
 
 def ensure_building_index(source: Path, target: Path, layer: str = "pand") -> Path:
@@ -148,7 +147,7 @@ def validate_buildings(target: Path, min_context_m: float = 0.0) -> None:
     with (
         rasterio.open(target) as landuse,
         rasterio.open(ids_path) as ids,
-        rasterio.open(target.parent / "bronnen" / target.name) as sources,
+        rasterio.open(source_path(target)) as sources,
     ):
         if float(ids.tags().get("building_context_m", 0)) < min_context_m:
             raise ValueError(

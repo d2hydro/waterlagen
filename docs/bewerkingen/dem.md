@@ -34,13 +34,16 @@ wordt het 75e percentiel berekend. Er wordt geen vaste vloerhoogtetoeslag toegep
 
 De hoogte, BAG-identificatie, zoekafstand en het aantal donors worden bewaard
 in `gebouwhoogten.gpkg`. Iedere tegel gebruikt dezelfde opgeslagen hoogte voor
-hetzelfde gebouw. Ontbreekt een donor binnen 5 m, dan blijven alle DEM-cellen
-van het gebouw NoData. Ook eventueel onderliggend AHN wordt daar afgeschermd,
-zodat het VRT geen alternatieve hoogte teruggeeft.
+hetzelfde gebouw. Ontbreekt een donor binnen de maximale gebouwzoekafstand,
+dan blijft de oorspronkelijke of aangevulde terreinwaarde onder dat gebouw
+beschikbaar. Het gebouw blijft als mislukte hoogteschatting in `nodata.gpkg`
+staan; alleen een geslaagde gebouwhoogte krijgt voorrang op het terrein.
 
 AHN-gaten worden onafhankelijk van de gebouwhoogten ingevuld met lokale
 inverse-afstandsinterpolatie, zonder extra gladstrijken. De maximale afstand
-is instelbaar in meters en wordt naar rasterpixels omgerekend. Alleen ontbrekende
+is instelbaar in meters (standaard 250 m) en wordt naar rasterpixels omgerekend.
+Dit is een harde grens: de zoekafstand groeit niet automatisch en nieuwe
+interpolatiewaarden worden nooit als donor gebruikt. Alleen ontbrekende
 AHN-cellen worden geïnterpoleerd. Originele geldige waarden blijven exact
 behouden, behalve waar de uiteindelijke gebouwlaag voorrang krijgt.
 Er is voor deze DEM-interpolatie **geen beperking tot `landgebied`**.
@@ -49,18 +52,24 @@ donorbronnen en categorische dichtstbijzijnde-buurmethode. Beide gebruiken
 dezelfde maskergestuurde interpolatiefunctie.
 
 De berekening gebruikt het tegelrooster en de pixeluitlijning van functioneel
-landgebruik. Overlap rond elke tegel maakt AHN-donors buiten de tegel beschikbaar.
+landgebruik. De overlap is de maximale interpolatieafstand, naar boven afgerond
+op hele pixels, plus een extra pixel voor uitlijning. Hierdoor zijn donors
+buiten de tegel beschikbaar; de extra pixel vergroot de toegestane donorafstand niet.
 Alleen de tegelkern wordt geschreven. AHN en landgebruik moeten dezelfde CRS,
 resolutie en pixeluitlijning hebben; de bewerking herschaalt ze niet stilzwijgend.
 
 ## Uitvoer
 
 - `dem.vrt` en COG `dem.tif`: AHN met geïnterpoleerde gaten en gebouwhoogten.
-- `dem_bron.vrt` en COG `dem_bron.tif`: de herkomst per cel.
+- `dem_bron.vrt` en COG `dem_bron.tif`: de herkomst van de uiteindelijke hoogte.
+- `ahn_bron.vrt` en COG `ahn_bron.tif`: terreinherkomst voor de gebouwlaag;
+  1 = origineel AHN, 3 = interpolatie, 0 = ontbrekend terrein.
 - `nodata.gpkg`, laag `nodata`: onopgeloste gebouwen en resterende AHN-gaten.
 - `gebouwhoogten.gpkg`: herbruikbare hoogten per individueel gebouw.
 - `tiles.gpkg`: de geselecteerde tegelkernen van het productiegebied.
-- Tegelkernen onder `tiles/ahn_filled`, `tiles/gebouwen` en `tiles/dem_bron`.
+- Per tegel `tiles/<tile_id>/`: `ahn_aangevuld.tif`, `ahn_bron.tif`,
+  `gebouwhoogten.tif`, `dem_bron.tif`, `nodata.gpkg`, `status.json` en `workflow.log`.
+  De tegelnaam bevat `xmin_ymin_xmax_ymax`.
 
 | `dem_bron` | Betekenis |
 | --- | --- |
@@ -69,7 +78,7 @@ resolutie en pixeluitlijning hebben; de bewerking herschaalt ze niet stilzwijgen
 | 2 | Gebouwhoogte |
 | 3 | Geïnterpoleerd AHN |
 
-Het VRT leest eerst `ahn_filled` en daarna de gebouwlaag. Gebouwhoogten krijgen
+Het VRT leest eerst `ahn_aangevuld.tif` en daarna de gebouwlaag. Gebouwhoogten krijgen
 voorrang. De hoogteopslag behoudt het AHN-datatype, schaalfactor en offset;
 nieuwe waarden worden zo nodig afgerond naar de oorspronkelijke opslageenheid.
 Hoogteoverzichten gebruiken gemiddelden; broncodes en ID's dichtstbijzijnde buren.
@@ -77,13 +86,18 @@ Hoogteoverzichten gebruiken gemiddelden; broncodes en ID's dichtstbijzijnde bure
 `nodata.gpkg` bevat `bron`, `reden`, `identificatie`, `gebouw_id`,
 `zoekafstand_m`, `donor_aantal` en geometrie. Onopgeloste gebouwen staan er
 eenmalig met hun volledige geometrie in; resterende AHN-gaten volgen de
-ontbrekende rastercellen per tegel. De productie stopt niet vanwege deze gaten.
+ontbrekende rastercellen per tegel. De tegelcontroles blijven eveneens bewaard.
+Als na het combineren nog NoData binnen een geselecteerde tegelkern aanwezig
+is, stopt de productie voordat `dem.vrt` en `dem.tif` worden gepubliceerd.
+Diagnostiek en berekende tegels blijven beschikbaar. Buiten de geselecteerde
+tegelkernen mag het rechthoekige mozaiek NoData bevatten.
+Een ontbrekende terreinwaarde mag wel door een geldige gebouwhoogte zijn bedekt.
 
 ## Aandachtspunten en beperkingen
 
 Gebouwhoogten zijn afgeleide schattingen, geen ingemeten vloerpeilen.
 De maximale zoekafstanden begrenzen welke gaten kunnen worden opgelost.
-Bekijk daarom altijd `nodata.gpkg` en `dem_bron`. De gebouwdiagnostiek kan een
+Bekijk daarom altijd `nodata.gpkg`, `ahn_bron` en `dem_bron`. De gebouwdiagnostiek kan een
 volledige geometrie tonen waarvan slechts een deel in het uitvoergebied ligt.
 Bewaar de tegelbestanden zolang het VRT nodig is.
 

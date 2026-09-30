@@ -522,7 +522,9 @@ def bouw_functioneel_landgebruik(
         Raster cell size in map units, by default 0.5.
     gap_fill_distance_m : float, optional
         Maximum donor distance in metres, default 1.0; zero disables filling.
-        A source-ID raster is always written in the sibling ``bronnen`` directory.
+        A source-ID raster is always written alongside the tile as
+        ``functioneel_landgebruik_bronnen.tif`` for standard tile-folder names;
+        legacy filenames retain the sibling ``bronnen`` directory.
     crs : str, optional
         CRS voor ``bounds`` en uitvoer. Moet bij een nieuwe berekening
         overeenkomen met :data:`waterlagen.settings.settings.crs`.

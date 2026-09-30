@@ -20,6 +20,7 @@ from waterlagen.functioneel_landgebruik.gebouwen import (
     building_paths,
     validate_buildings,
 )
+from waterlagen.functioneel_landgebruik.paths import source_path
 from waterlagen.logger import get_logger
 from waterlagen.raster.tiles import read_tiles, tile_filename, tile_from_row
 from waterlagen.settings import settings
@@ -118,7 +119,10 @@ def validate_landuse_run(path: Path, area: Area, context_m: float) -> LanduseInp
     for _, row in selected.iterrows():
         tile = tile_from_row(row)
         target = path / "tiles" / tile_filename("functioneel_landgebruik", tile)
-        for required in (target, target.parent / "bronnen" / target.name):
+        nested = path / "tiles" / tile.tile_id / "functioneel_landgebruik.tif"
+        if parameters.get("tile_layout_version") == 2 or nested.is_file():
+            target = nested
+        for required in (target, source_path(target)):
             if not required.is_file():
                 raise FileNotFoundError(required)
         validate_buildings(target, context_m)

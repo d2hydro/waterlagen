@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import logging
+import json
 from collections.abc import Collection
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import dataclass
@@ -36,9 +36,9 @@ from waterlagen.functioneel_landgebruik.nodata_verklaren import (
     merge_diagnostics,
     validate_diagnostics,
 )
-from waterlagen.logger import get_logger
+from waterlagen.logger import get_logger, tile_logging
 from waterlagen.raster.config import RasterOutputConfig
-from waterlagen.raster.tiles import Tile, read_tiles, tile_filename
+from waterlagen.raster.tiles import Tile, read_tiles
 from waterlagen.settings import settings
 
 logger = get_logger(__name__)
@@ -81,20 +81,23 @@ class FunctioneelLandgebruikTileJob:
 
 def _build_tile_worker(job: FunctioneelLandgebruikTileJob) -> Path:
     """Build one tile; write worker details to its own log instead of the terminal."""
-    log_path = job.target_path.parent / "logs" / f"{job.target_path.stem}.log"
-    log_path.parent.mkdir(parents=True, exist_ok=True)
-    worker_logger = get_logger("waterlagen")
-    old_handlers = worker_logger.handlers[:]
-    old_level = worker_logger.level
-    old_propagate = worker_logger.propagate
-    handler = logging.FileHandler(log_path, encoding="utf-8")
-    handler.setFormatter(
-        logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s")
-    )
-    worker_logger.handlers = [handler]
-    worker_logger.setLevel(logging.INFO)
-    worker_logger.propagate = False
     started = perf_counter()
+    with tile_logging(job.target_path.parent / "workflow.log"):
+        return _run_tile_job(job, started)
+
+
+def _write_tile_status(job: FunctioneelLandgebruikTileJob, status: str) -> None:
+    marker = job.target_path.parent / "status.json"
+    temporary = marker.with_suffix(".tmp.json")
+    temporary.write_text(
+        json.dumps({"tile_id": job.tile_id, "status": status, "layout_version": 2}),
+        encoding="utf-8",
+    )
+    temporary.replace(marker)
+
+
+def _run_tile_job(job: FunctioneelLandgebruikTileJob, started: float) -> Path:
+    _write_tile_status(job, "running")
     try:
         logger.info("Start tegel %s; uitsnede %s", job.tile_id, job.bounds)
         result = bouw_functioneel_landgebruik(
@@ -122,15 +125,12 @@ def _build_tile_worker(job: FunctioneelLandgebruikTileJob) -> Path:
         logger.info(
             "Tegel %s gereed in %.1f seconden", job.tile_id, perf_counter() - started
         )
+        _write_tile_status(job, "complete")
         return result
     except Exception:
+        _write_tile_status(job, "failed")
         logger.exception("Berekening tegel %s mislukt", job.tile_id)
         raise
-    finally:
-        worker_logger.handlers = old_handlers
-        worker_logger.setLevel(old_level)
-        worker_logger.propagate = old_propagate
-        handler.close()
 
 
 def _resolve_workers(workers: int | None) -> int:
@@ -199,7 +199,7 @@ def _job_from_row(
     layers: FunctioneelLandgebruikLayers,
     output_config: RasterOutputConfig,
     mapping_csv: Path | None = None,
-    diagnostics_dir: Path | None = None,
+    write_diagnostics: bool = False,
     gap_fill_distance_m: float = 1.0,
     building_index_path: Path | None = None,
     building_context_m: float = 5.0,
@@ -212,7 +212,7 @@ def _job_from_row(
         building_context_m=building_context_m,
         gap_fill_distance_m=gap_fill_distance_m,
         bounds=tile.bounds,
-        target_path=target_dir / tile_filename(LAYER_NAME, tile),
+        target_path=target_dir / tile.tile_id / "functioneel_landgebruik.tif",
         overwrite=overwrite,
         resolution_m=resolution_m,
         crs=crs,
@@ -221,9 +221,7 @@ def _job_from_row(
         output_config=output_config,
         mapping_csv=mapping_csv,
         diagnostics_path=(
-            diagnostics_dir / f"{tile.tile_id}.gpkg"
-            if diagnostics_dir is not None
-            else None
+            target_dir / tile.tile_id / "nodata.gpkg" if write_diagnostics else None
         ),
     )
 
@@ -321,7 +319,7 @@ def bouw_functioneel_landgebruik_tiles(
         CSV with land-use codes, passed unchanged to every worker.
     diagnostics_path : Path, optional
         GeoPackage met één laag ``nodata`` en de kolommen ``bron`` en ``reden``.
-        Tijdelijke tegelcontroles worden na succesvol samenvoegen verwijderd.
+        Tegelcontroles blijven bewaard in de afzonderlijke tegelmappen.
         Bij hergebruik worden ze uit het bestaande eindbestand gehaald.
         Zonder passende controle is opnieuw berekenen nodig.
     write_building_ids : bool, optional
@@ -378,12 +376,10 @@ def bouw_functioneel_landgebruik_tiles(
             layers=layers,
             output_config=output_config,
             mapping_csv=mapping_csv,
-            building_index_path=target_dir / "gebouw_index.sqlite"
+            building_index_path=target_dir.parent / "gebouw_index.sqlite"
             if write_building_ids
             else None,
-            diagnostics_dir=target_dir / ".nodata_controle"
-            if diagnostics_path is not None
-            else None,
+            write_diagnostics=diagnostics_path is not None,
         )
         for _, row in selected.iterrows()
     ]
@@ -405,6 +401,7 @@ def bouw_functioneel_landgebruik_tiles(
                         Path(diagnostics_path), job.diagnostics_path, job.target_path
                     )
                 validate_diagnostics(job.diagnostics_path, job.target_path)
+            _write_tile_status(job, "complete")
             results_by_tile_id[job.tile_id] = job.target_path
             logger.info(
                 "Skipping existing functioneel-landgebruik tile %s (%s/%s)",
@@ -442,7 +439,7 @@ def bouw_functioneel_landgebruik_tiles(
             if write_building_ids:
                 ensure_building_index(
                     sources.bag_gpkg,
-                    target_dir / "gebouw_index.sqlite",
+                    target_dir.parent / "gebouw_index.sqlite",
                     layers.bag_pand,
                 )
 
@@ -487,7 +484,7 @@ def bouw_functioneel_landgebruik_tiles(
         merge_diagnostics(
             [job.diagnostics_path for job in jobs if job.diagnostics_path is not None],
             diagnostics_path,
-            remove_sources=True,
+            remove_sources=False,
         )
 
     logger.info(

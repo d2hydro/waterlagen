@@ -1,3 +1,4 @@
+import json
 import logging
 
 import geopandas as gpd
@@ -52,9 +53,11 @@ def test_worker_logs_details_to_file_and_restores_logger(
     assert (logger.handlers, logger.level, logger.propagate) == original
     console = capsys.readouterr()
     assert "CSV-indeling" not in console.err + console.out
-    log = (tmp_path / "logs" / "test.log").read_text(encoding="utf-8")
+    log = (tmp_path / "workflow.log").read_text(encoding="utf-8")
     assert "Start tegel test" in log
     assert "laag=bgt_terrein; veld=type; 3 van 3" in log
     assert "'bouwland': 2" in log
     assert "'fruitteelt': 1" in log
     assert ("mislukt" if fails else "gereed in") in log
+    metadata = json.loads((tmp_path / "status.json").read_text())
+    assert metadata["status"] == ("failed" if fails else "complete")

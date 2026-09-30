@@ -25,6 +25,7 @@ from waterlagen.functioneel_landgebruik import (
     bouw_functioneel_landgebruik_tiles,
 )
 from waterlagen.functioneel_landgebruik.gebouwen import building_paths
+from waterlagen.functioneel_landgebruik.paths import source_path
 from waterlagen.logger import configure_logging, get_logger
 from waterlagen.raster.tiles import read_tiles, tile_filename, tile_from_row
 from waterlagen.raster.vrt import create_vrt_file
@@ -121,10 +122,21 @@ def _legacy_main(
                 / tile_filename("functioneel_landgebruik", tile_from_row(row))
                 for _, row in selected.iterrows()
             ]
+            paths = [
+                landuse_run / "tiles" / str(row.tile_id) / "functioneel_landgebruik.tif"
+                if (
+                    landuse_run
+                    / "tiles"
+                    / str(row.tile_id)
+                    / "functioneel_landgebruik.tif"
+                ).is_file()
+                else path
+                for path, row in zip(paths, selected.itertuples(), strict=True)
+            ]
             inputs = {"tile_index": tiles_path}
             for number, path in enumerate(paths):
                 inputs[f"landuse_{number}"] = path
-                inputs[f"sources_{number}"] = path.parent / "bronnen" / path.name
+                inputs[f"sources_{number}"] = source_path(path)
                 inputs[f"ids_{number}"], inputs[f"buildings_{number}"] = building_paths(
                     path
                 )
@@ -133,7 +145,7 @@ def _legacy_main(
             ("functioneel_landgebruik", paths),
             (
                 "functioneel_landgebruik_bronnen",
-                [path.parent / "bronnen" / path.name for path in paths],
+                [source_path(path) for path in paths],
             ),
             (
                 "functioneel_landgebruik_gebouw_ids",
@@ -176,7 +188,7 @@ def _legacy_main(
             overwrite=overwrite,
             workers=1,  # Preserve the legacy workflow's sequential DEM stage.
         )
-        for name in ("dem", "dem_bron"):
+        for name in ("dem", "dem_bron", "ahn_bron"):
             with (
                 rasterio.open(run.path / f"{name}.vrt") as vrt,
                 rasterio.open(run.path / f"{name}.tif") as cog,
@@ -265,7 +277,7 @@ def main(
         resume=resume,
         overwrite=overwrite,
         parameters={
-            "workflow_version": 2,
+            "workflow_version": 3,
             "config": json.loads(json.dumps(asdict(config))),
             "landuse_override": str(landuse_run.resolve()) if landuse_run else None,
             "ahn_override": str(ahn_vrt.resolve()) if ahn_vrt else None,
@@ -303,7 +315,7 @@ def main(
         }
         for number, path in enumerate(paths):
             inputs[f"landuse_{number}"] = path
-            inputs[f"sources_{number}"] = path.parent / "bronnen" / path.name
+            inputs[f"sources_{number}"] = source_path(path)
             inputs[f"ids_{number}"], inputs[f"buildings_{number}"] = building_paths(
                 path
             )
@@ -352,7 +364,7 @@ def main(
             overwrite=overwrite,
             workers=workers,
         )
-        for name in ("dem", "dem_bron"):
+        for name in ("dem", "dem_bron", "ahn_bron"):
             with (
                 rasterio.open(run.path / f"{name}.vrt") as vrt,
                 rasterio.open(run.path / f"{name}.tif") as cog,

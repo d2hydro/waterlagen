@@ -83,7 +83,13 @@ Er is geen beperking van DEM-interpolatie tot `landgebied`.
 ## Controleren en hervatten
 
 Het script vergelijkt na afloop alle pixels en grid-/schaalmetadata van de VRT's
-met de COG's. Inspecteer daarnaast `nodata.gpkg` en `dem_bron.tif`.
+met de COG's. Inspecteer daarnaast `nodata.gpkg`, `ahn_bron.tif` en `dem_bron.tif`.
+
+De interpolatieafstand is een harde grens. Blijven daarna ontbrekende hoogten
+binnen geselecteerde tegelkernen over, dan faalt de productie zonder eind-DEM.
+Bekijk de bewaarde diagnostiek; alleen een bewuste nieuwe run met andere
+invoer of instellingen kan dit oplossen. Onopgeloste gebouwschattingen blokkeren
+de uitvoer niet als de onderliggende terreinwaarde beschikbaar is.
 
 ```powershell
 pixi run dem --area alkmaar --run-id mijn_proef --workers 2
@@ -97,7 +103,10 @@ hergebruikt. Workers mogen veranderen; gewijzigde rekeninstellingen of invoer
 vereisen een nieuwe run-ID. `--overwrite` herberekent alleen de DEM-uitvoer van
 een compatibele run en overschrijft de landgebruikafhankelijkheid niet.
 
-De oude optie `--prepare-landuse` blijft als verouderde Alkmaar-route beschikbaar
-voor eerdere opdrachten. Gebruik voor nieuwe producties de automatische workflow.
-Geef bij hervatten van oudere Alkmaar-runs expliciet `--area alkmaar` en dezelfde
-oorspronkelijke invoeropties op.
+Nieuwe productie gebruikt tegelmappen volgens de
+[uitvoerstructuur](../bewerkingen/dem.md#uitvoer). Gebruik een nieuwe run-ID
+voor deze structuur en het gewijzigde NoData-beleid; eerdere DEM-runs worden
+niet automatisch gemigreerd. Geldige landgebruikinputs met de oude platte
+tegelstructuur blijven leesbaar, inclusief hun bron- en gebouwbestanden.
+De verouderde optie `--prepare-landuse` blijft beschikbaar voor expliciete
+Alkmaar-voorbereiding; gebruik voor nieuwe producties de automatische workflow.
