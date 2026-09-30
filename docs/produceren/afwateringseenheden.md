@@ -125,15 +125,18 @@ gemelde tegels. De randproblemen betreffen de situatie vóór het aanvullen.
 
 ## Uitvoermap en logging
 
-Elke productie krijgt een nieuwe uitvoermap. Bij de standaardopslag staat deze
+Elke productie krijgt standaard een nieuwe uitvoermap. Bij de standaardopslag staat deze
 onder `./data` in uw projectfolder:
 
 ```text
-data/processed_data/afwateringseenheden/waterschap_<code>_<datum-tijd>/
+data/processed_data/afwateringseenheden/waterschap_<code>/<run-id>/
 ```
 
-Voor Aa en Maas begint de mapnaam met `waterschap_38_`. De datum en tijd
-onderscheiden de producties; eerdere resultaten blijven behouden.
+Voor Aa en Maas is het werkgebied `waterschap_38`. De run-ID is standaard een
+UTC-tijdstempel. Gebruik `--run-id NAAM` voor een eigen naam, met `--resume`
+om dezelfde productie te hervatten of `--overwrite` om haar uitvoer opnieuw
+te berekenen. Zie de gedeelde [conventie voor productiemappen](configuratie.md#productiemappen)
+voor compatibiliteitscontroles en metadata. Eerdere resultaten blijven behouden.
 
 ### Bestanden in de uitvoermap
 
@@ -143,6 +146,7 @@ onderscheiden de producties; eerdere resultaten blijven behouden.
 | `watersysteem.gpkg` | Het watersysteem dat voor de berekening is voorbereid. |
 | `tiles.gpkg` | De geselecteerde tegelkernen, met voor elke tegel een `tile_id`. |
 | `afwateringseenheden.log` | Het hoofdlog met voortgang, verwerkingstijden en gemelde randproblemen. |
+| `run.json` | Productie-instellingen, bronidentiteit, pakketversie en runstatus. |
 | `tiles/<tegel-id>/` | Rasters en polygonen per rekentegel. De mapnaam komt overeen met `tile_id` in `tiles.gpkg`. |
 
 ### Logbestanden en verwerkingstijd

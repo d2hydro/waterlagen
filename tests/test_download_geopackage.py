@@ -4,7 +4,11 @@ import geopandas as gpd
 import pytest
 from shapely.geometry import Point
 
-from waterlagen._downloads import download_geopackage, validate_geopackage
+from waterlagen._downloads import (
+    DownloadPayloadError,
+    download_geopackage,
+    validate_geopackage,
+)
 from waterlagen.bag.download import download_bag_light
 from waterlagen.top10nl.download import download_top10nl
 
@@ -47,6 +51,30 @@ def _valid_gpkg_bytes(path: Path) -> bytes:
 
 def _temp_downloads_for(target: Path) -> list[Path]:
     return list(target.parent.glob(f".{target.name}.*.gpkg"))
+
+
+@pytest.mark.parametrize("encoding", [None, "identity", "gzip"])
+def test_content_length_checks_only_unencoded_bytes(monkeypatch, tmp_path, encoding):
+    payload = _valid_gpkg_bytes(tmp_path)
+    response = FakeResponse(payload)
+    # requests yields decoded bytes; a compressed response has a different wire length.
+    response.headers["Content-Length"] = str(len(payload) - 1)
+    if encoding is not None:
+        response.headers["Content-Encoding"] = encoding
+    monkeypatch.setattr(
+        "waterlagen._downloads.requests.get", lambda *args, **kwargs: response
+    )
+    target = tmp_path / "download.gpkg"
+    if encoding == "gzip":
+        download_geopackage("https://example.com/source.gpkg", target, progress=False)
+        assert target.read_bytes() == payload
+    else:
+        with pytest.raises(DownloadPayloadError):
+            download_geopackage(
+                "https://example.com/source.gpkg", target, progress=False
+            )
+        assert not target.exists()
+        assert not _temp_downloads_for(target)
 
 
 def test_download_geopackage_success(monkeypatch, tmp_path):
@@ -144,10 +172,7 @@ def test_download_bag_light_uses_shared_downloader(monkeypatch, tmp_path):
     result = download_bag_light(download_dir=tmp_path, overwrite=False)
 
     assert result == tmp_path / "bag-light.gpkg"
-    assert (
-        calls[0][0]
-        == "https://service.pdok.nl/lv/bag/atom/downloads/bag-light.gpkg"
-    )
+    assert calls[0][0] == "https://service.pdok.nl/lv/bag/atom/downloads/bag-light.gpkg"
     assert calls[0][1] == tmp_path / "bag-light.gpkg"
     assert calls[0][2] is False
     assert calls[0][4] == "EPSG:28992"

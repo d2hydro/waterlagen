@@ -30,6 +30,7 @@ def test_scripts_prepare_shared_cbs_and_vbo_buurt_data(
     events = []
     data_store = SimpleNamespace(
         data_dir=tmp_path / "data",
+        processed_data_dir=tmp_path / "processed",
         administratieve_gebieden_dir=tmp_path / "source" / "administratieve_gebieden",
         cbs_dir=tmp_path / "source" / "cbs",
         bag_dir=tmp_path / "source" / "bag",
@@ -58,11 +59,11 @@ def test_scripts_prepare_shared_cbs_and_vbo_buurt_data(
 
     def fake_bouw_inwoners(**kwargs):
         events.append(("bouw_inwoners", kwargs))
-        return SimpleNamespace(target_path=data_store.inwoners_path)
+        return SimpleNamespace(target_path=kwargs["target_path"])
 
     def fake_bouw_autos(**kwargs):
         events.append(("bouw_autos", kwargs))
-        return SimpleNamespace(target_path=data_store.autos_path)
+        return SimpleNamespace(target_path=kwargs["target_path"])
 
     monkeypatch.setattr(script, "init_logger", fake_init_logger)
     monkeypatch.setattr(
@@ -77,7 +78,9 @@ def test_scripts_prepare_shared_cbs_and_vbo_buurt_data(
     else:
         monkeypatch.setattr(script, "bouw_autos", fake_bouw_autos)
 
-    result = script.main(data_store=data_store)
+    dataset = "inwoners" if script_name == "inwoners.py" else "autos"
+    run_dir = data_store.processed_data_dir / dataset / "nederland" / "test"
+    result = script.main(data_store=data_store, run_id="test")
 
     expected_events = [
         "init_logger",
@@ -89,16 +92,12 @@ def test_scripts_prepare_shared_cbs_and_vbo_buurt_data(
         expected_events.append("bouw_inwoners")
     else:
         expected_events.append("bouw_autos")
-    assert result == (
-        data_store.inwoners_path
-        if script_name == "inwoners.py"
-        else data_store.autos_path
-    )
+    assert result == run_dir / f"{dataset}.gpkg"
     assert [event[0] for event in events] == expected_events
     assert events[0][1] == {
         "name": logger_name,
         "debug": False,
-        "log_file": data_store.data_dir / f"{logger_name}.log",
+        "log_file": run_dir / f"{logger_name}.log",
     }
     assert events[1][1] == {
         "download_dir": data_store.administratieve_gebieden_dir,
@@ -120,9 +119,9 @@ def test_scripts_prepare_shared_cbs_and_vbo_buurt_data(
         assert events[4][1] == {
             "bag_vbo_path": data_store.bag_vbo_path,
             "cbs_buurt_path": data_store.cbs_buurt_path,
-            "target_path": data_store.inwoners_path,
+            "target_path": run_dir / "inwoners.gpkg",
             "overwrite": False,
-            "geoparquet_path": data_store.inwoners_parquet_path,
+            "geoparquet_path": run_dir / "inwoners.parquet",
             "write_geoparquet": script.WRITE_GEOPARQUET,
         }
     else:
@@ -130,8 +129,16 @@ def test_scripts_prepare_shared_cbs_and_vbo_buurt_data(
             "bag_vbo_path": data_store.bag_vbo_path,
             "cbs_buurt_path": data_store.cbs_buurt_path,
             "cbs_buurtgegevens_path": data_store.cbs_dir / "buurtgegevens_2025.json",
-            "target_path": data_store.autos_path,
+            "target_path": run_dir / "autos.gpkg",
             "overwrite": False,
-            "geoparquet_path": data_store.autos_parquet_path,
+            "geoparquet_path": run_dir / "autos.parquet",
             "write_geoparquet": script.WRITE_GEOPARQUET,
         }
+
+    for mode in ("resume", "overwrite"):
+        events.clear()
+        assert (
+            script.main(data_store=data_store, run_id="test", **{mode: True}) == result
+        )
+        assert events[-1][1]["overwrite"] is (mode == "overwrite")
+        assert events[3][1]["overwrite"] is False  # Shared intermediates stay reusable.

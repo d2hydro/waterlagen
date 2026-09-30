@@ -1,13 +1,21 @@
 # %%
 import argparse
+import hashlib
 import multiprocessing
 import os
 from collections.abc import Sequence
-from datetime import UTC, datetime
+from pathlib import Path
 
 from shapely.geometry.base import BaseGeometry
 
 from waterlagen import datastore
+from waterlagen._production import (
+    ProductionRun,
+    add_run_arguments,
+    default_run_id,
+    production_run,
+    validate_run_options,
+)
 from waterlagen.administratieve_gebieden import (
     DEFAULT_BESTUURLIJKE_GEBIEDEN_YEAR,
     download_bestuurlijke_gebieden,
@@ -67,6 +75,7 @@ def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         default=settings.afwateringseenheden_workers,
         help="Maximaal aantal gelijktijdige rekenprocessen per waterschap",
     )
+    add_run_arguments(parser)
     args = parser.parse_args(argv)
     if args.workers < 1:
         parser.error("--workers moet een geheel getal van minstens 1 zijn")
@@ -74,9 +83,16 @@ def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
 
 
 def main(
-    *, waterbeheercodes: Sequence[str] | None = None, workers: int | None = None
+    *,
+    waterbeheercodes: Sequence[str] | None = None,
+    workers: int | None = None,
+    run_id: str | None = None,
+    resume: bool = False,
+    overwrite: bool = False,
 ) -> None:
     """Bereken de geselecteerde waterschappen achter elkaar, elk in een eigen map."""
+    validate_run_options(run_id, resume=resume, overwrite=overwrite)
+    run_id = run_id or default_run_id()
     if waterbeheercodes is None:
         waterbeheercodes = [WATERBEHEERCODE]
     codes = list(dict.fromkeys(_waterbeheercode(code) for code in waterbeheercodes))
@@ -117,23 +133,74 @@ def main(
             waterschapsgrenzen["waterbeheercode"] == code, "geometry"
         ].make_valid()
         spatial_mask = administratief_gebied.union_all().buffer(BUFFER_M)
-        _produce_waterschap(code, spatial_mask, workers=workers)
+        _produce_waterschap(
+            code,
+            spatial_mask,
+            workers=workers,
+            run_id=run_id,
+            resume=resume,
+            overwrite=overwrite,
+            boundaries_path=download.target_path,
+        )
 
 
 def _produce_waterschap(
-    waterbeheercode: str, spatial_mask: BaseGeometry, *, workers: int
+    waterbeheercode: str,
+    spatial_mask: BaseGeometry,
+    *,
+    workers: int,
+    run_id: str | None = None,
+    resume: bool = False,
+    overwrite: bool = False,
+    boundaries_path: Path | None = None,
 ) -> None:
-    """Produceer één waterschap met vaste rekeninstellingen en eigen uitvoer."""
-    timestamp = datetime.now(UTC).astimezone().strftime("%Y%m%d_%H%M%S_%f")
-    run_dir = (
-        datastore.afwateringseenheden_path / f"waterschap_{waterbeheercode}_{timestamp}"
-    )
-    run_dir.mkdir(parents=True, exist_ok=False)
+    """Produceer een waterschap in een nieuwe of expliciet hervatte run."""
+    with production_run(
+        datastore.processed_data_dir,
+        "afwateringseenheden",
+        f"waterschap_{waterbeheercode}",
+        run_id=run_id,
+        resume=resume,
+        overwrite=overwrite,
+        parameters={
+            "crs": settings.crs,
+            "waterbeheercode": waterbeheercode,
+            "buffer_m": BUFFER_M,
+            "burn_depth_m": BURN_DEPTH_M,
+            "max_fill_depth_m": MAX_FILL_DEPTH_M,
+            "tile_size_m": TILE_SIZE_M,
+            "tile_buffer_m": TILE_BUFFER_M,
+            "random_seed": RANDOM_SEED,
+            "engine": ENGINE,
+            "bestuurlijke_gebieden_year": DEFAULT_BESTUURLIJKE_GEBIEDEN_YEAR,
+            "mask_sha256": hashlib.sha256(spatial_mask.wkb).hexdigest(),
+        },
+    ) as run:
+        _produce(
+            run,
+            waterbeheercode,
+            spatial_mask,
+            workers=workers,
+            overwrite=overwrite,
+            boundaries_path=boundaries_path,
+        )
+
+
+def _produce(
+    run: ProductionRun,
+    waterbeheercode: str,
+    spatial_mask: BaseGeometry,
+    *,
+    workers: int,
+    overwrite: bool,
+    boundaries_path: Path | None,
+) -> None:
+    run_dir = run.path
     logger = init_logger(
         name="afwateringseenheden",
         log_file=run_dir / "afwateringseenheden.log",
     )
-    logger.info("Nieuwe uitvoermap voor waterschap %s: %s", waterbeheercode, run_dir)
+    logger.info("Productie-uitvoermap voor waterschap %s: %s", waterbeheercode, run_dir)
     logger.info(
         "Instellingen: waterbeheercode=%s, buffer_m=%s, tile_size_m=%s, "
         "tile_buffer_m=%s, burn_depth_m=%s, max_fill_depth_m=%s, random_seed=%s, workers=%s",
@@ -157,6 +224,14 @@ def _produce_waterschap(
 
     # Selecteer het watersysteem opnieuw: de algemene cache kan een ander gebied zijn.
     hydamo = download_hydamo(overwrite=False)
+    run.record_inputs(
+        {
+            "ahn": dtm,
+            "hydamo": hydamo.target_path,
+            "landsgrens": bestuurlijke_gebieden.target_path,
+            "waterschapsgrenzen": boundaries_path,
+        }
+    )
     hydroobjecten = read_hydroobjecten(
         hydamo.target_path,
         spatial_selection=spatial_mask,
@@ -183,7 +258,7 @@ def _produce_waterschap(
         hydroobject_secundair=hydroobject_secundair,
         watersysteem=watersysteem,
         output_path=run_dir / "watersysteem.gpkg",
-        overwrite=False,
+        overwrite=overwrite,
     )
 
     # Bij het samenvoegen worden lijnrestjes verwijderd en lege delen aangevuld
@@ -202,7 +277,7 @@ def _produce_waterschap(
         engine=ENGINE,
         workers=workers,
         random_seed=RANDOM_SEED,
-        overwrite=False,
+        overwrite=overwrite,
     )
     logger.info(
         "Waterschap %s klaar: %s tegels, %s overgeslagen, "
