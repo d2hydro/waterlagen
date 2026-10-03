@@ -4,12 +4,15 @@ import os
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
+from uuid import uuid4
 from xml.etree import ElementTree as ET
 
 from osgeo import gdal
 
+from waterlagen._filesystem import replace_file
 from waterlagen.functioneel_landgebruik.landgebruikstabel import LanduseTable
 from waterlagen.logger import get_logger
+from waterlagen.raster.vrt import create_cog_file, validate_raster_attribute_table
 
 logger = get_logger(__name__)
 
@@ -58,14 +61,8 @@ def _read_qgis_palette(style_path: Path) -> list[PaletteEntry]:
     return entries
 
 
-def write_raster_attribute_table(raster_path: Path, style_path: Path) -> Path:
-    """Write the QGIS palette as a portable GDAL RAT beside a finished COG.
-
-    The RAT is stored in ``<raster>.aux.xml`` for GDAL versions used by QGIS
-    3.30. Opening the COG read-only leaves its tiles and overviews untouched.
-    """
-    raster_path = Path(raster_path)
-    entries = _read_qgis_palette(Path(style_path))
+def _build_raster_attribute_table(style_path: Path) -> gdal.RasterAttributeTable:
+    entries = _read_qgis_palette(style_path)
     rat = gdal.RasterAttributeTable()
     columns = (
         ("Value", gdal.GFT_Integer, gdal.GFU_MinMax),
@@ -86,37 +83,124 @@ def write_raster_attribute_table(raster_path: Path, style_path: Path) -> Path:
         ):
             rat.SetValueAsInt(row, column, channel)
 
-    sidecar = raster_path.with_name(f"{raster_path.name}.aux.xml")
-    with gdal.config_option("GTIFF_WRITE_RAT_TO_PAM", "YES"):
-        dataset = gdal.Open(str(raster_path), gdal.GA_ReadOnly)
-        if dataset is None:
-            raise ValueError(f"Raster kan niet worden geopend voor RAT: {raster_path}")
-        try:
-            if dataset.GetRasterBand(1).SetDefaultRAT(rat) != gdal.CE_None:
-                raise RuntimeError(f"RAT schrijven mislukt: {raster_path}")
-        finally:
-            dataset = None
+    return rat
 
-    if not sidecar.is_file():
-        raise RuntimeError(f"RAT-bijlage ontbreekt: {sidecar}")
-    dataset = gdal.Open(str(raster_path), gdal.GA_ReadOnly)
+
+def write_raster_attribute_table(raster_path: Path, style_path: Path) -> Path:
+    """Atomically write an identical PAM RAT without modifying the raster.
+
+    Parameters
+    ----------
+    raster_path, style_path : pathlib.Path
+        Destination raster and its exact-value QGIS palette.
+
+    Returns
+    -------
+    pathlib.Path
+        The ``.tif.aux.xml`` compatibility sidecar.
+    """
+    rat = _build_raster_attribute_table(style_path)
+    if not raster_path.is_file():
+        raise ValueError(f"Raster ontbreekt voor RAT: {raster_path}")
+    # Let GDAL serialize the PAM schema using a tiny disposable raster. This
+    # also works when the destination already contains the same embedded RAT.
+    scratch = f"/vsimem/rat-{uuid4().hex}.tif"
+    dataset = None
     try:
-        saved = dataset.GetRasterBand(1).GetDefaultRAT()
-        if saved is None or saved.GetRowCount() != len(entries):
-            raise RuntimeError(f"RAT is niet volledig opgeslagen: {sidecar}")
-        for row, entry in enumerate(entries):
-            values = tuple(saved.GetValueAsInt(row, column) for column in range(2, 6))
-            if (
-                saved.GetValueAsInt(row, 0) != entry.value
-                or saved.GetValueAsString(row, 1) != entry.label
-                or values != (entry.red, entry.green, entry.blue, entry.alpha)
-            ):
-                raise RuntimeError(f"RAT wijkt af van de QGIS-legenda: {sidecar}")
+        with gdal.config_option("GTIFF_WRITE_RAT_TO_PAM", "YES"):
+            dataset = gdal.GetDriverByName("GTiff").Create(scratch, 1, 1, 1)
+            dataset.GetRasterBand(1).SetDefaultRAT(rat)
+            dataset = None
+        validate_raster_attribute_table(Path(scratch), rat)
+        generated = ET.fromstring(
+            bytes(gdal.VSIGetMemFileBuffer_unsafe(scratch + ".aux.xml"))
+        )
     finally:
-        saved = None
         dataset = None
+        gdal.Unlink(scratch)
+        gdal.Unlink(scratch + ".aux.xml")
+    sidecar = raster_path.with_name(f"{raster_path.name}.aux.xml")
+    root = ET.parse(sidecar).getroot() if sidecar.exists() else ET.Element("PAMDataset")
+    band = root.find("./PAMRasterBand[@band='1']")
+    if band is None:
+        band = ET.SubElement(root, "PAMRasterBand", band="1")
+    for previous in band.findall("GDALRasterAttributeTable"):
+        band.remove(previous)
+    band.append(generated.find("./PAMRasterBand/GDALRasterAttributeTable"))
+    temporary = sidecar.with_suffix(".tmp.xml")
+    try:
+        ET.ElementTree(root).write(temporary, encoding="utf-8", xml_declaration=False)
+        replace_file(temporary, sidecar)
+    finally:
+        temporary.unlink(missing_ok=True)
     logger.info("Rasterattribuuttabel geschreven: %s", sidecar)
     return sidecar
+
+
+def create_landuse_cog(
+    vrt_path: Path, raster_path: Path, style_path: Path, *, overwrite: bool = False
+) -> Path:
+    """Publish a land-use COG with matching embedded and sidecar RATs.
+
+    Parameters
+    ----------
+    vrt_path, raster_path, style_path : pathlib.Path
+        Land-use mosaic, destination COG and the canonical QGIS palette.
+    overwrite : bool
+        Rebuild the COG. Otherwise reuse a matching embedded RAT, or upgrade
+        a previous sidecar-only COG using the existing VRT.
+
+    Returns
+    -------
+    pathlib.Path
+        Validated COG. Both RAT representations are required for completion.
+    """
+    if int(gdal.VersionInfo()) < 3120000:
+        raise RuntimeError("Embedded raster attribute tables require GDAL >= 3.12")
+    rat = _build_raster_attribute_table(style_path)
+    reuse = raster_path.is_file() and not overwrite
+    if reuse:
+        try:
+            validate_raster_attribute_table(raster_path, rat, embedded=True)
+        except ValueError:
+            reuse = False
+    final_sidecar = raster_path.with_name(raster_path.name + ".aux.xml")
+    backup_sidecar = final_sidecar.with_name(final_sidecar.name + ".previous")
+    if reuse:
+        write_raster_attribute_table(raster_path, style_path)
+        backup_sidecar.unlink(missing_ok=True)
+        logger.info("Reusing land-use COG with embedded RAT: %s", raster_path)
+        return raster_path
+    staged = raster_path.with_name(f"{raster_path.stem}.publish.tif")
+    sidecar = staged.with_name(staged.name + ".aux.xml")
+    preserve_staged = False
+    try:
+        sidecar.unlink(missing_ok=True)
+        create_cog_file(vrt_path, staged, overwrite=True, raster_attribute_table=rat)
+        write_raster_attribute_table(staged, style_path)
+        validate_raster_attribute_table(staged, rat, embedded=True)
+        validate_raster_attribute_table(staged, rat)
+        # Remove the old external RAT before publishing the new embedded one;
+        # otherwise an interrupted second rename could expose conflicting tables.
+        if final_sidecar.exists():
+            replace_file(final_sidecar, backup_sidecar)
+        try:
+            replace_file(staged, raster_path)
+            replace_file(sidecar, final_sidecar)
+        except OSError:
+            if staged.exists() and backup_sidecar.exists():
+                replace_file(backup_sidecar, final_sidecar)
+            raise
+        backup_sidecar.unlink(missing_ok=True)
+    except PermissionError:
+        preserve_staged = True
+        logger.error("Validated land-use export retained for recovery: %s", staged)
+        raise
+    finally:
+        if not preserve_staged:
+            staged.unlink(missing_ok=True)
+            sidecar.unlink(missing_ok=True)
+    return raster_path
 
 
 def build_colormap(table: LanduseTable) -> dict[int, tuple[int, int, int, int]]:

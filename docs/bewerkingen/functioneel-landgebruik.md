@@ -426,3 +426,14 @@ Tegels worden met een overlappende marge berekend en daarna teruggesneden,
 zodat ook donoren in een aangrenzende tegel beschikbaar zijn. De NoData-controle
 wordt na het aanvullen gemaakt. Het bronnenraster onderscheidt oorspronkelijke
 en aangevulde cellen niet; de zoekafstand en donormapping staan in de metadata.
+
+
+## Rasterattribuuttabel
+
+Het samengestelde landgebruikraster bevat een ingebedde rasterattribuuttabel
+(RAT) met de kolommen `Value`, `Name`, `Red`, `Green`, `Blue` en `Alpha`.
+De pixelcodes, omschrijvingen en kleuren komen uit hetzelfde palet als de
+QGIS-stijl. Een identieke `.tif.aux.xml`-bijlage ondersteunt oudere lezers.
+Beide tabellen worden samen bijgewerkt en gecontroleerd. Dit verandert de
+classificatie en rasterwaarden niet. Zie [productie en uitvoer](../produceren/landgebruik.md)
+voor hergebruik en het delen van bestanden.

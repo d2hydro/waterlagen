@@ -9,7 +9,9 @@ from math import isfinite
 from pathlib import Path
 
 import pyogrio
+from osgeo import gdal
 
+from waterlagen._filesystem import replace_file
 from waterlagen._geopackage import write_geopackage_layer_atomically
 from waterlagen._production import ProductionRun, production_run
 from waterlagen.areas import Area, resolve_workers, select_area_tiles
@@ -25,8 +27,8 @@ from waterlagen.functioneel_landgebruik.landgebruikstabel import (
     load_landuse_table,
 )
 from waterlagen.functioneel_landgebruik.legenda import (
+    create_landuse_cog,
     write_qgis_style,
-    write_raster_attribute_table,
 )
 from waterlagen.functioneel_landgebruik.paths import building_paths, source_path
 from waterlagen.logger import configure_logging, get_logger
@@ -145,6 +147,8 @@ def _produce(
     workers: int,
     building_context_m: float,
 ) -> Path:
+    if int(gdal.VersionInfo()) < 3120000:
+        raise RuntimeError("Embedded raster attribute tables require GDAL >= 3.12")
     output = run.path
     configure_logging(log_file=output / "productie.log", stdout=True)
     logger = get_logger(__name__)
@@ -178,7 +182,7 @@ def _produce(
         temporary.write_text(
             json.dumps(status, ensure_ascii=False, indent=2), encoding="utf-8"
         )
-        temporary.replace(output / "status.json")
+        replace_file(temporary, output / "status.json")
         logger.info("%s", name)
 
     try:
@@ -256,13 +260,9 @@ def _produce(
             vrt_file=output / "functioneel_landgebruik.vrt", files=result
         )
         stage(f"GeoTIFF maken voor {area.value}")
-        tif = create_cog_file(
-            vrt_file=vrt,
-            cog_file=output / "functioneel_landgebruik.tif",
-            overwrite=overwrite,
-        )
+        tif = output / "functioneel_landgebruik.tif"
         style = write_qgis_style(tif, table)
-        write_raster_attribute_table(tif, style)
+        create_landuse_cog(vrt, tif, style, overwrite=overwrite)
         stage("Bronnenraster samenstellen")
         sources_vrt = create_vrt_file(
             vrt_file=output / "functioneel_landgebruik_bronnen.vrt",

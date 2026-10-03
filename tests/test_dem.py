@@ -26,6 +26,7 @@ def default_dem_workers(monkeypatch):
     from waterlagen.settings import settings
 
     monkeypatch.setattr(settings, "dem_workers", 1)
+    monkeypatch.setattr(settings, "dem_building_workers", 1)
 
 
 def write_ahn(path, data, *, scale=1.0, offset=0.0):
@@ -165,6 +166,7 @@ def test_dem_pipeline_provenance_precedence_cogs_and_resume(
     assert heights.loc[heights.gebouw_id == 1, "hoogte_m"].iloc[0] == 4.0
     diagnostics = wgpd.read_file(result.parent / "nodata.gpkg", layer="nodata")
     unresolved = diagnostics[diagnostics.bron == "Gebouw"]
+    assert unresolved.categorie.eq("Gebouw").all()
     assert set(unresolved.identificatie) == {"9999999999999999", "9999999999999998"}
     assert unresolved.zoekafstand_m.eq(5).all()
     assert unresolved.geometry.notna().all()
@@ -283,13 +285,12 @@ def test_dem_donor_only_in_neighbouring_tile(tmp_path, landuse_inputs):
     ahn = write_ahn(tmp_path / "edge.tif", data)
     config = DemConfig(interpolation_max_distance_m=2)
     output = tmp_path / "edge_dem"
-    with pytest.raises(ValueError, match="NoData cells inside selected tile cores"):
-        bouw_dem_tiles(
-            output, ahn_vrt_path=ahn, landuse_tiles=landuse_inputs, config=config
-        )
-    assert not (output / "dem.tif").exists()
-    assert not (output / "dem.vrt").exists()
-    assert not (output / "dem_complete.json").exists()
+    bouw_dem_tiles(
+        output, ahn_vrt_path=ahn, landuse_tiles=landuse_inputs, config=config
+    )
+    assert (output / "dem.tif").exists()
+    assert (output / "dem.vrt").exists()
+    assert (output / "dem_complete.json").exists()
     assert (output / "nodata.gpkg").is_file()
     # Upper left core has no donor itself; the right neighbour supplies its edge.
     tile_paths = _tile_paths(output, landuse_inputs[2])
@@ -411,6 +412,7 @@ def test_parallel_tiles_match_sequential_and_resume_with_different_workers(
         landuse_tiles=landuse_inputs,
         config=config,
         workers=2,
+        building_workers=2,
     )
     for name in ("dem.tif", "dem_bron.tif", "ahn_bron.tif"):
         np.testing.assert_array_equal(
@@ -425,6 +427,130 @@ def test_parallel_tiles_match_sequential_and_resume_with_different_workers(
         workers=1,
     )
     assert parallel.stat().st_mtime_ns == before
+
+
+@pytest.fixture
+def height_batches(tmp_path, landuse_inputs, monkeypatch):
+    import waterlagen.dem.productie as production
+
+    buildings = gpd.GeoDataFrame(
+        {"gebouw_id": [1, 2, 3], "identificatie": ["a", "b", "c"]},
+        geometry=[box(30, 30, 34, 34), box(8, 8, 10, 10), box(40, 8, 42, 10)],
+        crs=28992,
+    )
+    selected = [{1, 2}, {1, 3}, {1}, {1}]
+    selection = dict(zip(landuse_inputs, selected, strict=True))
+    monkeypatch.setattr(
+        production,
+        "_read_buildings",
+        lambda tiles, context_m: (buildings.copy(), selection[tiles[0]]),
+    )
+    values = np.indices((64, 64)).sum(axis=0).astype("float32")
+    # The shared building needs multiple search-buffer iterations.
+    values[28:36, 28:36] = -9999
+    ahn = write_ahn(tmp_path / "batch_ahn.tif", values)
+    return landuse_inputs, ahn
+
+
+def test_height_batches_parallel_match_serial_and_assign_ids_once(
+    tmp_path, height_batches
+):
+    import pandas as pd
+
+    from waterlagen.dem.productie import _prepare_heights
+
+    tiles, ahn = height_batches
+    outputs = []
+    for workers in (1, 2):
+        folder = tmp_path / f"heights_{workers}"
+        folder.mkdir()
+        target = folder / "gebouwhoogten.gpkg"
+        with rasterio.open(ahn) as source:
+            _prepare_heights(tiles, source, target, DemConfig(), False, workers)
+        outputs.append(
+            wgpd.read_file(target).sort_values("gebouw_id").reset_index(drop=True)
+        )
+        batches = [
+            wgpd.read_file(p) for p in (folder / "gebouwhoogten_batches").glob("*.gpkg")
+        ]
+        assert len(batches) == 2
+        ids = pd.concat(batches).gebouw_id
+        assert ids.is_unique
+        assert set(ids) == {1, 2, 3}
+    pd.testing.assert_frame_equal(outputs[0], outputs[1])
+    assert outputs[1].loc[outputs[1].gebouw_id == 1, "zoekafstand_m"].iloc[0] > 1
+
+
+def test_height_batches_resume_after_merge_failure(
+    tmp_path, height_batches, monkeypatch
+):
+    import json
+
+    import waterlagen.dem.productie as production
+
+    tiles, ahn = height_batches
+    target = tmp_path / "gebouwhoogten.gpkg"
+    original = production._append_heights
+    calls = 0
+
+    def fail_second_append(path, heights):
+        nonlocal calls
+        calls += 1
+        if calls == 2:
+            raise OSError("interrupted merge")
+        return original(path, heights)
+
+    monkeypatch.setattr(production, "_append_heights", fail_second_append)
+    with (
+        rasterio.open(ahn) as source,
+        pytest.raises(OSError, match="interrupted merge"),
+    ):
+        production._prepare_heights(tiles, source, target, DemConfig(), False)
+    assert target.with_suffix(".tmp.gpkg").exists()
+    assert not target.exists()
+    monkeypatch.setattr(production, "_append_heights", original)
+
+    def no_recalculation(*args, **kwargs):
+        raise AssertionError("Completed batches must be reused")
+
+    monkeypatch.setattr(production, "calculate_building_elevations", no_recalculation)
+    with rasterio.open(ahn) as source:
+        production._prepare_heights(tiles, source, target, DemConfig(), False)
+    heights = wgpd.read_file(target)
+    assert set(heights.gebouw_id) == {1, 2, 3}
+    assert heights.gebouw_id.is_unique
+    status = json.loads((tmp_path / "gebouwhoogten_status.json").read_text())
+    assert status["stage"] == "complete"
+    assert status["completed_tiles"] == status["total_tiles"] == 4
+    assert status["completed_buildings"] == 3
+
+
+@pytest.mark.parametrize("recovery", [False, True])
+def test_height_batches_reuse_legacy_partial_table(
+    tmp_path, height_batches, monkeypatch, recovery
+):
+    import waterlagen.dem.productie as production
+
+    tiles, ahn = height_batches
+    target = tmp_path / "gebouwhoogten.gpkg"
+    buildings, _ = production._read_buildings([tiles[0]], 5)
+    with rasterio.open(ahn) as source:
+        cached = calculate_building_elevations(buildings, {1, 2}, source, DemConfig())
+    suffix = ".resume.gpkg" if recovery else ".tmp.gpkg"
+    cached.to_file(target.with_suffix(suffix), layer="gebouwen")
+    original = production.calculate_building_elevations
+    sampled = []
+
+    def track(buildings, ids, ahn, config):
+        sampled.extend(ids)
+        return original(buildings, ids, ahn, config)
+
+    monkeypatch.setattr(production, "calculate_building_elevations", track)
+    with rasterio.open(ahn) as source:
+        production._prepare_heights(tiles, source, target, DemConfig(), False)
+    assert sampled == [3]
+    heights = wgpd.read_file(target).set_index("gebouw_id")
+    np.testing.assert_array_equal(heights.loc[[1, 2], "hoogte_m"], cached.hoogte_m)
 
 
 @pytest.mark.parametrize("nested", [False, True])
@@ -503,7 +629,15 @@ def test_landuse_run_validation_checks_real_companions(
     script = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(script)
     monkeypatch.setattr(script, "configure_logging", lambda **kwargs: None)
-    store = SimpleNamespace(processed_data_dir=tmp_path / "processed")
+    boundary_dir = tmp_path / "boundaries"
+    boundary_dir.mkdir()
+    gpd.GeoDataFrame(geometry=[box(0, 0, 64, 64)], crs=28992).to_file(
+        boundary_dir / "BestuurlijkeGebieden_2026.gpkg", layer="landgebied"
+    )
+    store = SimpleNamespace(
+        processed_data_dir=tmp_path / "processed",
+        administratieve_gebieden_dir=boundary_dir,
+    )
     ahn = write_ahn(tmp_path / "entry_ahn.tif", np.ones((64, 64), dtype="float32"))
     result = script.main(
         data_store=store, landuse_run=run, ahn_vrt=ahn, workers=1, run_id="entry"
@@ -551,6 +685,151 @@ def test_dem_only_requires_coverage_inside_selected_cores(tmp_path, landuse_inpu
         assert (folder / "workflow.log").is_file()
         assert (folder / "status.json").is_file()
         assert (folder / "nodata.gpkg").is_file()
+
+
+def test_coverage_counts_water_outside_and_unknown_landuse(tmp_path):
+    from waterlagen.dem.productie import DemTilePaths, _check_coverage
+
+    missing = np.full((4, 4), -9999, dtype="float32")
+    terrain = write_ahn(tmp_path / "terrain.tif", missing)
+    overlay = missing.copy()
+    overlay[0, 0] = 12
+    buildings = write_ahn(tmp_path / "buildings.tif", overlay)
+    classes = np.full((4, 4), 78, dtype="int16")
+    classes[1, 0], classes[2, 0], classes[3, 0] = 100, 228, 0
+    landuse = write_ahn(tmp_path / "landuse.tif", classes)
+    boundary = tmp_path / "boundary.gpkg"
+    gpd.GeoDataFrame(geometry=[box(0, 0, 1.6, 4)], crs=28992).to_file(
+        boundary, layer="landgebied"
+    )
+    paths = DemTilePaths(terrain, buildings, terrain, terrain, terrain)
+    counts = _check_coverage([paths], [landuse], boundary)
+    assert counts.outside_landgebied == 8
+    assert counts.open_water == 2
+    assert counts.inside_landgebied_nonwater == 5  # Includes the unknown class 0.
+    counts = _check_coverage([paths], [landuse], None)
+    assert counts.outside_landgebied == 0
+    assert counts.inside_landgebied_nonwater == 13
+
+
+def test_diagnostics_split_ahn_gaps_before_building_overlay(tmp_path, landuse_inputs):
+    from rasterio.features import rasterize
+
+    data = np.full((64, 64), 10, dtype="float32")
+    data[:2, :3] = -9999
+    data[32, 32] = -9999  # Valid building height will cover this AHN gap.
+    ahn = write_ahn(tmp_path / "categories_ahn.tif", data)
+    with rasterio.open(landuse_inputs[2], "r+") as landuse_raster:
+        values = landuse_raster.read(1)
+        values[:2, :3] = 78
+        values[0, :3] = [100, 228, 0]
+        landuse_raster.write(values, 1)
+    result = bouw_dem_tiles(
+        tmp_path / "categories",
+        ahn_vrt_path=ahn,
+        landuse_tiles=landuse_inputs,
+        config=DemConfig(interpolation_max_distance_m=0),
+    )
+    diagnostics = wgpd.read_file(result.parent / "nodata.gpkg", layer="nodata")
+    ahn_gaps = diagnostics[diagnostics.bron == "AHN"]
+    assert ahn_gaps.groupby("categorie").geometry.apply(
+        lambda s: s.area.sum()
+    ).to_dict() == {
+        "AHN_water": 2.0,
+        "AHN_overig": 5.0,
+    }
+    with rasterio.open(result) as raster:
+        categories = rasterize(
+            [
+                (row.geometry, 1 if row.categorie == "AHN_water" else 2)
+                for row in ahn_gaps.itertuples()
+            ],
+            out_shape=raster.shape,
+            transform=raster.transform,
+        )
+    assert categories[0, :3].tolist() == [1, 1, 2]
+    assert categories[1, :3].tolist() == [2, 2, 2]
+    assert categories[32, 32] == 2
+    assert read(result)[32, 32] == 10
+    missing = read(result) == -9999
+    assert missing.sum() == 6
+    np.testing.assert_array_equal(
+        missing, np.isnan(read(result.parent / "dem_float.tif"))
+    )
+
+
+def test_new_coverage_policy_reuses_unpublished_legacy_tiles(
+    tmp_path, landuse_inputs, monkeypatch
+):
+    import json
+
+    import waterlagen.dem.productie as production
+
+    data = np.full((64, 64), 10, dtype="float32")
+    data[:, :32] = -9999
+    ahn = write_ahn(tmp_path / "coverage_ahn.tif", data)
+    output = tmp_path / "coverage_dem"
+    config = DemConfig(interpolation_max_distance_m=2)
+    original_cog = production.create_cog_file
+
+    def fail_export(*args, **kwargs):
+        raise RuntimeError("Interrupted before export")
+
+    monkeypatch.setattr(production, "create_cog_file", fail_export)
+    with pytest.raises(RuntimeError, match="Interrupted before export"):
+        bouw_dem_tiles(
+            output, ahn_vrt_path=ahn, landuse_tiles=landuse_inputs, config=config
+        )
+    monkeypatch.setattr(production, "create_cog_file", original_cog)
+    # Simulate the previous diagnostic schema without invalidating tile rasters.
+    for tile in landuse_inputs:
+        paths = _tile_paths(output, tile)
+        legacy = wgpd.read_file(paths.diagnostics).drop(columns="categorie")
+        legacy.to_file(paths.diagnostics, layer="nodata")
+        paths.diagnostics.with_name("diagnostics.json").unlink()
+    # A run made before the coverage-policy update has no validation manifest.
+    (output / "dem_coverage_inputs.json").unlink()
+    before = {
+        _tile_paths(output, p).terrain: _tile_paths(output, p)
+        .terrain.stat()
+        .st_mtime_ns
+        for p in landuse_inputs
+    }
+    height_time = (output / "gebouwhoogten.gpkg").stat().st_mtime_ns
+    boundary = tmp_path / "boundary.gpkg"
+    gpd.GeoDataFrame(geometry=[box(32, 0, 64, 64)], crs=28992).to_file(
+        boundary, layer="landgebied"
+    )
+
+    def no_recalculation(*args, **kwargs):
+        raise AssertionError("Existing tiles and heights must be reused")
+
+    monkeypatch.setattr(production, "calculate_building_elevations", no_recalculation)
+    monkeypatch.setattr(interpolate, "interpolate_masked", no_recalculation)
+    result = bouw_dem_tiles(
+        output,
+        ahn_vrt_path=ahn,
+        landuse_tiles=landuse_inputs,
+        config=config,
+        landgebied_path=boundary,
+    )
+    assert result.is_file()
+    assert (output / "dem_float.tif").is_file()
+    assert (output / "gebouwhoogten.gpkg").stat().st_mtime_ns == height_time
+    assert all(p.stat().st_mtime_ns == modified for p, modified in before.items())
+    counts = json.loads((output / "dem_coverage.json").read_text())
+    assert counts["outside_landgebied"] > 0
+    assert counts["inside_landgebied_nonwater"] == 0
+    assert "categorie" in wgpd.read_file(output / "nodata.gpkg").columns
+    for tile in landuse_inputs:
+        assert (
+            "categorie" in wgpd.read_file(_tile_paths(output, tile).diagnostics).columns
+        )
+    # The validation boundary is pinned independently from reusable tile inputs.
+    with pytest.raises(ValueError, match="coverage inputs changed"):
+        bouw_dem_tiles(
+            output, ahn_vrt_path=ahn, landuse_tiles=landuse_inputs, config=config
+        )
 
 
 @pytest.mark.parametrize("distance", [1.0, 2.0, 2.5])
@@ -608,3 +887,45 @@ def test_landuse_writes_new_tile_folder_companions(tmp_path, landuse_inputs):
         strict=True,
     ):
         np.testing.assert_array_equal(read(new), read(old))
+
+
+def test_missing_float_export_repairs_without_rebuilding_integer_dem(
+    tmp_path, landuse_inputs, monkeypatch
+):
+    from waterlagen.dem import productie
+    from waterlagen.dem.exports import validate_float_dem
+
+    ahn = write_ahn(
+        tmp_path / "float_ahn.tif",
+        np.ones((64, 64), dtype="int16"),
+        scale=0.01,
+        offset=-3,
+    )
+    result = bouw_dem_tiles(
+        tmp_path / "float_repair", ahn_vrt_path=ahn, landuse_tiles=landuse_inputs
+    )
+    float_path = result.with_name("dem_float.tif")
+    before = result.read_bytes(), result.stat().st_mtime_ns
+    float_path.unlink()
+    create = productie.create_float_dem
+
+    def fail_export(*args):
+        raise RuntimeError("simulated export failure")
+
+    monkeypatch.setattr(productie, "create_float_dem", fail_export)
+    with pytest.raises(RuntimeError, match="simulated"):
+        bouw_dem_tiles(result.parent, ahn_vrt_path=ahn, landuse_tiles=landuse_inputs)
+    assert not result.with_name("dem_complete.json").exists()
+    assert result.with_name("dem_base_complete.json").exists()
+
+    def must_not_rebuild(*args, **kwargs):
+        pytest.fail("Valid integer DEM and tiles must be reused")
+
+    monkeypatch.setattr(productie, "create_float_dem", create)
+    monkeypatch.setattr(productie, "create_cog_file", must_not_rebuild)
+    monkeypatch.setattr(productie, "calculate_building_elevations", must_not_rebuild)
+    monkeypatch.setattr(interpolate, "interpolate_masked", must_not_rebuild)
+    bouw_dem_tiles(result.parent, ahn_vrt_path=ahn, landuse_tiles=landuse_inputs)
+    assert (result.read_bytes(), result.stat().st_mtime_ns) == before
+    assert result.with_name("dem_complete.json").exists()
+    validate_float_dem(result, float_path)

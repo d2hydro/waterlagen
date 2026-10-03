@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     functioneel_landgebruik_workers: int = Field(default=4, ge=1)
 
     dem_workers: int = Field(default=1, ge=1)
+    dem_building_workers: int = Field(default=4, ge=1)
 
 
 settings = Settings()

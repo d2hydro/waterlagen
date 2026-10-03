@@ -13,6 +13,7 @@ from rasterio.transform import from_origin
 from waterlagen.functioneel_landgebruik.landgebruikstabel import load_landuse_table
 from waterlagen.functioneel_landgebruik.legenda import (
     build_colormap,
+    create_landuse_cog,
     write_qgis_style,
     write_raster_attribute_table,
 )
@@ -53,9 +54,9 @@ def test_national_cog_rat_survives_reopen_and_copy(tmp_path):
         destination.write_colormap(1, build_colormap(table))
 
     vrt = create_vrt_file(tmp_path / "functioneel_landgebruik.vrt", [source.parent])
-    create_cog_file(vrt, raster, show_progress=False)
-    before = hashlib.sha256(raster.read_bytes()).hexdigest()
     style = write_qgis_style(raster, table)
+    create_landuse_cog(vrt, raster, style)
+    before = hashlib.sha256(raster.read_bytes()).hexdigest()
     sidecar = write_raster_attribute_table(raster, style)
     assert sidecar.name == "functioneel_landgebruik.tif.aux.xml"
     assert hashlib.sha256(raster.read_bytes()).hexdigest() == before
@@ -78,7 +79,9 @@ def test_national_cog_rat_survives_reopen_and_copy(tmp_path):
         assert reopened.block_shapes == [(512, 512)]
         assert reopened.overviews(1)
 
-    dataset = gdal.Open(str(shared / raster.name), gdal.GA_ReadOnly)
+    # Read the embedded table with PAM disabled, independently of the sidecar.
+    with gdal.config_option("GDAL_PAM_ENABLED", "NO"):
+        dataset = gdal.Open(str(shared / raster.name), gdal.GA_ReadOnly)
     try:
         band = dataset.GetRasterBand(1)
         rat = band.GetDefaultRAT()
@@ -108,3 +111,61 @@ def test_national_cog_rat_survives_reopen_and_copy(tmp_path):
         rat = None
         band = None
         dataset = None
+
+
+def test_dual_rat_upgrade_repair_and_failed_publication(tmp_path, monkeypatch):
+    from waterlagen.functioneel_landgebruik import legenda
+    from waterlagen.raster.vrt import validate_raster_attribute_table
+
+    source = tmp_path / "source.tif"
+    ds = gdal.GetDriverByName("GTiff").Create(str(source), 32, 32, 1)
+    ds.SetGeoTransform((0, 1, 0, 32, 0, -1))
+    ds.SetProjection(rasterio.crs.CRS.from_epsg(28992).to_wkt())
+    ds = None
+    vrt = create_vrt_file(tmp_path / "input.vrt", files=[source])
+    raster = tmp_path / "landuse.tif"
+    create_cog_file(vrt, raster, show_progress=False)
+    style = write_qgis_style(raster, load_landuse_table())
+    sidecar = write_raster_attribute_table(raster, style)
+    expected = legenda._build_raster_attribute_table(style)
+    with pytest.raises(ValueError, match="RAT"):
+        validate_raster_attribute_table(raster, expected, embedded=True)
+    create_landuse_cog(vrt, raster, style)
+    validate_raster_attribute_table(raster, expected, embedded=True)
+    before = raster.read_bytes()
+    # A sidecar must also work on a raster with no embedded RAT (old readers).
+    plain_sidecar = source.with_name(source.name + ".aux.xml")
+    shutil.copyfile(sidecar, plain_sidecar)
+    validate_raster_attribute_table(source, expected)
+    sidecar.unlink()
+    create_landuse_cog(vrt, raster, style)
+    assert raster.read_bytes() == before
+    assert sidecar.is_file()
+    # Stale sidecar values must be regenerated, even if the embedded RAT is valid.
+    tree = ET.parse(sidecar)
+    tree.find(".//Row/F").text = "9999"
+    tree.write(sidecar)
+    create_landuse_cog(vrt, raster, style)
+    shutil.copyfile(sidecar, plain_sidecar)
+    validate_raster_attribute_table(source, expected)
+    original_sidecar = sidecar.read_bytes()
+
+    def fail(*args, **kwargs):
+        raise RuntimeError("simulated sidecar failure")
+
+    monkeypatch.setattr(legenda, "write_raster_attribute_table", fail)
+    with pytest.raises(RuntimeError, match="simulated"):
+        create_landuse_cog(vrt, raster, style, overwrite=True)
+    assert raster.read_bytes() == before
+    assert sidecar.read_bytes() == original_sidecar
+    assert not list(tmp_path.glob("*.publish.*"))
+
+
+def test_dual_rat_requires_supported_gdal(tmp_path, monkeypatch):
+    from waterlagen.functioneel_landgebruik import legenda
+
+    monkeypatch.setattr(legenda.gdal, "VersionInfo", lambda: "3110000")
+    with pytest.raises(RuntimeError, match="GDAL >= 3.12"):
+        create_landuse_cog(
+            tmp_path / "in.vrt", tmp_path / "out.tif", tmp_path / "out.qml"
+        )

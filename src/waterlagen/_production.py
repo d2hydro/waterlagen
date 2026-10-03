@@ -12,6 +12,7 @@ from importlib.metadata import version
 from pathlib import Path
 from xml.etree import ElementTree
 
+from waterlagen._filesystem import replace_file
 from waterlagen.logger import get_logger
 
 logger = get_logger(__name__)
@@ -98,7 +99,7 @@ class ProductionRun:
         temporary.write_text(
             json.dumps(self.metadata, indent=2, ensure_ascii=False), encoding="utf-8"
         )
-        temporary.replace(self.path / "run.json")
+        replace_file(temporary, self.path / "run.json")
 
     def record_inputs(self, sources: dict[str, Path | None]) -> None:
         """Validate paths, sizes and modification times before producing outputs.

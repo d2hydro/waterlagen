@@ -61,6 +61,8 @@ resolutie en pixeluitlijning hebben; de bewerking herschaalt ze niet stilzwijgen
 ## Uitvoer
 
 - `dem.vrt` en COG `dem.tif`: AHN met geïnterpoleerde gaten en gebouwhoogten.
+- COG `dem_float.tif`: directe Float32-hoogten in meters, met schaalfactor 1
+  en offset 0.
 - `dem_bron.vrt` en COG `dem_bron.tif`: de herkomst van de uiteindelijke hoogte.
 - `ahn_bron.vrt` en COG `ahn_bron.tif`: terreinherkomst voor de gebouwlaag;
   1 = origineel AHN, 3 = interpolatie, 0 = ontbrekend terrein.
@@ -83,15 +85,41 @@ voorrang. De hoogteopslag behoudt het AHN-datatype, schaalfactor en offset;
 nieuwe waarden worden zo nodig afgerond naar de oorspronkelijke opslageenheid.
 Hoogteoverzichten gebruiken gemiddelden; broncodes en ID's dichtstbijzijnde buren.
 
-`nodata.gpkg` bevat `bron`, `reden`, `identificatie`, `gebouw_id`,
+`dem_float.tif` wordt afgeleid van het voltooide `dem.tif`:
+`hoogte = opgeslagen waarde * schaalfactor + offset`. Het bestand bevat dezelfde
+reeds afgeronde hoogten; het levert geen extra meetnauwkeurigheid. De omzetting
+naar Float32 kan kleine afrondingsverschillen geven. Het rasterrooster en de
+geldigheidsmaskers blijven gelijk. Ontbrekende cellen krijgen NaN, ook waar
+NoData buiten `landgebied` of in open water is toegestaan.
+`ahn_bron` en `dem_bron` gelden voor beide DEM-bestanden.
+
+De float-COG gebruikt verliesvrije ZSTD-compressie op niveau 9, met een
+floating-point predictor voor raster en overzichten. Overzichten worden opnieuw
+uit de float-hoogten berekend met gemiddelden. De opslag en compressie van
+`dem.tif` veranderen niet.
+
+`nodata.gpkg` bevat `bron`, `categorie`, `reden`, `identificatie`, `gebouw_id`,
 `zoekafstand_m`, `donor_aantal` en geometrie. Onopgeloste gebouwen staan er
 eenmalig met hun volledige geometrie in; resterende AHN-gaten volgen de
-ontbrekende rastercellen per tegel. De tegelcontroles blijven eveneens bewaard.
-Als na het combineren nog NoData binnen een geselecteerde tegelkern aanwezig
-is, stopt de productie voordat `dem.vrt` en `dem.tif` worden gepubliceerd.
-Diagnostiek en berekende tegels blijven beschikbaar. Buiten de geselecteerde
-tegelkernen mag het rechthoekige mozaiek NoData bevatten.
-Een ontbrekende terreinwaarde mag wel door een geldige gebouwhoogte zijn bedekt.
+ontbrekende rastercellen per tegel. De categorieen zijn:
+
+| `categorie` | Betekenis |
+| --- | --- |
+| `Gebouw` | Geen gebouwhoogte bepaald; de oorspronkelijke gebouwmelding blijft behouden |
+| `AHN_water` | AHN-gat na interpolatie bij landgebruikcode 100 of 228 |
+| `AHN_overig` | AHN-gat na interpolatie bij ander landgebruik, inclusief onbekend/code 0 |
+
+AHN-gaten worden bepaald voordat gebouwhoogten worden toegevoegd. Een AHN-gat
+dat door een geldige gebouwhoogte wordt bedekt blijft daarom in de diagnostiek
+zichtbaar, terwijl het eind-DEM daar wel een waarde heeft. De polygonen volgen
+de exacte rastercelgrenzen en worden ook buiten `landgebied` opgenomen.
+
+Resterende NoData blokkeert de publicatie van het DEM niet. De maximale
+interpolatieafstand blijft gelden; ontbrekende waarden worden niet kunstmatig
+gevuld. `dem_coverage.json` telt de ontbrekende cellen in het uiteindelijke DEM,
+na de gebouwlaag: `outside_landgebied`, `open_water` (binnen `landgebied`) en
+`inside_landgebied_nonwater`. De landsgrens wordt bepaald op basis van celmiddens.
+Publicatie betekent dus niet dat het DEM volledige hoogtedekking heeft.
 
 ## Aandachtspunten en beperkingen
 

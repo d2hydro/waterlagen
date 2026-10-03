@@ -11,6 +11,7 @@ from waterlagen.settings import Settings
     [
         ("functioneel_landgebruik_workers", 4),
         ("dem_workers", 1),
+        ("dem_building_workers", 4),
         ("afwateringseenheden_workers", 4),
     ],
 )
@@ -33,7 +34,12 @@ def test_landuse_workers_from_dotenv(tmp_path, monkeypatch):
 @pytest.mark.parametrize("value", ["0", "-1", "1.5", "invalid"])
 @pytest.mark.parametrize(
     "field",
-    ["functioneel_landgebruik_workers", "afwateringseenheden_workers", "dem_workers"],
+    [
+        "functioneel_landgebruik_workers",
+        "afwateringseenheden_workers",
+        "dem_workers",
+        "dem_building_workers",
+    ],
 )
 def test_workers_reject_invalid_values(monkeypatch, value, field):
     monkeypatch.setenv(field.upper(), value)

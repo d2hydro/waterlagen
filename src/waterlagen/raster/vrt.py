@@ -1,9 +1,13 @@
+import json
+from contextlib import nullcontext
 from math import isnan
 from pathlib import Path
 
 from osgeo import gdal, osr
 from tqdm.auto import tqdm
 
+from waterlagen._filesystem import replace_file
+from waterlagen._production import _file_identity
 from waterlagen.logger import get_logger
 
 logger = get_logger(__name__)
@@ -245,6 +249,46 @@ def _validate_cog_file(cog_file: Path, vrt_dataset) -> None:
         cog_dataset = None
 
 
+def validate_raster_attribute_table(
+    raster_path: Path, expected: gdal.RasterAttributeTable, *, embedded: bool = False
+) -> None:
+    """Validate every RAT column and value, optionally ignoring all PAM sidecars.
+
+    Parameters
+    ----------
+    raster_path : pathlib.Path
+        Raster to reopen.
+    expected : gdal.RasterAttributeTable
+        Required schema and rows.
+    embedded : bool
+        Disable PAM while opening to verify the TIFF itself.
+    """
+    context = (
+        gdal.config_option("GDAL_PAM_ENABLED", "NO") if embedded else nullcontext()
+    )
+    with context:
+        dataset = _open_gdal_dataset(raster_path)
+        try:
+            actual = dataset.GetRasterBand(1).GetDefaultRAT()
+            if actual is None or (actual.GetColumnCount(), actual.GetRowCount()) != (
+                expected.GetColumnCount(),
+                expected.GetRowCount(),
+            ):
+                raise ValueError(f"Missing or incomplete RAT: {raster_path}")
+            for col in range(expected.GetColumnCount()):
+                for method in ("GetNameOfCol", "GetTypeOfCol", "GetUsageOfCol"):
+                    if getattr(actual, method)(col) != getattr(expected, method)(col):
+                        raise ValueError(f"RAT schema differs: {raster_path}")
+                for row in range(expected.GetRowCount()):
+                    if actual.GetValueAsString(row, col) != expected.GetValueAsString(
+                        row, col
+                    ):
+                        raise ValueError(f"RAT values differ: {raster_path}")
+        finally:
+            actual = None
+            dataset = None
+
+
 def create_cog_file(
     vrt_file: Path,
     cog_file: Path,
@@ -252,6 +296,9 @@ def create_cog_file(
     overwrite: bool = False,
     show_progress: bool = True,
     overview_resampling: str = "nearest",
+    floating_point_predictor: bool = False,
+    regenerate_overviews: bool = False,
+    raster_attribute_table: gdal.RasterAttributeTable | None = None,
 ) -> Path:
     """Create a Cloud Optimized GeoTIFF directly from a VRT file.
 
@@ -266,11 +313,20 @@ def create_cog_file(
     overview_resampling : {"nearest", "average"}
         Overview resampling; use nearest for IDs/classes, average for elevation.
 
+    floating_point_predictor : bool
+        Use ZSTD floating-point prediction for the raster and overviews.
+    regenerate_overviews : bool
+        Build new overviews from full-resolution values instead of copying them.
+    raster_attribute_table : osgeo.gdal.RasterAttributeTable, optional
+        Embed this RAT during creation (GDAL >= 3.12), validating without PAM.
+
     Returns
     -------
     pathlib.Path
         Written or reused COG.
     """
+    if raster_attribute_table is not None and int(gdal.VersionInfo()) < 3120000:
+        raise RuntimeError("Embedded raster attribute tables require GDAL >= 3.12")
     if overview_resampling not in {"nearest", "average"}:
         raise ValueError("overview_resampling must be nearest or average")
     vrt_file = Path(vrt_file)
@@ -278,6 +334,10 @@ def create_cog_file(
     tmp_file = cog_file.with_name(f"{cog_file.stem}.tmp{cog_file.suffix}")
 
     if cog_file.exists() and not overwrite:
+        if raster_attribute_table is not None:
+            validate_raster_attribute_table(
+                cog_file, raster_attribute_table, embedded=True
+            )
         logger.info("Skipping existing COG file %s", cog_file)
         return cog_file
 
@@ -285,14 +345,60 @@ def create_cog_file(
         raise FileNotFoundError(f"VRT file does not exist: {vrt_file}")
 
     cog_file.parent.mkdir(parents=True, exist_ok=True)
-    if tmp_file.exists():
-        tmp_file.unlink()
-
+    checkpoint = tmp_file.with_name(tmp_file.name + ".ready.json")
     vrt_dataset = _open_gdal_dataset(vrt_file)
+    export_identity = {
+        "input": _file_identity(vrt_file),
+        "overview_resampling": overview_resampling,
+        "floating_point_predictor": floating_point_predictor,
+        "regenerate_overviews": regenerate_overviews,
+        "rat": None
+        if raster_attribute_table is None
+        else {
+            "columns": [
+                [
+                    raster_attribute_table.GetNameOfCol(col),
+                    raster_attribute_table.GetTypeOfCol(col),
+                    raster_attribute_table.GetUsageOfCol(col),
+                ]
+                for col in range(raster_attribute_table.GetColumnCount())
+            ],
+            "rows": [
+                [
+                    raster_attribute_table.GetValueAsString(row, col)
+                    for col in range(raster_attribute_table.GetColumnCount())
+                ]
+                for row in range(raster_attribute_table.GetRowCount())
+            ],
+        },
+    }
+    validated = False
     progress = (
         _GdalProgressBar(desc=f"VRT to COG: {cog_file.name}") if show_progress else None
     )
     try:
+        if tmp_file.is_file() and checkpoint.is_file():
+            pending = json.loads(checkpoint.read_text(encoding="utf-8"))
+            if pending == {"export": export_identity, "file": _file_identity(tmp_file)}:
+                _validate_cog_file(tmp_file, vrt_dataset)
+                if raster_attribute_table is not None:
+                    validate_raster_attribute_table(
+                        tmp_file, raster_attribute_table, embedded=True
+                    )
+                validated = True
+                logger.info(
+                    "Publishing previously validated COG without reconversion: %s",
+                    tmp_file,
+                )
+                replace_file(tmp_file, cog_file)
+                checkpoint.unlink(missing_ok=True)
+                return cog_file
+        tmp_file.unlink(missing_ok=True)
+        checkpoint.unlink(missing_ok=True)
+        if raster_attribute_table is not None:
+            # A memory VRT avoids adding PAM files or metadata to the source.
+            vrt_dataset = gdal.Translate("", vrt_dataset, format="VRT")
+            vrt_dataset.GetRasterBand(1).SetDefaultRAT(raster_attribute_table)
         vrt_band = vrt_dataset.GetRasterBand(1)
         translate_kwargs = {
             "format": "COG",
@@ -305,6 +411,16 @@ def create_cog_file(
                 else "OVERVIEW_RESAMPLING=AVERAGE"
                 for option in COG_CREATION_OPTIONS
             ]
+        if floating_point_predictor:
+            if vrt_band.DataType not in (gdal.GDT_Float32, gdal.GDT_Float64):
+                raise ValueError(
+                    "Floating-point prediction requires floating-point data"
+                )
+            translate_kwargs["creationOptions"].extend(
+                ["PREDICTOR=FLOATING_POINT", "OVERVIEW_PREDICTOR=FLOATING_POINT"]
+            )
+        if regenerate_overviews:
+            translate_kwargs["creationOptions"].append("OVERVIEWS=IGNORE_EXISTING")
         nodata = vrt_band.GetNoDataValue()
         if nodata is not None:
             translate_kwargs["noData"] = nodata
@@ -318,27 +434,48 @@ def create_cog_file(
             translate_kwargs["creationOptions"].append("OVERVIEW_COUNT=1")
 
         options = gdal.TranslateOptions(**translate_kwargs)
-        dataset = gdal.Translate(
-            destName=tmp_file.as_posix(),
-            srcDS=vrt_dataset,
-            options=options,
+        context = (
+            gdal.config_option("GTIFF_WRITE_RAT_TO_PAM", "NO")
+            if raster_attribute_table is not None
+            else nullcontext()
         )
-        if dataset is None:
-            raise RuntimeError(f"GDAL failed to create COG file: {tmp_file}")
-        dataset.FlushCache()
-        dataset = None
+        with context:
+            dataset = gdal.Translate(
+                destName=tmp_file.as_posix(),
+                srcDS=vrt_dataset,
+                options=options,
+            )
+            if dataset is None:
+                raise RuntimeError(f"GDAL failed to create COG file: {tmp_file}")
+            dataset.FlushCache()
+            dataset = None
         if progress is not None:
             progress.finish()
             progress.close()
             progress = None
 
+        logger.info("Validating COG after conversion: %s", tmp_file)
         _validate_cog_file(tmp_file, vrt_dataset)
-        tmp_file.replace(cog_file)
+        if raster_attribute_table is not None:
+            validate_raster_attribute_table(
+                tmp_file, raster_attribute_table, embedded=True
+            )
+        checkpoint.write_text(
+            json.dumps({"export": export_identity, "file": _file_identity(tmp_file)}),
+            encoding="utf-8",
+        )
+        validated = True
+        logger.info("Publishing validated COG: %s", cog_file)
+        replace_file(tmp_file, cog_file)
+        checkpoint.unlink(missing_ok=True)
         logger.info("COG file created %s", cog_file)
         return cog_file
     except Exception:
-        if tmp_file.exists():
-            tmp_file.unlink()
+        if validated:
+            logger.error("Validated COG retained for recovery: %s", tmp_file)
+        else:
+            tmp_file.unlink(missing_ok=True)
+            checkpoint.unlink(missing_ok=True)
         raise
     finally:
         if progress is not None:

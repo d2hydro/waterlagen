@@ -142,7 +142,8 @@ Onder `processed_data/functioneel_landgebruik/nederland/<run-id>` in uw datastor
   `<tile_id>` bevat `xmin_ymin_xmax_ymax`;
 - `functioneel_landgebruik.vrt`: de tegels samengevoegd als virtueel raster;
 - `functioneel_landgebruik.tif`: het samengestelde Cloud Optimized GeoTIFF-raster.
-- `functioneel_landgebruik.tif.aux.xml`: rasterattribuuttabel met pixelcode, omschrijving en kleur;
+- `functioneel_landgebruik.tif.aux.xml`: compatibiliteitskopie van de in de TIFF
+  ingebedde rasterattribuuttabel met pixelcode, omschrijving en kleur;
 - `functioneel_landgebruik_bronnen.tif`: bronlaag per cel, met een JSON-legenda;
 - `functioneel_landgebruik.qml`: legenda voor het landelijke raster in QGIS;
 - `nodata.gpkg`: NoData-vlakken met bron en reden;
@@ -154,12 +155,21 @@ Het logbestand is `productie.log` in dezelfde uitvoermap. Open het resultaat
 in QGIS en controleer de dekking en klassen voor uw toepassing.
 
 De QML bevat unieke pixelcodes met hun labels en kleuren. De landelijke TIFF
-krijgt dezelfde klassen in een rasterattribuuttabel, zodat QGIS bij identificeren
-ook de omschrijving toont. Bewaar bij delen de `.tif`, `.tif.aux.xml` en `.qml`
-met dezelfde bestandsnamen bij elkaar. Voeg de TIFF opnieuw toe aan QGIS om de
-legenda te laden. Bij een al geopende laag kunt u via **Laageigenschappen →
-Symbologie → Stijl → Stijl laden** het QML-bestand kiezen. Ook bij hergebruik van
-een landelijke TIFF worden QML en rasterattribuuttabel bijgewerkt.
+krijgt dezelfde klassen in een ingebedde rasterattribuuttabel en een identieke
+`.tif.aux.xml`-bijlage. Beide tabellen worden uit hetzelfde kleurenpalet gemaakt.
+Moderne lezers kunnen de TIFF zelfstandig lezen; de bijlage ondersteunt oudere
+GDAL-versies. Bewaar voor brede compatibiliteit de `.tif`, `.tif.aux.xml` en `.qml`
+bij elkaar. Productie vereist GDAL 3.12 of nieuwer en controleert dit vooraf.
+De ingebedde tabel wordt tijdens COG-creatie geschreven, zodat de geoptimaliseerde
+bestandsindeling behouden blijft.
+
+Voeg de TIFF opnieuw toe aan QGIS om de legenda te laden. Bij een al geopende
+laag kunt u via **Laageigenschappen ? Symbologie ? Stijl ? Stijl laden** het
+QML-bestand kiezen. Bij hergebruik worden QML en de compatibiliteitstabel bijgewerkt.
+Een geldige TIFF met passende ingebedde tabel blijft ongewijzigd. Heeft een
+oudere TIFF alleen een externe tabel, dan wordt de COG opnieuw gemaakt vanuit
+het bestaande VRT; geldige rastertegels worden hergebruikt. Een ontbrekende of
+verouderde bijlage wordt afzonderlijk hersteld.
 
 ## NoData controleren
 
@@ -554,3 +564,18 @@ Oudere tegels zonder bronraster moeten opnieuw worden berekend. Gebruik een
 nieuwe productie-run wanneer de zoekafstand verandert; de runparameters bewaken
 de consistentie bij hervatten. De lokale landsgrensbron is nodig wanneer
 het aanvullen ingeschakeld is.
+
+
+## Tijdelijk vergrendelde uitvoerbestanden
+
+Bij toegangsweigering tijdens het vervangen van statusbestanden of publiceren
+van COG's probeert de productie de vervanging maximaal tien keer opnieuw,
+met telkens een seconde wachttijd. Het log noemt de bron, bestemming en
+Windows-foutcode. Blijvende toegangsproblemen worden niet genegeerd.
+
+Een al gevalideerde tijdelijke COG blijft bij een publicatiefout bewaard.
+Bij hervatten kan dezelfde conversie worden hergebruikt als de invoer,
+exportinstellingen en het tijdelijke bestand nog overeenkomen met het
+checkpoint. De logging onderscheidt conversie, validatie en publicatie:
+100% conversie betekent nog niet dat het eindbestand is gepubliceerd.
+Open tijdelijke uitvoerbestanden niet in een GIS-viewer terwijl de productie loopt.

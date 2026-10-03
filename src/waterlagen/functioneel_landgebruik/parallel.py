@@ -13,6 +13,7 @@ from tqdm.auto import tqdm
 
 from waterlagen import datastore as default_datastore
 from waterlagen._crs import same_crs
+from waterlagen._filesystem import replace_file
 from waterlagen.datastore import DataStore
 from waterlagen.functioneel_landgebruik.aanvullen import (
     _validate_outputs,
@@ -93,7 +94,7 @@ def _write_tile_status(job: FunctioneelLandgebruikTileJob, status: str) -> None:
         json.dumps({"tile_id": job.tile_id, "status": status, "layout_version": 2}),
         encoding="utf-8",
     )
-    temporary.replace(marker)
+    replace_file(temporary, marker)
 
 
 def _run_tile_job(job: FunctioneelLandgebruikTileJob, started: float) -> Path:
