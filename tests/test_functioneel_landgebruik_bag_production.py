@@ -75,5 +75,7 @@ def test_production_matches_control_and_masks_unresolved_panden(
 def test_note_legend_has_distinct_building_road_and_water_codes():
     table = load_landuse_table()
     assert table.by_id("BAG-001").inside == 1
-    assert table.by_id("BGT-001").inside == 70
-    assert table.by_id("BGT-033").inside == 100
+    roads = table.source_values("BGT", "bgt_wegdeel")
+    water = table.source_values("BGT", "bgt_waterdeel")
+    assert roads["baan voor vliegverkeer"].inside == 70
+    assert water["*"].inside == 100

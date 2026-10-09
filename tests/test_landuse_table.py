@@ -23,6 +23,8 @@ from waterlagen.functioneel_landgebruik.landgebruikstabel import (
 from waterlagen.functioneel_landgebruik.legenda import build_colormap, write_qgis_style
 
 LEGACY_CSV = Path(__file__).parent / "fixtures" / "landgebruik_legacy.csv"
+# Fixed counterpart from the CSV migration (9a3b329), independent of production edits.
+MIGRATED_CSV = LEGACY_CSV.with_name("landgebruik_migrated.csv")
 
 
 @pytest.fixture
@@ -40,16 +42,45 @@ def write_table(tmp_path, rows):
     return path
 
 
-def test_bundled_table_and_legacy_have_same_classification():
+def test_bundled_table_has_current_schema_and_supported_layers():
     assert DEFAULT_MAPPING_CSV.read_bytes().startswith(b"\xef\xbb\xbf")
     table = load_landuse_table()
-    legacy = load_landuse_table(LEGACY_CSV)
     assert all(len(row.values) == 1 for row in table.rows)
     assert {
         row.ids[0] for row in table.rows if row.method == "functie"
     } == BUILTIN_RULE_IDS
     assert all(not row.ids for row in table.rows if row.method == "mapping")
-    for source, layer in MAPPING_FIELDS:
+    assert {
+        (row.source, row.layer) for row in table.rows if row.method == "mapping"
+    } == set(MAPPING_FIELDS)
+
+
+@pytest.mark.parametrize(
+    "source,layer,value,inside,outside",
+    [
+        ("TOP10NL", "top10nl_terrein_vlak", "grasland", 50, 182),
+        ("TOP10NL", "top10nl_terrein_vlak", "akkerland", 52, 180),
+        ("TOP10NL", "top10nl_terrein_vlak", "boomkwekerij", 53, 181),
+        ("TOP10NL", "top10nl_terrein_vlak", "boomgaard", 53, 181),
+        ("TOP10NL", "top10nl_terrein_vlak", "fruitkwekerij", 53, 181),
+        ("BGT", "bgt_ondersteunendwaterdeel", "oever, slootkant", 78, 206),
+    ],
+)
+def test_bundled_table_has_additional_mappings(source, layer, value, inside, outside):
+    row = load_landuse_table().source_values(source, layer)[value]
+    assert (row.inside, row.outside) == (inside, outside)
+
+
+def test_migrated_table_and_legacy_have_same_classification():
+    table = load_landuse_table(MIGRATED_CSV)
+    legacy = load_landuse_table(LEGACY_CSV)
+    mapping_layers = {
+        (row.source, row.layer) for row in legacy.rows if row.method == "mapping"
+    }
+    assert {
+        (row.source, row.layer) for row in table.rows if row.method == "mapping"
+    } == mapping_layers
+    for source, layer in sorted(mapping_layers):
         new_codes = {
             key: (row.inside, row.outside, row.description, row.field)
             for key, row in table.source_values(source, layer).items()
