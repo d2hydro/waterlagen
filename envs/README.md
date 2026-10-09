@@ -27,10 +27,11 @@ Kies één opdracht en voer die vanuit uw projectfolder uit:
 
 | Productie | Opdracht | Meegeleverd script |
 |---|---|---|
-| Afwateringseenheden (standaard Aa en Maas) | `pixi run --locked afwateringseenheden` | `scripts/afwateringseenheden.py` |
-| Functioneel landgebruik (landelijk) | `pixi run --locked landgebruik` | `scripts/functioneel_landgebruik.py` |
+| Afwateringseenheden (landelijk) | `pixi run --locked afwateringseenheden` | `scripts/afwateringseenheden.py` |
+| Functioneel landgebruik (landelijk) | `pixi run --locked functioneel_landgebruik` | `scripts/functioneel_landgebruik.py` |
+| DEM (landelijk) | `pixi run --locked dem` | `scripts/dem.py` |
 | Inwoners per woon-VBO (landelijk) | `pixi run --locked inwoners` | `scripts/inwoners.py` |
-| Personenauto's per woon-VBO (landelijk) | `pixi run --locked auto` | `scripts/auto.py` |
+| Personenauto's per woon-VBO (landelijk) | `pixi run --locked autos` | `scripts/autos.py` |
 
 Voor afwateringseenheden kiest u een waterschap met de waterbeheercode.
 Met `--workers` kunt u het aantal werkprocessen beperken:
@@ -46,14 +47,18 @@ De overige rekeninstellingen liggen vast. Zie
 voor uitleg; `pixi run --locked afwateringseenheden --help` toont de beschikbare
 opties.
 
-Inwoners en auto's halen eerst BAG-light op met `scripts/bag.py`.
+Alle vijf producties halen ontbrekende bronnen zelf op. Alle ondersteunen
+`--area nederland`, `--area alkmaar` en `--area 38`. Het gebied selecteert
+invoer; resultaten worden niet afgeknipt.
 Bestaande bronbestanden worden waar mogelijk hergebruikt. Dit zijn volledige
 producties: landelijke downloads en berekeningen kunnen veel tijd en schijfruimte
 vragen.
 Controleer de geproduceerde datasets inhoudelijk voordat u ze gebruikt.
 
-Na productie van zowel inwoners als auto's kunt u de totalen vergelijken met
-`pixi run --locked statistiek_inwoners_autos`.
+Elke productie schrijft `productie.log` en `run.json` in haar runmap.
+`--refresh-sources` vernieuwt bronnen voor een nieuwe run. `--overwrite` betreft
+uitvoer van een compatibele bestaande run en vereist `--run-id`. `--resume`
+hervat zo'n run. `--offline` vereist lokale bronnen. `--help` toont alle opties.
 
 De meegeleverde `.datastore` bevat `DATA_DIR=./data`. Daardoor staan downloads en
 resultaten onder `data` in uw projectfolder. Pas alleen deze instelling aan als
@@ -62,7 +67,7 @@ de projectfolder. Start opdrachten vanuit de map met `pixi.toml`.
 
 Bewaar `pixi.toml` en `pixi.lock` samen en gebruik `--locked`: het lockbestand legt
 de dependencyversies voor Windows en Linux vast. Internet is nodig voor de eerste
-installatie en voor brongegevens. Scripts blijven bewerkbare voorbeelden; Pixi
+installatie en voor brongegevens. De scripts zijn dunne CLI-ingangen; Pixi
 installeert het Waterlagen-pakket van de release, niet een lokale ontwikkelversie.
 
 Zie [Zelf produceren](https://d2hydro.github.io/waterlagen/produceren/) voor de

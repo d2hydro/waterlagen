@@ -28,13 +28,12 @@ worden niet als nul geïnterpreteerd.
 
 ## Resultaat
 
-De bewerking schrijft standaard `processed_data/autos/autos.gpkg`, laag `autos`. Deze bevat
+De productie schrijft `autos.gpkg`, laag `autos`. Deze bevat
 de oorspronkelijke VBO-puntgeometrie en minimaal `identificatie`, eventueel
 `pand_identificatie`, `buurtcode`, `aantal_woonvbo`,
 `personenautos_totaal`, `personenautos` en de technische `_hilbert`-kolom.
 
-Als de optie `WRITE_GEOPARQUET` in `scripts/auto.py` is ingeschakeld, schrijft
-de bewerking daarnaast `processed_data/autos/autos.parquet`. Dit is standaard
+Bij de standaardproductie verschijnt daarnaast `autos.parquet` in dezelfde runmap. Dit is standaard
 GeoParquet 1.1 met WKB-geometrie, een standaard bbox-covering en
 Parquet-statistieken. De fysieke rijvolgorde blijft de oplopende
 `_hilbert`-volgorde uit het gedeelde VBO-buurtbestand; groepen van 100.000
@@ -42,3 +41,7 @@ rijen ondersteunen daarmee ruimtelijke pruning bij een query op `bounds`.
 
 De bewerking verplaatst auto's niet naar straten of parkeerlocaties en maakt
 geen pand- of rasteraggregaties.
+
+Een regionale productie selecteert volledige CBS-buurten en behoudt alle
+bijbehorende woon-VBO's. Daardoor blijft de verdeling per VBO gelijk aan de
+landelijke berekening. De uitvoer wordt niet op de gekozen gebiedsgrens geknipt.

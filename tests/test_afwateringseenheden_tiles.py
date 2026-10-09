@@ -194,6 +194,51 @@ def test_calculate_tiles_reuses_integer_and_fractional_cached_grids(
     )
 
 
+@pytest.mark.parametrize("clip", [False, True])
+def test_selected_area_can_preserve_complete_output_core(tmp_path, clip):
+    output_dir = tmp_path / "tiles"
+    _write_cached_tile(
+        output_dir,
+        width=8,
+        transform=from_origin(100000, 400016, 2, 2),
+        crs=settings.crs,
+    )
+    area = box(100002, 400002, 100008, 400008)
+    result = calculate_afwateringseenheden_tiles(
+        area,
+        burn_depth_m=1,
+        output_dir=output_dir,
+        tile_size_m=16,
+        tile_buffer_m=0,
+        clip_to_area=clip,
+    )
+    expected = area if clip else box(100000, 400000, 100016, 400016)
+    assert result.merged_subcatchments.geometry.union_all().equals(expected)
+
+
+def test_serial_failures_finish_other_tiles_without_publishing(tmp_path, monkeypatch):
+    attempted = []
+
+    def fail(job):
+        attempted.append(job.tile.tile_id)
+        raise ValueError(f"failure-{len(attempted)}")
+
+    monkeypatch.setattr(tiles_module, "_calculate_tile_timed", fail)
+    merged = tmp_path / "combined.gpkg"
+    with pytest.raises(RuntimeError, match="failure-1.*failure-2"):
+        calculate_afwateringseenheden_tiles(
+            box(100000, 400000, 100032, 400016),
+            burn_depth_m=1,
+            output_dir=tmp_path / "tiles",
+            merged_output_path=merged,
+            tile_size_m=16,
+            tile_buffer_m=0,
+            workers=1,
+        )
+    assert len(attempted) == 2
+    assert not merged.exists()
+
+
 @pytest.mark.parametrize("mismatch", ["resolution", "buffer", "crs"])
 def test_calculate_tiles_rejects_mismatched_cached_grids(
     tmp_path: Path, mismatch: str

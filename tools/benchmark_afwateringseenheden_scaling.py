@@ -28,9 +28,13 @@ from waterlagen import _geopandas as wgpd
 from waterlagen import datastore
 from waterlagen.afwateringseenheden import (
     _coverage,
-    pcraster as pc,
-    raster as ra,
     tiles,
+)
+from waterlagen.afwateringseenheden import (
+    pcraster as pc,
+)
+from waterlagen.afwateringseenheden import (
+    raster as ra,
 )
 from waterlagen.raster.grid import RasterGrid
 
@@ -85,33 +89,33 @@ def discover(root: Path) -> None:
             mask = _coverage._coverage_mask(dataset, grid)
             assert mask.all()
             checks.append(
-                dict(
-                    size=size,
-                    bounds=area,
-                    cells=mask.size,
-                    coverage_cells=int(mask.sum()),
-                    source_tiffs=sum(
+                {
+                    "size": size,
+                    "bounds": area,
+                    "cells": mask.size,
+                    "coverage_cells": int(mask.sum()),
+                    "source_tiffs": sum(
                         e.intersection(box(*area)).area > 0 for e in extents
                     ),
-                    segment_features=int(segments.intersects(box(*area)).sum()),
-                )
+                    "segment_features": int(segments.intersects(box(*area)).sum()),
+                }
             )
-    info = dict(
-        center=center,
-        source=str(source),
-        watersysteem=str(watersysteem),
-        checks=checks,
-        source_tiffs=len(paths),
-        candidates=len(candidates),
-        cpu_physical=psutil.cpu_count(logical=False),
-        cpu_logical=psutil.cpu_count(),
-        memory=psutil.virtual_memory()._asdict(),
-        platform=platform.platform(),
-        python=sys.version,
-        rasterio=rasterio.__version__,
-        gdal=rasterio.__gdal_version__,
-        pcraster=getattr(pc.require_pcraster(), "__version__", "unknown"),
-        thread_environment={
+    info = {
+        "center": center,
+        "source": str(source),
+        "watersysteem": str(watersysteem),
+        "checks": checks,
+        "source_tiffs": len(paths),
+        "candidates": len(candidates),
+        "cpu_physical": psutil.cpu_count(logical=False),
+        "cpu_logical": psutil.cpu_count(),
+        "memory": psutil.virtual_memory()._asdict(),
+        "platform": platform.platform(),
+        "python": sys.version,
+        "rasterio": rasterio.__version__,
+        "gdal": rasterio.__gdal_version__,
+        "pcraster": getattr(pc.require_pcraster(), "__version__", "unknown"),
+        "thread_environment": {
             k: os.environ.get(k)
             for k in (
                 "GDAL_NUM_THREADS",
@@ -121,11 +125,11 @@ def discover(root: Path) -> None:
                 "PCRASTER_NR_WORKER_THREADS",
             )
         },
-        production_hashes={
+        "production_hashes": {
             str(p): hashlib.sha256(p.read_bytes()).hexdigest()
             for p in Path("src/waterlagen/afwateringseenheden").glob("*.py")
         },
-    )
+    }
     save(root / "discovery.json", info)
     print(json.dumps(info, indent=2), flush=True)
 
@@ -153,7 +157,9 @@ def run_job(job: Job) -> dict:
         def measured(*args, **kwargs):
             start = time.perf_counter()
             cpu = process.cpu_times()
-            events.write(json.dumps(dict(event="start", step=label, time=start)) + "\n")
+            events.write(
+                json.dumps({"event": "start", "step": label, "time": start}) + "\n"
+            )
             events.flush()
             try:
                 result = original(*args, **kwargs)
@@ -167,24 +173,26 @@ def run_job(job: Job) -> dict:
                 after_cpu = process.cpu_times()
                 events.write(
                     json.dumps(
-                        dict(
-                            event="end",
-                            step=label,
-                            seconds=elapsed,
-                            time=time.perf_counter(),
-                            cpu_seconds=after_cpu.user
+                        {
+                            "event": "end",
+                            "step": label,
+                            "seconds": elapsed,
+                            "time": time.perf_counter(),
+                            "cpu_seconds": after_cpu.user
                             + after_cpu.system
                             - cpu.user
                             - cpu.system,
-                            rss=process.memory_info().rss,
-                        )
+                            "rss": process.memory_info().rss,
+                        }
                     )
                     + "\n"
                 )
                 events.flush()
                 return result
             except Exception:
-                logging.exception("Benchmark step failed: %s", label)
+                logging.getLogger(__name__).exception(
+                    "Benchmark step failed: %s", label
+                )
                 raise
 
         setattr(module, name, measured)
@@ -331,15 +339,15 @@ def run_batch(root: Path, jobs: list[Job], workers: int) -> None:
                     cpu = process.cpu_times()
                     io = process.io_counters()
                     records.append(
-                        dict(
-                            pid=process.pid,
-                            rss=memory.rss,
-                            private=memory.private,
-                            cpu=cpu.user + cpu.system,
-                            read_bytes=io.read_bytes,
-                            write_bytes=io.write_bytes,
-                            threads=process.num_threads(),
-                        )
+                        {
+                            "pid": process.pid,
+                            "rss": memory.rss,
+                            "private": memory.private,
+                            "cpu": cpu.user + cpu.system,
+                            "read_bytes": io.read_bytes,
+                            "write_bytes": io.write_bytes,
+                            "threads": process.num_threads(),
+                        }
                     )
                 except (psutil.NoSuchProcess, psutil.AccessDenied):
                     continue
@@ -349,13 +357,13 @@ def run_batch(root: Path, jobs: list[Job], workers: int) -> None:
             minimum_available = min(minimum_available, memory.available)
             samples.write(
                 json.dumps(
-                    dict(
-                        time=now,
-                        processes=records,
-                        available=memory.available,
-                        system_cpu_percent=psutil.cpu_percent(),
-                        disk=psutil.disk_io_counters()._asdict(),
-                    )
+                    {
+                        "time": now,
+                        "processes": records,
+                        "available": memory.available,
+                        "system_cpu_percent": psutil.cpu_percent(),
+                        "disk": psutil.disk_io_counters()._asdict(),
+                    }
                 )
                 + "\n"
             )
@@ -364,9 +372,9 @@ def run_batch(root: Path, jobs: list[Job], workers: int) -> None:
                 if future.done():
                     try:
                         results.append(future.result())
-                    except Exception as exc:
+                    except Exception as exc:  # noqa: BLE001 - aggregate independent benchmark failures
                         failures.append(
-                            dict(job=asdict(futures[future]), error=repr(exc))
+                            {"job": asdict(futures[future]), "error": repr(exc)}
                         )
                     remaining.remove(future)
             if now - last_status >= 30:
@@ -379,14 +387,14 @@ def run_batch(root: Path, jobs: list[Job], workers: int) -> None:
     samples.close()
     save(
         root / "batch.json",
-        dict(
-            workers=workers,
-            wall_seconds=time.perf_counter() - started,
-            peak_total_rss=peak_rss,
-            minimum_available_ram=minimum_available,
-            results=results,
-            failures=failures,
-        ),
+        {
+            "workers": workers,
+            "wall_seconds": time.perf_counter() - started,
+            "peak_total_rss": peak_rss,
+            "minimum_available_ram": minimum_available,
+            "results": results,
+            "failures": failures,
+        },
     )
     if failures:
         raise RuntimeError(f"{len(failures)} benchmark jobs failed; see batch.json")

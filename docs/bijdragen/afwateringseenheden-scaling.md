@@ -5,8 +5,8 @@
 Vervolgbenchmark van 10 september 2026, met de bestaande coverage-definitie
 `union(full_extent_of_each_source_tif)`. Voor die benchmark werd de productiecode
 niet aangepast; de latere productie-workflow ondersteunt inmiddels parallel rekenen.
-De tijdelijke scripts `scripts/benchmark_afwateringseenheden_scaling.py` en
-`scripts/analyze_afwateringseenheden_scaling.py` bewaren hun meetgegevens onder
+De tijdelijke scripts `tools/benchmark_afwateringseenheden_scaling.py` en
+`tools/analyze_afwateringseenheden_scaling.py` bewaren hun meetgegevens onder
 `data/benchmark_afwateringseenheden_scaling/`.
 
 Gemeenschappelijk centrum: **(168000, 406500)**, EPSG:28992. Dit is het volledig
@@ -141,7 +141,7 @@ veranderen mee met het gebied.
 ## Controle van parallelle berekening
 
 De productie-workflow rekent inmiddels parallel, met een vaste seed per tegel.
-Zie [de actuele productie-instellingen](../produceren/afwateringseenheden.md#rekenen-op-een-pc-met-minder-werkgeheugen)
+Zie [de actuele productie-instellingen](../produceren/afwateringseenheden.md#starten)
 voor het uitvoeren van heel Aa en Maas en het samenvoegen, opschonen en aanvullen.
 
 De gerichte tests controleren:

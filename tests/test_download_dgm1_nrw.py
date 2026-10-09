@@ -1,5 +1,4 @@
 import importlib
-import sys
 from pathlib import Path
 from types import ModuleType
 
@@ -20,12 +19,6 @@ def downloader(monkeypatch: pytest.MonkeyPatch) -> ModuleType:
     module = importlib.import_module("waterlagen.dgm1.download")
     monkeypatch.setattr(module.time, "sleep", lambda seconds: None)
     return module
-
-
-@pytest.fixture
-def script_module(monkeypatch: pytest.MonkeyPatch) -> ModuleType:
-    monkeypatch.syspath_prepend(str(Path(__file__).resolve().parents[1] / "scripts"))
-    return importlib.import_module("download_dgm1_nrw")
 
 
 def test_download_retries_then_reuses_valid_file(
@@ -91,55 +84,6 @@ def test_failed_download_preserves_existing_file(
     assert len(attempts) == 3
     assert target.read_bytes() == b"previous incomplete file"
     assert list(tmp_path.iterdir()) == [target]
-
-
-@pytest.mark.parametrize("mode", ["interactive", "terminal"])
-def test_download_entry_points(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-    script_module: ModuleType,
-    mode: str,
-) -> None:
-    url_list = tmp_path / "urls.txt"
-    monkeypatch.setattr(script_module, "configure_logging", lambda: None)
-    calls = []
-
-    def fake_download(**kwargs):
-        calls.append(kwargs)
-        return tmp_path / "dgm1_nrw.vrt"
-
-    monkeypatch.setattr(script_module, "_download_dgm1", fake_download)
-    if mode == "interactive":
-        monkeypatch.setattr(sys, "argv", ["ipykernel_launcher.py", "--f=kernel.json"])
-        script_module.download_dgm1(url_list)
-    else:
-        monkeypatch.setattr(sys, "argv", ["download_dgm1_nrw.py", str(url_list)])
-        script_module.main()
-    assert len(calls) == 1
-    assert calls[0]["url_list"] == url_list
-    assert calls[0]["poly_mask"] is None
-
-
-@pytest.mark.parametrize("with_file", [True, False])
-def test_run_cell_ignores_kernel_arguments(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-    script_module: ModuleType,
-    with_file: bool,
-) -> None:
-    script = Path(script_module.__file__)
-    namespace = {"__name__": "__main__"}
-    if with_file:
-        namespace["__file__"] = str(tmp_path / "scripts" / script.name)
-    monkeypatch.chdir(tmp_path)
-    monkeypatch.setitem(sys.modules, "ipykernel", ModuleType("ipykernel"))
-    monkeypatch.setattr(sys, "argv", ["ipykernel_launcher.py", "--f=kernel.json"])
-
-    # De hele cel moet de downloader bereiken, zonder argparse-fout of netwerk.
-    with pytest.raises(ValueError, match="Geef een gebied op"):
-        exec(  # noqa: S102 - voer ons eigen script uit zoals een Interactive-cel
-            compile(script.read_text(encoding="utf-8"), str(script), "exec"), namespace
-        )
 
 
 @pytest.fixture
@@ -266,29 +210,6 @@ def test_download_rejects_empty_selection(
 ) -> None:
     with pytest.raises(ValueError, match="No DGM1 tiles"):
         downloader.download_dgm1(poly_mask=box(0, 0, 1, 1))
-
-
-def test_script_uses_mask_in_configured_crs(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-    script_module: ModuleType,
-) -> None:
-    mask_path = tmp_path / "area.gpkg"
-    original = gpd.GeoDataFrame(
-        geometry=[box(288000, 5736000, 289000, 5737000)], crs=25832
-    )
-    original.to_file(mask_path, layer="area", driver="GPKG")
-    calls = []
-    monkeypatch.setattr(script_module, "_download_dgm1", lambda **kw: calls.append(kw))
-    monkeypatch.setattr(script_module, "configure_logging", lambda: None)
-    monkeypatch.setattr(
-        sys,
-        "argv",
-        ["download_dgm1_nrw.py", "--mask", str(mask_path), "--layer", "area"],
-    )
-    script_module.main()
-    assert calls[0]["url_list"] is None
-    assert calls[0]["poly_mask"].equals(original.to_crs(settings.crs).geometry.iloc[0])
 
 
 @pytest.mark.parametrize(

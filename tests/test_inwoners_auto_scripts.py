@@ -1,144 +1,114 @@
-import importlib.util
-from pathlib import Path
 from types import SimpleNamespace
 
+import geopandas as gpd
 import pytest
+from shapely.geometry import Point, box
+
+from waterlagen import _cbs_production as production
+from waterlagen.areas import ProductionArea
+from waterlagen.datastore import DataStore
 
 
-def _load_script(script_name: str):
-    script_path = Path(__file__).resolve().parents[1] / "scripts" / script_name
-    spec = importlib.util.spec_from_file_location(
-        script_name.removesuffix(".py"), script_path
-    )
-    module = importlib.util.module_from_spec(spec)
-    assert spec.loader is not None
-    spec.loader.exec_module(module)
-    return module
+@pytest.mark.parametrize("dataset", ["inwoners", "autos"])
+def test_production_prepares_and_reuses_shared_sources(dataset, tmp_path, monkeypatch):
+    import waterlagen.autos
+    import waterlagen.inwoners
+    from waterlagen.autos import productie as autos
+    from waterlagen.inwoners import productie as inwoners
 
+    store = DataStore(data_dir=tmp_path, _env_file=None)
+    area = ProductionArea("nederland", box(0, 0, 10, 10), "EPSG:28992")
+    downloads = []
+    builds = []
 
-@pytest.mark.parametrize(
-    ("script_name", "logger_name"),
-    [("inwoners.py", "inwoners"), ("auto.py", "auto")],
-)
-def test_scripts_prepare_shared_cbs_and_vbo_buurt_data(
-    script_name,
-    logger_name,
-    tmp_path,
-    monkeypatch,
-):
-    script = _load_script(script_name)
-    events = []
-    data_store = SimpleNamespace(
-        data_dir=tmp_path / "data",
-        processed_data_dir=tmp_path / "processed",
-        administratieve_gebieden_dir=tmp_path / "source" / "administratieve_gebieden",
-        cbs_dir=tmp_path / "source" / "cbs",
-        bag_dir=tmp_path / "source" / "bag",
-        bag_vbo_path=tmp_path / "processed" / "vbo_buurt" / "bag_vbo.gpkg",
-        cbs_buurt_path=tmp_path / "processed" / "vbo_buurt" / "cbs_buurt.gpkg",
-        inwoners_path=tmp_path / "processed" / "inwoners" / "inwoners.gpkg",
-        inwoners_parquet_path=tmp_path / "processed" / "inwoners" / "inwoners.parquet",
-        autos_path=tmp_path / "processed" / "autos" / "autos.gpkg",
-        autos_parquet_path=tmp_path / "processed" / "autos" / "autos.parquet",
-    )
-    buurtkaart_path = data_store.administratieve_gebieden_dir / "wijkenbuurten.gpkg"
+    def download(name, path, **kwargs):
+        downloads.append((name, kwargs["overwrite"]))
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(str(len(downloads)))
 
-    def fake_init_logger(**kwargs):
-        events.append(("init_logger", kwargs))
-
-    def fake_download_buurtkaart(**kwargs):
-        events.append(("download_buurtkaart", kwargs))
-        return SimpleNamespace(target_path=buurtkaart_path)
-
-    def fake_download_buurtgegevens(**kwargs):
-        events.append(("download_buurtgegevens", kwargs))
-
-    def fake_bouw_vbo_buurt(**kwargs):
-        events.append(("bouw_vbo_buurt", kwargs))
-        return SimpleNamespace(bag_vbo_path=data_store.bag_vbo_path)
-
-    def fake_bouw_inwoners(**kwargs):
-        events.append(("bouw_inwoners", kwargs))
-        return SimpleNamespace(target_path=kwargs["target_path"])
-
-    def fake_bouw_autos(**kwargs):
-        events.append(("bouw_autos", kwargs))
-        return SimpleNamespace(target_path=kwargs["target_path"])
-
-    monkeypatch.setattr(script, "init_logger", fake_init_logger)
     monkeypatch.setattr(
-        script, "download_wijk_buurtkaart_2025", fake_download_buurtkaart
+        production,
+        "download_bag_light",
+        lambda **kw: download("bag", store.bag_dir / "bag-light.gpkg", **kw),
     )
     monkeypatch.setattr(
-        script, "download_buurtgegevens_2025", fake_download_buurtgegevens
+        production,
+        "download_wijk_buurtkaart_2025",
+        lambda **kw: download(
+            "buurt",
+            production.wijk_buurtkaart_2025_path(
+                download_dir=store.administratieve_gebieden_dir
+            ),
+            **kw,
+        ),
     )
-    monkeypatch.setattr(script, "bouw_vbo_buurt", fake_bouw_vbo_buurt)
-    if script_name == "inwoners.py":
-        monkeypatch.setattr(script, "bouw_inwoners", fake_bouw_inwoners)
-    else:
-        monkeypatch.setattr(script, "bouw_autos", fake_bouw_autos)
+    monkeypatch.setattr(
+        production,
+        "download_buurtgegevens_2025",
+        lambda **kw: download(
+            "cbs", production.buurtgegevens_2025_path(store.cbs_dir), **kw
+        ),
+    )
 
-    dataset = "inwoners" if script_name == "inwoners.py" else "autos"
-    run_dir = data_store.processed_data_dir / dataset / "nederland" / "test"
-    result = script.main(data_store=data_store, run_id="test")
+    def prepare(**kwargs):
+        builds.append(kwargs)
+        store.bag_vbo_path.parent.mkdir(parents=True, exist_ok=True)
+        store.bag_vbo_path.write_text("prepared bag")
+        store.cbs_buurt_path.write_text("prepared buurten")
 
-    expected_events = [
-        "init_logger",
-        "download_buurtkaart",
-        "download_buurtgegevens",
-        "bouw_vbo_buurt",
-    ]
-    if script_name == "inwoners.py":
-        expected_events.append("bouw_inwoners")
-    else:
-        expected_events.append("bouw_autos")
-    assert result == run_dir / f"{dataset}.gpkg"
-    assert [event[0] for event in events] == expected_events
-    assert events[0][1] == {
-        "name": logger_name,
-        "debug": False,
-        "log_file": run_dir / f"{logger_name}.log",
-    }
-    assert events[1][1] == {
-        "download_dir": data_store.administratieve_gebieden_dir,
-        "overwrite": False,
-    }
-    assert events[2][1] == {
-        "download_dir": data_store.cbs_dir,
-        "overwrite": False,
-    }
-    assert events[3][1] == {
-        "bag_path": data_store.bag_dir / "bag-light.gpkg",
-        "buurtkaart_path": buurtkaart_path,
-        "cbs_buurtgegevens_path": data_store.cbs_dir / "buurtgegevens_2025.json",
-        "bag_vbo_path": data_store.bag_vbo_path,
-        "cbs_buurt_path": data_store.cbs_buurt_path,
-        "overwrite": False,
-    }
-    if script_name == "inwoners.py":
-        assert events[4][1] == {
-            "bag_vbo_path": data_store.bag_vbo_path,
-            "cbs_buurt_path": data_store.cbs_buurt_path,
-            "target_path": run_dir / "inwoners.gpkg",
-            "overwrite": False,
-            "geoparquet_path": run_dir / "inwoners.parquet",
-            "write_geoparquet": script.WRITE_GEOPARQUET,
-        }
-    else:
-        assert events[4][1] == {
-            "bag_vbo_path": data_store.bag_vbo_path,
-            "cbs_buurt_path": data_store.cbs_buurt_path,
-            "cbs_buurtgegevens_path": data_store.cbs_dir / "buurtgegevens_2025.json",
-            "target_path": run_dir / "autos.gpkg",
-            "overwrite": False,
-            "geoparquet_path": run_dir / "autos.parquet",
-            "write_geoparquet": script.WRITE_GEOPARQUET,
-        }
+    results = []
 
-    for mode in ("resume", "overwrite"):
-        events.clear()
-        assert (
-            script.main(data_store=data_store, run_id="test", **{mode: True}) == result
-        )
-        assert events[-1][1]["overwrite"] is (mode == "overwrite")
-        assert events[3][1]["overwrite"] is False  # Shared intermediates stay reusable.
+    def build(**kwargs):
+        results.append(kwargs)
+        kwargs["target_path"].write_text("result")
+        return SimpleNamespace(target_path=kwargs["target_path"])
+
+    monkeypatch.setattr(production, "bouw_vbo_buurt", prepare)
+    monkeypatch.setattr(waterlagen.autos, "bouw_autos", build)
+    monkeypatch.setattr(waterlagen.inwoners, "bouw_inwoners", build)
+    workflow = autos.main if dataset == "autos" else inwoners.main
+    result = workflow(store, area=area, run_id="first")
+    assert (
+        result
+        == store.processed_data_dir
+        / dataset
+        / "nederland"
+        / "first"
+        / f"{dataset}.gpkg"
+    )
+    assert downloads == [("bag", False), ("buurt", False), ("cbs", False)]
+    workflow(store, area=area, run_id="first", resume=True, offline=True)
+    workflow(store, area=area, run_id="first", overwrite=True)
+    assert len(downloads) == 3
+    assert len(builds) == 1
+    assert results[-1]["overwrite"] is True
+    workflow(store, area=area, run_id="fresh", refresh_sources=True)
+    assert downloads[3:] == [("bag", True), ("buurt", True), ("cbs", True)]
+    assert len(builds) == 2
+    with pytest.raises(ValueError, match="bestaat al"):
+        workflow(store, area="nederland", run_id="fresh", refresh_sources=True)
+    assert len(downloads) == 6
+
+
+def test_area_keeps_complete_buurt_and_vbo_context(tmp_path):
+    buurten = gpd.GeoDataFrame(
+        {"buurtcode": ["A", "B"], "aantal_inwoners": [100, 200]},
+        geometry=[box(0, 0, 10, 10), box(10, 0, 20, 10)],
+        crs=28992,
+    )
+    bag = gpd.GeoDataFrame(
+        {"buurtcode": ["A", "A", "B"], "id": [1, 2, 3]},
+        geometry=[Point(1, 1), Point(9, 9), Point(12, 2)],
+        crs=28992,
+    )
+    bag_path, buurt_path = tmp_path / "bag.gpkg", tmp_path / "buurt.gpkg"
+    bag.to_file(bag_path, layer=production.BAG_VBO_LAYER)
+    buurten.to_file(buurt_path, layer=production.CBS_BUURT_OUTPUT_LAYER)
+    area = ProductionArea("alkmaar", box(0, 0, 2, 2), "EPSG:28992")
+    bag_output, buurt_output = production.select_buurt_context(
+        bag_path, buurt_path, area, tmp_path / "selection"
+    )
+    selected = gpd.read_file(bag_output)
+    assert selected.id.tolist() == [1, 2]
+    assert selected.geometry.iloc[1].equals(Point(9, 9))
+    assert gpd.read_file(buurt_output).aantal_inwoners.tolist() == [100]

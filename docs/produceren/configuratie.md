@@ -28,17 +28,12 @@ De huidige productiescripts voor `autos`, `inwoners`, `afwateringseenheden` en
 processed_data/<dataset>/<werkgebied>/<run-id>/
 ```
 
-| Dataset | Werkgebied | Voorbeeld van een resultaat |
-| --- | --- | --- |
-| `autos` | `nederland` | `autos/nederland/20260925T120000Z/autos.gpkg` |
-| `inwoners` | `nederland` | `inwoners/nederland/20260925T120000Z/inwoners.gpkg` |
-| `afwateringseenheden` | `waterschap_<code>` | `afwateringseenheden/waterschap_38/20260925T120000Z/afwateringseenheden.gpkg` |
-| `functioneel_landgebruik` | `nederland` of `alkmaar` | `functioneel_landgebruik/nederland/20260925T120000Z/functioneel_landgebruik.tif` |
+Alle vijf producten ondersteunen `nederland`, `alkmaar` en `waterschap_<code>`.
+Zie [gebieden en CLI-opties](cli.md) voor hun betekenis.
 
 Zonder opties maakt iedere opdracht een nieuwe run met een UTC-tijdstempel
 `YYYYMMDDTHHMMSSZ`. Die tijd duidt de productie aan, niet het peiljaar van de
-bron. Meerdere waterschappen binnen één opdracht krijgen dezelfde run-ID,
-elk onder hun eigen werkgebied. Een naamconflict geeft een foutmelding;
+bron. Een opdracht verwerkt een gebied. Een naamconflict geeft een foutmelding;
 een bestaande map wordt nooit stilzwijgend hergebruikt.
 
 Deze scripts accepteren dezelfde opties:
@@ -61,7 +56,7 @@ pixi run python scripts/functioneel_landgebruik.py --run-id proef --resume
 pixi run python scripts/functioneel_landgebruik.py --run-id proef --overwrite
 ```
 
-De uitvoermap wordt bij aanvang gelogd. Productielogs en `run.json` staan bij
+De uitvoermap wordt bij aanvang gelogd. `productie.log` en `run.json` staan bij
 de resultaten. `run.json` registreert de geïnstalleerde pakketversie,
 rekeninstellingen, bronpaden, bronidentiteit en de status `running`, `complete`
 of `failed`. Landgebruik bewaart daarnaast de CSV en registreert zijn SHA-256.
@@ -79,8 +74,11 @@ productie meer actief is.
 Downloads en gedeelde tussenproducten, zoals `processed_data/vbo_buurt`, blijven
 op hun bestaande locaties en worden niet per run gekopieerd. De runcontrole
 registreert die bestanden, maar vervangt hun eigen cachevoorwaarden niet.
-Vernieuw verouderde tussenproducten dus afzonderlijk voordat u een nieuwe
-productie start.
+De volledige producties vergelijken bronidentiteiten en vernieuwen afhankelijke
+bronvoorbereiding bij gewijzigde invoer. `--refresh-sources` vernieuwt bronnen
+voor een nieuwe run; `--overwrite` betreft alleen uitvoer. Een afgeleide cache
+zonder opgeslagen bronidentiteit wordt bij aanwezige ruwe invoer eenmalig
+opnieuw opgebouwd om later wijzigingen te kunnen herkennen.
 
 Bestaande uitvoermappen worden niet verplaatst of automatisch als nieuwe run
 overgenomen. De Python-pakketfuncties en vaste `DataStore`-paden blijven

@@ -1,7 +1,7 @@
 """TEMPORARY PROFILING: remove this file to remove all instrumentation.
 
 Runs the unchanged production workflow in a fresh, isolated output directory.
-Use pixi run --environment afwateringseenheden python scripts/profile_afwateringseenheden_tile.py.
+Use pixi run --environment afwateringseenheden python tools/profile_afwateringseenheden_tile.py.
 No source data is downloaded or replaced. Timings are inclusive and nested.
 """
 

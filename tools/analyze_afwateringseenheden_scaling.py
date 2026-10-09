@@ -83,58 +83,58 @@ def main() -> None:
         total = np.mean([r["total"] for r in runs])
         cpu = np.mean([r["cpu_seconds"] for r in runs])
         sizes.append(
-            dict(
-                size=size,
-                repeats=len(runs),
-                cells=runs[0]["cells"],
-                retained_km2=retained_km2,
-                processed_km2=processed_km2,
-                overhead=processed_km2 / retained_km2,
-                total=total,
-                cpu_seconds=cpu,
-                lddcreate=np.mean([r["timings"]["lddcreate"] for r in runs]),
-                peak_rss=max(r["sample_peak_rss"] for r in runs),
-                peak_wset=max(r["peak_wset"] for r in runs),
-                seconds_per_retained_km2=total / retained_km2,
-                cells_per_retained_km2=runs[0]["cells"] / retained_km2,
-                domain_10000km2_tiles=10000 / retained_km2,
-                domain_10000km2_cells=10000 / retained_km2 * runs[0]["cells"],
-                domain_10000km2_serial_hours=10000 / retained_km2 * total / 3600,
-                domain_10000km2_cpu_hours=10000 / retained_km2 * cpu / 3600,
-            )
+            {
+                "size": size,
+                "repeats": len(runs),
+                "cells": runs[0]["cells"],
+                "retained_km2": retained_km2,
+                "processed_km2": processed_km2,
+                "overhead": processed_km2 / retained_km2,
+                "total": total,
+                "cpu_seconds": cpu,
+                "lddcreate": np.mean([r["timings"]["lddcreate"] for r in runs]),
+                "peak_rss": max(r["sample_peak_rss"] for r in runs),
+                "peak_wset": max(r["peak_wset"] for r in runs),
+                "seconds_per_retained_km2": total / retained_km2,
+                "cells_per_retained_km2": runs[0]["cells"] / retained_km2,
+                "domain_10000km2_tiles": 10000 / retained_km2,
+                "domain_10000km2_cells": 10000 / retained_km2 * runs[0]["cells"],
+                "domain_10000km2_serial_hours": 10000 / retained_km2 * total / 3600,
+                "domain_10000km2_cpu_hours": 10000 / retained_km2 * cpu / 3600,
+            }
         )
     fit = None
     if len(sizes) >= 3:
         x = np.log([s["cells"] for s in sizes])
         y = np.log([s["lddcreate"] for s in sizes])
         b, log_a = np.polyfit(x, y, 1)
-        fit = dict(
-            a=np.exp(log_a),
-            b=b,
-            r_squared_log=1
+        fit = {
+            "a": np.exp(log_a),
+            "b": b,
+            "r_squared_log": 1
             - np.sum((y - (log_a + b * x)) ** 2) / np.sum((y - y.mean()) ** 2),
-            adjacent_exponents=[
+            "adjacent_exponents": [
                 float((y[i + 1] - y[i]) / (x[i + 1] - x[i])) for i in range(2)
             ],
-        )
+        }
     parallel = [s for s in summaries if "parallel" in s["directory"]]
     baseline = next((s for s in parallel if s["workers"] == 1), None)
     if baseline:
         for batch in parallel:
             batch["speedup"] = baseline["wall_seconds"] / batch["wall_seconds"]
             batch["efficiency"] = batch["speedup"] / batch["workers"]
-    result = dict(sizes=sizes, fit=fit, batches=summaries)
+    result = {"sizes": sizes, "fit": fit, "batches": summaries}
     (ROOT / "analysis.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
     print(
         json.dumps(
-            dict(
-                sizes=sizes,
-                fit=fit,
-                parallel=[
+            {
+                "sizes": sizes,
+                "fit": fit,
+                "parallel": [
                     {k: v for k, v in batch.items() if k != "results"}
                     for batch in parallel
                 ],
-            ),
+            },
             indent=2,
         )
     )

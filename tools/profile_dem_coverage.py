@@ -1,6 +1,6 @@
 """TEMPORARY: benchmark DEM coverage only; delete this script to remove profiling.
 
-Run with pixi run --environment afwateringseenheden python scripts/profile_dem_coverage.py.
+Run with pixi run --environment afwateringseenheden python tools/profile_dem_coverage.py.
 Writes isolated outputs under data; never runs lddcreate or downloads input data.
 """
 

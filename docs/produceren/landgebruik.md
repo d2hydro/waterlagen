@@ -7,29 +7,16 @@ de klassen, bronnen en bewerkingen staat bij
 
 ## Vooraf
 
-Maak eerst de [LIWO-selectie](../bewerkingen/liwo-selectie.md) met
-`pixi run python scripts/liwo_overstromingsgevoelige_gebieden.py`. Het bestand
-`source_data/liwo/buitendijks_gebied_uit_liwo.gpkg` is verplicht en wordt niet
-automatisch gedownload door de landgebruikproductie. Een afwijkend pad kan via
-`sources.buitendijks_gpkg`; de standaardlaag is `buitendijks_gebied_uit_liwo`
-(`layers.buitendijks`). Dijkringen zijn niet meer nodig.
+De productie haalt alle standaardbronnen op: BAG, BGT, BRP, TOP10NL, LIWO,
+HYDAMO, Waterketen DAMO en de beoordeelde OSM-drinkwaterlocaties. BGT-vlakken en
+de LIWO-selectie worden automatisch voorbereid. Bestaande bronnen worden
+hergebruikt; zie de [gedeelde opties](cli.md) voor vernieuwen en offline gebruik.
+Een expliciete `--bgt-path` gebruikt het opgegeven voorbereide bestand.
 
-De losse rasterfunctie en de parallelle tegelverwerking gebruiken dezelfde
-standaardbronnen uit de datastore. Als `source_data/hydamo/hydamo.gpkg`
-aanwezig is, worden de gemalen meegenomen. Met een expliciet `sources`-object
-bepaal je zelf de bronpaden; `gemalen_gpkg=None` slaat gemalen over.
-
-Bij parallelle productie staan de detailmeldingen per tegel in
-`tiles/<tile_id>/workflow.log`. Dit omvat ontbrekende CSV-koppelingen
-met bronlaag, veld en aantallen per bronwaarde, overgeslagen bronnen,
-rekentijd en eventuele foutdetails. Deze worker-meldingen verschijnen niet
-in de hoofdvoortgang in de terminal. Afgeronde tegels en fouten blijven
-zichtbaar in de hoofdvoortgang en, indien ingesteld, het productielog.
-Standaard is de tegelvoortgangsbalk uitgeschakeld. Afgeronde tegels melden
-`Completed functioneel-landgebruik tile xmin_ymin_xmax_ymax (afgerond/totaal)`.
-Hergebruikte tegels tellen mee en krijgen een afzonderlijke overslaanmelding;
-fouten verhogen de teller niet. Met `show_progress=True` op
-`bouw_functioneel_landgebruik_tiles` kan de balk expliciet worden ingeschakeld.
+Alle meldingen, inclusief worker-details en bronvoorbereiding, staan in
+`productie.log` van de hoofdproductie. De terminal toont de hoofdvoortgang.
+Losse Python-bewerkingen blijven hun expliciete `sources`-object ondersteunen;
+een ontbrekende optionele bron in zo'n object kan bewust worden overgeslagen.
 
 Voor de BAG-koppeling maakt de verwerking eenmalig `bag-light.pand_vbo.sqlite`
 naast `bag-light.gpkg`. Dit is een afgeleid zoekbestand; de oorspronkelijke BAG
@@ -48,8 +35,7 @@ Volg [Installatie](installatie.md) en controleer het productiepakket met
 projectfolder; zie [Opslag van gegevens](configuratie.md) voor een andere locatie.
 
 Dit voorbeeld verwerkt een landelijk tegelrooster. Downloads en berekeningen
-kunnen veel schijfruimte en tijd vragen. Controleer de instellingen in het
-script en de functionele beschrijving voordat u de productie start.
+kunnen veel schijfruimte en tijd vragen. Controleer de opties met `--help` en de functionele beschrijving voordat u de productie start.
 
 ## Starten
 
@@ -64,8 +50,8 @@ companions worden daarvoor niet stilzwijgend hergebruikt.
 donoruitsluiting (standaard 5 m). Deze moet minstens zo groot zijn als de
 maximale gebouwzoekafstand van de DEM-bewerking.
 
-Bereid de BGT eenmalig voor met [BGT-vlakken voorbereiden](bgt-vlakken.md).
-Het landgebruikscript gebruikt dit bestand en maakt geen tweede BGT-GeoPackage.
+De productie gebruikt het gezamenlijke [BGT-vlakkenbestand](bgt-vlakken.md).
+Ontbrekende voorbereiding wordt automatisch uitgevoerd.
 
 Open PowerShell in uw projectfolder
 en voer uit:
@@ -80,7 +66,7 @@ Met `--area alkmaar` produceert dezelfde workflow uitsluitend vier Alkmaar-tegel
 pixi run functioneel_landgebruik --area alkmaar --workers 2
 ```
 
-De standaard is `--area nederland`. Uitvoer staat onder
+Alle gedeelde gebieden zijn beschikbaar, ook `--area 38`. De standaard is `--area nederland`. Uitvoer staat onder
 `processed_data/functioneel_landgebruik/<area>/<run-id>/`, op hetzelfde nationale
 grid. `--building-context-m` bepaalt de voorbereide buurcontext (standaard 5 m).
 [DEM-productie](dem.md) kan dezelfde workflow starten als geschikte tegels ontbreken.
@@ -138,7 +124,7 @@ Onder `processed_data/functioneel_landgebruik/nederland/<run-id>` in uw datastor
 
 - `tiles/<tile_id>/`: per tegel `functioneel_landgebruik.tif`,
   `functioneel_landgebruik_bronnen.tif`, `gebouw_ids.tif`, `gebouwen.gpkg`,
-  `nodata.gpkg`, `status.json` en `workflow.log`;
+  `nodata.gpkg` en `status.json`;
   `<tile_id>` bevat `xmin_ymin_xmax_ymax`;
 - `functioneel_landgebruik.vrt`: de tegels samengevoegd als virtueel raster;
 - `functioneel_landgebruik.tif`: het samengestelde Cloud Optimized GeoTIFF-raster.
@@ -221,11 +207,13 @@ technische gegevens staan buiten de attributentabel.
 
 Start vanuit de repository:
 
-```powershell
-pixi run python scripts/controle_bag_landgebruik.py
+```python
+from waterlagen.functioneel_landgebruik.controle import main
+
+main(overwrite=True)
 ```
 
-Het script maakt **één bestand** voor Flik-Flak en Vughterstraat:
+De functie maakt **één bestand** voor Flik-Flak en Vughterstraat:
 `processed_data/functioneel_landgebruik/controle/bag_controle.gpkg`,
 laag **bag_controle**. De kolom `uitsnede` geeft aan welk voorbeeld je bekijkt.
 Vanaf stap 6 bevat hetzelfde bestand ook `gemalen_controle` als een gemalenbron
@@ -331,25 +319,27 @@ gebruikt dezelfde tabel en BAG-beslisregels.
 
 Maak desgewenst eerst de OSM-vlakken voor drinkwaterproductielocaties:
 
-```powershell
-pixi run python scripts/osm_drinkwater.py
+```python
+from waterlagen.functioneel_landgebruik.osm_drinkwater import download_osm_drinkwater
+
+download_osm_drinkwater()
 ```
 
-Het script schrijft standaard
+De functie schrijft standaard
 `source_data/osm/drinkwaterlocaties.gpkg` binnen de geconfigureerde
 [opslaglocatie](configuratie.md). Daarna gebruiken BAG-controle en
 rasterproductie het bestand automatisch. Bestaande uitvoer wordt hergebruikt;
-gebruik `--overwrite` om OSM opnieuw op te halen. Met
-`--cache-dir <map>` wordt het Overpass-antwoord bewaard en met
-`--offline --cache-dir <map>` opnieuw gebruikt. De bronselectie en de
+gebruik `overwrite=True` om OSM opnieuw op te halen. Met
+`cache_dir=Path("map")` wordt het Overpass-antwoord bewaard en met
+`offline=True, cache_dir=Path("map")` opnieuw gebruikt. De bronselectie en de
 beperkingen staan bij [OSM-drinkwaterlocaties](../bronnen/osm-drinkwater.md).
 De meegeleverde broncontrole bepaalt welke 54 locaties worden opgehaald;
-gebruik `--beoordelingen <bestand>` voor een aangepaste beoordeling.
+gebruik `reviews_path=Path("bestand.json")` voor een aangepaste beoordeling.
 
 Het GeoPackage bevat de laag `drinkwaterproductieterrein` voor de koppeling
 met BAG-panden en daarnaast afzonderlijke controlelagen voor terreinen en
 losse gebouwcontouren. Standaard koppelen alleen de terreinen. Met
-`--include-building-contours --overwrite` worden ook losse gebouwcontouren
+`include_buildings=True, overwrite=True` worden ook losse gebouwcontouren
 in de koppellaag opgenomen; controleer die keuze per locatie.
 
 De TOP10NL-GeoPackage moet `top10nl_gebouw_vlak` bevatten. Kassen worden daarin
@@ -393,7 +383,7 @@ voordat je de uitkomsten gebruikt.
 
 ### Meerdere gemalen in één pand controleren
 
-Voer `pixi run python scripts/controle_gemalen_landgebruik.py` uit voor een
+Roep `waterlagen.functioneel_landgebruik.controle_gemalen.main()` aan voor een
 uitsnede van 500 × 500 meter rond gemaal Lely. De huidige bron bevat drie
 afzonderlijke gemaalobjecten (afdelingen 2, 3 en 4) van elk 450 m³/min, binnen
 BAG-pand `0463100000001005` met overige gebruiksfunctie. De verwachte som is
@@ -430,8 +420,8 @@ from waterlagen.functioneel_landgebruik.landgebruikstabel import DEFAULT_MAPPING
 copyfile(DEFAULT_MAPPING_CSV, Path("mijn_landgebruik.csv"))
 ```
 
-Beide startscripts hebben bovenin `LANDGEBRUIK_CSV`. Stel daar desgewenst een
-eigen `Path(...)` in. Het productiescript bewaart de gebruikte CSV in de uitvoermap.
+Gebruik `--mapping-csv` voor een eigen tabel. De productie bewaart de gebruikte
+CSV in de uitvoermap.
 Vanuit Python kan dit ook met `main(mapping_csv=Path(...))` of met
 `bouw_functioneel_landgebruik(..., mapping_csv=Path(...))`.
 
@@ -527,20 +517,21 @@ blijven intact. Een verblijfsobject kan aan meerdere panden gekoppeld zijn;
 zijn volledige bronoppervlakte blijft bij dat object staan en wordt niet over
 panden verdeeld. Een pand zonder koppeling blijft eveneens zichtbaar.
 
-Pas `BOUNDS` en `WINKEL_WONING_BOUNDS` bovenin het script aan voor andere
-uitsnedes. Uitvoeren via het script vernieuwt het gezamenlijke controlebestand.
+Geef `bounds` aan de Python-controlefunctie door voor een andere uitsnede.
+Met `overwrite=True` vernieuwt u het gezamenlijke controlebestand.
 Sluit de laag in QGIS als het bestand daardoor vergrendeld is.
 Bij rechtstreeks aanroepen van `main()` wordt een bestaand bestand hergebruikt;
 gebruik `main(overwrite=True)` om het te vernieuwen.
 
-Een vooraf voorbereid BGT-bestand kan aan `main(bgt_path=...)` in het
-startscript worden doorgegeven. Deze route downloadt of converteert geen BGT.
+Een vooraf voorbereid BGT-bestand kan aan de Python-productiefunctie met
+`main(bgt_path=...)` worden doorgegeven, of aan de CLI met `--bgt-path`.
+Deze route downloadt of converteert geen BGT.
 Aanvullende vlaklagen in dat bestand worden gebruikt om NoData te verklaren.
 
 
 ## Gaten aanvullen en bronnenraster
 
-Stel `GAP_FILL_DISTANCE_M` in `scripts/functioneel_landgebruik.py` in op de
+Gebruik in een eigen Python-bewerking `gap_fill_distance_m` voor de
 gewenste zoekafstand in meters (standaard `1.0`; `0` schakelt aanvullen uit).
 De losse en parallelle rasterfuncties hebben hiervoor `gap_fill_distance_m`.
 Zie [de aanvulregels en broncodes](../bewerkingen/functioneel-landgebruik.md#kleine-gaten-aanvullen-en-bronherkomst).

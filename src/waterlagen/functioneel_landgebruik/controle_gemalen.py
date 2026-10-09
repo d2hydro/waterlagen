@@ -4,15 +4,16 @@
 from dataclasses import replace
 from pathlib import Path
 
-from controle_bag_landgebruik import main as controle_bag
-
 from waterlagen.datastore import DataStore
 from waterlagen.functioneel_landgebruik import (
     FunctioneelLandgebruikSources,
     bouw_functioneel_landgebruik,
 )
+from waterlagen.functioneel_landgebruik.controle import main as controle_bag
 from waterlagen.functioneel_landgebruik.landgebruikstabel import DEFAULT_MAPPING_CSV
-from waterlagen.logger import configure_logging
+from waterlagen.logger import get_logger
+
+logger = get_logger(__name__)
 
 # Gemaal Lely: drie afzonderlijke bronobjecten (afdelingen 2, 3 en 4).
 # BAG-pand 0463100000001005 heeft overige gebruiksfunctie.
@@ -37,7 +38,6 @@ def main() -> Path:
     if sources.gemalen_gpkg is None:
         raise FileNotFoundError("HyDAMO-bron ontbreekt: source_data/hydamo/hydamo.gpkg")
     output.mkdir(parents=True, exist_ok=True)
-    configure_logging(log_file=output / "berekening.log")
     control = controle_bag(
         store,
         bounds=BOUNDS,
@@ -56,10 +56,6 @@ def main() -> Path:
         download_missing_sources=False,
         overwrite=True,
     )
-    print(f"Panden en gemaalpunten: {control}")
-    print(f"Landgebruiksraster en QML-legenda: {raster}")
+    logger.info("Panden en gemaalpunten: %s", control)
+    logger.info("Landgebruiksraster en QML-legenda: %s", raster)
     return output
-
-
-if __name__ == "__main__":
-    main()

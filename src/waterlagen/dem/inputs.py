@@ -13,7 +13,8 @@ import rasterio
 
 from waterlagen._crs import same_crs
 from waterlagen._production import ProductionRun, default_run_id
-from waterlagen.areas import Area, select_area_tiles
+from waterlagen._sources import SourcePreparation
+from waterlagen.areas import Area, ProductionArea, select_area_tiles
 from waterlagen.datastore import DataStore
 from waterlagen.functioneel_landgebruik import productie as landuse_production
 from waterlagen.functioneel_landgebruik.gebouwen import (
@@ -67,7 +68,9 @@ def latest_run(directory: Path) -> Path | None:
     return max(candidates)[2] if candidates else None
 
 
-def validate_landuse_run(path: Path, area: Area, context_m: float) -> LanduseInput:
+def validate_landuse_run(
+    path: Path, area: Area | ProductionArea, context_m: float
+) -> LanduseInput:
     """Validate completed artifacts, including exact source-10 building cells.
 
     Parameters
@@ -96,7 +99,9 @@ def validate_landuse_run(path: Path, area: Area, context_m: float) -> LanduseInp
     scopes = {area.value, Area.nederland.value}
     if (
         metadata.get("dataset") != "functioneel_landgebruik"
-        or metadata.get("scope") not in scopes
+        or (
+            not isinstance(area, ProductionArea) and metadata.get("scope") not in scopes
+        )
         or metadata.get("status") != "complete"
     ):
         raise ValueError(f"No completed compatible land-use production: {path}")
@@ -107,7 +112,12 @@ def validate_landuse_run(path: Path, area: Area, context_m: float) -> LanduseInp
     tiles = read_tiles(path / "tiles.gpkg")
     if not same_crs(tiles.crs, settings.crs):
         raise ValueError("Land-use tile index CRS differs from project CRS")
-    if (path / "grid.gpkg").exists():
+    if isinstance(area, ProductionArea):
+        grid = read_tiles(path / "grid.gpkg")
+        expected = select_area_tiles(grid, area)
+        if not set(expected.tile_id).issubset(set(tiles.tile_id)):
+            raise ValueError("Land-use run does not cover every required tile")
+    elif (path / "grid.gpkg").exists():
         expected = select_area_tiles(
             read_tiles(path / "grid.gpkg"), Area(metadata["scope"])
         )
@@ -152,9 +162,11 @@ def validate_landuse_run(path: Path, area: Area, context_m: float) -> LanduseInp
 def resolve_landuse(
     store: DataStore,
     run: ProductionRun,
-    area: Area,
+    area: Area | ProductionArea,
     context_m: float,
     explicit: Path | None = None,
+    *,
+    preparation: SourcePreparation | None = None,
 ) -> LanduseInput:
     """Pin a valid input, or checkpoint and produce the requested area.
 
@@ -178,6 +190,7 @@ def resolve_landuse(
                     run_id=path.name,
                     building_context_m=context_m,
                     resume=metadata_path.exists(),
+                    preparation=preparation,
                 )
         return validate_landuse_run(path, area, context_m)
 
@@ -185,11 +198,13 @@ def resolve_landuse(
         result = validate_landuse_run(explicit, area, context_m)
     else:
         result = None
-        scopes = [area] if area == Area.nederland else [Area.alkmaar, Area.nederland]
-        for scope in scopes:
-            candidate = latest_run(
-                store.processed_data_dir / "functioneel_landgebruik" / scope.value
-            )
+        root = store.processed_data_dir / "functioneel_landgebruik"
+        directories = sorted(root.iterdir()) if root.exists() else []
+        directories.sort(key=lambda path: path.name != area.value)
+        if preparation is not None and preparation.refresh:
+            directories = []
+        for directory in directories:
+            candidate = latest_run(directory)
             if candidate is None:
                 continue
             logger.info("Checking land-use production %s", candidate)
@@ -221,6 +236,10 @@ def resolve_landuse(
     run._save()  # Persist before starting expensive work, including failures.
     logger.info("Producing land-use prerequisite for %s in %s", area.value, path)
     landuse_production.main(
-        store, area=area, run_id=dependency_id, building_context_m=context_m
+        store,
+        area=area,
+        run_id=dependency_id,
+        building_context_m=context_m,
+        preparation=preparation,
     )
     return validate_landuse_run(path, area, context_m)

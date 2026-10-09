@@ -37,4 +37,4 @@ binnen of op de grens zijn buitendijks; alle overige punten zijn binnendijks.
 
 ## Zelf produceren
 
-Zie [het scriptvoorbeeld](../produceren/voorbeelden.md#liwo-gebieden-downloaden-en-polygoniseren).
+Zie [het scriptvoorbeeld](../reference/gebruik.md#losse-bronnen-en-bewerkingen).

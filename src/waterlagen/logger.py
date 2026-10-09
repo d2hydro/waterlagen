@@ -1,9 +1,12 @@
 import logging
 from collections.abc import Iterator
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
-from typing import Optional, Union
+
+from waterlagen._run_logging import (
+    production_logging as production_logging,  # noqa: PLC0414 - public re-export
+)
 
 # Module-level flag to avoid duplicate setup within a single process
 _LOG_CONFIGURED = False
@@ -23,6 +26,12 @@ def tile_logging(path: Path) -> Iterator[None]:
     None
         A logging scope for sequential or process-pool tile execution.
     """
+    from waterlagen._run_logging import central_logging_active, log_context
+
+    if central_logging_active():
+        with log_context(str(path.parent)):
+            yield
+        return
     path.parent.mkdir(parents=True, exist_ok=True)
     logger = get_logger("waterlagen")
     handlers, level, propagate = logger.handlers[:], logger.level, logger.propagate
@@ -50,7 +59,7 @@ def _ensure_parent_dir(path: Path) -> None:
 
 
 def _make_file_handler(
-    log_file: Union[str, Path],
+    log_file: str | Path,
     level: int,
     max_bytes: int,
     backup_count: int,
@@ -94,12 +103,12 @@ def _make_file_handler(
 
 def configure_logging(
     *,
-    log_file: Union[str, Path, None] = None,
+    log_file: str | Path | None = None,
     level: int = logging.INFO,
     max_bytes: int = 5_000_000,
     backup_count: int = 5,
     stdout: bool = True,
-    stdout_format: Optional[str] = "%(levelname)s %(name)s: %(message)s",
+    stdout_format: str | None = "%(levelname)s %(name)s: %(message)s",
     **handler_kwargs,
 ) -> logging.Logger:
     """
@@ -164,10 +173,8 @@ def configure_logging(
                     file_handler_exists_for_target = True
                 else:
                     root.removeHandler(h)
-                    try:
+                    with suppress(OSError, ValueError):
                         h.close()
-                    except Exception:
-                        pass
 
         # Add file handler if none exists for the target file yet
         if not file_handler_exists_for_target:
@@ -185,7 +192,7 @@ def configure_logging(
     return root
 
 
-def get_logger(name: Optional[str] = None) -> logging.Logger:
+def get_logger(name: str | None = None) -> logging.Logger:
     """
     Get a logger without adding handlers. Use this in all modules:
         logger = get_logger(__name__)

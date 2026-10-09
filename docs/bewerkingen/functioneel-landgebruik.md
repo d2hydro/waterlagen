@@ -301,13 +301,12 @@ houdt dus de bestaande voorrang. Het puntenbestand blijft nodig voor controle:
 een punt op water kan in het samengestelde raster door water worden overschreven,
 en meerdere punten kunnen in dezelfde rastercel vallen.
 
-Kassen worden standaard gecontroleerd. Een aanwezige `hydamo/hydamo.gpkg`
-wordt bij gebruik van de datastore meegenomen voor gemalen. Een aanwezige
-`waterketen_damo/waterketen_damo.gpkg` wordt gebruikt voor RWZI-terreinen.
-`osm/drinkwaterlocaties.gpkg` wordt gebruikt voor drinkwatergebouwen;
-dit bestand wordt niet automatisch gedownload. Zonder de betreffende bronnen
-worden de selecties overgeslagen en gelogd;
-de gewone BAG-klasse blijft staan. De RWZI-koppeling geeft geen oordeel over
+De volledige productie gebruikt TOP10NL voor kassen, HYDAMO voor gemalen,
+Waterketen DAMO voor RWZI-terreinen en de beoordeelde OSM-terreinen voor
+drinkwatergebouwen. Ontbrekende bronnen worden automatisch voorbereid.
+Bij losse Python-bewerkingen kunnen optionele bronnen bewust ontbreken;
+de betreffende selecties worden dan overgeslagen en gelogd en de gewone
+BAG-klasse blijft staan. De RWZI-koppeling geeft geen oordeel over
 de bedrijfsstatus. De status van gemaalobjecten blijft in de controle zichtbaar;
 de capaciteitsindeling op zichzelf bevestigt niet dat een gemaal operationeel is.
 

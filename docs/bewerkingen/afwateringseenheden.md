@@ -12,11 +12,15 @@ Deze bewerking leidt tot `afvoergebieden` gekoppeld aan `hydroobjecten`.
 
 ## Werkwijze
 
+De gekozen gebiedsgrens selecteert volledige tegelkernen. Het samengestelde
+resultaat wordt niet op die gebiedsgrens geknipt. Nederland, een waterschap
+en vaste gebieden zoals Alkmaar gebruiken dezelfde werkwijze.
+
 ### Voorbewerken watersysteem
 
 Vanuit de geleverde (Hy)DAMO-set worden:
 
-- `primaire` en `secundaire` `hydroobjecten` en relevante `verbindingspunten` (bijvoorbeeld `gemalen` en `stuwen`) uitgelezen. De gebruiker kan hierbij een gebied en/of waterbeheerder specificeren.
+- `primaire` en `secundaire` `hydroobjecten` en relevante `verbindingspunten` (bijvoorbeeld `gemalen` en `stuwen`) uitgelezen. De standaardproductie selecteert ruimtelijk met de benodigde tegelcontext en gebruikt geen aanvullend waterbeheerderfilter. Lagere Python-functies ondersteunen zo nodig een expliciet beheerderfilter.
 - `Primaire` hydroobjecten worden bij de relevante `verbindingspunten` en op een maximale lengte (standaard 500 meter) opgesplitst naar `hydroobject-segmenten`.
 - `Verbindingspunten` vormen een gericht netwerk, waarbij `van_segment` en `naar_segment` de richting vormen. Van opgegeven punten (`stuwen`, `gemalen`, etc.) worden tevens de oorspronkelijke eigenschappen bewaard, zodat deze herkenbaar blijven.
 - `Secundaire hydroobjecten` worden opgesplitst in een set die wél en een set die níet verbonden is met de `primaire hydroobjecten`.

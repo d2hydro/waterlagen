@@ -11,35 +11,29 @@ pixi run dem
 pixi run dem --area alkmaar
 ```
 
-`--area` accepteert `nederland` (standaard) en `alkmaar`. Nederland gebruikt
-het volledige nationale tegelrooster. Alkmaar gebruikt vier aangrenzende tegels
-van hetzelfde rooster: bij 5 km tussen `(105000, 510000)` en `(115000, 520000)`.
-Beide gebieden behouden de landgebruikresolutie en pixeluitlijning.
+DEM gebruikt dezelfde [gebieden en CLI-opties](cli.md) als de andere producten.
+De gebiedsgrens selecteert volledige tegelkernen; uitvoer wordt niet afgeknipt.
+Alkmaar gebruikt bij een tegelgrootte van 5 km vier tegels. De landgebruikresolutie
+en pixeluitlijning blijven behouden.
 
-Uitvoer staat onder `processed_data/dem/<area>/<run-id>/`. Zonder `--run-id`
-wordt een nieuwe UTC-tijdstempel gebruikt. `--output-root` vervangt alleen de
-uitvoerroot van DEM; landgebruik wordt gezocht in de datastore.
+Uitvoer staat onder `processed_data/dem/<area>/<run-id>/`.
+`--output-root` vervangt de productiemap, ook voor de automatische afhankelijkheid.
 
 ## Landgebruik vinden of produceren
 
-Voor Nederland controleert DEM de nieuwste productie onder
-`processed_data/functioneel_landgebruik/nederland`, op basis van de aanmaaktijd
-in `run.json`. Ontbrekende of ongeschikte uitvoer leidt tot een nieuwe nationale
-landgebruikproductie. Er wordt niet automatisch een oudere productie gekozen.
+DEM controleert per beschikbaar gebied de nieuwste landgebruikrun op basis van
+de aanmaaktijd in `run.json`. Het gevraagde gebied krijgt voorrang. Alleen een
+productie met alle benodigde tegelkernen en voldoende gebouwcontext is geschikt;
+bij een ongeschikte nieuwste run wordt binnen dat gebied geen oudere gekozen.
+Anders produceert DEM zelf landgebruik voor het gevraagde gebied, inclusief
+ontbrekende bronvoorbereiding. Met `--refresh-sources` wordt automatisch een
+nieuwe afhankelijkheid gemaakt. Expliciete bronpaden blijven expliciete keuzes.
 
-Voor Alkmaar wordt eerst de nieuwste Alkmaar-productie gecontroleerd. Is die
-niet bruikbaar, dan worden de vier benodigde tegels uit de nieuwste nationale
-productie gecontroleerd. Zijn ook die ongeschikt, dan wordt uitsluitend
-landgebruik voor Alkmaar geproduceerd onder
-`processed_data/functioneel_landgebruik/alkmaar/<run-id>/`.
-
-Automatische productie gebruikt dezelfde functie, standaardbronnen en
-classificatie als `pixi run functioneel_landgebruik --area <area>`.
-Voorbereide BGT en de overige landgebruikbronnen moeten dus al beschikbaar zijn.
-Bestaande landgebruikproducties worden niet overschreven.
+Bestaande landgebruikproducties worden niet overschreven. De geneste productie
+krijgt eigen metadata en schrijft in het `productie.log` van de DEM-run.
 
 De controle omvat productiestatus, classificatie-CSV, tegelgrid, bronrasters,
-gebouw-ID's en voorbereide gebouwgeometrie?n. ID-cellen moeten exact overeenkomen
+gebouw-ID's en voorbereide gebouwgeometrieën. ID-cellen moeten exact overeenkomen
 met broncode 10. De buurcontext moet de gekozen gebouwzoekafstand dekken.
 De controle betreft de opgeslagen producten; nieuwe externe bronversies
 leiden niet automatisch tot herproductie. Een nog lopende productie of een
@@ -52,13 +46,13 @@ Een AHN-verzoek heeft standaard een verbindingstimeout en leespauzetimeout van
 60 seconden. Na een timeout probeert de downloader de betreffende tegel opnieuw,
 maximaal tien pogingen in totaal. Bij gebruik van de Python-functie
 `download_ahn` kan de timeout met `timeout` worden ingesteld.
-Met `--ahn-vrt PAD` gebruikt u een eigen DTM-moza?ek dat ook de donoromgeving dekt.
+Met `--ahn-vrt PAD` gebruikt u een eigen DTM-mozaïek dat ook de donoromgeving dekt.
 
 ## Instellingen en workers
 
 | Optie | Standaard | Betekenis |
 | --- | --- | --- |
-| `--area` | `nederland` | Nederland of vier Alkmaar-tegels |
+| `--area` | `nederland` | Nederland, Alkmaar of waterschapscode |
 | `--workers` | `DEM_WORKERS`, anders 1 | Gelijktijdige DEM-tegels |
 | `--building-workers` | `DEM_BUILDING_WORKERS`, anders 4 | Gelijktijdige batches voor gebouwhoogten |
 | `--building-initial-buffer-m` | 1 | Eerste gebouwzoekafstand |
@@ -87,7 +81,7 @@ tegels gebruiken hetzelfde resultaat. Iedere worker leest zijn eigen AHN-bestand
 en schrijft een afzonderlijk batchbestand; alleen het hoofdproces schrijft naar
 de gezamenlijke hoogtetabel. Vier workers is een behoudende startwaarde;
 meer workers helpen alleen als geheugen en schijf voldoende capaciteit hebben.
-Een pand dat meerdere tegels raakt krijgt ??n hoogte. Workers lezen alleen
+Een pand dat meerdere tegels raakt krijgt één hoogte. Workers lezen alleen
 hoogten voor hun eigen tegel. VRT en COG worden daarna samengesteld.
 Er is geen beperking van DEM-interpolatie tot `landgebied`.
 

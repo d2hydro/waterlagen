@@ -31,7 +31,10 @@ from waterlagen.functioneel_landgebruik.landgebruikstabel import (
     LanduseTable,
     load_landuse_table,
 )
+from waterlagen.logger import get_logger
 from waterlagen.settings import settings
+
+logger = get_logger(__name__)
 
 # Flik-Flak, Marathonloop, 's-Hertogenbosch; voorbeeld notitie p. 5.
 # Pand 0796100000258450 en alle vier gekoppelde verblijfsobjecten liggen hierin.
@@ -142,6 +145,30 @@ def main(
     calculations; excluded panden remain visible with empty later results.
     mapping_csv overrides LANDGEBRUIK_CSV for the step-5 codes.
     target_path optionally selects a separate control GeoPackage.
+
+    Parameters
+    ----------
+    data_store : DataStore, optional
+        Locations of existing sources and default output.
+    bounds : tuple of float, optional
+        RD selection bounds. Defaults to the two bundled examples.
+    overwrite : bool, optional
+        Replace existing control output, default False.
+    stap : int
+        Last processing step to include, from 1 to 6.
+    mapping_csv : pathlib.Path, optional
+        Classification table override.
+    special_sources : SpecialBuildingSources, optional
+        Explicit sources for special building functions.
+    gemalen_gpkg : pathlib.Path, optional
+        Explicit pumping-station source.
+    target_path : pathlib.Path, optional
+        Output GeoPackage override.
+
+    Returns
+    -------
+    pathlib.Path
+        Validated control GeoPackage. This function does not download sources.
     """
     if stap not in (1, 2, 3, 4, 5, 6):
         raise ValueError(
@@ -189,8 +216,8 @@ def main(
     target = Path(target_path) if target_path is not None else output_dir / filename
     if target.exists() and not overwrite:
         validate_geopackage(target)
-        print(f"Bestaand controlebestand hergebruikt: {target}")
-        print("Gebruik overwrite=True om opnieuw te berekenen.")
+        logger.info("Bestaand controlebestand hergebruikt: %s", target)
+        logger.info("Gebruik overwrite=True om opnieuw te berekenen.")
         return target
 
     if not bag_path.is_file():
@@ -205,11 +232,11 @@ def main(
     table = None
     if stap >= 5:
         table = load_landuse_table(mapping_csv or LANDGEBRUIK_CSV)
-        print(f"Landgebruikcodes uit CSV: {table.path}")
+        logger.info("Landgebruikcodes uit CSV: %s", table.path)
     results = []
     pump_results = []
     for name, extent in areas:
-        print(f"BAG lezen: {name}, uitsnede {extent}")
+        logger.info("BAG lezen: %s, uitsnede %s", name, extent)
         bag = read_bag_source_data(
             bag_path,
             pand_layer=layers.bag_pand,
@@ -259,15 +286,13 @@ def main(
         )
     _write_control(controle, target, gemalen=gemalen_controle)
 
-    print(f"Geschreven: {len(controle)} panden in laag bag_controle")
-    print(f"Open in QGIS: {target}")
-    print(f"Controle tot en met stap {stap}.")
+    logger.info("Geschreven: %s panden in laag bag_controle", len(controle))
+    logger.info("Open in QGIS: %s", target)
+    logger.info("Controle tot en met stap %s.", stap)
     if stap >= 5:
-        print("Beide codes getoond; binnen-/buitendijkse ligging nog niet bepaald.")
+        logger.info(
+            "Beide codes getoond; binnen-/buitendijkse ligging nog niet bepaald."
+        )
     else:
-        print("Geen landgebruikscode.")
+        logger.info("Geen landgebruikscode.")
     return target
-
-
-if __name__ == "__main__":
-    main(overwrite=True)

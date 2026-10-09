@@ -14,6 +14,7 @@ from tqdm.auto import tqdm
 from waterlagen import datastore as default_datastore
 from waterlagen._crs import same_crs
 from waterlagen._filesystem import replace_file
+from waterlagen._run_logging import executor_logging
 from waterlagen.datastore import DataStore
 from waterlagen.functioneel_landgebruik.aanvullen import (
     _validate_outputs,
@@ -445,7 +446,9 @@ def bouw_functioneel_landgebruik_tiles(
                 )
 
             worker_count = min(worker_count, len(jobs_to_submit))
-            with ProcessPoolExecutor(max_workers=worker_count) as executor:
+            with ProcessPoolExecutor(
+                max_workers=worker_count, **executor_logging()
+            ) as executor:
                 futures = {
                     executor.submit(_build_tile_worker, job): job
                     for job in jobs_to_submit

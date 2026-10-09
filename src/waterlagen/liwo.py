@@ -1,6 +1,5 @@
 """Download het LIWO-klassenraster en polygoniseer uitsluitend klassen 1 en 6."""
 
-import argparse
 import tempfile
 from pathlib import Path
 from urllib.parse import urlencode
@@ -11,8 +10,7 @@ from osgeo import gdal, ogr, osr
 
 from waterlagen._crs import same_crs
 from waterlagen._downloads import stream_download_to_temp, validate_geopackage
-from waterlagen.datastore import DataStore
-from waterlagen.logger import configure_logging, get_logger
+from waterlagen.logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -192,42 +190,3 @@ def polygonize_selected(raster_path: Path, target_path: Path) -> Path:
         output_path.replace(target_path)
     logger.info("Completed LIWO selection: %s polygons in %s", count, target_path)
     return target_path
-
-
-def main() -> None:
-    """Run the download and polygon selection from the command line."""
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--raster", type=Path, help="Pad voor de nationale GeoTIFF")
-    parser.add_argument(
-        "--output", type=Path, help="Pad voor de geselecteerde polygonen (.gpkg)"
-    )
-    parser.add_argument(
-        "--overwrite", action="store_true", help="Download het raster opnieuw"
-    )
-    parser.add_argument(
-        "--timeout", type=int, default=300, help="HTTP-time-out in seconden"
-    )
-    parser.add_argument("--no-progress", action="store_true")
-    args = parser.parse_args()
-    configure_logging()
-    store = DataStore()
-    raster_path = args.raster or store.source_data_dir / "liwo" / FILENAME
-    output_path = (
-        args.output
-        or store.source_data_dir / "liwo" / "buitendijks_gebied_uit_liwo.gpkg"
-    )
-    if raster_path.resolve() == output_path.resolve():
-        parser.error("--raster en --output moeten verschillende paden zijn")
-    if args.timeout <= 0:
-        parser.error("--timeout moet positief zijn")
-    download_raster(
-        raster_path,
-        overwrite=args.overwrite,
-        timeout=args.timeout,
-        progress=not args.no_progress,
-    )
-    polygonize_selected(raster_path, output_path)
-
-
-if __name__ == "__main__":
-    main()

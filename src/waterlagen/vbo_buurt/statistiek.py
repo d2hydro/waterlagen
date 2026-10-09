@@ -1,6 +1,5 @@
 """Log CBS- en VBO-totalen voor inwoners en personenauto's."""
 
-import argparse
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -14,7 +13,7 @@ from waterlagen.inwoners import (
     INWONERS_OBV_HUISHOUDENS_COLUMN,
     INWONERS_OBV_WOONVBO_COLUMN,
 )
-from waterlagen.logger import get_logger, init_logger
+from waterlagen.logger import get_logger
 from waterlagen.vbo_buurt import CBS_BUURT_OUTPUT_LAYER
 
 logger = get_logger(__name__)
@@ -64,7 +63,20 @@ def lees_verdelingstatistieken(
     inwoners_path: Path | None = None,
     autos_path: Path | None = None,
 ) -> VerdelingStatistieken:
-    """Read CBS totals and the derived VBO-value sums from processed outputs."""
+    """Read CBS totals and derived VBO sums from processed outputs.
+
+    Parameters
+    ----------
+    data_store : DataStore
+        Location of the nationwide CBS table and default products.
+    inwoners_path, autos_path : pathlib.Path, optional
+        Explicit products to compare with the nationwide CBS totals.
+
+    Returns
+    -------
+    VerdelingStatistieken
+        Totals for both distributions; missing values remain None.
+    """
     cbs_aantal_inwoners = _som_kolom(
         data_store.cbs_buurt_path,
         layer=CBS_BUURT_OUTPUT_LAYER,
@@ -105,13 +117,22 @@ def main(
     inwoners_path: Path | None = None,
     autos_path: Path | None = None,
 ) -> VerdelingStatistieken:
-    """Log CBS- en VBO-totalen for the inwoners and autos products."""
+    """Log CBS and VBO totals using caller-owned logging.
+
+    Parameters
+    ----------
+    data_store : DataStore, optional
+        Location of the nationwide CBS table and default products.
+    inwoners_path, autos_path : pathlib.Path, optional
+        Explicit product paths, normally from nationwide production runs.
+
+    Returns
+    -------
+    VerdelingStatistieken
+        Totals returned by ``lees_verdelingstatistieken``.
+    """
     data_store = data_store or DataStore()
-    init_logger(
-        name="statistiek_inwoners_autos",
-        debug=False,
-        log_file=data_store.data_dir / "statistiek_inwoners_autos.log",
-    )
+
     statistieken = lees_verdelingstatistieken(
         data_store, inwoners_path=inwoners_path, autos_path=autos_path
     )
@@ -142,14 +163,3 @@ def main(
         ),
     )
     return statistieken
-
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--inwoners-path", type=Path, help="Inwoners-GeoPackage uit de gekozen run"
-    )
-    parser.add_argument(
-        "--autos-path", type=Path, help="Auto-GeoPackage uit de gekozen run"
-    )
-    main(**vars(parser.parse_args()))

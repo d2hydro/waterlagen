@@ -50,13 +50,11 @@ waterlagen-productie/
 ├── pixi.lock
 ├── .datastore
 └── scripts/
-    ├── controleer_productie.py
-    ├── afwateringseenheden.py
-    ├── functioneel_landgebruik.py
-    ├── bag.py
-    ├── inwoners.py
-    ├── auto.py
-    └── statistiek_inwoners_autos.py
+    afwateringseenheden.py
+    functioneel_landgebruik.py
+    dem.py
+    inwoners.py
+    autos.py
 ```
 
 De meegeleverde `.datastore` bevat `DATA_DIR=./data`. Laat dit bestand staan.
@@ -89,18 +87,18 @@ te stellen. Zie [Opslag van gegevens](configuratie.md) voor een andere locatie.
 ## 4. Start een productie
 
 Kies één productie. Lees eerst de bijbehorende uitleg en controleer de
-instellingen in het script voor uw toepassing:
+[gedeelde opties](cli.md) voor uw toepassing:
 
 | Productie | Opdracht | Uitleg |
 |---|---|---|
-| Afwateringseenheden (standaard Aa en Maas) | `pixi run --locked afwateringseenheden` | [Afwateringseenheden](afwateringseenheden.md) |
-| Functioneel landgebruik (landelijk) | `pixi run --locked landgebruik` | [Landgebruik](landgebruik.md) |
+| Afwateringseenheden (landelijk) | `pixi run --locked afwateringseenheden` | [Afwateringseenheden](afwateringseenheden.md) |
+| Functioneel landgebruik (landelijk) | `pixi run --locked functioneel_landgebruik` | [Landgebruik](landgebruik.md) |
+| DEM | `pixi run --locked dem` | [DEM](dem.md) |
 | Inwoners per woon-VBO (landelijk) | `pixi run --locked inwoners` | [Inwoners en auto's](inwoners-personenautos.md) |
-| Personenauto's per woon-VBO (landelijk) | `pixi run --locked auto` | [Inwoners en auto's](inwoners-personenautos.md) |
+| Personenauto's per woon-VBO (landelijk) | `pixi run --locked autos` | [Inwoners en auto's](inwoners-personenautos.md) |
 
 Dit zijn volledige producties die veel gegevens kunnen downloaden en veel
-rekentijd en schijfruimte kunnen vragen. De scripts zijn voorbeelden die u kunt
-aanpassen. Beoordeel de resultaten voordat u ze gebruikt.
+rekentijd en schijfruimte kunnen vragen. Gebruik `--area alkmaar` voor een kleiner gebied. Beoordeel de resultaten voordat u ze gebruikt.
 
 Voer ook bij een volgende sessie de opdrachten vanuit uw projectfolder uit.
 U hoeft de omgeving niet apart te activeren.

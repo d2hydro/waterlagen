@@ -46,14 +46,17 @@ nav:
   - Zelf produceren:
       - Overzicht: produceren/index.md
       - Installatie: produceren/installatie.md
+      - Productiecommando's: produceren/cli.md
       - Opslag van gegevens: produceren/configuratie.md
       - Afwateringseenheden: produceren/afwateringseenheden.md
       - Functioneel landgebruik: produceren/landgebruik.md
-      - DEM rond Alkmaar: produceren/dem.md
+      - DEM: produceren/dem.md
       - BGT-vlakken voor QGIS: produceren/bgt-vlakken.md
       - Waterketen DAMO downloaden: produceren/waterketen-damo.md
       - Inwoners en personenauto's: produceren/inwoners-personenautos.md
-  - API-referentie:
+  - Python gebruiken:
+      - Voorbeelden: reference/gebruik.md
+      - Productie-API: reference/productie.md
       - AHN: reference/ahn.md
       - DEM: reference/dem.md
       - DGM1: reference/dgm1.md

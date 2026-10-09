@@ -22,8 +22,9 @@ from waterlagen import datastore as default_datastore
 from waterlagen._crs import format_crs, same_crs
 from waterlagen._downloads import _temporary_path
 from waterlagen._geopackage import write_geopackage_layer
+from waterlagen._run_logging import executor_logging
 from waterlagen.datastore import DataStore
-from waterlagen.logger import configure_logging, get_logger
+from waterlagen.logger import get_logger, tile_logging
 from waterlagen.raster.tiles import TILES_LAYER, Tile, read_tiles, tile_from_row
 from waterlagen.settings import settings
 
@@ -769,10 +770,12 @@ def _calculate_tile(job: _TileJob) -> AfwateringseenhedenTileResult:
 def _calculate_tile_worker(job: _TileJob) -> AfwateringseenhedenTileResult:
     """Open data in a separate process; keep worker logs in its own tile folder."""
     job.output_dir.mkdir(parents=True, exist_ok=True)
-    configure_logging(log_file=job.output_dir / "workflow.log", stdout=False)
     settings.crs = job.crs
-    with rasterio.Env(
-        GDAL_NUM_THREADS="1", VRT_NUM_THREADS="1", GDAL_CACHEMAX=256 * 1024 * 1024
+    with (
+        tile_logging(job.output_dir / "workflow.log"),
+        rasterio.Env(
+            GDAL_NUM_THREADS="1", VRT_NUM_THREADS="1", GDAL_CACHEMAX=256 * 1024 * 1024
+        ),
     ):
         return _calculate_tile_timed(job)
 
@@ -802,6 +805,7 @@ def _calculate_tiles_parallel(
     with ProcessPoolExecutor(
         max_workers=min(workers, len(jobs)),
         mp_context=multiprocessing.get_context("spawn"),
+        **executor_logging(),
     ) as executor:
         futures = {executor.submit(_calculate_tile_worker, job): job for job in jobs}
         for future in as_completed(futures):
@@ -854,6 +858,7 @@ def calculate_afwateringseenheden_tiles(
     overwrite: bool = False,
     engine: Literal["pcraster"] = "pcraster",
     workers: int = 1,
+    clip_to_area: bool = True,
     random_seed: int | None = None,
 ) -> AfwateringseenhedenTilesResult:
     """Calculate afwateringseenheden for every tile intersecting an area.
@@ -861,7 +866,10 @@ def calculate_afwateringseenheden_tiles(
     Parameters
     ----------
     gebied : shapely.geometry.base.BaseGeometry
-        Project-CRS area used to select tiles and clip the merged result.
+        Project-CRS input selection. Output is clipped only when clip_to_area is True.
+    clip_to_area : bool, optional
+        Clip merged results to the input area, default True for API compatibility.
+        Production workflows set False to retain complete tile cores.
     burn_depth_m : float
         Burn depth passed to :func:`prepare_watersysteem_rasters`.
     ahn_vrt_path : Path, optional
@@ -976,6 +984,11 @@ def calculate_afwateringseenheden_tiles(
     selected_tiles = _select_tiles(tiles, tile_ids)
     if len({tile.tile_id for tile in selected_tiles}) != len(selected_tiles):
         raise ValueError("Selected tiles must have unique tile IDs")
+    output_area = (
+        gebied
+        if clip_to_area
+        else union_all([box(*tile.bounds) for tile in selected_tiles])
+    )
     _write_selected_tiles(output_dir, selected_tiles)
     logger.info("Selected %s afwateringseenheden tile(s)", len(selected_tiles))
 
@@ -998,7 +1011,22 @@ def calculate_afwateringseenheden_tiles(
         for tile in selected_tiles
     ]
     if workers == 1:
-        tile_results = [_calculate_tile_timed(job) for job in jobs]
+        tile_results = []
+        failures = []
+        errors = []
+        for job in jobs:
+            try:
+                tile_results.append(_calculate_tile_timed(job))
+            except Exception as error:
+                logger.exception("Failed afwateringseenheden tile %s", job.tile.tile_id)
+                failures.append(f"{job.tile.tile_id}: {error}")
+                errors.append(error)
+        if len(errors) == 1:
+            raise errors[0]
+        if failures:
+            raise RuntimeError(
+                "Failed afwateringseenheden tiles: " + "; ".join(failures)
+            )
     else:
         for path in (ahn_vrt_path, watersysteem_path):
             if not path.is_file():
@@ -1016,18 +1044,18 @@ def calculate_afwateringseenheden_tiles(
 
     merged_subcatchments = _merge_subcatchments(
         (result.usable_subcatchments for result in tile_results),
-        gebied=gebied,
+        gebied=output_area,
     )
     gap_fill = _fill_gaps_from_neighbours(
         merged_subcatchments,
         tile_results=tile_results,
-        gebied=gebied,
+        gebied=output_area,
         resolution_m=resolution_m,
     )
     if not gap_fill.additions.empty:
         expected_area = merged_subcatchments.area.sum() + gap_fill.additions.area.sum()
         merged_subcatchments = _merge_subcatchments(
-            [merged_subcatchments, gap_fill.additions], gebied=gebied
+            [merged_subcatchments, gap_fill.additions], gebied=output_area
         )
         if abs(merged_subcatchments.area.sum() - expected_area) > _AREA_TOLERANCE:
             raise ValueError("Merging gap additions changed existing coverage")

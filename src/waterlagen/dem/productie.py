@@ -32,6 +32,7 @@ from waterlagen._crs import same_crs
 from waterlagen._filesystem import replace_file
 from waterlagen._geopackage import write_geopackage_layer_atomically
 from waterlagen._production import _file_identity
+from waterlagen._run_logging import executor_logging
 from waterlagen.administratieve_gebieden import read_landsgrens
 from waterlagen.ahn import interpolate
 from waterlagen.areas import resolve_workers
@@ -690,6 +691,7 @@ def _prepare_heights(
     started = monotonic()
     completed = 0
     pending: dict[Future[Path], _HeightBatch] = {}
+    failures: list[str] = []
     workers = min(workers, len(tiles))
 
     def report(stage: str = "running") -> None:
@@ -721,16 +723,23 @@ def _prepare_heights(
         nonlocal count, completed
         ready, _ = wait(pending, timeout=30, return_when=FIRST_COMPLETED)
         for future in ready:
-            batch_path = future.result()
+            batch = pending.pop(future)
+            try:
+                batch_path = future.result()
+            except Exception as error:
+                failures.append(f"{batch.output.stem}: {error}")
+                logger.exception("Gebouwhoogtenbatch %s mislukt", batch.output.stem)
+                continue
             count += _append_heights(
                 target, wgpd.read_file(batch_path, layer="gebouwen")
             )
-            del pending[future]
             completed += 1
         report()
 
     pool = (
-        ProcessPoolExecutor(max_workers=workers, mp_context=get_context("spawn"))
+        ProcessPoolExecutor(
+            max_workers=workers, mp_context=get_context("spawn"), **executor_logging()
+        )
         if workers > 1 and not reuse
         else nullcontext()
     )
@@ -767,7 +776,12 @@ def _prepare_heights(
                     config,
                 )
                 if executor is None:
-                    batch_path = _height_batch_worker(batch)
+                    try:
+                        batch_path = _height_batch_worker(batch)
+                    except Exception as error:
+                        failures.append(f"{tile_id}: {error}")
+                        logger.exception("Gebouwhoogtenbatch %s mislukt", tile_id)
+                        continue
                     count += _append_heights(
                         target, wgpd.read_file(batch_path, layer="gebouwen")
                     )
@@ -780,6 +794,9 @@ def _prepare_heights(
                 report()
         while pending:
             collect()
+    if failures:
+        report("failed")
+        raise RuntimeError("Gebouwhoogtenbatches mislukt: " + "; ".join(failures))
     if not reuse:
         wgpd.read_file(target, layer="gebouwen", where="1=0")
         replace_file(target, path)
@@ -922,14 +939,26 @@ def bouw_dem_tiles(
         logger.info(
             "Processing %s DEM tiles with %s workers", len(landuse_tiles), worker_count
         )
+        failures: list[str] = []
         if worker_count == 1:
             paths = []
             for tile in landuse_tiles:
-                paths.append(
-                    _build_tile_worker(
-                        (tile, ahn_vrt_path, height_path, target_dir, config, overwrite)
+                try:
+                    paths.append(
+                        _build_tile_worker(
+                            (
+                                tile,
+                                ahn_vrt_path,
+                                height_path,
+                                target_dir,
+                                config,
+                                overwrite,
+                            )
+                        )
                     )
-                )
+                except Exception as error:
+                    failures.append(f"{tile.stem}: {error}")
+                    logger.exception("DEM-tegel %s mislukt", tile.stem)
                 logger.info("DEM-tegels: %s/%s gereed", len(paths), len(landuse_tiles))
         else:
             arguments = [
@@ -937,7 +966,9 @@ def bouw_dem_tiles(
                 for tile in landuse_tiles
             ]
             with ProcessPoolExecutor(
-                max_workers=worker_count, mp_context=get_context("spawn")
+                max_workers=worker_count,
+                mp_context=get_context("spawn"),
+                **executor_logging(),
             ) as executor:
                 futures = {
                     executor.submit(_build_tile_worker, argument): argument[0]
@@ -945,7 +976,12 @@ def bouw_dem_tiles(
                 }
                 completed_paths = {}
                 for future in as_completed(futures):
-                    result = future.result()
+                    try:
+                        result = future.result()
+                    except Exception as error:
+                        failures.append(f"{futures[future].stem}: {error}")
+                        logger.exception("DEM-tegel %s mislukt", futures[future].stem)
+                        continue
                     completed_paths[futures[future]] = result
                     logger.info(
                         "Completed DEM tile %s (%s/%s)",
@@ -953,7 +989,13 @@ def bouw_dem_tiles(
                         len(completed_paths),
                         len(landuse_tiles),
                     )
-                paths = [completed_paths[tile] for tile in landuse_tiles]
+                paths = [
+                    completed_paths[tile]
+                    for tile in landuse_tiles
+                    if tile in completed_paths
+                ]
+        if failures:
+            raise RuntimeError("DEM-tegels mislukt: " + "; ".join(failures))
         completion = target_dir / "dem_complete.json"
         core_identity = [
             _file_identity(path) for group in paths for path in group.files

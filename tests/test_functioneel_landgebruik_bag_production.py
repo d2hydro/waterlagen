@@ -52,7 +52,10 @@ def test_production_matches_control_and_masks_unresolved_panden(
     bounds = (-1, -1, 21, 11)
     source = read_bag_source_data(path, bounds=bounds)
     script = runpy.run_path(
-        str(Path(__file__).parents[1] / "scripts/controle_bag_landgebruik.py")
+        str(
+            Path(__file__).parents[1]
+            / "src/waterlagen/functioneel_landgebruik/controle.py"
+        )
     )
     control = script["_process_area"](source, "test", 5)
     production = prepare_bag(

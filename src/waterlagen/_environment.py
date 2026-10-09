@@ -7,16 +7,17 @@ import tomllib
 from importlib.metadata import version
 from pathlib import Path
 
+from waterlagen.logger import get_logger, production_logging
+
 
 def main() -> None:
-    project_dir = Path(__file__).resolve().parents[1]
+    """Check the installed release and raster libraries from a project folder."""
+    project_dir = Path.cwd().resolve()
     manifest = tomllib.loads((project_dir / "pixi.toml").read_text("utf-8"))
-    expected = manifest["pypi-dependencies"]["waterlagen"].removeprefix("==")
+    requirement = manifest["pypi-dependencies"]["waterlagen"]
     installed = version("waterlagen")
-    if installed != expected:
-        raise RuntimeError(f"Verwacht Waterlagen {expected}, gevonden {installed}")
-    if Path.cwd().resolve() != project_dir:
-        raise RuntimeError("Open PowerShell in de projectfolder met pixi.toml")
+    if isinstance(requirement, str) and installed != requirement.removeprefix("=="):
+        raise RuntimeError(f"Verwacht Waterlagen {requirement}, gevonden {installed}")
 
     import numpy as np
     import pcraster
@@ -26,8 +27,11 @@ def main() -> None:
 
     from waterlagen import datastore
 
-    # Import each entry script without starting production, including BAG.
-    for task in manifest["tasks"].values():
+    # Import each entry script without starting production.
+    tasks = manifest.get(
+        "tasks", manifest.get("feature", {}).get("dev", {}).get("tasks", {})
+    )
+    for task in tasks.values():
         command = task if isinstance(task, str) else task.get("cmd", "")
         arguments = shlex.split(command)
         if len(arguments) == 2 and arguments[0] == "python":
@@ -54,10 +58,9 @@ def main() -> None:
     pcraster.setclone(2, 2, 1, 120000, 480000)
     field = pcraster.numpy2pcr(pcraster.Scalar, values, -9999)
     np.testing.assert_array_equal(pcraster.pcr2numpy(field + 1, -9999), values + 1)
-    print(f"Waterlagen {installed}")
-    print(f"Gegevensmap: {datastore.data_dir.resolve()}")
-    print("Imports en rastercontrole OK; geen brongegevens gedownload")
-
-
-if __name__ == "__main__":
-    main()
+    with production_logging():
+        get_logger(__name__).info("Waterlagen %s", installed)
+        get_logger(__name__).info("Gegevensmap: %s", datastore.data_dir.resolve())
+        get_logger(__name__).info(
+            "Imports en rastercontrole OK; geen brongegevens gedownload"
+        )

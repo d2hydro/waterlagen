@@ -4,8 +4,10 @@ import json
 import tempfile
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from datetime import datetime
+from multiprocessing import get_context
 from pathlib import Path
 
+from waterlagen._run_logging import executor_logging
 from waterlagen.bgt.download import DEFAULT_PREDEFINED_ARCHIVE
 from waterlagen.bgt.prepare import (
     SURFACE_LAYERS,
@@ -14,14 +16,13 @@ from waterlagen.bgt.prepare import (
     validate_surface_file,
 )
 from waterlagen.datastore import DataStore
-from waterlagen.logger import configure_logging, get_logger
+from waterlagen.logger import get_logger
 
 WORKERS = 2
 
 
-def prepare_one(archive: Path, output: Path, name: str, log_dir: Path) -> str | None:
-    """Schrijf voortgang per bronlaag naar een eigen logbestand."""
-    configure_logging(log_file=log_dir / f"bgt_{name}.log", stdout=False)
+def _prepare_one(archive: Path, output: Path, name: str) -> str | None:
+    """Prepare one BGT layer with caller-owned logging."""
     try:
         result = prepare_surface_layer(archive, output, name)
     except (OSError, RuntimeError, ValueError):
@@ -30,14 +31,34 @@ def prepare_one(archive: Path, output: Path, name: str, log_dir: Path) -> str | 
     return str(result) if result is not None else None
 
 
-def main(data_store: DataStore | None = None) -> None:
-    """Voer de conversie uit; afgeronde GeoPackages worden hergebruikt."""
+def main(
+    data_store: DataStore | None = None,
+    *,
+    overwrite: bool = False,
+    workers: int = WORKERS,
+) -> Path:
+    """Convert cached BGT GML Light to one validated GeoPackage.
+
+    Parameters
+    ----------
+    data_store : DataStore, optional
+        Location of the downloaded BGT archive and prepared GeoPackage.
+    overwrite : bool, optional
+        Rebuild instead of validating and reusing completed output.
+    workers : int, optional
+        Concurrent layer conversions, default 2.
+
+    Returns
+    -------
+    pathlib.Path
+        Prepared ``bgt.gpkg``. No download is performed by this function.
+    """
     store = data_store or DataStore()
     archive = store.bgt_dir / DEFAULT_PREDEFINED_ARCHIVE
     output = store.bgt_dir
     output.mkdir(parents=True, exist_ok=True)
     target = output / "bgt.gpkg"
-    if target.exists():
+    if target.exists() and not overwrite:
         previous = json.loads(
             (output / "bgt_actuele_vlakken.status.json").read_text(encoding="utf-8")
         )
@@ -48,8 +69,8 @@ def main(data_store: DataStore | None = None) -> None:
         for name, result in previous["lagen"].items():
             if not result.startswith("Overgeslagen:"):
                 validate_surface_file(target, "bgt_" + name)
-        print(f"Hergebruik: {target}", flush=True)
-        return
+        get_logger(__name__).info("Hergebruik: %s", target)
+        return target
     if not archive.is_file():
         raise FileNotFoundError(archive)
     status = {
@@ -67,12 +88,14 @@ def main(data_store: DataStore | None = None) -> None:
         temporary.replace(output / "bgt_actuele_vlakken.status.json")
 
     save_status()
-    print(f"Uitvoer: {target}", flush=True)
+    get_logger(__name__).info("Uitvoer: %s", target)
     with tempfile.TemporaryDirectory(prefix=".bgt_lagen_", dir=output) as work:
         completed = {}
-        with ProcessPoolExecutor(max_workers=WORKERS) as pool:
+        with ProcessPoolExecutor(
+            max_workers=workers, mp_context=get_context("spawn"), **executor_logging()
+        ) as pool:
             tasks = {
-                pool.submit(prepare_one, archive, Path(work), name, output): name
+                pool.submit(_prepare_one, archive, Path(work), name): name
                 for name in SURFACE_LAYERS
             }
             for task in as_completed(tasks):
@@ -86,7 +109,7 @@ def main(data_store: DataStore | None = None) -> None:
                         completed[name] = Path(result)
                 except (OSError, RuntimeError, ValueError) as error:
                     status["lagen"][name] = f"Fout: {error}"
-                print(name, status["lagen"][name], flush=True)
+                get_logger(__name__).info("BGT %s: %s", name, status["lagen"][name])
                 save_status()
         status["status"] = (
             "Gereed"
@@ -100,8 +123,7 @@ def main(data_store: DataStore | None = None) -> None:
             )
         status["status"] = "Lagen samenvoegen"
         save_status()
-        print("Lagen samenvoegen in één ruimtelijk geïndexeerd GeoPackage", flush=True)
-        configure_logging(log_file=output / "samenvoegen.log", stdout=False)
+        get_logger(__name__).info("BGT-lagen samenvoegen: %s", target)
         try:
             combine_surface_layers(
                 [completed[name] for name in SURFACE_LAYERS if name in completed],
@@ -115,8 +137,5 @@ def main(data_store: DataStore | None = None) -> None:
     status["uitvoer"] = str(target)
     status["afgerond"] = datetime.now().astimezone().isoformat()
     save_status()
-    print(f"Gereed: {target}", flush=True)
-
-
-if __name__ == "__main__":
-    main()
+    get_logger(__name__).info("Gereed: %s", target)
+    return target
