@@ -1,7 +1,11 @@
 # %%
+from dataclasses import dataclass
+from math import ceil, isfinite
 from pathlib import Path
+from typing import Literal
 
 import geopandas as gpd
+import numpy as np
 import rasterio
 from affine import Affine
 from numpy import ndarray
@@ -17,6 +21,125 @@ from waterlagen.logger import get_logger
 from waterlagen.raster.vrt import create_vrt_file, list_tif_files_in_vrt_file
 
 logger = get_logger(__name__)
+
+
+@dataclass(frozen=True)
+class InterpolationResult:
+    """Interpolated values, successful targets and optional nearest donor indices."""
+
+    values: ndarray
+    filled_mask: ndarray
+    donor_indices: ndarray | None = None
+
+
+def interpolate_masked(
+    values: ndarray,
+    *,
+    target_mask: ndarray,
+    donor_mask: ndarray,
+    max_distance_m: float,
+    pixel_width: float,
+    pixel_height: float,
+    method: Literal["inverse_distance", "nearest"] = "inverse_distance",
+) -> InterpolationResult:
+    """Fill selected cells from original donors without changing other cells.
+
+    Parameters
+    ----------
+    values : numpy.ndarray
+        Two-dimensional values. NoData eligibility is supplied by the masks.
+    target_mask, donor_mask : numpy.ndarray
+        Disjoint Boolean masks. Donors need not lie within the target area.
+        Newly filled cells never become donors.
+    max_distance_m : float
+        Maximum search distance in metres; zero disables interpolation.
+    pixel_width, pixel_height : float
+        Positive pixel dimensions in metres. Inverse distance requires squares.
+    method : {"inverse_distance", "nearest"}
+        Continuous elevation interpolation or categorical nearest copying.
+
+    Returns
+    -------
+    InterpolationResult
+        A copy of the values, successful-fill mask, and (nearest only) flattened
+        donor indices in row-major filled-cell order. Nearest ties prefer north,
+        then west. Unfilled and non-target cells retain their original values.
+    """
+    if values.ndim != 2:
+        raise ValueError("Interpolation requires a two-dimensional array")
+    for mask in (target_mask, donor_mask):
+        if mask.shape != values.shape or mask.dtype != np.bool_:
+            raise ValueError("Interpolation masks must be Boolean and match values")
+    if np.any(target_mask & donor_mask):
+        raise ValueError("Target and donor masks must be disjoint")
+    if not isfinite(max_distance_m) or max_distance_m < 0:
+        raise ValueError("max_distance_m must be finite and non-negative")
+    if any(not isfinite(size) or size <= 0 for size in (pixel_width, pixel_height)):
+        raise ValueError("Pixel dimensions must be finite and positive")
+    if method not in {"nearest", "inverse_distance"}:
+        raise ValueError(f"Unknown interpolation method: {method}")
+    if method == "inverse_distance" and not np.isclose(pixel_width, pixel_height):
+        raise ValueError("Inverse-distance interpolation requires square pixels")
+    result = values.copy()
+    filled = np.zeros(values.shape, dtype=bool)
+    donors = donor_mask & np.isfinite(values)
+    target_indices = np.flatnonzero(target_mask) if method == "nearest" else None
+    indices = (
+        np.full(len(target_indices), -1, dtype=np.int64)
+        if target_indices is not None
+        else None
+    )
+    if max_distance_m and donors.any() and target_mask.any():
+        if method == "nearest":
+            pending = target_mask.copy()
+            rows, cols = values.shape
+            offsets = []
+            for dy in range(
+                -ceil(max_distance_m / pixel_height),
+                ceil(max_distance_m / pixel_height) + 1,
+            ):
+                for dx in range(
+                    -ceil(max_distance_m / pixel_width),
+                    ceil(max_distance_m / pixel_width) + 1,
+                ):
+                    distance2 = (dy * pixel_height) ** 2 + (dx * pixel_width) ** 2
+                    if 0 < distance2 <= max_distance_m**2:
+                        offsets.append((distance2, dy, dx))
+            for _, dy, dx in sorted(offsets):
+                y0, y1 = max(0, -dy), min(rows, rows - dy)
+                x0, x1 = max(0, -dx), min(cols, cols - dx)
+                if y0 >= y1 or x0 >= x1:
+                    continue
+                target = np.s_[y0:y1, x0:x1]
+                donor = np.s_[y0 + dy : y1 + dy, x0 + dx : x1 + dx]
+                selected = pending[target] & donors[donor]
+                result[target][selected] = values[donor][selected]
+                rr, cc = np.nonzero(selected)
+                positions = np.searchsorted(target_indices, (rr + y0) * cols + cc + x0)
+                indices[positions] = (rr + y0 + dy) * cols + cc + x0 + dx
+                filled[target][selected] = True
+                pending[target][selected] = False
+                if not pending.any():
+                    break
+        else:
+            # Only original donors enter GDAL. Scratch fills outside the target
+            # are discarded; a protected NoData cell is never treated as a donor.
+            working = np.full(values.shape, np.nan, dtype=np.float32)
+            working[donors] = values[donors]
+            interpolated = fillnodata(
+                working,
+                mask=donors.astype("uint8"),
+                max_search_distance=max_distance_m / pixel_width,
+                smoothing_iterations=0,
+            )
+            filled = target_mask & np.isfinite(interpolated)
+            if np.issubdtype(result.dtype, np.integer):
+                result[filled] = np.rint(interpolated[filled]).astype(result.dtype)
+            else:
+                result[filled] = interpolated[filled]
+    return InterpolationResult(
+        result, filled, indices[indices >= 0] if indices is not None else None
+    )
 
 
 def _tiles_series_from_vrt(
@@ -85,10 +208,15 @@ def interpolate_within_geometry(
     fill_data = src.read(band, window=fill_window, masked=True)
 
     # fill nodata
-    fill_data = fillnodata(
-        fill_data,
-        max_search_distance=max_search_distance,
-    )
+    valid = ~np.ma.getmaskarray(fill_data) & np.isfinite(fill_data.data)
+    fill_data = interpolate_masked(
+        fill_data.data,
+        target_mask=~valid,
+        donor_mask=valid,
+        max_distance_m=max_search_distance,
+        pixel_width=abs(src.res[0]),
+        pixel_height=abs(src.res[1]),
+    ).values
 
     # data window by polygon
     window = from_bounds(*geometry.bounds, transform=src.transform).intersection(
@@ -96,10 +224,10 @@ def interpolate_within_geometry(
     )
 
     # Compute offsets of small window relative to big window.
-    row0 = int(round(window.row_off - fill_window.row_off))
-    col0 = int(round(window.col_off - fill_window.col_off))
-    h = int(round(window.height))
-    w = int(round(window.width))
+    row0 = round(window.row_off - fill_window.row_off)
+    col0 = round(window.col_off - fill_window.col_off)
+    h = round(window.height)
+    w = round(window.width)
 
     # clip data to polygon window
     data = fill_data[row0 : row0 + h, col0 : col0 + w]

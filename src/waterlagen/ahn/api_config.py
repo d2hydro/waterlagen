@@ -6,6 +6,8 @@ import geopandas as gpd
 import requests
 from pydantic import BaseModel
 
+DEFAULT_HTTP_TIMEOUT = 60.0
+
 
 class AHNService(BaseModel):
     service: Literal["ahn_pdok", "ahn_nl"] = "ahn_nl"
@@ -78,14 +80,38 @@ class AHNService(BaseModel):
         model: Literal["dtm", "dsm"] = "dtm",
         cell_size: Literal["05", "5"] = "05",
         ahn_version: Literal[3, 4, 5, 6] = 4,
+        timeout: float = DEFAULT_HTTP_TIMEOUT,
     ) -> gpd.GeoDataFrame:
-        """Get AHN tiles in a GeoDataFrame"""
+        """Fetch the AHN tile index from the configured service.
+
+        Parameters
+        ----------
+        model : {"dtm", "dsm"}, optional
+            Terrain or surface model, by default "dtm".
+        cell_size : {"05", "5"}, optional
+            Raster resolution of 0.5 or 5 metres, by default "05".
+        ahn_version : {3, 4, 5, 6}, optional
+            AHN version, by default 4. PDOK only supports version 4.
+        timeout : float, optional
+            Connection and read inactivity timeout in seconds. Defaults to
+            ``DEFAULT_HTTP_TIMEOUT``; this is not a total download time limit.
+
+        Returns
+        -------
+        geopandas.GeoDataFrame
+            Tile geometries and download attributes indexed by tile identifier.
+
+        Raises
+        ------
+        requests.RequestException
+            If the index request fails or times out. This request is not retried.
+        """
         self._validate_inputs(cell_size, ahn_version)
         # download data
         url = self.get_tiles_url(
             model=model, cell_size=cell_size, ahn_version=ahn_version
         )
-        response = requests.get(url=url)
+        response = requests.get(url=url, timeout=timeout)
         response.raise_for_status()
 
         # process into GeoDataframe

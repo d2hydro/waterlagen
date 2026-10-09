@@ -221,3 +221,6 @@ scripts/data/*
 # Local VS Code launcher
 /open-vscode.bat
 .vscode/settings.json
+
+# Local Alkmaar DEM launcher
+/run-dem-alkmaar.ps1

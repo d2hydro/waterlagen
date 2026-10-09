@@ -97,7 +97,7 @@ class _DummyDataset:
 
 def test_create_cog_file_translates_vrt_directly_to_cog(tmp_path, monkeypatch):
     vrt = tmp_path / "functioneel_landgebruik.vrt"
-    vrt.write_text("vrt")
+    vrt.write_text("<VRTDataset/>")
     cog = tmp_path / "functioneel_landgebruik.tif"
     calls = {}
 
@@ -179,7 +179,7 @@ def test_create_cog_file_removes_temp_and_keeps_existing_output_on_failure(
     monkeypatch,
 ):
     vrt = tmp_path / "functioneel_landgebruik.vrt"
-    vrt.write_text("vrt")
+    vrt.write_text("<VRTDataset/>")
     cog = tmp_path / "functioneel_landgebruik.tif"
     cog.write_text("existing")
     tmp = tmp_path / "functioneel_landgebruik.tmp.tif"
@@ -255,3 +255,52 @@ def test_create_cog_file_writes_valid_cog_from_vrt(tmp_path):
     finally:
         vrt_ds = None
         cog_ds = None
+
+
+def test_cog_publication_lock_retains_and_reuses_validated_conversion(
+    tmp_path, monkeypatch
+):
+    from waterlagen import _filesystem
+
+    source = tmp_path / "source.tif"
+    with rasterio.open(
+        source,
+        "w",
+        driver="GTiff",
+        width=32,
+        height=32,
+        count=1,
+        dtype="uint8",
+        nodata=0,
+        crs=28992,
+        transform=rasterio.transform.from_origin(0, 32, 1, 1),
+    ) as dst:
+        dst.write(np.ones((32, 32), dtype="uint8"), 1)
+    vrt = vrt_mod.create_vrt_file(tmp_path / "source.vrt", files=[source])
+    target = tmp_path / "output.tif"
+    target.write_bytes(b"previous output")
+    replace = Path.replace
+
+    def locked(self, destination):
+        if destination == target:
+            raise PermissionError(13, "simulated sharing violation", str(destination))
+        return replace(self, destination)
+
+    monkeypatch.setattr(Path, "replace", locked)
+    monkeypatch.setattr(_filesystem, "sleep", lambda _: None)
+    with pytest.raises(PermissionError):
+        vrt_mod.create_cog_file(vrt, target, overwrite=True, show_progress=False)
+    assert target.read_bytes() == b"previous output"
+    temporary = tmp_path / "output.tmp.tif"
+    checkpoint = tmp_path / "output.tmp.tif.ready.json"
+    assert temporary.exists() and checkpoint.exists()
+    before = temporary.read_bytes()
+    monkeypatch.setattr(Path, "replace", replace)
+
+    def must_not_convert(*args, **kwargs):
+        pytest.fail("The validated COG must not be converted again")
+
+    monkeypatch.setattr(vrt_mod.gdal, "Translate", must_not_convert)
+    vrt_mod.create_cog_file(vrt, target, overwrite=True, show_progress=False)
+    assert target.read_bytes() == before
+    assert not temporary.exists() and not checkpoint.exists()

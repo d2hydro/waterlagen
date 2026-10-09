@@ -15,6 +15,8 @@ waterlagen = "==@VERSION@"
 controleer = "python ./scripts/controleer_productie.py"
 afwateringseenheden = "python ./scripts/afwateringseenheden.py"
 landgebruik = "python ./scripts/functioneel_landgebruik.py"
+functioneel_landgebruik = "python ./scripts/functioneel_landgebruik.py"
+dem = "python ./scripts/dem.py"
 bag = "python ./scripts/bag.py"
 inwoners = { cmd = "python ./scripts/inwoners.py", depends-on = ["bag"] }
 auto = { cmd = "python ./scripts/auto.py", depends-on = ["bag"] }

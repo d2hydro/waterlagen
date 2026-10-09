@@ -5,7 +5,7 @@ Titel: Samengestelde Landgebruikskaart voor het berekenen van schade bij overstr
 Datum: 19 juni 2026
 
 Aanpassingen:
-- feature: automatisch downloaden bag, bgt, brp, en dijkringen naar datastore
+- feature: automatisch downloaden bag, bgt en brp; LIWO vooraf aanleveren
 - feature: verwijzingen naar datastore i.p.v. lokale bestanden
 - fix:  classify_weg wegen["functie"] vervangen voor wegen["bgt-functie"] (kolom functie bestaat niet)
 """
@@ -26,7 +26,7 @@ from waterlagen import datastore
 from waterlagen.bag import download_bag_light
 from waterlagen.bgt import download_bgt
 from waterlagen.brp import download_brp
-from waterlagen.dijkringen import download_dijkringen
+from waterlagen.functioneel_landgebruik.dijkligging import _buitendijks_mask
 from waterlagen.logger import init_logger
 from waterlagen.settings import settings
 from waterlagen.top10nl import download_top10nl
@@ -201,7 +201,7 @@ class LandgebruikConfig:
     bag_gpkg: Path
     brp_gpkg: Path
     top10nl_gpkg: Path
-    dijkringen_gpkg: Path
+    buitendijks_gpkg: Path
     output_tif: Path
     bounds: tuple[float, float, float, float]
     resolution_m: float
@@ -212,7 +212,7 @@ class LandgebruikConfig:
     bag_verblijfsobject_layer: str = "verblijfsobject"
     brp_layer: str = "brp_gewas"
     top10nl_functioneel_gebied_layer: str = "top10nl_functioneel_gebied_vlak"
-    dijkringen_layer: str = "dijkring_v_2012"
+    buitendijks_layer: str = "buitendijks_gebied_uit_liwo"
 
 
 DEFAULT_CONFIG = LandgebruikConfig(
@@ -220,7 +220,7 @@ DEFAULT_CONFIG = LandgebruikConfig(
     bag_gpkg=SOURCE_DATA_DIR / "bag" / "bag-light.gpkg",
     brp_gpkg=SOURCE_DATA_DIR / "brp" / "brpgewaspercelen_definitief_2025.gpkg",
     top10nl_gpkg=SOURCE_DATA_DIR / "top10nl" / "top10nl_Compleet.gpkg",
-    dijkringen_gpkg=SOURCE_DATA_DIR / "dijkringen" / "dijkringen_historie_2012.gpkg",
+    buitendijks_gpkg=SOURCE_DATA_DIR / "liwo" / "buitendijks_gebied_uit_liwo.gpkg",
     output_tif=PROCESSED_DATA_DIR / "20260528_TUDelft-BSc.tiff",
     bounds=(159261.0, 437220.0, 176475.0, 452279.0),
     resolution_m=0.5,
@@ -251,12 +251,8 @@ def download_sources(config: LandgebruikConfig) -> None:
             overwrite=False,
         )
 
-    if not config.dijkringen_gpkg.exists():
-        download_dijkringen(
-            download_dir=config.dijkringen_gpkg.parent,
-            target_path=config.dijkringen_gpkg,
-            overwrite=False,
-        )
+    if not config.buitendijks_gpkg.exists():
+        raise FileNotFoundError(f"LIWO source missing: {config.buitendijks_gpkg}")
 
     if not config.top10nl_gpkg.exists():
         download_top10nl(
@@ -522,25 +518,24 @@ def verfijn_woonfunctie_panden(
 
 def voeg_dijkligging_toe(
     objecten: gpd.GeoDataFrame,
-    dijkringen: gpd.GeoDataFrame,
+    buitendijks: gpd.GeoDataFrame,
     functiekolom: str,
 ) -> gpd.GeoDataFrame:
     objecten = objecten.copy()
-    dijkringen = dijkringen.copy()
+    buitendijks = buitendijks.copy()
 
     if objecten.empty:
+        objecten["buitendijks"] = pd.Series(dtype=bool)
         objecten["binnendijks"] = pd.Series(dtype=bool)
         return objecten
 
-    if objecten.crs != dijkringen.crs:
-        dijkringen = dijkringen.to_crs(objecten.crs)
+    if objecten.crs != buitendijks.crs:
+        buitendijks = buitendijks.to_crs(objecten.crs)
 
-    dijkring_geom = dijkringen.geometry.make_valid().union_all()
-    checkpunten = objecten.geometry.representative_point()
-    objecten["binnendijks"] = checkpunten.apply(
-        lambda punt: punt.covered_by(dijkring_geom)
-    )
-    mask_buiten = ~objecten["binnendijks"]
+    buiten_geom = buitendijks.geometry.make_valid().union_all()
+    objecten["buitendijks"] = _buitendijks_mask(objecten, buiten_geom)
+    objecten["binnendijks"] = ~objecten["buitendijks"]
+    mask_buiten = objecten["buitendijks"]
     objecten.loc[mask_buiten, functiekolom] = (
         objecten.loc[mask_buiten, functiekolom].astype(str) + " buitendijks"
     )
@@ -577,7 +572,7 @@ def rasterize_codes(rasterize: Any, data: gpd.GeoDataFrame) -> None:
 def add_functionele_gebieden(
     rasterize: Any,
     paths: LandgebruikConfig,
-    dijkringen: gpd.GeoDataFrame,
+    buitendijks: gpd.GeoDataFrame,
     window_bounds: tuple[float, float, float, float],
     config: LandgebruikConfig,
 ) -> None:
@@ -590,7 +585,7 @@ def add_functionele_gebieden(
     fgebied["cat_fb"] = fgebied["typefunctioneelgebied"].apply(
         classify_functionelegebieden
     )
-    fgebied = voeg_dijkligging_toe(fgebied, dijkringen, "cat_fb")
+    fgebied = voeg_dijkligging_toe(fgebied, buitendijks, "cat_fb")
     fgebied["code"] = fgebied["cat_fb"].map(FUNCTIONEEL_GEBIED_CODES)
     rasterize_codes(rasterize, fgebied)
 
@@ -598,7 +593,7 @@ def add_functionele_gebieden(
 def add_brp(
     rasterize: Any,
     paths: LandgebruikConfig,
-    dijkringen: gpd.GeoDataFrame,
+    buitendijks: gpd.GeoDataFrame,
     window_bounds: tuple[float, float, float, float],
     config: LandgebruikConfig,
 ) -> None:
@@ -613,7 +608,7 @@ def add_brp(
         lambda row: classify_brp_gewas(row["gewas"], row["category"]),
         axis=1,
     )
-    brp = voeg_dijkligging_toe(brp, dijkringen, "brp_cat")
+    brp = voeg_dijkligging_toe(brp, buitendijks, "brp_cat")
     brp["code"] = brp["brp_cat"].map(BRP_CODES)
     rasterize_codes(rasterize, brp)
 
@@ -637,7 +632,7 @@ def add_water(
 def add_wegen(
     rasterize: Any,
     paths: LandgebruikConfig,
-    dijkringen: gpd.GeoDataFrame,
+    buitendijks: gpd.GeoDataFrame,
     window_bounds: tuple[float, float, float, float],
     config: LandgebruikConfig,
 ) -> None:
@@ -648,7 +643,7 @@ def add_wegen(
         columns=["bgt-functie", "geometry"],
     )
     wegen["cat_weg"] = wegen["bgt-functie"].apply(classify_weg)
-    wegen = voeg_dijkligging_toe(wegen, dijkringen, "cat_weg")
+    wegen = voeg_dijkligging_toe(wegen, buitendijks, "cat_weg")
     wegen["code"] = wegen["cat_weg"].map(WEG_CODES)
     rasterize_codes(rasterize, wegen)
 
@@ -656,7 +651,7 @@ def add_wegen(
 def add_bag(
     rasterize: Any,
     paths: LandgebruikConfig,
-    dijkringen: gpd.GeoDataFrame,
+    buitendijks: gpd.GeoDataFrame,
     window_bounds: tuple[float, float, float, float],
     config: LandgebruikConfig,
 ) -> None:
@@ -674,7 +669,7 @@ def add_bag(
     )
     bag = koppeling_hoofdfunctie_aan_panden(bag_panden, bag_vbo)
     bag = verfijn_woonfunctie_panden(bag, bag_vbo)
-    bag = voeg_dijkligging_toe(bag, dijkringen, "hoofdfunctie")
+    bag = voeg_dijkligging_toe(bag, buitendijks, "hoofdfunctie")
     bag["hoofdfunctie"] = bag["hoofdfunctie"].astype(str).str.strip().str.lower()
     bag["code"] = bag["hoofdfunctie"].map(BAG_CODES)
     rasterize_codes(rasterize, bag)
@@ -687,9 +682,9 @@ def write_landgebruik_raster(config: LandgebruikConfig) -> Path:
         profile["height"] / profile["blockysize"]
     )
     paths.output_tif.parent.mkdir(parents=True, exist_ok=True)
-    dijkringen = gpd.read_file(
-        paths.dijkringen_gpkg,
-        layer=config.dijkringen_layer,
+    buitendijks = gpd.read_file(
+        paths.buitendijks_gpkg,
+        layer=config.buitendijks_layer,
     )
 
     with rio.open(paths.output_tif, "w", **profile) as r_out:
@@ -719,14 +714,14 @@ def write_landgebruik_raster(config: LandgebruikConfig) -> Path:
             add_functionele_gebieden(
                 rasterize,
                 paths,
-                dijkringen,
+                buitendijks,
                 window_bounds,
                 config,
             )
-            add_brp(rasterize, paths, dijkringen, window_bounds, config)
+            add_brp(rasterize, paths, buitendijks, window_bounds, config)
             add_water(rasterize, paths, window_bounds, config)
-            add_wegen(rasterize, paths, dijkringen, window_bounds, config)
-            add_bag(rasterize, paths, dijkringen, window_bounds, config)
+            add_wegen(rasterize, paths, buitendijks, window_bounds, config)
+            add_bag(rasterize, paths, buitendijks, window_bounds, config)
 
             r_out.write_band(1, out, window=window)
 

@@ -1,66 +1,19 @@
-# %%
-import os
+"""Produceer functioneel landgebruik voor Nederland of Alkmaar."""
+
+import argparse
 from multiprocessing import freeze_support
 from pathlib import Path
 
-from waterlagen.datastore import DataStore
-from waterlagen.functioneel_landgebruik import bouw_functioneel_landgebruik_tiles
-from waterlagen.logger import init_logger
-from waterlagen.raster.inspect import inspect_raster
-from waterlagen.raster.tiles import build_tiles
-from waterlagen.raster.vrt import create_cog_file, create_vrt_file
-
-
-def _safe_workers(max_workers: int = 3) -> int:
-    return max(1, min(max_workers, os.cpu_count() or 1))
-
-
-def main(data_store: DataStore | None = None) -> Path:
-    data_store = data_store or DataStore()
-    init_logger(
-        name="bouw landgebruik",
-        debug=False,
-        log_file=data_store.data_dir / "bouw_functioneel_landgebruik.log",
-    )
-
-    tiles_path = data_store.processed_data_dir / "tiles" / "tiles.gpkg"
-    tiles_path = build_tiles(
-        target_path=tiles_path,
-        tile_size_m=5000,
-        overwrite=False,
-    )
-
-    workers = _safe_workers()
-    print(f"attempt to build with #workers: {workers}")
-
-    data_dir = data_store.processed_data_dir / "functioneel_landgebruik"
-    tiles_dir = data_dir / "tiles"
-    tile_files = bouw_functioneel_landgebruik_tiles(
-        target_dir=tiles_dir,
-        tiles_path=tiles_path,
-        workers=workers,
-        data_store=data_store,
-        overwrite=False,
-    )
-
-    print(f"Tiles built: {len(tile_files)}")
-
-    print("Create VRT-file")
-    vrt_file = create_vrt_file(
-        vrt_file=data_dir / "functioneel_landgebruik.vrt", directory=tiles_dir
-    )
-
-    print(f"Create cog_file from vrt_file: {vrt_file}")
-    cog_file = create_cog_file(
-        vrt_file=vrt_file,
-        cog_file=data_dir / "functioneel_landgebruik.tif",
-        overwrite=False,
-    )
-
-    inspect_raster(cog_file)
-    return cog_file
-
+from waterlagen._production import add_run_arguments
+from waterlagen.areas import Area
+from waterlagen.functioneel_landgebruik.productie import main
 
 if __name__ == "__main__":
     freeze_support()
-    main()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--area", type=Area, choices=list(Area), default=Area.nederland)
+    parser.add_argument("--workers", type=int)
+    parser.add_argument("--mapping-csv", type=Path)
+    parser.add_argument("--building-context-m", type=float, default=5.0)
+    add_run_arguments(parser)
+    main(**vars(parser.parse_args()))

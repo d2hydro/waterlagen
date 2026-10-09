@@ -3,10 +3,12 @@ import gc
 import os
 import tempfile
 import time
+import xml.etree.ElementTree as ET
 import zipfile
+from collections.abc import Iterable, Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
-from typing import Iterable, Optional
 from urllib.parse import unquote, urlparse
 
 import pyogrio
@@ -45,6 +47,61 @@ GML_OPEN_OPTIONS = [
     "EXPOSE_GML_ID=YES",
 ]
 
+# Deze BGT-vlakken kunnen naast geometrie2d ook een kruinlijn bevatten.
+BGT_LAYERS_WITH_KRUINLIJN = {
+    "bgt_wegdeel",
+    "bgt_ondersteunendwegdeel",
+    "bgt_begroeidterreindeel",
+    "bgt_onbegroeidterreindeel",
+}
+
+
+@contextmanager
+def _gml_surface_source(
+    gml_path: Path | str, *, layer_name: str, work_dir: Path
+) -> Iterator[tuple[str, list[str]]]:
+    """Lees het BGT-vlak, niet de eventueel aanwezige kruinlijn.
+
+    - GDAL ontdekt eerst alle attributen, ook die in latere objecten.
+    - Het ontdekte schema wordt alleen voor de geometrie aangepast.
+    - Een ZIP-laag wordt tijdelijk uitgepakt; steeds één laag tegelijk.
+    """
+    if layer_name.lower() not in BGT_LAYERS_WITH_KRUINLIJN:
+        yield str(gml_path), GML_OPEN_OPTIONS
+        return
+
+    with tempfile.TemporaryDirectory(dir=work_dir) as temporary_dir:
+        local_gml = Path(temporary_dir) / "source.gml"
+        logger.info("Preparing BGT surface geometry for %s", layer_name)
+        source = gdal.VSIFOpenL(str(gml_path), "rb")
+        if source is None:
+            raise DownloadPayloadError(f"Could not open GML dataset {gml_path}")
+        try:
+            with local_gml.open("wb") as target:
+                while chunk := gdal.VSIFReadL(1, 8 * 1024 * 1024, source):
+                    target.write(chunk)
+        finally:
+            gdal.VSIFCloseL(source)
+
+        with gdal.OpenEx(
+            str(local_gml),
+            gdal.OF_VECTOR,
+            open_options=[*GML_OPEN_OPTIONS, "WRITE_GFS=YES"],
+        ):
+            pass
+
+        schema_path = local_gml.with_suffix(".gfs")
+        schema = ET.parse(schema_path)
+        for feature_class in schema.findall("GMLFeatureClass"):
+            for tag in ("GeometryElementPath", "GeometryType", "GeomPropertyDefn"):
+                for element in feature_class.findall(tag):
+                    feature_class.remove(element)
+            geometry_path = ET.Element("GeometryElementPath")
+            geometry_path.text = "geometrie2d"
+            feature_class.insert(2, geometry_path)
+        schema.write(schema_path, encoding="utf-8", xml_declaration=False)
+        yield str(local_gml), [*GML_OPEN_OPTIONS, f"GFS_TEMPLATE={schema_path}"]
+
 
 @dataclass(frozen=True)
 class BgtCustomDownload:
@@ -76,7 +133,7 @@ def _target_paths(download_dir: Path, featuretypes: Iterable[str]) -> list[Path]
 
 
 def request_download(
-    featuretypes: Iterable[str], poly_mask: Optional[BaseGeometry]
+    featuretypes: Iterable[str], poly_mask: BaseGeometry | None
 ) -> str:
     """Make a request for a BGT download. Will respond a download request id that can be used for download
 
@@ -416,17 +473,26 @@ def _translate_gml_layer_to_geopackage(
     source_dataset = None
     dataset = None
     try:
-        with gdal.ExceptionMgr(useExceptions=True):
+        with (
+            gdal.ExceptionMgr(useExceptions=True),
+            _gml_surface_source(
+                gml_path, layer_name=layer_name, work_dir=target_path.parent
+            ) as (source_path, open_options),
+        ):
             source_dataset = gdal.OpenEx(
-                str(gml_path),
+                source_path,
                 gdal.OF_VECTOR,
-                open_options=GML_OPEN_OPTIONS,
+                open_options=open_options,
             )
             if source_dataset is None:
                 raise DownloadPayloadError(f"Could not open GML dataset {gml_path}")
-            dataset = gdal.VectorTranslate(
-                str(target_path), source_dataset, options=options
-            )
+            try:
+                dataset = gdal.VectorTranslate(
+                    str(target_path), source_dataset, options=options
+                )
+            finally:
+                _close_gdal_dataset(source_dataset)
+                source_dataset = None
         if dataset is None:
             raise DownloadPayloadError(f"Could not convert {gml_path} to {target_path}")
     finally:
@@ -761,7 +827,7 @@ def bgt_custom_download(
     download_dir: Path = datastore.bgt_dir,
     *,
     featuretypes: Iterable[str] = DEFAULT_FEATURETYPES,
-    poly_mask: Optional[BaseGeometry] = None,
+    poly_mask: BaseGeometry | None = None,
     overwrite: bool = True,
     poll_interval_s: int = 5,
 ) -> BgtCustomDownload:
@@ -825,7 +891,7 @@ def bgt_custom_download(
 
 def get_bgt_features(
     featuretypes: Iterable[str],
-    poly_mask: Optional[BaseGeometry],
+    poly_mask: BaseGeometry | None,
     download_dir: Path,
 ) -> Path:
     """Download BGT features in GeoPackages.

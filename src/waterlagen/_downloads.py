@@ -203,6 +203,17 @@ def stream_download_to_temp(
                     sys.stdout.write(f"\r{description}: {progress_text}")
                     sys.stdout.flush()
 
+            encoding = response.headers.get("Content-Encoding", "identity").lower()
+            if (
+                total is not None
+                and encoding in {"", "identity"}
+                and downloaded != total
+            ):
+                raise DownloadPayloadError(
+                    f"Incomplete download of {description}: expected {total} bytes, "
+                    f"received {downloaded} bytes"
+                )
+
         _raise_for_known_error_payload(tmp_path, content_type=content_type)
         return FileDownload(
             source_url=url,

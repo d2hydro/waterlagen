@@ -239,6 +239,67 @@ def test_gdal_translation_preserves_fields_and_xml_attributes(tmp_path):
     assert result["laterVeld"].iloc[1] == "alleen in tweede object"
 
 
+@pytest.mark.parametrize("from_zip", [False, True])
+@pytest.mark.parametrize(
+    "layer_name", sorted(bgt_download_module.BGT_LAYERS_WITH_KRUINLIJN)
+)
+def test_gdal_translation_keeps_surface_with_kruinlijn(tmp_path, from_zip, layer_name):
+    """Een actuele kruinlijn mag het vlak niet vervangen; behoud alle attributen."""
+    polygon = """<bgt:geometrie2d><gml:Polygon srsName="EPSG:28992">
+      <gml:exterior><gml:LinearRing>
+        <gml:posList>100000 450000 100010 450000 100010 450010 100000 450010 100000 450000</gml:posList>
+      </gml:LinearRing></gml:exterior>
+    </gml:Polygon></bgt:geometrie2d>"""
+    line = """<bgt:kruinlijn><gml:LineString srsName="EPSG:28992">
+      <gml:posList>100000 450000 100010 450010</gml:posList>
+    </gml:LineString></bgt:kruinlijn>"""
+    features = []
+    for number in range(3):
+        end = (
+            "<bgt:eindRegistratie>2022-01-12T13:33:38</bgt:eindRegistratie>"
+            if number < 2
+            else ""
+        )
+        extra = "<bgt:laterVeld>behouden</bgt:laterVeld>" if number == 2 else ""
+        geometry = polygon if number == 0 else polygon + line
+        features.append(f"""<gml:featureMember><bgt:OndersteunendWegdeel gml:id="versie.{number}">
+          <bgt:identificatie.lokaalID>zelfde-object</bgt:identificatie.lokaalID>
+          <bgt:bgt-status codeSpace="status">bestaand</bgt:bgt-status>
+          {end}{extra}{geometry}
+        </bgt:OndersteunendWegdeel></gml:featureMember>""")
+    xml = (
+        '<gml:FeatureCollection xmlns:gml="http://www.opengis.net/gml" xmlns:bgt="https://example.com/bgt">'
+        + "".join(features)
+        + "</gml:FeatureCollection>"
+    )
+    gml_path = tmp_path / f"{layer_name}.gml"
+    gml_path.write_text(xml, encoding="utf-8")
+    source = str(gml_path)
+    if from_zip:
+        archive = tmp_path / "bgt.zip"
+        with zipfile.ZipFile(archive, "w") as zf:
+            zf.write(gml_path, arcname=gml_path.name)
+        source = f"/vsizip/{archive.as_posix()}/{gml_path.name}"
+    target = tmp_path / "result.gpkg"
+    _translate_gml_layer_to_geopackage(
+        source,
+        target,
+        layer_name=layer_name,
+        expected_crs=28992,
+        source_crs=28992,
+        append=False,
+    )
+    result = pyogrio.read_dataframe(target, layer=layer_name)
+    assert result.geom_type.tolist() == ["Polygon"] * 3
+    assert result.area.tolist() == pytest.approx([100.0] * 3)
+    assert result["eindRegistratie"].isna().tolist() == [False, False, True]
+    assert result["gml_id"].tolist() == ["versie.0", "versie.1", "versie.2"]
+    assert result["identificatie.lokaalID"].tolist() == ["zelfde-object"] * 3
+    assert result["bgt-status_codeSpace"].tolist() == ["status"] * 3
+    assert result["laterVeld"].iloc[2] == "behouden"
+    assert result.crs.to_epsg() == 28992
+
+
 def test_gdal_translation_formats_explicit_source_crs(monkeypatch, tmp_path):
     gml_path = tmp_path / "bgt_waterdeel.gml"
     gml_path.write_text("<gml />")

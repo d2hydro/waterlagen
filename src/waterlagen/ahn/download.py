@@ -1,5 +1,6 @@
 # %%
 import io
+import math
 import os
 import tempfile
 import zipfile
@@ -7,6 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
+import geopandas as gpd
 import numpy as np
 import numpy.typing as npt
 import rasterio
@@ -18,7 +20,7 @@ from requests.models import Response
 from shapely.geometry import Polygon
 
 from waterlagen import datastore, settings
-from waterlagen.ahn.api_config import AHNService
+from waterlagen.ahn.api_config import DEFAULT_HTTP_TIMEOUT, AHNService
 from waterlagen.logger import get_logger
 
 logger = get_logger(__name__)
@@ -131,10 +133,35 @@ def get_tiles_features(
     model: Literal["dtm", "dsm"] = "dtm",
     cell_size: Literal["05", "5"] = "05",
     ahn_version: Literal[3, 4, 5, 6] = 4,
-):
-    # get AHN tiles in a GeoDataFrame
+    timeout: float = DEFAULT_HTTP_TIMEOUT,
+) -> gpd.GeoDataFrame:
+    """Fetch the AHN tile index and select tiles by geometry or identifier.
+
+    Parameters
+    ----------
+    ahn_service : AHNService
+        Service providing the tile index.
+    poly_mask : Polygon or None, optional
+        Select intersecting tiles. Must use the same CRS as the index.
+    select_indices : list of str or None, optional
+        Tile identifiers to select after applying the optional spatial filter.
+    model : {"dtm", "dsm"}, optional
+        Terrain or surface model, by default "dtm".
+    cell_size : {"05", "5"}, optional
+        Raster resolution of 0.5 or 5 metres, by default "05".
+    ahn_version : {3, 4, 5, 6}, optional
+        AHN version, by default 4.
+    timeout : float, optional
+        Connection and read inactivity timeout in seconds for the index request.
+        Defaults to ``DEFAULT_HTTP_TIMEOUT``. Index requests are not retried.
+
+    Returns
+    -------
+    geopandas.GeoDataFrame
+        Selected tile geometries and download attributes.
+    """
     gdf = ahn_service.get_tiles(
-        ahn_version=ahn_version, model=model, cell_size=cell_size
+        ahn_version=ahn_version, model=model, cell_size=cell_size, timeout=timeout
     )
 
     # clip gdf
@@ -257,6 +284,7 @@ def download_ahn(
     save_tiles_index: bool = False,
     *,
     retries: int = 10,
+    timeout: float = DEFAULT_HTTP_TIMEOUT,
 ) -> Path:
     """Download AHN rasters with validated, atomic tile replacement.
 
@@ -285,6 +313,10 @@ def download_ahn(
     retries : int, optional
         Maximum total download attempts for each tile, by default 10. Set to 0
         to make every requested tile fail without an HTTP request.
+    timeout : float, optional
+        HTTP connection and read inactivity timeout in seconds for the tile
+        index and each tile request. Defaults to ``DEFAULT_HTTP_TIMEOUT``;
+        this is not a total download time limit.
 
     Returns
     -------
@@ -293,6 +325,10 @@ def download_ahn(
     """
 
     _validate_retries(retries)
+    if isinstance(timeout, bool) or not isinstance(timeout, (int, float)):
+        raise TypeError("timeout must be a positive number")
+    if not math.isfinite(timeout) or timeout <= 0:
+        raise ValueError("timeout must be finite and greater than zero")
 
     # init service
     ahn_service = AHNService(service=service)
@@ -305,6 +341,7 @@ def download_ahn(
         model=model,
         cell_size=cell_size,
         ahn_version=ahn_version,
+        timeout=timeout,
     )
 
     # make download dir if not existing
@@ -391,7 +428,7 @@ def download_ahn(
                 )
                 try:
                     temporary_path = _temporary_tile_path(file_path)
-                    response = requests.get(url)
+                    response = requests.get(url, timeout=timeout)
                     response.raise_for_status()
                     data_bytes = _tif_bytes_from_response(
                         response,

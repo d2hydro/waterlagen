@@ -115,6 +115,14 @@ class DataStore(BaseSettings):
 
     @computed_field
     @property
+    def waterketen_damo_dir(self) -> Path:
+        """Return the directory for the PDOK Waterketen DAMO source."""
+        waterketen_damo_dir = self.source_data_dir / "waterketen_damo"
+        waterketen_damo_dir.mkdir(exist_ok=True, parents=True)
+        return waterketen_damo_dir
+
+    @computed_field
+    @property
     def afwateringseenheden_path(self) -> Path:
         afwateringseenheden_path = self.processed_data_dir / "afwateringseenheden"
         afwateringseenheden_path.mkdir(exist_ok=True, parents=True)

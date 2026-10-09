@@ -1,4 +1,4 @@
-from waterlagen.functioneel_landgebruik.build import (
+from waterlagen.functioneel_landgebruik.landgebruik_berekenen import (
     FunctioneelLandgebruikLayers,
     FunctioneelLandgebruikSources,
     bouw_functioneel_landgebruik,

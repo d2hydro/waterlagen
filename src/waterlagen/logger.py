@@ -1,10 +1,45 @@
 import logging
+from collections.abc import Iterator
+from contextlib import contextmanager
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Optional, Union
 
 # Module-level flag to avoid duplicate setup within a single process
 _LOG_CONFIGURED = False
+
+
+@contextmanager
+def tile_logging(path: Path) -> Iterator[None]:
+    """Temporarily route package logs to one tile, restoring parent logging.
+
+    Parameters
+    ----------
+    path : pathlib.Path
+        Tile log file. Its parent directory is created when needed.
+
+    Yields
+    ------
+    None
+        A logging scope for sequential or process-pool tile execution.
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+    logger = get_logger("waterlagen")
+    handlers, level, propagate = logger.handlers[:], logger.level, logger.propagate
+    handler = logging.FileHandler(path, encoding="utf-8")
+    handler.setFormatter(
+        logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s")
+    )
+    logger.handlers = [handler]
+    logger.setLevel(logging.INFO)
+    logger.propagate = False
+    try:
+        yield
+    finally:
+        logger.handlers = handlers
+        logger.setLevel(level)
+        logger.propagate = propagate
+        handler.close()
 
 
 def _ensure_parent_dir(path: Path) -> None:

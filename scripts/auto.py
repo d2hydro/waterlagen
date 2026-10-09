@@ -1,13 +1,16 @@
 """Prepare shared CBS and BAG VBO-buurt data for the auto workflow."""
 
+import argparse
 from pathlib import Path
 from time import perf_counter
 
+from waterlagen._production import ProductionRun, add_run_arguments, production_run
 from waterlagen.administratieve_gebieden import download_wijk_buurtkaart_2025
 from waterlagen.autos import bouw_autos
 from waterlagen.cbs import buurtgegevens_2025_path, download_buurtgegevens_2025
 from waterlagen.datastore import DataStore
 from waterlagen.logger import get_logger, init_logger
+from waterlagen.settings import settings
 from waterlagen.vbo_buurt import bouw_vbo_buurt
 
 logger = get_logger(__name__)
@@ -19,14 +22,43 @@ def main(
     data_store: DataStore | None = None,
     *,
     write_geoparquet: bool = WRITE_GEOPARQUET,
+    run_id: str | None = None,
+    resume: bool = False,
+    overwrite: bool = False,
 ) -> Path:
     """Produce personenauto's per woon-VBO from CBS and BAG source data."""
     data_store = data_store or DataStore()
+    with production_run(
+        data_store.processed_data_dir,
+        "autos",
+        "nederland",
+        run_id=run_id,
+        resume=resume,
+        overwrite=overwrite,
+        parameters={
+            "cbs_year": 2025,
+            "crs": settings.crs,
+            "write_geoparquet": write_geoparquet,
+        },
+    ) as run:
+        return _produce(
+            data_store, run, write_geoparquet=write_geoparquet, overwrite=overwrite
+        )
+
+
+def _produce(
+    data_store: DataStore,
+    run: ProductionRun,
+    *,
+    write_geoparquet: bool,
+    overwrite: bool,
+) -> Path:
     init_logger(
         name="auto",
         debug=False,
-        log_file=data_store.data_dir / "auto.log",
+        log_file=run.path / "auto.log",
     )
+    logger.info("Productie-uitvoermap: %s", run.path)
     started = perf_counter()
     buurtkaart = download_wijk_buurtkaart_2025(
         download_dir=data_store.administratieve_gebieden_dir,
@@ -53,18 +85,34 @@ def main(
     logger.info("VBO-buurt stap completed in %.1f s", perf_counter() - started)
 
     started = perf_counter()
+    run.record_inputs(
+        {
+            "bag": data_store.bag_dir / "bag-light.gpkg",
+            "buurtkaart": buurtkaart.target_path,
+            "cbs_buurtgegevens": buurtgegevens_2025_path(data_store.cbs_dir),
+            "bag_vbo": result.bag_vbo_path,
+            "cbs_buurt": data_store.cbs_buurt_path,
+        }
+    )
     autos = bouw_autos(
         bag_vbo_path=result.bag_vbo_path,
         cbs_buurt_path=data_store.cbs_buurt_path,
         cbs_buurtgegevens_path=buurtgegevens_2025_path(data_store.cbs_dir),
-        target_path=data_store.autos_path,
-        overwrite=False,
-        geoparquet_path=data_store.autos_parquet_path,
+        target_path=run.path / "autos.gpkg",
+        overwrite=overwrite,
+        geoparquet_path=run.path / "autos.parquet",
         write_geoparquet=write_geoparquet,
     )
     logger.info("Autos stap completed in %.1f s", perf_counter() - started)
     return autos.target_path
 
 
+def cli() -> None:
+    """Run production with shared output-folder options."""
+    parser = argparse.ArgumentParser(description=__doc__, allow_abbrev=False)
+    add_run_arguments(parser)
+    main(**vars(parser.parse_args()))
+
+
 if __name__ == "__main__":
-    main(write_geoparquet=WRITE_GEOPARQUET)
+    cli()

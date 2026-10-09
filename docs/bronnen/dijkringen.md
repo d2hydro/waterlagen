@@ -2,9 +2,7 @@
 
 ## Beschrijving
 
-De historische dijkringenbron bevat de laag `dijkring_v_2012`. Waterlagen
-gebruikt deze geometrieën als begrenzing voor classificaties binnen en buiten
-een dijkring.
+De historische dijkringenbron bevat de laag `dijkring_v_2012`.
 
 ## Leverancier
 
@@ -17,7 +15,9 @@ beschikbaar is, gebruikt het pakket de ArcGIS MapServer als technische fallback.
 
 ## Gebruik in Waterlagen
 
-Dijkringen zijn invoer voor [functioneel landgebruik](../bewerkingen/functioneel-landgebruik.md).
+De downloader blijft beschikbaar als afzonderlijke bron. Voor
+[functioneel landgebruik](../bewerkingen/functioneel-landgebruik.md) wordt
+uitsluitend de [LIWO-selectie](../bewerkingen/liwo-selectie.md) gebruikt.
 
 ## Externe verwijzingen
 
