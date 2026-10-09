@@ -234,9 +234,15 @@ def test_parallel_does_not_publish_partial_control_after_failure(tmp_path, monke
 def test_parallel_reuses_merged_control_without_permanent_tile_controls(
     tmp_path, monkeypatch
 ):
-    _patch_read_tiles(monkeypatch, _tiles_gdf())
+    tiles = _tiles_gdf()
+    _patch_read_tiles(monkeypatch, tiles)
     _patch_sources(monkeypatch)
     _patch_executor(monkeypatch)
+    landgebied = gpd.GeoDataFrame(geometry=[box(*tiles.total_bounds)], crs=tiles.crs)
+    monkeypatch.setattr(
+        "waterlagen.functioneel_landgebruik.nodata_verklaren.read_landsgrens",
+        lambda: landgebied,
+    )
 
     def build(**kwargs):
         path = kwargs["target_path"]
@@ -266,6 +272,7 @@ def test_parallel_reuses_merged_control_without_permanent_tile_controls(
     )
     assert len(list((tmp_path / "tiles").glob("*/nodata.gpkg"))) == 3
     original = gpd.read_file(target)
+    assert original.geometry.union_all().equals(tiles.geometry.union_all())
 
     def must_not_build(**kwargs):
         raise AssertionError("Bestaande tegels horen te worden hergebruikt.")
