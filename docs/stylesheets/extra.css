@@ -7,3 +7,9 @@
 .md-typeset table td:first-child code {
   white-space: nowrap;
 }
+
+.md-typeset .review-status {
+  margin-top: 2rem;
+  color: var(--md-default-fg-color--light);
+  font-size: 0.7rem;
+}

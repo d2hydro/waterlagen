@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+
+{% block content %}
+  {{ super() }}
+  {% if page and page.meta.get("review_status") == "human-reviewed" %}
+    <p class="review-status">Door mensen beoordeeld</p>
+  {% endif %}
+{% endblock %}

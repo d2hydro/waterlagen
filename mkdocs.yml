@@ -4,6 +4,7 @@ repo_name: d2hydro/waterlagen
 
 theme:
   name: material
+  custom_dir: overrides
   language: nl
   logo: icons/logo.png
   favicon: icons/favicon.png

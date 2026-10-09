@@ -125,6 +125,29 @@ Keep these concerns separated.
 - When public behavior, processing methods, inputs, outputs, or workflows change, update the corresponding documentation in the same change.
 - Do not document intended behavior that is not actually implemented unless it is explicitly identified as planned or conceptual.
 
+## Documentation Review Status
+
+Documentation pages may declare a review status in YAML frontmatter:
+
+- `review_status: draft` — Codex may create, rewrite, and update the page.
+- `review_status: human-reviewed` — The page is maintained by humans and must not be modified by Codex.
+
+Pages without an explicit review status are treated as `draft`.
+
+For human-reviewed pages:
+
+- Codex MUST NOT modify, delete, rename, or change the review status of the page without explicit user authorization.
+- Codex MUST check whether relevant code changes make the documentation inaccurate or incomplete.
+- Codex MUST report identified inconsistencies, omissions, and potentially outdated information, referencing the affected page and relevant code.
+- Codex MUST NOT automatically treat the implementation as correct when it conflicts with the documentation.
+
+Documentation findings must be reported separately, not inserted into protected pages.
+
+When completing a task, report documentation impact as `none`, `possible`, or `confirmed`, with a brief explanation when relevant.
+
+A human-reviewed status indicates human approval, not a guarantee that the documentation remains current.
+
+
 ## Documentation Structure
 
 Use the following conceptual structure:
