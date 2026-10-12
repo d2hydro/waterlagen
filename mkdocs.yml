@@ -50,23 +50,33 @@ nav:
       - BGT-vlakken voor QGIS: produceren/bgt-vlakken.md
       - Waterketen DAMO downloaden: produceren/waterketen-damo.md
       - Inwoners en personenauto's: produceren/inwoners-personenautos.md
-  - Python gebruiken:
-      - Voorbeelden: reference/gebruik.md
-      - Productie-API: reference/productie.md
-      - AHN: reference/ahn.md
-      - DEM: reference/dem.md
-      - BAG: reference/bag.md
-      - BGT: reference/bgt.md
-      - BRP: reference/brp.md
-      - TOP10NL: reference/top10nl.md
-      - Dijkringen: reference/dijkringen.md
-      - Administratieve gebieden: reference/administratieve_gebieden.md
-      - Afwateringseenheden: reference/afwateringseenheden.md
-      - Functioneel landgebruik: reference/functioneel_landgebruik.md
-      - HYDAMO: reference/hydamo.md
-      - Waterketen DAMO: reference/waterketen_damo.md
-      - DataStore: reference/datastore.md
-      - Rasters: reference/raster.md
+  - Python:
+      - Aan de slag: reference/gebruik.md
+      - Bronlagen downloaden: reference/bronlagen-downloaden.md
+      - Bewerkte lagen samenstellen: reference/bewerkte-lagen-produceren.md
+      - API-referentie:
+          - Overzicht: reference/api.md
+          - Productie-ingangen: reference/productie.md
+          - AHN: reference/ahn.md
+          - DEM: reference/dem.md
+          - BAG: reference/bag.md
+          - BGT: reference/bgt.md
+          - BRP: reference/brp.md
+          - CBS: reference/cbs.md
+          - TOP10NL: reference/top10nl.md
+          - Dijkringen: reference/dijkringen.md
+          - Administratieve gebieden: reference/administratieve_gebieden.md
+          - Afwateringseenheden: reference/afwateringseenheden.md
+          - Auto's: reference/autos.md
+          - Functioneel landgebruik: reference/functioneel_landgebruik.md
+          - Inwoners: reference/inwoners.md
+          - Woon-VBO's per buurt: reference/vbo_buurt.md
+          - HYDAMO: reference/hydamo.md
+          - LIWO: reference/liwo.md
+          - OSM-drinkwaterlocaties: reference/osm_drinkwater.md
+          - Waterketen DAMO: reference/waterketen_damo.md
+          - DataStore: reference/datastore.md
+          - Rasters: reference/raster.md
   - Bijdragen:
       - Overzicht: bijdragen/index.md
       - Ontwikkelomgeving: bijdragen/ontwikkelomgeving.md
@@ -94,7 +104,8 @@ markdown_extensions:
   - pymdownx.details
   - pymdownx.highlight
   - pymdownx.inlinehilite
-  - pymdownx.snippets
+  - pymdownx.snippets:
+      check_paths: true
   - pymdownx.tabbed:
       alternate_style: true
 

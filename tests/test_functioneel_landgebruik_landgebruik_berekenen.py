@@ -137,3 +137,30 @@ def test_build_accepts_custom_output_config(tmp_path, monkeypatch):
     with rasterio.open(target) as src:
         assert src.block_shapes == [(16, 16)]
         assert src.overviews(1) == [2, 4]
+
+
+def test_explicit_landgebied_limits_gap_filling(tmp_path, monkeypatch):
+    boundary = tmp_path / "eigen_landsgrens.gpkg"
+    gpd.GeoDataFrame(geometry=[box(0, 0, 2, 4)], crs=28992).to_file(
+        boundary, layer="landgebied", driver="GPKG"
+    )
+    donor = gpd.GeoDataFrame(
+        {"code": [100], "source_code": [12]},
+        geometry=[box(0, 0, 1, 1)],
+        crs=28992,
+    )
+    _patch_sources(monkeypatch, prepared_sources=[donor])
+    target = tmp_path / "landgebruik.tif"
+    bouw_functioneel_landgebruik(
+        target,
+        bounds=(0, 0, 4, 4),
+        resolution_m=1,
+        gap_fill_distance_m=5,
+        landgebied_path=boundary,
+        download_missing_sources=False,
+        output_config=RasterOutputConfig(block_size=16, overview_factors=()),
+    )
+    with rasterio.open(target) as result:
+        values = result.read(1)
+    assert np.all(values[:, :2] == 100)
+    assert np.all(values[:, 2:] == 0)

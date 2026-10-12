@@ -13,6 +13,25 @@ from waterlagen.datastore import DataStore
 from waterlagen.functioneel_landgebruik import sources
 
 
+@pytest.mark.parametrize("crs", ["EPSG:28992", "EPSG:4326"])
+def test_alkmaar_centrum_resolves_offline_in_project_crs(tmp_path, monkeypatch, crs):
+    from waterlagen.areas import Area, NAMED_AREAS, resolve_area
+    from waterlagen.settings import settings
+
+    monkeypatch.setattr(settings, "crs", crs)
+    store = DataStore(data_dir=tmp_path, _env_file=None)
+    polygon = NAMED_AREAS["alkmaar_centrum"]
+    assert polygon.area == 1_000_000
+    assert NAMED_AREAS["alkmaar"].contains(polygon)
+    expected = gpd.GeoSeries([polygon], crs=28992).to_crs(crs).iloc[0]
+    preparation = SourcePreparation(offline=True)
+    for value in ("alkmaar_centrum", Area.alkmaar_centrum):
+        area = resolve_area(value, store, preparation)
+        assert area.value == "alkmaar_centrum"
+        assert area.crs == crs
+        assert area.geometry.equals(expected)
+
+
 def test_authority_and_named_area_use_shared_geometry_and_crs(tmp_path):
     from waterlagen.administratieve_gebieden.download import WATERSCHAPSGRENZEN_FILENAME
     from waterlagen.areas import NAMED_AREAS, resolve_area

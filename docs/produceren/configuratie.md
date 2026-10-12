@@ -32,7 +32,8 @@ De huidige productiescripts voor `autos`, `inwoners`, `afwateringseenheden` en
 processed_data/<dataset>/<werkgebied>/<run-id>/
 ```
 
-Alle vijf producten ondersteunen `nederland`, `alkmaar` en `waterschap_<code>`.
+Alle vijf producten ondersteunen `nederland`, `alkmaar`, `alkmaar_centrum` en
+`waterschap_<code>`.
 Zie [gebieden en CLI-opties](cli.md) voor hun betekenis.
 
 Zonder opties maakt iedere opdracht een nieuwe run met een UTC-tijdstempel

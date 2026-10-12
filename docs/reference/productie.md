@@ -31,6 +31,8 @@ Zie [Python gebruiken](gebruik.md) voor voorbeelden en
 
 ::: waterlagen.areas.resolve_area
 
+::: waterlagen.areas.Area
+
 ## Logging
 
 ::: waterlagen.logger.production_logging

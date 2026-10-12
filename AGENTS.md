@@ -144,6 +144,12 @@ For pages with `editorial_status: human`:
 
 Documentation findings must be reported separately, not inserted into protected pages.
 
+Generated API blocks and included example code may follow their canonical source
+automatically, including on `editorial_status: human` pages. This does not authorize
+rewriting protected Markdown, prose or frontmatter. Maintain executable examples
+in `docs/reference/voorbeelden/`; see `docs/bijdragen/conventions.md` for their
+documentation and offline checks.
+
 When completing a task, report documentation impact as `none`, `possible`, or `confirmed`, with a brief explanation when relevant.
 
 The `human` editorial status indicates human approval, not a guarantee that the documentation remains current.

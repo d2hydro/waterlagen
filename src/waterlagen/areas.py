@@ -28,7 +28,11 @@ from waterlagen.settings import settings
 NAMED_AREAS: dict[str, Polygon] = {
     "alkmaar": Polygon(
         [(105000, 510000), (115000, 510000), (115000, 520000), (105000, 520000)]
-    )
+    ),
+    # One square kilometre around the centre, inside a single 5 km and 10 km tile.
+    "alkmaar_centrum": Polygon(
+        [(111250, 515750), (112250, 515750), (112250, 516750), (111250, 516750)]
+    ),
 }
 NAMED_AREAS_CRS = "EPSG:28992"
 
@@ -38,6 +42,7 @@ class Area(StrEnum):
 
     nederland = "nederland"
     alkmaar = "alkmaar"
+    alkmaar_centrum = "alkmaar_centrum"
 
 
 @dataclass(frozen=True)

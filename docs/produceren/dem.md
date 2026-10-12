@@ -17,7 +17,8 @@ pixi run dem --area alkmaar
 
 DEM gebruikt dezelfde [gebieden en CLI-opties](cli.md) als de andere producten.
 De gebiedsgrens selecteert volledige tegelkernen; uitvoer wordt niet afgeknipt.
-Alkmaar gebruikt bij een tegelgrootte van 5 km vier tegels. De landgebruikresolutie
+Alkmaar gebruikt bij een tegelgrootte van 5 km vier tegels; met
+`--area alkmaar_centrum` wordt één volledige tegel geselecteerd. De landgebruikresolutie
 en pixeluitlijning blijven behouden.
 
 Uitvoer staat onder `processed_data/dem/<area>/<run-id>/`.
@@ -56,7 +57,7 @@ Met `--ahn-vrt PAD` gebruikt u een eigen DTM-mozaïek dat ook de donoromgeving d
 
 | Optie | Standaard | Betekenis |
 | --- | --- | --- |
-| `--area` | `nederland` | Nederland, Alkmaar of waterschapscode |
+| `--area` | `nederland` | Nederland, Alkmaar, Alkmaar-centrum of waterschapscode |
 | `--workers` | `DEM_WORKERS`, anders 1 | Gelijktijdige DEM-tegels |
 | `--building-workers` | `DEM_BUILDING_WORKERS`, anders 4 | Gelijktijdige batches voor gebouwhoogten |
 | `--building-initial-buffer-m` | 1 | Eerste gebouwzoekafstand |

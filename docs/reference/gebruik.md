@@ -2,122 +2,106 @@
 editorial_status: ai
 ---
 
-# Waterlagen in eigen Python-code
+# Aan de slag met Python
 
-De productiecommando's roepen dezelfde Python-functies aan als onderstaande
-voorbeelden. Importeer functies uit `waterlagen`, niet uit `scripts`.
-De [productie-API](productie.md) beschrijft de argumenten. Voor de betekenis van
-bronnen en resultaten zijn [Bronlagen](../bronlagen/index.md) en
-[Bewerkte lagen](../bewerkte-lagen/index.md) de ingang.
-
-## Een product maken
-
-```python
-from pathlib import Path
-
-from waterlagen.autos.productie import main as produceer_autos
-from waterlagen.datastore import DataStore
-from waterlagen.logger import production_logging
-
-
-def main():
-    store = DataStore(data_dir=Path("data"))
-    with production_logging():
-        result = produceer_autos(store, area="alkmaar", run_id="proef")
-    return result
-
-
-if __name__ == "__main__":
-    main()
-```
-
-Gebruik de `__main__`-guard bij workflows die werkprocessen starten, zeker op
-Windows. Zonder `production_logging()` configureert de package geen handlers:
-de aanroepende toepassing beheert dan zelf de logging. Met de contextmanager
-krijgt u dezelfde centrale logging als de CLI, inclusief geneste producties en
-werkprocessen. Na afloop wordt de eerdere loggingconfiguratie hersteld.
-
-De andere productie-ingangen zijn:
-
-```python
-from waterlagen.inwoners.productie import main as produceer_inwoners
-from waterlagen.afwateringseenheden.productie import main as produceer_afwateringseenheden
-from waterlagen.functioneel_landgebruik.productie import main as produceer_landgebruik
-from waterlagen.dem.workflow import main as produceer_dem
-```
-
-Bijvoorbeeld binnen `main()` uit het eerste voorbeeld:
-
-```python
-result = produceer_dem(data_store=store, area="38", run_id="dem_proef", workers=2)
-```
-
-Alle ingangen delen `area`, `run_id`, `resume`, `overwrite`, `refresh_sources` en
-`offline`. Zie [productiecommando's](../produceren/cli.md) voor hun betekenis.
-`workers` is beschikbaar voor de drie raster-/tegelworkflows.
-Gebruik `DemConfig` voor DEM-rekeninstellingen.
+Stel een eigen workflow samen met de publieke Python-functies: bronnen ophalen,
+een selectie maken, bewerken en het resultaat verder gebruiken of opslaan.
+De voorbeelden tonen de afzonderlijke stappen en instelbare parameters.
+Voor een complete standaardproductie zijn er de
+[productiecommando's](../produceren/cli.md).
 
 ## Losse bronnen en bewerkingen
 
-De bestaande download- en verwerkingsfuncties blijven beschikbaar. Bij een
-volledige productie hoeft u deze niet afzonderlijk aan te roepen.
+- [Bronlagen downloaden](bronlagen-downloaden.md): één script per bronlaag.
+- [Bewerkte lagen samenstellen](bewerkte-lagen-produceren.md): één workflow per laag.
+- [API-referentie](api.md): functies, parameters en teruggegeven resultaten,
+  opgebouwd uit de actuele modulecode.
 
-```python
-from waterlagen.bag import download_bag_light
-from waterlagen.datastore import DataStore
-from waterlagen.liwo import FILENAME, download_raster, polygonize_selected
+## Voorbereiden
 
-store = DataStore()
-bag = download_bag_light(download_dir=store.bag_dir, overwrite=False)
-raster = download_raster(store.source_data_dir / "liwo" / FILENAME)
-polygonen = polygonize_selected(
-    raster,
-    store.source_data_dir / "liwo" / "buitendijks_gebied_uit_liwo.gpkg",
-)
+Gebruik een geïnstalleerde [productieomgeving](../produceren/installatie.md)
+of de [ontwikkelomgeving](../bijdragen/ontwikkelomgeving.md).
+Download het gewenste `.py`-bestand vanaf de voorbeeldpagina en plaats het
+in de map met `pixi.toml`. Pas bovenaan het script `DATA_DIR` aan naar de
+gewenste gegevensmap. Alle voorbeelden gebruiken daar dezelfde submappen
+`source_data` en `processed_data`, zodat bronnen kunnen worden hergebruikt.
+Pas ook de gebiedskeuze, rekeninstellingen en experimentnaam aan. De invoer
+en tussenresultaten staan expliciet in het script: vervang bijvoorbeeld een
+downloadaanroep door een pad naar een eigen bestand met hetzelfde schema.
+
+De voorbeelden horen bij de moduleversie waarmee deze documentatie is gebouwd.
+Gebruik bij een oudere release de bijbehorende voorbeelden of werk de installatie bij.
+
+## Een script uitvoeren
+
+Begin bijvoorbeeld met het BGT-voorbeeld. Dat vraagt alleen waterdelen en panden
+voor het voorbeeldgebied op:
+
+```console
+pixi run python download_bgt.py
 ```
 
-Voor reeds gedownloade BGT GML Light-ZIP:
+Een bewerkte laag maakt u bijvoorbeeld met:
 
-```python
-from waterlagen.bgt.productie import main as bereid_bgt_voor
-
-# Binnen een main-functie met __main__-guard:
-bgt = bereid_bgt_voor(store, workers=2)
+```console
+pixi run python produceer_autos.py
 ```
 
-Raadpleeg de modulepagina's in deze API-referentie voor overige bronnen en
-lagere verwerkingsfuncties. Die functies houden hun eigen cache- en
-overschrijfargumenten; de gedeelde runconventie geldt voor de productie-ingangen.
+Vanuit een repositorycheckout staan de scripts onder `docs/reference/voorbeelden/`:
+
+```console
+pixi run python docs/reference/voorbeelden/download_bgt.py
+pixi run python docs/reference/voorbeelden/produceer_autos.py
+```
+
+Afwateringseenheden vereist PCRaster. Gebruik daarvoor vanuit de repository:
+
+```console
+pixi run --environment afwateringseenheden python docs/reference/voorbeelden/produceer_afwateringseenheden.py
+```
+
+In het productiepakket is PCRaster onderdeel van de productieomgeving; gebruik
+daar `pixi run --locked python produceer_afwateringseenheden.py`.
+
+## Het voorbeeldgebied
+
+Waar een gebiedsselectie mogelijk is, gebruiken alle scripts **Alkmaar-centrum**
+(`alkmaar_centrum`). Dat is een selectie van 1 × 1 km. Het landgebruikvoorbeeld
+berekent deze rechthoek; het DEM volgt dat raster. Afwateringseenheden gebruikt
+een kerntegel van 1 km met buffer en knipt het samengevoegde resultaat op het
+gebied. Inwoners en auto's behouden complete CBS-buurten met alle woon-VBO's.
+Dit zijn eigen workflows; de [standaardproductie](../produceren/cli.md#gebieden)
+gebruikt grotere tegels en behoudt de volledige tegelkernen.
+
+Een klein voorbeeldgebied betekent niet dat alle voorbeelden snel klaar zijn.
+BAG, TOP10NL en andere bronnen worden landelijk gedownload. Ook de voorbereiding
+van BAG/CBS is landelijk. Op iedere voorbeeldpagina staat welke gegevens nodig
+zijn; de volledige productie kan veel schijfruimte, geheugen en tijd vragen.
+
+## In eigen code gebruiken
+
+Importeer de benodigde functies uit `waterlagen`. De scripts bevatten geen
+extra `main()`-functie. Instellingen staan bovenaan, gevolgd door de stappen
+binnen `if __name__ == "__main__":`. Dat blok voorkomt dat importeren de
+workflow start en maakt multiprocessing veilig, ook op Windows.
+
+In een notebook kunt u de imports, instellingen en stappen als losse cellen
+gebruiken. Laat daarbij de buitenste `__main__`-voorwaarde en de bijbehorende
+inspringing weg. Begin met één werkproces; start parallelle workflows vanuit
+het script. Bekijk tussenresultaten voordat u ze aan de volgende functie doorgeeft.
+
+`production_logging()` toont de voortgang en herstelt na afloop de eerdere
+loggingconfiguratie. De voorbeelden hergebruiken bronbestanden en schrijven
+naar `data/processed_data/voorbeelden/alkmaar_centrum/<experiment>/`.
+Kies een nieuwe experimentnaam bij gewijzigde invoer of rekeninstellingen:
+de losse functies bieden niet dezelfde bewaking van wijzigingen als de
+[productie-API](productie.md). Een bestaand bestand kan worden hergebruikt
+zonder dat gewijzigde parameters opnieuw worden toegepast.
 
 ## Verdelingen controleren
 
-```python
-from pathlib import Path
-from waterlagen.datastore import DataStore
-from waterlagen.vbo_buurt.statistiek import lees_verdelingstatistieken
-
-store = DataStore()
-root = store.processed_data_dir
-statistiek = lees_verdelingstatistieken(
-    store,
-    inwoners_path=root / "inwoners/nederland/proef/inwoners.gpkg",
-    autos_path=root / "autos/nederland/proef/autos.gpkg",
-)
-```
-
-Dit voorbeeld vergelijkt landelijke CBS-totalen met landelijke uitvoer.
-Voor een regionale vergelijking gebruikt u dezelfde buurtcontext als de
-productie; de standaardstatistiek leest het landelijke `store.cbs_buurt_path`
-en mag daarom niet rechtstreeks als sluitende regiocontrole worden gebruikt.
-
-## BAG-controle
-
-```python
-from waterlagen.functioneel_landgebruik.controle import main as controleer_bag
-
-controle = controleer_bag(store, stap=6, overwrite=True)
-```
-
-Deze controle gebruikt bestaande bronnen en schrijft de vaste voorbeelden.
-Met `bounds` kiest u een andere uitsnede. De vaste gemaalcontrole is beschikbaar
-als `waterlagen.functioneel_landgebruik.controle_gemalen.main`.
+Voor het controleren van resultaten zijn ook
+`waterlagen.vbo_buurt.statistiek.lees_verdelingstatistieken` en de
+[BAG-controlefuncties](functioneel_landgebruik.md) beschikbaar.
+Vergelijk regionale verdelingen alleen met de bijbehorende CBS-buurten:
+de standaardstatistiek leest landelijke CBS-totalen.

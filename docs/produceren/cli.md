@@ -28,7 +28,8 @@ Elk commando heeft `--help`. Rechtstreeks starten met
 
 ## Gebieden
 
-Alle producten accepteren `--area nederland` (standaard), `--area alkmaar` of
+Alle producten accepteren `--area nederland` (standaard), `--area alkmaar`,
+`--area alkmaar_centrum` of
 een waterschapscode, bijvoorbeeld `--area 38` of `--area waterschap_38`.
 `--waterbeheercode 38` is een alternatieve schrijfwijze; combineer deze niet met
 `--area`. Eén opdracht verwerkt één gebied.
@@ -43,6 +44,23 @@ zonder extra filter op de waterbeheerder van een object.
 Alkmaar is een vaste Polygon in `waterlagen.areas`, in EPSG:28992 met begrenzing
 `(105000, 510000, 115000, 520000)`. De polygon verandert niet met de tegelgrootte.
 Aanvullende vaste gebieden worden in diezelfde module opgenomen en getest.
+
+Gebruik voor kleine voorbeelden `--area alkmaar_centrum`: een vast vierkant van
+1 × 1 km rond het centrum, met RD-begrenzing `(111250, 515750, 112250, 516750)`.
+De bestaande selectie `alkmaar` blijft 10 × 10 km. De volledige tegelkernen
+blijven behouden:
+
+| Product | `alkmaar` | `alkmaar_centrum` |
+| --- | --- | --- |
+| Functioneel landgebruik en DEM | 4 tegels van 5 × 5 km | 1 tegel van 5 × 5 km |
+| Afwateringseenheden | 2 tegels van 10 × 10 km | 1 tegel van 10 × 10 km |
+
+De buffers komen daar nog bij. Eén landgebruik-/DEM-tegel bevat bij 0,5 m
+resolutie al 100 miljoen cellen. Deze selectie verkleint dus de gebiedsbewerking,
+maar is geen garantie voor een snelle proefrun of kleine downloads. Landelijke
+bronbestanden blijven nodig. Bij inwoners en auto's gebeurt ook de gedeelde
+voorbereiding van BAG en CBS landelijk; daarna worden de volledige CBS-buurten
+geselecteerd die het voorbeeldgebied raken.
 
 ## Opties
 

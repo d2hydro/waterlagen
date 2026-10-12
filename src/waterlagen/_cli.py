@@ -7,7 +7,7 @@ from pathlib import Path
 
 from waterlagen._production import add_run_arguments, validate_run_options
 from waterlagen._run_logging import production_logging
-from waterlagen.areas import area_name
+from waterlagen.areas import NAMED_AREAS, area_name
 from waterlagen.datastore import DataStore
 from waterlagen.logger import get_logger
 
@@ -33,7 +33,10 @@ def production_parser(
     selection.add_argument(
         "--area",
         default="nederland",
-        help="Invoergebied: nederland, alkmaar of waterschap_CODE; uitvoer wordt niet afgeknipt",
+        help=(
+            f"Invoergebied: nederland, {', '.join(NAMED_AREAS)} of waterschap_CODE; "
+            "uitvoer wordt niet afgeknipt"
+        ),
     )
     selection.add_argument(
         "--waterbeheercode",

@@ -12,7 +12,13 @@ from shapely.geometry import box
 from waterlagen._cli import production_parser, run_cli
 from waterlagen._run_logging import executor_logging, production_logging, run_log
 from waterlagen._sources import SourcePreparation, prepare_cached, source_options
-from waterlagen.areas import NAMED_AREAS, ProductionArea, area_name, select_area_tiles
+from waterlagen.areas import (
+    Area,
+    NAMED_AREAS,
+    ProductionArea,
+    area_name,
+    select_area_tiles,
+)
 from waterlagen.logger import get_logger, tile_logging
 
 PRODUCTS = [
@@ -37,6 +43,7 @@ def test_help_is_shared_and_does_not_start_production(product, monkeypatch, caps
         module.cli()
     assert result.value.code == 0
     help_text = capsys.readouterr().out
+    assert "alkmaar_centrum" in help_text
     assert all(
         option in help_text
         for option in (
@@ -53,6 +60,23 @@ def test_help_is_shared_and_does_not_start_production(product, monkeypatch, caps
         )
     )
     main.assert_not_called()
+
+
+@pytest.mark.parametrize("product", PRODUCTS)
+def test_cli_accepts_alkmaar_centrum(product, tmp_path, monkeypatch):
+    path = Path(__file__).parents[1] / "scripts" / f"{product}.py"
+    spec = importlib.util.spec_from_file_location(product, path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    main = Mock(return_value=tmp_path / "result")
+    monkeypatch.setattr(module, "main", main)
+    monkeypatch.setattr(
+        "sys.argv",
+        [str(path), "--area", "alkmaar_centrum", "--data-dir", str(tmp_path)],
+    )
+    module.cli()
+    main.assert_called_once()
+    assert main.call_args.kwargs["area"] == "alkmaar_centrum"
 
 
 @pytest.mark.parametrize(
@@ -138,8 +162,16 @@ def test_failed_cache_preparation_is_retried(tmp_path):
     assert build.call_count == 2
 
 
-@pytest.mark.parametrize("size", [5000, 10000])
-def test_named_polygon_is_independent_of_tile_size(size):
+@pytest.mark.parametrize(
+    "name,size,count",
+    [
+        ("alkmaar", 5000, 4),
+        ("alkmaar", 10000, 2),
+        ("alkmaar_centrum", 5000, 1),
+        ("alkmaar_centrum", 10000, 1),
+    ],
+)
+def test_named_polygon_is_independent_of_tile_size(name, size, count):
     rows = []
     for y in range(510000, 530000, size):
         for x in range(100000, 120000, size):
@@ -152,8 +184,13 @@ def test_named_polygon_is_independent_of_tile_size(size):
                 }
             )
     grid = gpd.GeoDataFrame(rows, crs=28992)
-    area = ProductionArea("alkmaar", NAMED_AREAS["alkmaar"], "EPSG:28992")
+    area = ProductionArea(name, NAMED_AREAS[name], "EPSG:28992")
     selected = select_area_tiles(grid, area)
+    assert len(selected) == count
+    assert (
+        select_area_tiles(grid, Area(name)).tile_id.tolist()
+        == selected.tile_id.tolist()
+    )
     assert selected.geometry.union_all().covers(area.geometry)
     assert all(geometry.area == size**2 for geometry in selected.geometry)
     assert area_name("38") == "waterschap_38"
