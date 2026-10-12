@@ -38,7 +38,7 @@ afwateringseenheden = "python scripts/afwateringseenheden.py"
 [feature.docs.dependencies]
 mkdocs = "*"
 mkdocs-material = "*"
-mkdocs-jupyter = "*"
+mkdocs-jupyter = ">=0.26.3"
 pymdown-extensions = "*"
 # mkdocstrings: installeer met python handler
 # (conda-forge heeft vaak mkdocstrings-python als aparte pkg)

@@ -78,6 +78,9 @@ plugins:
   - search
   - mkdocs-jupyter:
       execute: false
+      include: ["*.ipynb"]
+      # Skip API Markdown before Jupytext interprets mkdocstrings' ::: directives.
+      ignore: ["*.md"]
   - mkdocstrings:
       handlers:
         python:
