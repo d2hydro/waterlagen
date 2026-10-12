@@ -117,6 +117,7 @@ Waterlagen documentation serves three distinct audiences:
 Keep these concerns separated.
 
 - User-facing documentation is written in Dutch.
+- Describe processing directly, without referring to Waterlagen in the third person as the actor (for example, use "De hoogte wordt berekend" instead of "Waterlagen berekent de hoogte").
 - Code, identifiers, filenames, and API names retain their actual names.
 - Documentation is built with MkDocs from `docs/`.
 - Organize user documentation around concepts and workflows, not around the internal Python module structure.
@@ -213,8 +214,10 @@ Functional processing performed by Waterlagen is documented under `docs/bewerkte
 A processing page explains what Waterlagen does with one or more sources and what the resulting dataset represents.
 
 Organize these pages around produced layers. Document individual processing steps
-and intermediate datasets as sections of the relevant layer page, not as separate
-pages. Explain shared steps once and link to that section from other layer pages.
+and intermediate datasets as sections of the relevant layer page. Shared preparation
+used by multiple layers may have a separate page, linked from those layer pages
+without adding it to the layer overview or MkDocs navigation. Explain shared steps
+once and link to their canonical location.
 
 Each processing page should describe, where applicable:
 

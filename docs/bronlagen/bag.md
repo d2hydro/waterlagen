@@ -27,7 +27,7 @@ BAG-panden zijn invoer voor [functioneel landgebruik](../bewerkte-lagen/function
 en de gebouwhoogten in [DEM (WSWO)](../bewerkte-lagen/dem.md).
 Voor de verwerking van inwoners en personenauto's worden uitsluitend
 verblijfsobjecten met woonfunctie en status in gebruik gebruikt; zie
-[Woon-VBO's per CBS-buurt](../bewerkte-lagen/inwoners.md#woon-vbos-per-cbs-buurt).
+[Woon-VBO's per CBS-buurt](../bewerkte-lagen/vbo-buurt.md).
 
 ## Externe verwijzingen
 

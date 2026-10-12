@@ -4,7 +4,7 @@
   {{ super() }}
   {% set status = page.meta.get("editorial_status", "ai") if page else none %}
   {% if status in ["human", "ai"] %}
-    {% set tooltip = "Deze pagina valt onder menselijke redactie. AI mag afwijkingen signaleren, maar de inhoud niet zelfstandig wijzigen." if status == "human" else "Deze pagina mag met behulp van AI worden onderhouden." %}
+    {% set tooltip = "Deze pagina wordt alleen door mensen geredigeerd." if status == "human" else "Deze pagina wordt met behulp van AI onderhouden." %}
     <p class="editorial-status" title="{{ tooltip }}">Redactie: {{ "mens" if status == "human" else "AI" }}</p>
   {% endif %}
 {% endblock %}

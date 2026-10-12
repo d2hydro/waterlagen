@@ -1,13 +1,13 @@
 ---
-editorial_status: ai
+editorial_status: human
 ---
 
-# DEM (WSWO)
+# Digitaal Hoogtemodel
 
 ## Doel
 
-Deze bewerking combineert het AHN-terreinmodel met één afgeleide hoogte per
-individueel gebouw. De gebouwcellen volgen exact het bronnenraster van
+Deze bewerking combineert het AHN-terreinmodel (DTM) met één afgeleide hoogte per
+individueel gebouw. De gebouwcellen zijn gedefinieerd in het bronnenraster van
 [functioneel landgebruik](functioneel-landgebruik.md).
 
 ## Bronlagen
@@ -20,155 +20,72 @@ individueel gebouw. De gebouwcellen volgen exact het bronnenraster van
 
 ## Werkwijze
 
-### Gebouwcellen selecteren
+Waterlagen verdeelt het gekozen gebied, bijvoorbeeld een waterschap of heel Nederland, in vierkante tegels. Elke tegel krijgt een buffer rondom, zodat de berekeningen ook rekening houden met de omgeving. Per tegel wordt het AHN geïnterpoleerd en worden pandhoogtes toegevoegd.
 
-Gebouwcellen zijn uitsluitend cellen met broncode `10`. Tijdens de
-landgebruikproductie krijgen de reeds voorbereide panden een compact, positief
-gebouw-ID. Dezelfde geometrieën, rijvolgorde en rasterregels bepalen het
-ID-raster. Hogere bronprioriteiten, zoals water, verwijderen daar het gebouw-ID.
-Ook gebouwen met een nog onbekende landgebruiksklasse behouden hun ID.
-Daarmee geldt `(gebouw_ids > 0) == (functioneel_landgebruik_bronnen == 10)`.
-Aangrenzende panden blijven afzonderlijke gebouwen.
-
-### Gebouwhoogten bepalen
-
-Voor ieder geselecteerd gebouw wordt de volledige voorbereide geometrie
-gebruikt, ook als deze een tegelgrens overschrijdt. De bewerking zoekt originele
-AHN-cellen met hun celmidden in de buitenring rond het gebouw. Cellen van
-voorbereide gebouwen, inclusief buurpanden, zijn uitgesloten als donor.
-De eerste zoekafstand is standaard 1 m. Als er geen geldige donor is, groeit
-de afstand telkens met 1 m, tot maximaal 5 m. Bij de eerste geslaagde zoekactie
-wordt het 75e percentiel berekend. Er wordt geen vaste vloerhoogtetoeslag toegepast.
-
-De hoogte, BAG-identificatie, zoekafstand en het aantal donors worden bewaard
-in `gebouwhoogten.gpkg`. Iedere tegel gebruikt dezelfde opgeslagen hoogte voor
-hetzelfde gebouw. Ontbreekt een donor binnen de maximale gebouwzoekafstand,
-dan blijft de oorspronkelijke of aangevulde terreinwaarde onder dat gebouw
-beschikbaar. Het gebouw blijft als mislukte hoogteschatting in `nodata.gpkg`
-staan; alleen een geslaagde gebouwhoogte krijgt voorrang op het terrein.
+De resultaten worden samengevoegd tot één hoogtemodel. Een VRT-bestand verbindt de tegels tot een mozaïek. Dit wordt opgeslagen in twee Cloud Optimized GeoTIFF-bestanden (COG): één met gehele getallen en een schaalfactor, en één met kommagetallen (floats).
 
 ### AHN interpoleren
 
-AHN-gaten worden onafhankelijk van de gebouwhoogten ingevuld met lokale
-inverse-afstandsinterpolatie, zonder extra gladstrijken. De maximale afstand
-is instelbaar in meters (standaard 250 m) en wordt naar rasterpixels omgerekend.
-Dit is een harde grens: de zoekafstand groeit niet automatisch en nieuwe
-interpolatiewaarden worden nooit als donor gebruikt. Alleen ontbrekende
-AHN-cellen worden geïnterpoleerd. Originele geldige waarden blijven exact
-behouden, behalve waar de uiteindelijke gebouwlaag voorrang krijgt.
-Er is voor deze DEM-interpolatie **geen beperking tot `landgebied`**.
-De bestaande landgebruikaanvulling houdt haar eigen landmasker, toegestane
-donorbronnen en categorische dichtstbijzijnde-buurmethode. Beide gebruiken
-dezelfde maskergestuurde interpolatiefunctie.
+Ontbrekende AHN-hoogtes worden geschat op basis van omliggende, oorspronkelijke AHN-hoogtes met inverse-distance-weighting. De maximale zoekafstand is instelbaar en bedraagt standaard 250 meter. Zonder bruikbare hoogtes binnen die afstand blijft een gat open. Eerder geschatte hoogtes worden niet gebruikt om andere gaten te vullen.
 
-Voor eigen workflows is er ook een losse AHN-tegelbewerking. Die leest een VRT
-of verzameling AHN-tegels en schrijft ingevulde GeoTIFFs, optioneel met een
-nieuwe VRT. De rastereigenschappen volgen de brontegels. Een doelmasker kan
-bepalen welke gaten mogen worden gevuld, onafhankelijk van de donors.
-De maximale zoekafstand begrenst de interpolatie; NoData buiten de
-bronextents wordt niet door de brondekking opgelost.
+Bestaande AHN-hoogtes blijven behouden. Het aanvullen gebeurt los van de berekening van gebouwhoogtes en kan ook buiten het landgebied plaatsvinden. Daarna krijgen de gebouwhoogtes voorrang op de plekken die als gebouw zijn aangemerkt.
+AHN-tegels kunnen ook afzonderlijk worden aangevuld en opgeslagen, zonder de rest van het hoogtemodel te produceren. Daarbij kan worden aangegeven waar gaten mogen worden gevuld. Dezelfde maximale zoekafstand blijft gelden.
 
-### Tegels samenstellen
+### Pandhoogtes bepalen
 
-De berekening gebruikt het tegelrooster en de pixeluitlijning van functioneel
-landgebruik. De overlap is de maximale interpolatieafstand, naar boven afgerond
-op hele pixels, plus een extra pixel voor uitlijning. Hierdoor zijn donors
-buiten de tegel beschikbaar; de extra pixel vergroot de toegestane donorafstand niet.
-Alleen de tegelkern wordt geschreven. AHN en landgebruik moeten dezelfde CRS,
-resolutie en pixeluitlijning hebben; de bewerking herschaalt ze niet stilzwijgend.
+Alleen rastercellen waarvoor BAG de bron is in het functionele landgebruik, tellen mee als gebouw. Aangrenzende panden blijven afzonderlijk herkenbaar, ook als hun gebruik onbekend is.
 
-### BAG-vloerpeilen in eigen workflows
+De gebouwhoogte wordt afgeleid uit de oorspronkelijke AHN-hoogtes rondom het volledige pand, ook als dat over een tegelgrens ligt. Hoogtes binnen het pand of buurpanden tellen niet mee. De zoekafstand begint bij 1 meter en wordt zo nodig in stappen van 1 meter vergroot tot maximaal 5 meter.
 
-Naast de standaard DEM-productie is er een losse bewerking voor
-[BAG-panden](../bronlagen/bag.md) en een aangeleverd DEM, bijvoorbeeld AHN.
-Daarbij wordt per pand een vloerpeil uit het DEM afgeleid. Een bufferstap
-bepaalt welke omgeving bij de hoogteschatting wordt betrokken. De pandgeometrie
-wordt vervolgens met die waarde gerasteriseerd op het grid van het DEM.
+Zodra bruikbare hoogtes zijn gevonden, wordt het 75e percentiel als gebouwhoogte gebruikt: een hoogte waar ongeveer driekwart van de gevonden waarden op of onder ligt. Er wordt geen vaste vloerhoogtetoeslag bij opgeteld.
 
-Deze losse bewerking schrijft één GeoTIFF met het afgeleide vloerpeil binnen
-de panden en legt de waarde als `vloerpeil` vast in de gebruikte
-BAG-GeoDataFrame. Het resultaat hangt af van de kwaliteit, dekking en resolutie
-van het DEM en van de geselecteerde panden; het is geen zelfstandig BAG-brongegeven.
-De standaard DEM-productie gebruikt de hierboven beschreven gebouwhoogten uit
-de voorbereide landgebruikgeometrieën.
+De hoogte, BAG-identificatie, zoekafstand en het aantal donors (gebruikte AHN-hoogtes) worden bewaard in `gebouwhoogten.gpkg`.
+
+### Bronnen
+Per cel wordt de bron van de hoogte-waarde bijgehouden op 2 nivo's:
+- `ahn_bron` geeft per rastercel aan waar de terreinhoogte vandaan komt: oorspronkelijk AHN-DTM (1), inverse-distance-interpolatie (3) of ontbrekend (0).
+- `dem_bron` geeft de herkomst van de hoogte in het uiteindelijke hoogtemodel. Daarin krijgen cellen met een geslaagde gebouwhoogte code 2. De overige cellen behouden de code uit ahn_bron.
+
+###  Ontbrekende hoogtes (nodata)
+
+Per tegel wordt vastgelegd waar geen hoogte kon worden bepaald. Deze plekken worden samengevoegd in `nodata.gpkg`, met drie categorieën:
+- **AHN bij water**: ontbrekende terreinhoogtes die na het aanvullen overblijven op plekken die in het functionele landgebruik als water zijn ingedeeld.
+- **AHN bij overig landgebruik**: dezelfde ontbrekende terreinhoogtes, maar buiten de als water ingedeelde plekken.
+- **Gebouwen**: panden waarvoor binnen de maximale zoekafstand geen bruikbare AHN-hoogtes zijn gevonden om een gebouwhoogte te bepalen.
+
+**Let op (!)**: Een melding betekent niet altijd dat het uiteindelijke hoogtemodel daar leeg is. Een ontbrekende AHN terreinhoogte kan alsnog worden bedekt door een gebouwhoogte. En ook; waar geen pandhoogte bepaald kan worden kunnen deze cellen alsnog opgevuld zijn door terrein-interpolatie.
+
+### Samenvoegen tegels
+De berekende tegels worden met een [VRT-bestand](https://gdal.org/en/stable/drivers/raster/vrt.html) samengebracht tot één tegel mozaïek. Het VRT verwijst naar de rasters in de verschillende tegels. Dit mozaïek wordt vervolgens opnieuw opgeslagen als één Cloud Optimized GeoTIFF (COG), met gehele getallen en een schaalfactor (scale) van 0.01 voor de hoogte. De toepassing van scale wordt ondersteund door GDAL en daarmee doorgaans ook door software die GDAL gebruikt, zoals QGIS en Rasterio (Python). Of de schaalfactor automatisch wordt toegepast bij het uitlezen of verwerken van rasterwaarden, verschilt per toepassing.
+
+Daaruit wordt een tweede COG gemaakt waarin de hoogtes direct in meters als kommagetallen (floats) zijn opgeslagen. Beide bestanden bevatten dezelfde hoogtes; de floatversie voegt geen nauwkeurigheid toe.
 
 ## Uitvoer
+Een volledige productie bevat:
 
-- `dem.vrt` en COG `dem.tif`: AHN met geïnterpoleerde gaten en gebouwhoogten.
-- COG `dem_float.tif`: directe Float32-hoogten in meters, met schaalfactor 1
-  en offset 0.
-- `dem_bron.vrt` en COG `dem_bron.tif`: de herkomst van de uiteindelijke hoogte.
-- `ahn_bron.vrt` en COG `ahn_bron.tif`: terreinherkomst voor de gebouwlaag;
-  1 = origineel AHN, 3 = interpolatie, 0 = ontbrekend terrein.
-- `nodata.gpkg`, laag `nodata`: onopgeloste gebouwen en resterende AHN-gaten.
-- `gebouwhoogten.gpkg`: herbruikbare hoogten per individueel gebouw.
-- `tiles.gpkg`: de geselecteerde tegelkernen van het productiegebied.
-- Per tegel `tiles/<tile_id>/`: `ahn_aangevuld.tif`, `ahn_bron.tif`,
-  `gebouwhoogten.tif`, `dem_bron.tif`, `nodata.gpkg`, `status.json` en `workflow.log`.
-  De tegelnaam bevat `xmin_ymin_xmax_ymax`.
+- dem.vrt en dem.tif (COG): hoogtemodel, bij standaardinvoer als Int16 in cm NAP met schaalfactor 0,01 naar m NAP.
+- dem_float.tif (COG): dezelfde hoogtes als Float32 in m NAP, met schaalfactor 1.
+- dem_bron en ahn_bron, beide als VRT en COG: herkomst van de hoogtes, respectievelijk na en vóór toevoeging van gebouwhoogtes. Codes: 0 = ontbrekend, 1 = origineel AHN, 2 = gebouwhoogte (alleen dem_bron), 3 = interpolatie.
+- nodata.gpkg, laag nodata: ontbrekende gebouwhoogtes en resterende AHN-gaten.
+- gebouwhoogten.gpkg: berekende hoogtes per gebouw.
+- tiles.gpkg: tegelkernen van het productiegebied.
+Per tegel staan in tiles/<xmin_ymin_xmax_ymax>/ de rasters ahn_aangevuld.tif, ahn_bron.tif, gebouwhoogten.tif en dem_bron.tif, plus nodata.gpkg, status.json en workflow.log.
 
-| `dem_bron` | Betekenis |
-| --- | --- |
-| 0 | NoData / onopgelost |
-| 1 | Origineel AHN-DTM |
-| 2 | Gebouwhoogte |
-| 3 | Geïnterpoleerd AHN |
+nodata.gpkg vermeldt per plek de bron, categorie en reden waarom een hoogte ontbreekt. Bij gebouwen worden ook de BAG-identificatie, zoekafstand en het aantal gebruikte AHN-cellen vastgelegd. Gebouwen staan eenmaal met hun volledige vorm in het bestand; AHN-gaten volgen de rastercellen.
 
-Het VRT leest eerst `ahn_aangevuld.tif` en daarna de gebouwlaag. Gebouwhoogten krijgen
-voorrang. De hoogteopslag behoudt het AHN-datatype, schaalfactor en offset;
-nieuwe waarden worden zo nodig afgerond naar de oorspronkelijke opslageenheid.
-Hoogteoverzichten gebruiken gemiddelden; broncodes en ID's dichtstbijzijnde buren.
-
-`dem_float.tif` wordt afgeleid van het voltooide `dem.tif`:
-`hoogte = opgeslagen waarde * schaalfactor + offset`. Het bestand bevat dezelfde
-reeds afgeronde hoogten; het levert geen extra meetnauwkeurigheid. De omzetting
-naar Float32 kan kleine afrondingsverschillen geven. Het rasterrooster en de
-geldigheidsmaskers blijven gelijk. Ontbrekende cellen krijgen NaN, ook waar
-NoData buiten `landgebied` of in open water is toegestaan.
-`ahn_bron` en `dem_bron` gelden voor beide DEM-bestanden.
-
-De float-COG gebruikt verliesvrije ZSTD-compressie op niveau 9, met een
-floating-point predictor voor raster en overzichten. Overzichten worden opnieuw
-uit de float-hoogten berekend met gemiddelden. De opslag en compressie van
-`dem.tif` veranderen niet.
-
-`nodata.gpkg` bevat `bron`, `categorie`, `reden`, `identificatie`, `gebouw_id`,
-`zoekafstand_m`, `donor_aantal` en geometrie. Onopgeloste gebouwen staan er
-eenmalig met hun volledige geometrie in; resterende AHN-gaten volgen de
-ontbrekende rastercellen per tegel. De categorieen zijn:
-
-| `categorie` | Betekenis |
-| --- | --- |
-| `Gebouw` | Geen gebouwhoogte bepaald; de oorspronkelijke gebouwmelding blijft behouden |
-| `AHN_water` | AHN-gat na interpolatie bij landgebruikcode 100 of 228 |
-| `AHN_overig` | AHN-gat na interpolatie bij ander landgebruik, inclusief onbekend/code 0 |
-
-AHN-gaten worden bepaald voordat gebouwhoogten worden toegevoegd. Een AHN-gat
-dat door een geldige gebouwhoogte wordt bedekt blijft daarom in de diagnostiek
-zichtbaar, terwijl het eind-DEM daar wel een waarde heeft. De polygonen volgen
-de exacte rastercelgrenzen en worden ook buiten `landgebied` opgenomen.
-
-Resterende NoData blokkeert de publicatie van het DEM niet. De maximale
-interpolatieafstand blijft gelden; ontbrekende waarden worden niet kunstmatig
-gevuld. `dem_coverage.json` telt de ontbrekende cellen in het uiteindelijke DEM,
-na de gebouwlaag: `outside_landgebied`, `open_water` (binnen `landgebied`) en
-`inside_landgebied_nonwater`. De landsgrens wordt bepaald op basis van celmiddens.
-Publicatie betekent dus niet dat het DEM volledige hoogtedekking heeft.
+dem_coverage.json bevat de aantallen resterende lege cellen na het combineren van terrein- en gebouwhoogtes, uitgesplitst naar buiten het landgebied, water binnen het landgebied en overig landgebied. Ook als er gaten overblijven, worden de uitvoerbestanden aangemaakt.
 
 ## Aandachtspunten en beperkingen
+De aandachtspunten die volgen uit de beschrijving hierboven:
+- Gebouwhoogtes zijn geschat uit het omliggende terrein, niet gemeten aan het gebouw. Elk pand krijgt één hoogte; verschillen binnen het pand worden niet weergegeven.
+- Geïnterpoleerde hoogtes zijn schattingen. Lokale hoogteverschillen die niet in de omliggende AHN-cellen voorkomen, kunnen daarmee niet worden hersteld.
+- Gaten kunnen blijven bestaan door de beperkte zoekafstand. Als een gebouwhoogte ontbreekt, kan daar nog wel een terreinhoogte staan. Bekijk daarom nodata.gpkg, ahn_bron en dem_bron.
+- De standaarduitvoer slaat hoogtes op in stappen van één centimeter. Dit zegt niets over de meetnauwkeurigheid; omzetting naar floats maakt de hoogtes niet nauwkeuriger.
+- Gebouwen in nodata.gpkg worden volledig weergegeven en kunnen buiten het uitvoergebied uitsteken. Bewaar de tegelbestanden zolang het VRT nodig is.
 
-Gebouwhoogten zijn afgeleide schattingen, geen ingemeten vloerpeilen.
-De maximale zoekafstanden begrenzen welke gaten kunnen worden opgelost.
-Bekijk daarom altijd `nodata.gpkg`, `ahn_bron` en `dem_bron`. De gebouwdiagnostiek kan een
-volledige geometrie tonen waarvan slechts een deel in het uitvoergebied ligt.
-Bewaar de tegelbestanden zolang het VRT nodig is.
+**Het belangrijkste**: Bekijk altijd `nodata.gpkg`, `ahn_bron` en `dem_bron` om hoogtes te verklaren.
 
 ## Zelf produceren
 
 Begin met [DEM-productie voor Nederland of Alkmaar](../produceren/dem.md).
 De Python-interface staat bij [DEM-API](../reference/dem.md).
-
-Voor de losse AHN-tegelbewerking gebruikt een eigen Python-workflow
-`get_ahn_rasters` en `interpolate_ahn_tiles`; zie de [AHN-API](../reference/ahn.md).
-De losse BAG-vloerpeilbewerking gebruikt `rasterize_bag`; zie de
-[BAG-API](../reference/bag.md).

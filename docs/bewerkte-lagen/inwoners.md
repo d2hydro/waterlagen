@@ -1,72 +1,31 @@
 ---
-editorial_status: ai
+editorial_status: human
 ---
 
 # Inwoners
 
 ## Doel
 
-Deze bewerking verdeelt CBS-inwoneraantallen over de geselecteerde BAG-woon-
-VBO's. Het resultaat blijft op VBO-puntniveau. De bewerking bevat bewust twee
-verdeelsleutels, zodat het verschil tussen het aantal CBS-huishoudens en het
-aantal BAG-woon-VBO's zichtbaar blijft.
+Deze bewerking verdeelt het aantal inwoners vanuit de CBS buurtstatistiek buurt gelijkmatig over de verblijfsobjecten (VBO's) met functie wonen binnen de buurt. Het resultaat wordt op de punt-geometrie van een verblijfsobject weergegeven
 
 ## Bronlagen
 
-- [BAG](../bronlagen/bag.md): verblijfsobjecten met hun BAG-status,
-  gebruiksdoel, identificatie, eventuele pandidentificatie en geometrie.
-- [CBS Wijk- en Buurtkaart en Kerncijfers](../bronlagen/cbs.md): de laag
-  `buurten` en veld `buurtcode` uit de Wijk- en Buurtkaart 2025, plus
-  `aantal_inwoners`, `aantal_huishoudens` en `personenautos_totaal` uit
-  StatLine.
+De volgende bronnen worden gebruikt in deze berekening
+- [BAG](../bronlagen/bag.md): verblijfsobjecten met woonfunctie en status in gebruik.
+- [CBS Wijk- en Buurtkaart en Kerncijfers](../bronlagen/cbs.md):
+  `personenautos_totaal` per buurt.
 
 ## Werkwijze
 
-### Woon-VBO's per CBS-buurt
+Hieronder wordt het berekenen van deze laag beschreven
 
-De onderstaande voorbereiding van woon-VBO's wordt gedeeld met de productie
-van [auto's](autos.md). Zij levert één tussenproduct met geselecteerde
-BAG-verblijfsobjecten, hun CBS-buurt en het aantal woon-VBO's per buurt.
+### Woon-VBO's voorbereiden
 
-Waterlagen selecteert alleen BAG-VBO's met status `Verblijfsobject in gebruik`
-waarbij `woonfunctie` een van de gebruiksdoelen is. Een gecombineerd
-gebruiksdoel, bijvoorbeeld `woonfunctie,kantoorfunctie`, blijft dus behouden.
-De oorspronkelijke VBO-geometrie blijft de geometrie van het resultaat.
-
-Daarna wordt ieder VBO met een ruimtelijke koppeling aan precies één CBS-buurt
-gekoppeld. VBO's zonder buurt en VBO's met meerdere buurten worden gelogd en
-leiden tot een fout; de bewerking kiest niet willekeurig een buurt.
-
-Ten slotte telt Waterlagen de geselecteerde woon-VBO's per `buurtcode`. Dit
-aantal wordt aan de CBS-buurtpolygonen toegevoegd, niet aan ieder afzonderlijk
-VBO.
-
-Voor toekomstig cloudgebruik berekent Waterlagen vervolgens een technische
-`_hilbert`-kolom uit de oorspronkelijke VBO-punten en schrijft de VBO's in
-oplopende Hilbert-volgorde. Hiervoor gebruikt Waterlagen de vaste landelijke
-RD New-extent `(-7000, 289000, 300000, 629000)` in `EPSG:28992` en Hilbert-
-level 16 (een grid van 65.536 bij 65.536 cellen). De vaste extent zorgt dat
-de ruimtelijke volgorde niet verandert wanneer een datasetversie of selectie
-een andere totale omvang heeft.
-
-#### Gedeelde tussenbestanden
-
-De bewerking schrijft twee GeoPackages onder `processed_data/vbo_buurt/`:
-
-- `bag_vbo.gpkg`, laag `bag_vbo`, met `identificatie`,
-  `pand_identificatie` wanneer beschikbaar, `status`, `gebruiksdoel`,
-  `buurtcode`, `_hilbert` en de oorspronkelijke VBO-geometrie;
-- `cbs_buurt.gpkg`, laag `cbs_buurt`, met de oorspronkelijke CBS-
-  buurtpolygonen, `aantal_woonvbo`, `aantal_inwoners` en
-  `aantal_huishoudens`, en `personenautos_totaal`.
-
-Deze tussenbestanden bevatten nog geen verdeelde inwoners- of personenautowaarden per VBO.
+De selectie van woon-VBO's, de koppeling aan CBS-buurten en de gedeelde
+tussenbestanden staan beschreven bij [Woon-VBO's per CBS-buurt](vbo-buurt.md).
+Deze voorbereiding wordt gedeeld met de productie van [auto's](autos.md).
 
 ### Inwoners verdelen
-
-De bewerking koppelt de CBS-waarden op `buurtcode` aan de VBO-punten. Er vindt
-geen nieuwe ruimtelijke koppeling plaats.
-De technische `_hilbert`-volgorde van de gedeelde woon-VBO's blijft behouden.
 
 Voor iedere buurt worden twee waarden berekend:
 
@@ -78,9 +37,19 @@ Voor iedere buurt worden twee waarden berekend:
   woon-VBO's van een buurt aanwezig zijn, is de som hiervan wel gelijk aan het
   CBS-aantal inwoners.
 
-Ontbrekende CBS-waarden en delingen door nul blijven leeg. Waterlagen zet deze
-niet om naar nul en logt het aantal betrokken VBO's en buurten. Per buurt
-controleert Waterlagen de sommen van beide verdeelmethoden.
+Het CBS-aantal inwoners wordt op twee manieren verdeeld over de woon-VBO’s in een buurt: op basis van het aantal woon-VBO’s en op basis van het aantal huishoudens.
+
+Bijvoorbeeld: een buurt heeft 100 inwoners, 50 woon-VBO’s en 40 huishoudens.
+
+- Verdeling over woon-VBO’s: ieder woon-VBO krijgt 100 ÷ 50 = 2 inwoners. Samen tellen de waarden op tot het CBS-totaal van 100 inwoners.
+- Verdeling op basis van huishoudens: de gemiddelde huishoudensgrootte is 100 ÷ 40 = 2,5 personen. Ieder woon-VBO krijgt daarom 2,5 inwoners. Samen tellen de waarden op tot 125 inwoners. Het totaal wijkt hier af van het CBS-totaal, omdat het aantal woon-VBO’s niet gelijk is aan het aantal huishoudens.
+
+Beide methoden geven een geschatte verdeling, niet het werkelijke aantal bewoners per adres.
+
+Er zijn twee uitzonderingen:
+
+- Als benodigde CBS-gegevens ontbreken, blijft de bijbehorende uitkomst leeg. Onbekend betekent niet dat er geen inwoners zijn.
+- Als het aantal huishoudens nul is, kan de verdeling op basis van huishoudens niet worden berekend. Zonder woon-VBO’s zijn er geen objecten waarover de inwoners kunnen worden verdeeld.
 
 ## Uitvoer
 
@@ -88,22 +57,15 @@ De productie schrijft `inwoners.gpkg`, laag
 `inwoners`. Deze bevat de oorspronkelijke VBO-puntgeometrie en minimaal `identificatie`,
 eventueel `pand_identificatie`, `buurtcode`, `aantal_inwoners`,
 `aantal_huishoudens`, `aantal_woonvbo`, `inwoners_obv_huishoudens` en
-`inwoners_obv_woonvbo`, plus de technische `_hilbert`-kolom.
+`inwoners_obv_woonvbo`
 
-Bij de standaardproductie verschijnt daarnaast `inwoners.parquet` in dezelfde runmap.
-Dit is standaard GeoParquet 1.1 met WKB-geometrie, een standaard bbox-covering
-en Parquet-statistieken. De fysieke rijvolgorde blijft de oplopende
-`_hilbert`-volgorde uit het gedeelde VBO-buurtbestand; groepen van 100.000
-rijen ondersteunen daarmee ruimtelijke pruning bij een query op `bounds`.
+De kolom `__hilbert` bevat de [ruimtelijke sortering](vbo-buurt.md#ruimtelijke-sortering) die gebruikt kan worden om uitsnedes via de cloud uit te lezen.
+
+Bij de standaardproductie verschijnt daarnaast `inwoners.parquet` in dezelfde runmap bedoeld voor een cloud-native gebruik van deze laag.
 
 ## Aandachtspunten en beperkingen
 
-De waarden zijn geen pand- of rasterwaarden. Personenauto's en aanvullende
-correcties maken geen deel uit van deze bewerking.
-
-Een regionale productie selecteert volledige CBS-buurten en behoudt alle
-bijbehorende woon-VBO's. Daardoor blijft de verdeling per VBO gelijk aan de
-landelijke berekening. De uitvoer wordt niet op de gekozen gebiedsgrens geknipt.
+Een een nationale, of regionale (bijvoorbeeld voor 1 waterschap) selecteert volledige CBS-buurten en behoudt alle bijbehorende woon-VBO's voor het betreffende gebied. Daardoor blijft de verdeling per VBO gelijk aan de landelijke berekening. De uitvoer wordt niet op de gekozen gebiedsgrens geknipt.
 
 ## Zelf produceren
 

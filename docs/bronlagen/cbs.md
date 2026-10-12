@@ -48,7 +48,7 @@ waarvoor de StatLine-tabel geen rij bevat; die worden als afzonderlijk aantal
 gerapporteerd.
 
 De buurtgeometrieën worden ook gebruikt voor de ruimtelijke koppeling van
-[woon-VBO's per CBS-buurt](../bewerkte-lagen/inwoners.md#woon-vbos-per-cbs-buurt). In die bewerking
+[woon-VBO's per CBS-buurt](../bewerkte-lagen/vbo-buurt.md). In die bewerking
 worden `aantal_inwoners`, `aantal_huishoudens` en `personenautos_totaal` uit
 StatLine op de CBS-buurtpolygonen bewaard, samen met het afgeleide aantal
 woon-VBO's. Andere StatLine-kerncijfers worden daar niet aan toegevoegd.
