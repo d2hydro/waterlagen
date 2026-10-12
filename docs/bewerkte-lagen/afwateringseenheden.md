@@ -6,7 +6,7 @@ editorial_status: human
 
 ## Doel
 
-Deze bewerking leidt tot `afvoergebieden` gekoppeld aan `hydroobjecten`.
+Het berekenen van `afvoergebieden` gekoppeld aan `hydroobjecten`.
 
 ## Bronlagen
 
@@ -16,9 +16,9 @@ Deze bewerking leidt tot `afvoergebieden` gekoppeld aan `hydroobjecten`.
 
 ## Werkwijze
 
-De gekozen gebiedsgrens selecteert volledige tegelkernen. Het samengestelde
-resultaat wordt niet op die gebiedsgrens geknipt. Nederland, een waterschap
-en vaste gebieden zoals Alkmaar gebruiken dezelfde werkwijze.
+Op basis van een geselecteerde gebiedsgrens (waterschap, nederland, of iets anders) worden met overlappende vierkante tegels, bestaande uit een kerntegel + buffer afwateringseenheden afgeleidt. Wanneer alle tegels zijn bewerkt worden de resultaten samengevoegd tot gebiedsdekkende set polygonen. Deze worden niet afgesneden op de gebiedsgrens; een afvoergebied houdt zich immers niet aan, veelal administratieve, grenzen.
+
+De stappen worden hieronder 1 voor 1 uitgelegd.
 
 ### Voorbewerken watersysteem
 
@@ -52,36 +52,15 @@ Grote gebieden kunnen in gebufferde tegels worden berekend:
 - De bruikbare resultaten worden per `segment_id` samengevoegd en teruggeknipt naar het oorspronkelijke gebied.
 - Tegels zonder `hydroobject-segmenten` op geldige DEM-cellen worden overgeslagen. Wanneer een afwateringseenheid vanaf de buffergrens de kerntile bereikt, wordt de tegel gemeld als randprobleem.
 
-Na het berekenen van afwateringseenheden per tegel worden alle tegels samengevoegd tot één set afwateringseenheden voor het interessegebied.
+### Samenvoegen
+Na de berekening worden de resultaten van alle tegels samengevoegd tot één set afwateringseenheden voor het interessegebied. Losse lijn- en puntresten worden verwijderd. Polygonen die de buitenste tegelrand raken, worden niet meegenomen.
 
-### DEM-dekking en interpolatie
+Gaten in binnen een kerntegel worden waar mogelijk aangevuld met polygonen uit naburige tegels (tegels overlappen door de buffer). Hiervoor wordt geen nieuwe LDD berekend. Als meerdere buurpolygonen geschikt zijn, krijgt de polygoon die het gat het meest bedekt voorrang. Bij gelijke dekking wordt gekozen voor de polygoon met de grootste afstand tot de tegelrand (kerntegel plus buffer). Is ook die afstand gelijk, dan bepaalt het tegel-ID de keuze.
 
-De dekking is de vereniging van de volledige rechthoekige extents van de
-onderliggende hoogterasters. Overlap telt eenmaal. Ook NoData aan de rand of
-binnen een bronraster valt binnen dekking en wordt geïnterpoleerd. Buiten alle
-bronextents blijft NoData behouden.
-
-De dekking kan worden begrensd tot de Nederlandse landsgrens, zoals in het
-script `afwateringseenheden.py`. De celmiddens bepalen of cellen binnen Nederland
-vallen, ook in de tegelbuffers. Buitenliggende cellen worden vóór interpolatie op
-NoData gezet; ze worden niet gevuld en leveren geen hoogte voor interpolatie.
-Een tegel die Nederland alleen langs een rand of punt raakt, heeft geen
-Nederlandse DEM-dekking.
-Blijven binnen de dekking cellen leeg, dan krijgen alleen die cellen de
-dichtstbijzijnde oorspronkelijke geldige hoogte binnen de dekking. Bestaande
-hoogtes en al geïnterpoleerde cellen blijven behouden. Zonder bruikbare hoogte
-binnen de dekking om aanwezige gaten te vullen, stopt de berekening met een foutmelding.
-
-### Opschonen en aanvullen bij het samenvoegen
-
-Losse lijn- en puntresten worden verwijderd. Gaten worden waar mogelijk gevuld
-vanuit bruikbare buurpolygonen, zonder een nieuwe LDD te berekenen. Polygonen
-die hun buitenste rekenrand raken vallen af. De buur met de meeste dekking
-krijgt voorrang; bij gelijke dekking volgen de grootste randafstand en daarna
-het tegel-ID. Alleen lege ruimte wordt aangevuld: bestaande toewijzingen blijven
-behouden. Zonder bruikbare buur blijft een gat open, ook bij een grotere buffer.
+Alleen ontbrekende delen worden aangevuld; bestaande toewijzingen blijven behouden. Zonder geschikte buurpolygoon blijft een gat open. Door de tegels opnieuw te berekenen met een grotere buffer kunnen meer afwateringseenheden behouden blijven, waardoor minder gaten ontstaan.
 
 ## Uitvoer
+De volledige afleiding van afwateringseenheden bevat een `watersysteem.gpkg` en `afwateringseenheden.pgkg`.
 
 `watersysteem.gpkg` bevat de volgende lagen:
 
@@ -98,16 +77,11 @@ het oppervlak afwatert.
 De standaardproject-CRS is `EPSG:28992`. Elke laag heeft tevens een voorgedefinieerde stijldefinitie die automatisch wordt herkend door QGIS.
 
 ## Aandachtspunten en beperkingen
-
-Secundaire objecten gelden als verbonden wanneer hun volledige geometrie binnen
-de ingestelde tolerantie (standaard 2 m) van een primair of secundair object
-ligt. Tegels zonder segmentcellen op geldige DEM-hoogtes worden overgeslagen,
-ook wanneer alle segmenten buiten de brondekking of landsgrens liggen. De
-voorbereide rasters blijven beschikbaar voor hergebruik. Als een gebied vanaf de
-buffergrens de kerntile bereikt, meldt Waterlagen de tile als randprobleem.
-Die melding betreft de situatie vóór het aanvullen vanuit buurtegels.
-Controleer de resterende gaten na het samenvoegen; automatisch herberekenen
-met een grotere buffer maakt geen deel uit van de workflow.
+Bij het berekenen van afwateringseenheden zijn wij de volgende aandachtspunten en beperkingen tegengekomen:
+- **Verbinding van secundaire objecten**: een secundair object geldt als verbonden wanneer de volledige geometrie binnen de ingestelde afstand van een primair of secundair object ligt. Deze tolerantie is standaard 2 meter.
+- **Overgeslagen tegels**: tegels worden overgeslagen als geen enkele rastercel met een hydroobjectsegment een geldige DEM-hoogte heeft. Dit gebeurt ook wanneer alle segmenten buiten de brondekking of de landsgrens liggen. De voorbereide rasters blijven beschikbaar voor hergebruik.
+- **Randproblemen**: Waterlagen meldt een randprobleem wanneer een berekend afwateringsgebied zowel de buitenste buffergrens als de kern van de tegel raakt. Deze melding wordt gedaan vóór het aanvullen van gaten vanuit buurtegels en betekent dus niet automatisch dat er in het eindresultaat een gat overblijft.
+- **Controle na samenvoegen**: controleer het eindresultaat op resterende gaten. Opnieuw berekenen met een grotere buffer kan gaten door randproblemen verminderen, maar gebeurt niet automatisch.
 
 ## Zelf produceren
 

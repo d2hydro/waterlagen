@@ -1,11 +1,11 @@
 ---
-editorial_status: ai
+editorial_status: human
 ---
 
 # Bronlagen
 
 Deze pagina's geven een beschrijving van externe datasets en services
-die kunnen worden gedownload. Voor datasets die uit bronnen worden afgeleid zie [bewerkte lagen](../bewerkte-lagen/index.md).
+die kunnen worden gedownload. Voor datasets die uit bronnen worden afgeleid zie: [bewerkte lagen](../bewerkte-lagen/index.md).
 
 - [AHN](ahn.md)
 - [BAG](bag.md)
