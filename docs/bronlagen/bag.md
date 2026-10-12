@@ -1,3 +1,7 @@
+---
+editorial_status: ai
+---
+
 # BAG
 
 ## Beschrijving
@@ -19,11 +23,11 @@ GeoPackage.
 
 ## Gebruik in Waterlagen
 
-BAG-panden zijn invoer voor [BAG-vloerpeilen](../bewerkingen/bag-vloerpeilen.md)
-en voor [functioneel landgebruik](../bewerkingen/functioneel-landgebruik.md).
+BAG-panden zijn invoer voor [functioneel landgebruik](../bewerkte-lagen/functioneel-landgebruik.md)
+en de gebouwhoogten in [DEM (WSWO)](../bewerkte-lagen/dem.md).
 Voor de verwerking van inwoners en personenauto's worden uitsluitend
 verblijfsobjecten met woonfunctie en status in gebruik gebruikt; zie
-[Woon-VBO's per CBS-buurt](../bewerkingen/vbo-buurt.md).
+[Woon-VBO's per CBS-buurt](../bewerkte-lagen/inwoners.md#woon-vbos-per-cbs-buurt).
 
 ## Externe verwijzingen
 

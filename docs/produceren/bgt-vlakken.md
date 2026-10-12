@@ -1,7 +1,11 @@
+---
+editorial_status: ai
+---
+
 # Actuele BGT-vlakken voor QGIS
 
 [Landgebruikproductie](landgebruik.md) downloadt en prepareert BGT automatisch.
-Voor losse conversie van een bestaande [BGT GML Light-ZIP](../bronnen/bgt.md)
+Voor losse conversie van een bestaande [BGT GML Light-ZIP](../bronlagen/bgt.md)
 gebruikt u de [Python-functie](../reference/gebruik.md#losse-bronnen-en-bewerkingen)
 `waterlagen.bgt.productie.main`. Deze conversiefunctie downloadt zelf niets.
 

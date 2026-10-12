@@ -1,3 +1,7 @@
+---
+editorial_status: ai
+---
+
 # BRP
 
 ## Beschrijving
@@ -17,7 +21,7 @@ GeoPackage-release. Voorlopige, concept- en testreleases worden overgeslagen.
 
 ## Gebruik in Waterlagen
 
-BRP-gewaspercelen zijn invoer voor [functioneel landgebruik](../bewerkingen/functioneel-landgebruik.md).
+BRP-gewaspercelen zijn invoer voor [functioneel landgebruik](../bewerkte-lagen/functioneel-landgebruik.md).
 
 ## Externe verwijzingen
 

@@ -1,3 +1,7 @@
+---
+editorial_status: ai
+---
+
 # Conventies
 
 Deze afspraken gelden voor alle contributors, ongeacht of zij met of zonder AI

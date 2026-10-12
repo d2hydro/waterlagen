@@ -1,3 +1,7 @@
+---
+editorial_status: ai
+---
+
 # Productie-API
 
 Zie [Python gebruiken](gebruik.md) voor voorbeelden en

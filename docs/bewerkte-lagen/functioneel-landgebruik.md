@@ -1,19 +1,23 @@
+---
+editorial_status: ai
+---
+
 # Functioneel landgebruik
 
 ## Doel
 
 Deze bewerking maakt een geclassificeerd raster voor functioneel landgebruik.
 
-## Bronnen
+## Bronlagen
 
-- [TOP10NL](../bronnen/top10nl.md)
-- [BRP](../bronnen/brp.md)
-- [BGT](../bronnen/bgt.md)
-- [BAG](../bronnen/bag.md)
-- [LIWO](../bronnen/liwo.md)
-- [GKW HYDAMO](../bronnen/hydamo.md) voor gemaalpunten en capaciteit
-- [Waterketen DAMO](../bronnen/waterketen-damo.md) voor bevestiging van RWZI-terreinen
-- [OpenStreetMap-drinkwaterlocaties](../bronnen/osm-drinkwater.md) voor
+- [TOP10NL](../bronlagen/top10nl.md)
+- [BRP](../bronlagen/brp.md)
+- [BGT](../bronlagen/bgt.md)
+- [BAG](../bronlagen/bag.md)
+- [LIWO](../bronlagen/liwo.md)
+- [GKW HYDAMO](../bronlagen/hydamo.md) voor gemaalpunten en capaciteit
+- [Waterketen DAMO](../bronlagen/waterketen-damo.md) voor bevestiging van RWZI-terreinen
+- [OpenStreetMap-drinkwaterlocaties](../bronlagen/osm-drinkwater.md) voor
   drinkwaterproductielocaties
 
 ## Werkwijze
@@ -27,7 +31,7 @@ hun representatieve punt en uitsluitend de LIWO-selectie
 grens van deze polygonen (`covered_by`) is buitendijks; alle overige punten
 zijn binnendijks. Alleen overlap van een object met een polygoon is dus niet
 voldoende. Objecten worden niet op de grens opgeknipt. Dijkringen worden
-hiervoor niet gebruikt. Zie [LIWO-selectie](liwo-selectie.md).
+hiervoor niet gebruikt. Zie [LIWO-selectie](#liwo-selectie).
 
 Bronnen, tegelrooster en uitvoer moeten hetzelfde project-CRS gebruiken
 (`settings.crs`, standaard `EPSG:28992`). Bij een afwijking stopt de verwerking;
@@ -39,6 +43,30 @@ van 17 september 2025. Andere of ontbrekende statussen worden uitgesloten,
 ook `Pand in gebruik (niet ingemeten)`. Deze selectie geldt eveneens voor
 panden zonder gekoppeld verblijfsobject. Een ontbrekende statuskolom geeft een
 foutmelding.
+
+### LIWO-selectie
+
+Voor de binnen-/buitendijkse ligging maakt Waterlagen polygonen van buitendijks
+en regionaal onbeschermd overstroombaar gebied uit [LIWO](../bronlagen/liwo.md).
+Het oorspronkelijke klassenraster wordt zonder herschaling of herprojectie
+gedownload. Alleen geldige cellen met waarde 1 of 6 worden gepolygoniseerd.
+NoData en alle overige waarden worden uitgesloten. Cellen met dezelfde klasse
+worden verbonden langs gedeelde zijden; alleen diagonaal rakende cellen blijven
+afzonderlijke polygonen. De twee klassen blijven gescheiden.
+
+De verwerking behoudt EPSG:28992 en het 25 m bronraster. Een gewijzigde nationale
+dekking, resolutie, gegevenstype of onverwachte klassewaarde geeft een foutmelding
+zodat de servicemetadata eerst opnieuw kan worden gecontroleerd.
+
+Het tussenresultaat is een GeoPackage met laag `buitendijks_gebied_uit_liwo`
+en attributen `klasse` en `omschrijving`. Het volledige gedownloade GeoTIFF
+blijft als bron bewaard. Bij een lege selectie bevat de uitvoer een lege
+polygonenlaag. De polygonen volgen exact de rastercellen; er wordt niet
+vereenvoudigd of gladgestreken. Representatieve punten binnen of op de grens
+zijn buitendijks; alle overige punten zijn binnendijks.
+
+Voor het afzonderlijk produceren van deze selectie, zie
+[het scriptvoorbeeld](../reference/gebruik.md#losse-bronnen-en-bewerkingen).
 
 ### Beslisboom voor de gebouwfunctie
 
@@ -360,7 +388,7 @@ de workflow met het productiepakket. Voor eigen Python-workflows gebruikt u
 
 
 De NoData-controle wordt afgeknipt op de laag `landgebied` uit
-[Bestuurlijke gebieden](../bronnen/bestuurlijke-gebieden.md), dezelfde landsgrensbron
+[Bestuurlijke gebieden](../bronlagen/bestuurlijke-gebieden.md), dezelfde landsgrensbron
 als het tegelrooster. NoData buiten deze polygonen is toegestaan en verschijnt
 niet in `nodata.gpkg`. Grensoverschrijdende controlevlakken behouden alleen het
 gedeelte binnen landgebied; het landgebruikraster zelf verandert niet.

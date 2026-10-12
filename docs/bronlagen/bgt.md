@@ -1,3 +1,7 @@
+---
+editorial_status: ai
+---
+
 # BGT
 
 ## Beschrijving
@@ -17,7 +21,7 @@ featuretypen en een gebied worden gebruikt.
 
 ## Gebruik in Waterlagen
 
-BGT-wegdelen zijn invoer voor [functioneel landgebruik](../bewerkingen/functioneel-landgebruik.md).
+BGT-wegdelen zijn invoer voor [functioneel landgebruik](../bewerkte-lagen/functioneel-landgebruik.md).
 
 ## Externe verwijzingen
 

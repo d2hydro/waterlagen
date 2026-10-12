@@ -1,3 +1,7 @@
+---
+editorial_status: ai
+---
+
 # Afwateringseenheden produceren
 
 Deze productie ondersteunt Nederland, een waterschapscode en gedeelde gebieden
@@ -31,7 +35,7 @@ secundaire waterlopen 100 m en de maximale opvuldiepte 50 m. De vaste seed is
 12345. De landsgrens begrenst de AHN-interpolatie tot Nederland. Dit staat los
 van de gekozen gebiedsgrens als invoerselectie.
 De betekenis en beperkingen staan bij
-[Afwateringseenheden](../bewerkingen/afwateringseenheden.md).
+[Afwateringseenheden](../bewerkte-lagen/afwateringseenheden.md).
 
 ## Uitvoer en hervatten
 

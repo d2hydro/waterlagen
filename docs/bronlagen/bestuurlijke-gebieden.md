@@ -1,3 +1,7 @@
+---
+editorial_status: ai
+---
+
 # Bestuurlijke gebieden
 
 ## Beschrijving

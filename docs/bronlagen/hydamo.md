@@ -1,3 +1,7 @@
+---
+editorial_status: ai
+---
+
 # GKW HYDAMO
 
 ## Beschrijving
@@ -18,8 +22,8 @@ deze lokaal als `hydamo.gpkg`.
 
 ## Gebruik in Waterlagen
 
-GKW HYDAMO is invoer voor [afwateringseenheden](../bewerkingen/afwateringseenheden.md)
-en de gemaalklassen bij [functioneel landgebruik](../bewerkingen/functioneel-landgebruik.md).
+GKW HYDAMO is invoer voor [afwateringseenheden](../bewerkte-lagen/afwateringseenheden.md)
+en de gemaalklassen bij [functioneel landgebruik](../bewerkte-lagen/functioneel-landgebruik.md).
 Daarvoor worden de puntlaag `gemaal`, `globalid` en `maximalecapaciteit` gebruikt.
 Volgens het DAMO-objectenhandboek is de capaciteit van een gemaal uitgedrukt
 in m³/minuut. De afzonderlijke laag `pomp` wordt hierbij niet opgeteld.

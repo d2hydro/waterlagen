@@ -1,3 +1,7 @@
+---
+editorial_status: ai
+---
+
 # Functioneel landgebruik
 
 ::: waterlagen.functioneel_landgebruik

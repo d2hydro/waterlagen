@@ -1,3 +1,7 @@
+---
+editorial_status: ai
+---
+
 # Inwoners en personenauto's produceren
 
 Installeer het [productiepakket](installatie.md) en voer vanuit de projectfolder uit:
@@ -24,9 +28,9 @@ offline gebruik en hervatten.
 De resultaten staan in `processed_data/<product>/<gebied>/<run-id>/`:
 
 - `inwoners.gpkg` en `inwoners.parquet` bevatten `inwoners_obv_huishoudens` en
-  `inwoners_obv_woonvbo`. Zie [Inwoners per woon-VBO](../bewerkingen/inwoners-per-vbo.md).
+  `inwoners_obv_woonvbo`. Zie [Inwoners](../bewerkte-lagen/inwoners.md).
 - `autos.gpkg` en `autos.parquet` bevatten `personenautos`.
-  Zie [Personenauto's per woon-VBO](../bewerkingen/personenautos-per-vbo.md).
+  Zie [Auto's](../bewerkte-lagen/autos.md).
 
 GeoParquet wordt standaard geschreven; `--no-geoparquet` schrijft alleen
 GeoPackage. De productiemap bevat ook `productie.log` en `run.json`.

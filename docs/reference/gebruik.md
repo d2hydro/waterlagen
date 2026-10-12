@@ -1,10 +1,14 @@
+---
+editorial_status: ai
+---
+
 # Waterlagen in eigen Python-code
 
 De productiecommando's roepen dezelfde Python-functies aan als onderstaande
 voorbeelden. Importeer functies uit `waterlagen`, niet uit `scripts`.
 De [productie-API](productie.md) beschrijft de argumenten. Voor de betekenis van
-bronnen en resultaten zijn [Bronnen](../bronnen/index.md) en
-[Bewerkingen](../bewerkingen/index.md) de ingang.
+bronnen en resultaten zijn [Bronlagen](../bronlagen/index.md) en
+[Bewerkte lagen](../bewerkte-lagen/index.md) de ingang.
 
 ## Een product maken
 
@@ -79,17 +83,6 @@ from waterlagen.bgt.productie import main as bereid_bgt_voor
 
 # Binnen een main-functie met __main__-guard:
 bgt = bereid_bgt_voor(store, workers=2)
-```
-
-Een DGM1-gebied moet het ingestelde project-CRS gebruiken:
-
-```python
-from waterlagen._geopandas import read_file
-from waterlagen.dgm1 import download_dgm1
-from waterlagen.settings import settings
-
-gebied = read_file("gebied.gpkg").to_crs(settings.crs).geometry.make_valid().union_all()
-vrt = download_dgm1(poly_mask=gebied)
 ```
 
 Raadpleeg de modulepagina's in deze API-referentie voor overige bronnen en

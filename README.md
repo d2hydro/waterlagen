@@ -27,7 +27,7 @@ pip install waterlagen
 ## Lagen
 Lagen worden altijd geconverteerd naar GeoTIFF (raster) en GeoPackage (features). Voor efficient gebruikt in de cloud wordt met Cloud-Optimized-GeoTiff (COG) en GeoParquet gewerkt.
 
-### Bronnen
+### Bronlagen
 Bij het downloaden van  Vanaf [PDOK](https://www.pdok.nl/), [AHN.nl](https://www.ahn.nl/), [CBS](https://www.cbs.nl) en [NHI](https://nhi.nu/data/oppervlaktewater/hydamo-regionaal) kan worden gedownload:
 
 * AHN 4 t/m 6
@@ -39,9 +39,9 @@ Bij het downloaden van  Vanaf [PDOK](https://www.pdok.nl/), [AHN.nl](https://www
 * Diverse administratieve grenzen (landsgrens, waterschapsgrenzen, etc)
 * Dijkringen
 
-Lees verder bij de [bronnen](docs/bronnen/index.md).
+Lees verder bij de [bronlagen](docs/bronlagen/index.md).
 
-### Bewerken
+### Bewerkte lagen
 De volgende bewerkingen zijn beschikbaar:
 
 * Dichtinterpoleren van AHN DTM
@@ -49,7 +49,7 @@ De volgende bewerkingen zijn beschikbaar:
 * Productie van lagen voor de waterschadeschatter (functioneel_landgebruik, inwoners en autos)
 * Afwateringseenheden
 
-Lees verder in de [documentatie](https://d2hydro.github.io/waterlagen/bewerkingen/) 
+Lees verder in de [documentatie](https://d2hydro.github.io/waterlagen/bewerkte-lagen/)
 
 ## Ontwikkelaars
 Waterlagen wordt ontwikkeld door [D2Hydro](https://d2hydro.nl/) en het [Hoogheemraadschap Hollands Noorderkwartier](https://www.hhnk.nl/) en [Waterschap Aa en Maas](https://www.aaenmaas.nl/) met als doel het gestandaardiseerd downloaden en bewerkingen van features en rasters via Python voor toepassingen in het waterbeheer.

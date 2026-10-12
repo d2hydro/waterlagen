@@ -1,8 +1,12 @@
+---
+editorial_status: ai
+---
+
 # DEM produceren
 
 Gebruik dezelfde [datastore](configuratie.md) en voorbereide bronnen als voor
 [functioneel landgebruik](landgebruik.md). De betekenis van het resultaat staat
-bij [DEM met gebouwen](../bewerkingen/dem.md).
+bij [DEM (WSWO)](../bewerkte-lagen/dem.md).
 
 ## Starten
 
@@ -91,7 +95,7 @@ Iedere productie schrijft zowel `dem.tif` met de bestaande AHN-opslag en
 schaalmetadata als `dem_float.tif` met directe Float32-hoogten in meters.
 Er is geen extra CLI-optie nodig. Houd rekening met opslag voor een tweede COG
 en tijdelijke bestanden tijdens de conversie. De conversie verandert `dem.tif`
-niet. Zie de [uitvoerbeschrijving](../bewerkingen/dem.md#uitvoer) voor afronding,
+niet. Zie de [uitvoerbeschrijving](../bewerkte-lagen/dem.md#uitvoer) voor afronding,
 compressie en de gezamenlijke bronrasters.
 
 ## Controleren en hervatten
@@ -113,7 +117,7 @@ publicatie niet, ook niet binnen `landgebied`. Het script leest `landgebied`
 uit de bestuurlijke gebieden van 2026 in de ingestelde datastore.
 `dem_coverage.json` rapporteert de ontbrekende cellen in het eind-DEM buiten
 `landgebied`, in water en in overig landgebruik. Inspecteer daarnaast de drie
-[diagnostiekcategorieen](../bewerkingen/dem.md#uitvoer) in `nodata.gpkg`.
+[diagnostiekcategorieen](../bewerkte-lagen/dem.md#uitvoer) in `nodata.gpkg`.
 Bestands-, grid-, CRS- en pixelcontroles blijven fouten tegenhouden.
 
 ```powershell
@@ -156,7 +160,7 @@ GeoPackage niet rechtstreeks met een bestandenkopie. Als de tijdelijke tabel
 ontbreekt, neemt de nieuwe workflow deze backup over bij hervatten.
 
 Nieuwe productie gebruikt tegelmappen volgens de
-[uitvoerstructuur](../bewerkingen/dem.md#uitvoer). Gebruik een nieuwe run-ID
+[uitvoerstructuur](../bewerkte-lagen/dem.md#uitvoer). Gebruik een nieuwe run-ID
 voor deze structuur en het gewijzigde NoData-beleid; eerdere DEM-runs worden
 niet automatisch gemigreerd. Geldige landgebruikinputs met de oude platte
 tegelstructuur blijven leesbaar, inclusief hun bron- en gebouwbestanden.

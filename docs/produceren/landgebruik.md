@@ -1,9 +1,13 @@
+---
+editorial_status: ai
+---
+
 # Functioneel landgebruik produceren
 
 Het productiepakket bevat `scripts/functioneel_landgebruik.py` voor het maken
 van een landelijk raster met functionele landgebruiksklassen. De betekenis van
 de klassen, bronnen en bewerkingen staat bij
-[Functioneel landgebruik](../bewerkingen/functioneel-landgebruik.md).
+[Functioneel landgebruik](../bewerkte-lagen/functioneel-landgebruik.md).
 
 ## Vooraf
 
@@ -247,7 +251,7 @@ de gewone BAG-indeling. De losse berekeningsfuncties
 blijven behouden, maar worden niet meer naar aparte bestanden of lagen geschreven.
 
 De functiekeuze volgt de
-[beslisboom voor de gebouwfunctie](../bewerkingen/functioneel-landgebruik.md#beslisboom-voor-de-gebouwfunctie),
+[beslisboom voor de gebouwfunctie](../bewerkte-lagen/functioneel-landgebruik.md#beslisboom-voor-de-gebouwfunctie),
 inclusief de regels voor `NULL`, overige gebruiksfunctie en appartementencomplexen.
 Wonen blijft buiten de functieoppervlaktevergelijking, maar telt wel mee bij
 de bouwlagen.
@@ -332,7 +336,7 @@ rasterproductie het bestand automatisch. Bestaande uitvoer wordt hergebruikt;
 gebruik `overwrite=True` om OSM opnieuw op te halen. Met
 `cache_dir=Path("map")` wordt het Overpass-antwoord bewaard en met
 `offline=True, cache_dir=Path("map")` opnieuw gebruikt. De bronselectie en de
-beperkingen staan bij [OSM-drinkwaterlocaties](../bronnen/osm-drinkwater.md).
+beperkingen staan bij [OSM-drinkwaterlocaties](../bronlagen/osm-drinkwater.md).
 De meegeleverde broncontrole bepaalt welke 54 locaties worden opgehaald;
 gebruik `reviews_path=Path("bestand.json")` voor een aangepaste beoordeling.
 
@@ -365,7 +369,7 @@ Voor het controlescript geef je `special_sources=SpecialBuildingSources(...)`
 op, uit `waterlagen.functioneel_landgebruik.kassen_rwzi_drinkwater`. Naast
 `top10nl_gpkg` kun je `rwzi_gpkg`, `rwzi_layer`, `drinking_water_gpkg` en
 `drinking_water_layer` instellen. De RWZI-bron is de laag `rwzi` uit
-[Waterketen DAMO](../bronnen/waterketen-damo.md). Download deze vooraf met de
+[Waterketen DAMO](../bronlagen/waterketen-damo.md). Download deze vooraf met de
 [downloadinstructies](waterketen-damo.md). Controle en rasterproductie gebruiken
 automatisch `source_data/waterketen_damo/waterketen_damo.gpkg` als dit bestand
 aanwezig is. Er geldt geen statusfilter; de oudere opties `rwzi_status_column`
@@ -378,7 +382,7 @@ veldnamen op `FunctioneelLandgebruikLayers`. Gebruik `dataclasses.replace` om
 de paden van `FunctioneelLandgebruikSources.from_datastore(...)` aan te vullen.
 De OSM-bron uit de standaardopslag wordt door `from_datastore(...)`
 automatisch gevonden als het bestand bestaat.
-Controleer de [selectieregels en beperkingen](../bewerkingen/functioneel-landgebruik.md#bijzondere-gebouwen-en-gemalen-stap-6)
+Controleer de [selectieregels en beperkingen](../bewerkte-lagen/functioneel-landgebruik.md#bijzondere-gebouwen-en-gemalen-stap-6)
 voordat je de uitkomsten gebruikt.
 
 ### Meerdere gemalen in één pand controleren
@@ -466,11 +470,11 @@ dezelfde bronlaag zijn niet toegestaan, ook niet bij gelijke uitvoercodes.
 De functie zelf ligt vast in de software en wordt herkend via Koppel-ID. Je kunt via de CSV dus geen nieuwe Python-functies of nieuwe rekenregels toevoegen.
 
 Houd bij het aanpassen van codes rekening met
-[overlap en rastervoorrang](../bewerkingen/functioneel-landgebruik.md#overlap-en-rastervoorrang).
+[overlap en rastervoorrang](../bewerkte-lagen/functioneel-landgebruik.md#overlap-en-rastervoorrang).
 CSV-rijvolgorde en codehoogte bepalen niet welke bron bij overlap wint.
 Bij bijzondere gebouwregels kan een gewijzigd codepaar bovendien een conflict
 veroorzaken of oplossen; voor gekoppelde gemalen geldt een strengere uitzondering.
-Zie [conflicten tussen bijzondere gebouwregels](../bewerkingen/functioneel-landgebruik.md#conflicten-tussen-bijzondere-gebouwregels).
+Zie [conflicten tussen bijzondere gebouwregels](../bewerkte-lagen/functioneel-landgebruik.md#conflicten-tussen-bijzondere-gebouwregels).
 
 De ondersteunde directe combinaties zijn:
 
@@ -491,7 +495,7 @@ witruimte en ontbrekende waarden vallen hierbuiten. Voor BRP moet de
 waarde bovendien een positief geheel getal zijn. Een leeg `Bronveld` betekent
 geen attribuutfilter: alle verder geschikte objecten worden gekoppeld. Dit is
 alleen ondersteund voor de twee genoemde BGT-lagen en vereist `Bronwaarde = *`.
-Zie ook de [functionele verwerking](../bewerkingen/functioneel-landgebruik.md#codes-uit-de-csv).
+Zie ook de [functionele verwerking](../bewerkte-lagen/functioneel-landgebruik.md#codes-uit-de-csv).
 
 Sorteren verandert classificatie, kleuren en legendalabels niet.
 
@@ -534,7 +538,7 @@ Aanvullende vlaklagen in dat bestand worden gebruikt om NoData te verklaren.
 Gebruik in een eigen Python-bewerking `gap_fill_distance_m` voor de
 gewenste zoekafstand in meters (standaard `1.0`; `0` schakelt aanvullen uit).
 De losse en parallelle rasterfuncties hebben hiervoor `gap_fill_distance_m`.
-Zie [de aanvulregels en broncodes](../bewerkingen/functioneel-landgebruik.md#kleine-gaten-aanvullen-en-bronherkomst).
+Zie [de aanvulregels en broncodes](../bewerkte-lagen/functioneel-landgebruik.md#kleine-gaten-aanvullen-en-bronherkomst).
 
 De landelijke productie schrijft naast `functioneel_landgebruik.tif` ook
 `functioneel_landgebruik_bronnen.tif`, een bijbehorende VRT en

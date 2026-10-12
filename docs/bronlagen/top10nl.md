@@ -1,3 +1,7 @@
+---
+editorial_status: ai
+---
+
 # TOP10NL
 
 ## Beschrijving
@@ -17,7 +21,7 @@ Waterlagen download `top10nl_Compleet.gpkg` uit de PDOK-downloadvoorziening.
 ## Gebruik in Waterlagen
 
 TOP10NL-functionele gebieden zijn invoer voor
-[functioneel landgebruik](../bewerkingen/functioneel-landgebruik.md).
+[functioneel landgebruik](../bewerkte-lagen/functioneel-landgebruik.md).
 
 ## Externe verwijzingen
 

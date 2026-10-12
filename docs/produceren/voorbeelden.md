@@ -1,3 +1,7 @@
+---
+editorial_status: ai
+---
+
 # Voorbeelden
 
 De vijf [productiecommando's](cli.md) verzorgen bronvoorbereiding en productie.

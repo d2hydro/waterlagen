@@ -1,6 +1,10 @@
+---
+editorial_status: ai
+---
+
 # DEM
 
-Zie [DEM met gebouwen](../bewerkingen/dem.md) voor de functionele beschrijving
+Zie [DEM (WSWO)](../bewerkte-lagen/dem.md) voor de functionele beschrijving
 en [DEM produceren](../produceren/dem.md) voor uitvoering per gebied.
 
 ::: waterlagen.dem

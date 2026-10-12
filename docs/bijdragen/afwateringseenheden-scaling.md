@@ -1,3 +1,7 @@
+---
+editorial_status: ai
+---
+
 # Tegelgrootte en parallelisatie van afwateringseenheden
 
 ## Meetopzet

@@ -1,3 +1,7 @@
+---
+editorial_status: ai
+---
+
 # Dijkringen
 
 ## Beschrijving
@@ -16,8 +20,8 @@ beschikbaar is, gebruikt het pakket de ArcGIS MapServer als technische fallback.
 ## Gebruik in Waterlagen
 
 De downloader blijft beschikbaar als afzonderlijke bron. Voor
-[functioneel landgebruik](../bewerkingen/functioneel-landgebruik.md) wordt
-uitsluitend de [LIWO-selectie](../bewerkingen/liwo-selectie.md) gebruikt.
+[functioneel landgebruik](../bewerkte-lagen/functioneel-landgebruik.md) wordt
+uitsluitend de [LIWO-selectie](../bewerkte-lagen/functioneel-landgebruik.md#liwo-selectie) gebruikt.
 
 ## Externe verwijzingen
 

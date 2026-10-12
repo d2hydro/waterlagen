@@ -1,5 +1,5 @@
 ---
-review_status: human-reviewed
+editorial_status: human
 ---
 
 # Afwateringseenheden
@@ -8,11 +8,11 @@ review_status: human-reviewed
 
 Deze bewerking leidt tot `afvoergebieden` gekoppeld aan `hydroobjecten`.
 
-## Bronnen
+## Bronlagen
 
-- [GKW HYDAMO](../bronnen/hydamo.md)
-- [AHN](../bronnen/ahn.md)
-- [Bestuurlijke gebieden](../bronnen/bestuurlijke-gebieden.md) voor begrenzing tot Nederland
+- [GKW HYDAMO](../bronlagen/hydamo.md)
+- [AHN](../bronlagen/ahn.md)
+- [Bestuurlijke gebieden](../bronlagen/bestuurlijke-gebieden.md) voor begrenzing tot Nederland
 
 ## Werkwijze
 
@@ -31,7 +31,7 @@ Vanuit de geleverde (Hy)DAMO-set worden:
 
 ### Afleiden afwateringseenheden
 
-Op basis van het [AHN-DTM](../bronnen/ahn.md) en het hierboven genoemde watersysteem worden de volgende stappen uitgevoerd:
+Op basis van het [AHN-DTM](../bronlagen/ahn.md) en het hierboven genoemde watersysteem worden de volgende stappen uitgevoerd:
 
 - Het DTM (0,5 × 0,5 meter) wordt geschaald ingelezen op 2 × 2 meter (instelbaar) en binnen de brondekking dichtgeïnterpoleerd.
 - Hier worden hydroobjecten ingebrand. Primaire hydroobjecten krijgen tweemaal en secundaire segmenten eenmaal de ingestelde branddiepte; bij overlap heeft primair voorrang.
@@ -80,14 +80,6 @@ die hun buitenste rekenrand raken vallen af. De buur met de meeste dekking
 krijgt voorrang; bij gelijke dekking volgen de grootste randafstand en daarna
 het tegel-ID. Alleen lege ruimte wordt aangevuld: bestaande toewijzingen blijven
 behouden. Zonder bruikbare buur blijft een gat open, ook bij een grotere buffer.
-
-### Optioneel Duits hoogtemodel
-
-Voor een eigen grensoverschrijdende workflow kan [DGM1](../bronnen/dgm1.md)
-AHN aanvullen. De voorbereiding maakt aparte 1m-tegels in RD/NAP en een
-gecombineerde VRT waarin geldige AHN-hoogtes voorrang hebben. De originele
-DGM1-bestanden blijven behouden. Het meegeleverde script `afwateringseenheden.py`
-gebruikt uitsluitend AHN en begrenst de interpolatie tot Nederland.
 
 ## Uitvoer
 

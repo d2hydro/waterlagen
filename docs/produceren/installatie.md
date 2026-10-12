@@ -1,3 +1,7 @@
+---
+editorial_status: ai
+---
+
 # Installatie
 
 Met het **productiepakket** van een Waterlagen-release kunt u zelfstandig

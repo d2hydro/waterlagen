@@ -1,3 +1,7 @@
+---
+editorial_status: ai
+---
+
 # LIWO overstromingsgevoelige gebieden
 
 ## Beschrijving
@@ -30,7 +34,7 @@ Rastergrenzen volgen het 25 m grid en zijn geen nauwkeurige perceelgrenzen.
 
 ## Gebruik in Waterlagen
 
-De bron wordt gebruikt voor de [selectie van overstromingsgevoelige gebieden](../bewerkingen/liwo-selectie.md).
+De bron wordt gebruikt voor de [selectie van overstromingsgevoelige gebieden](../bewerkte-lagen/functioneel-landgebruik.md#liwo-selectie).
 
 ## Externe verwijzingen
 

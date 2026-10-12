@@ -1,4 +1,8 @@
-# DEM met gebouwen
+---
+editorial_status: ai
+---
+
+# DEM (WSWO)
 
 ## Doel
 
@@ -6,15 +10,17 @@ Deze bewerking combineert het AHN-terreinmodel met één afgeleide hoogte per
 individueel gebouw. De gebouwcellen volgen exact het bronnenraster van
 [functioneel landgebruik](functioneel-landgebruik.md).
 
-## Bronnen
+## Bronlagen
 
-- [AHN-DTM](../bronnen/ahn.md), inclusief omliggende rastertegels.
+- [AHN-DTM](../bronlagen/ahn.md), inclusief omliggende rastertegels.
 - De landgebruiktegels met `bronnen`, `gebouw_ids` en volledige voorbereide
-  gebouwgeometrieën. De oorspronkelijke [BAG-identificatie](../bronnen/bag.md)
+  gebouwgeometrieën. De oorspronkelijke [BAG-identificatie](../bronlagen/bag.md)
   blijft in deze afgeleide gebouwgegevens bewaard. De DEM-bewerking selecteert
   zelf geen BAG-panden.
 
 ## Werkwijze
+
+### Gebouwcellen selecteren
 
 Gebouwcellen zijn uitsluitend cellen met broncode `10`. Tijdens de
 landgebruikproductie krijgen de reeds voorbereide panden een compact, positief
@@ -23,6 +29,8 @@ ID-raster. Hogere bronprioriteiten, zoals water, verwijderen daar het gebouw-ID.
 Ook gebouwen met een nog onbekende landgebruiksklasse behouden hun ID.
 Daarmee geldt `(gebouw_ids > 0) == (functioneel_landgebruik_bronnen == 10)`.
 Aangrenzende panden blijven afzonderlijke gebouwen.
+
+### Gebouwhoogten bepalen
 
 Voor ieder geselecteerd gebouw wordt de volledige voorbereide geometrie
 gebruikt, ook als deze een tegelgrens overschrijdt. De bewerking zoekt originele
@@ -39,6 +47,8 @@ dan blijft de oorspronkelijke of aangevulde terreinwaarde onder dat gebouw
 beschikbaar. Het gebouw blijft als mislukte hoogteschatting in `nodata.gpkg`
 staan; alleen een geslaagde gebouwhoogte krijgt voorrang op het terrein.
 
+### AHN interpoleren
+
 AHN-gaten worden onafhankelijk van de gebouwhoogten ingevuld met lokale
 inverse-afstandsinterpolatie, zonder extra gladstrijken. De maximale afstand
 is instelbaar in meters (standaard 250 m) en wordt naar rasterpixels omgerekend.
@@ -51,12 +61,36 @@ De bestaande landgebruikaanvulling houdt haar eigen landmasker, toegestane
 donorbronnen en categorische dichtstbijzijnde-buurmethode. Beide gebruiken
 dezelfde maskergestuurde interpolatiefunctie.
 
+Voor eigen workflows is er ook een losse AHN-tegelbewerking. Die leest een VRT
+of verzameling AHN-tegels en schrijft ingevulde GeoTIFFs, optioneel met een
+nieuwe VRT. De rastereigenschappen volgen de brontegels. Een doelmasker kan
+bepalen welke gaten mogen worden gevuld, onafhankelijk van de donors.
+De maximale zoekafstand begrenst de interpolatie; NoData buiten de
+bronextents wordt niet door de brondekking opgelost.
+
+### Tegels samenstellen
+
 De berekening gebruikt het tegelrooster en de pixeluitlijning van functioneel
 landgebruik. De overlap is de maximale interpolatieafstand, naar boven afgerond
 op hele pixels, plus een extra pixel voor uitlijning. Hierdoor zijn donors
 buiten de tegel beschikbaar; de extra pixel vergroot de toegestane donorafstand niet.
 Alleen de tegelkern wordt geschreven. AHN en landgebruik moeten dezelfde CRS,
 resolutie en pixeluitlijning hebben; de bewerking herschaalt ze niet stilzwijgend.
+
+### BAG-vloerpeilen in eigen workflows
+
+Naast de standaard DEM-productie is er een losse bewerking voor
+[BAG-panden](../bronlagen/bag.md) en een aangeleverd DEM, bijvoorbeeld AHN.
+Daarbij wordt per pand een vloerpeil uit het DEM afgeleid. Een bufferstap
+bepaalt welke omgeving bij de hoogteschatting wordt betrokken. De pandgeometrie
+wordt vervolgens met die waarde gerasteriseerd op het grid van het DEM.
+
+Deze losse bewerking schrijft één GeoTIFF met het afgeleide vloerpeil binnen
+de panden en legt de waarde als `vloerpeil` vast in de gebruikte
+BAG-GeoDataFrame. Het resultaat hangt af van de kwaliteit, dekking en resolutie
+van het DEM en van de geselecteerde panden; het is geen zelfstandig BAG-brongegeven.
+De standaard DEM-productie gebruikt de hierboven beschreven gebouwhoogten uit
+de voorbereide landgebruikgeometrieën.
 
 ## Uitvoer
 
@@ -133,3 +167,8 @@ Bewaar de tegelbestanden zolang het VRT nodig is.
 
 Begin met [DEM-productie voor Nederland of Alkmaar](../produceren/dem.md).
 De Python-interface staat bij [DEM-API](../reference/dem.md).
+
+Voor de losse AHN-tegelbewerking gebruikt een eigen Python-workflow
+`get_ahn_rasters` en `interpolate_ahn_tiles`; zie de [AHN-API](../reference/ahn.md).
+De losse BAG-vloerpeilbewerking gebruikt `rasterize_bag`; zie de
+[BAG-API](../reference/bag.md).

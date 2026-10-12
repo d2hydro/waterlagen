@@ -1,3 +1,7 @@
+---
+editorial_status: ai
+---
+
 # Opslag van gegevens
 
 ## Beginnen zonder instellingen

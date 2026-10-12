@@ -1,3 +1,7 @@
+---
+editorial_status: ai
+---
+
 # AHN
 
 ## Beschrijving
@@ -18,9 +22,8 @@ eigen bladwijzer. De gekozen versie, het model en de resolutie bepalen de bronbe
 
 ## Gebruik in Waterlagen
 
-AHN is invoer voor [AHN interpoleren](../bewerkingen/ahn-interpoleren.md),
-[BAG-vloerpeilen](../bewerkingen/bag-vloerpeilen.md) en
-[afwateringseenheden](../bewerkingen/afwateringseenheden.md).
+AHN is invoer voor [DEM (WSWO)](../bewerkte-lagen/dem.md) en
+[afwateringseenheden](../bewerkte-lagen/afwateringseenheden.md).
 
 ## Externe verwijzingen
 

@@ -8,8 +8,10 @@
   white-space: nowrap;
 }
 
-.md-typeset .review-status {
-  margin-top: 2rem;
+.md-typeset .editorial-status {
+  margin: 2rem 0 0;
   color: var(--md-default-fg-color--light);
-  font-size: 0.7rem;
+  font-size: 0.6rem;
+  text-align: left;
+  line-height: 1.5;
 }

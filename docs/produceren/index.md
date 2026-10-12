@@ -1,3 +1,7 @@
+---
+editorial_status: ai
+---
+
 # Zelf produceren
 
 Download het **productiepakket van een Waterlagen-release** om zelf
@@ -18,4 +22,4 @@ Voor losse bronlagen in QGIS: [Actuele BGT-vlakken voorbereiden](bgt-vlakken.md)
 Waterketengegevens kunt u ophalen met [Waterketen DAMO downloaden](waterketen-damo.md).
 
 Lees over de betekenis van de ingangen en resultaten bij
-[Bronnen](../bronnen/index.md) en [Bewerkingen](../bewerkingen/index.md).
+[Bronlagen](../bronlagen/index.md) en [Bewerkte lagen](../bewerkte-lagen/index.md).

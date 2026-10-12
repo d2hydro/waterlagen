@@ -125,18 +125,18 @@ Keep these concerns separated.
 - When public behavior, processing methods, inputs, outputs, or workflows change, update the corresponding documentation in the same change.
 - Do not document intended behavior that is not actually implemented unless it is explicitly identified as planned or conceptual.
 
-## Documentation Review Status
+## Documentation Editorial Status
 
-Documentation pages may declare a review status in YAML frontmatter:
+Documentation pages may declare an editorial status in YAML frontmatter:
 
-- `review_status: draft` — Codex may create, rewrite, and update the page.
-- `review_status: human-reviewed` — The page is maintained by humans and must not be modified by Codex.
+- `editorial_status: ai` — Codex may create, rewrite, and update the page.
+- `editorial_status: human` — The page is maintained by humans and must not be modified by Codex.
 
-Pages without an explicit review status are treated as `draft`.
+Pages without an explicit editorial status are treated as `ai`.
 
-For human-reviewed pages:
+For pages with `editorial_status: human`:
 
-- Codex MUST NOT modify, delete, rename, or change the review status of the page without explicit user authorization.
+- Codex MUST NOT modify, delete, rename, or change the editorial status of the page without explicit user authorization.
 - Codex MUST check whether relevant code changes make the documentation inaccurate or incomplete.
 - Codex MUST report identified inconsistencies, omissions, and potentially outdated information, referencing the affected page and relevant code.
 - Codex MUST NOT automatically treat the implementation as correct when it conflicts with the documentation.
@@ -145,7 +145,7 @@ Documentation findings must be reported separately, not inserted into protected 
 
 When completing a task, report documentation impact as `none`, `possible`, or `confirmed`, with a brief explanation when relevant.
 
-A human-reviewed status indicates human approval, not a guarantee that the documentation remains current.
+The `human` editorial status indicates human approval, not a guarantee that the documentation remains current.
 
 
 ## Documentation Structure
@@ -158,10 +158,10 @@ docs/
 ├── over/
 │   ├── index.md
 │   └── ai-gebruik.md
-├── bronnen/
+├── bronlagen/
 │   ├── index.md
 │   └── ...
-├── bewerkingen/
+├── bewerkte-lagen/
 │   ├── index.md
 │   └── ...
 ├── produceren/
@@ -180,7 +180,7 @@ The visible MkDocs navigation may use Dutch labels even where technical director
 
 ## Documentation: Sources
 
-External datasets and services used by Waterlagen are documented under `docs/bronnen/`.
+External datasets and services used by Waterlagen are documented under `docs/bronlagen/`.
 
 A source page is the canonical location for information about an external source.
 
@@ -208,9 +208,13 @@ New source pages should follow the established source-page template and heading 
 
 ## Documentation: Processing
 
-Functional processing performed by Waterlagen is documented under `docs/bewerkingen/`.
+Functional processing performed by Waterlagen is documented under `docs/bewerkte-lagen/`.
 
 A processing page explains what Waterlagen does with one or more sources and what the resulting dataset represents.
+
+Organize these pages around produced layers. Document individual processing steps
+and intermediate datasets as sections of the relevant layer page, not as separate
+pages. Explain shared steps once and link to that section from other layer pages.
 
 Each processing page should describe, where applicable:
 
@@ -224,7 +228,7 @@ Each processing page should describe, where applicable:
 
 Rules:
 
-- Refer to external input datasets by linking to their canonical page under `docs/bronnen/`.
+- Refer to external input datasets by linking to their canonical page under `docs/bronlagen/`.
 - Do not repeat external source URLs from source pages.
 - Describe processing functionally rather than as a walkthrough of Python implementation details.
 - A reader should be able to understand how the resulting data was produced without reading the source code.
@@ -250,7 +254,7 @@ This documentation includes:
 Rules:
 
 - Keep installation and execution instructions separate from functional descriptions of sources and processing.
-- Link to `docs/bronnen/` and `docs/bewerkingen/` instead of repeating their content.
+- Link to `docs/bronlagen/` and `docs/bewerkte-lagen/` instead of repeating their content.
 - Examples should use current public APIs and realistic workflows.
 - Prefer a clear path from installation to producing a first useful dataset.
 
@@ -332,8 +336,8 @@ Use canonical locations and avoid maintaining the same information in multiple p
 
 In particular:
 
-- external data information and URLs → `docs/bronnen/`;
-- functional transformation and processing → `docs/bewerkingen/`;
+- external data information and URLs → `docs/bronlagen/`;
+- functional transformation and processing → `docs/bewerkte-lagen/`;
 - installation and dataset production → `docs/produceren/`;
 - Python interfaces → API reference and docstrings;
 - shared contributor conventions → `docs/bijdragen/conventions.md`;

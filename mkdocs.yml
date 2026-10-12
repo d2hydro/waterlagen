@@ -17,33 +17,28 @@ theme:
 
 nav:
   - Over Waterlagen: index.md
-  - Bronnen:
-      - Overzicht: bronnen/index.md
-      - AHN: bronnen/ahn.md
-      - DGM1 Nordrhein-Westfalen: bronnen/dgm1.md
-      - BAG: bronnen/bag.md
-      - BGT: bronnen/bgt.md
-      - BRP: bronnen/brp.md
-      - TOP10NL: bronnen/top10nl.md
-      - OSM-drinkwaterlocaties: bronnen/osm-drinkwater.md
-      - Dijkringen: bronnen/dijkringen.md
-      - LIWO overstromingsgevoelige gebieden: bronnen/liwo.md
-      - GKW HYDAMO: bronnen/hydamo.md
-      - Waterketen DAMO: bronnen/waterketen-damo.md
-      - Bestuurlijke gebieden: bronnen/bestuurlijke-gebieden.md
-      - Waterschapsgrenzen: bronnen/waterschapsgrenzen.md
-      - CBS Wijk- en Buurtkaart en Kerncijfers: bronnen/cbs.md
-  - Bewerkingen:
-      - Overzicht: bewerkingen/index.md
-      - AHN interpoleren: bewerkingen/ahn-interpoleren.md
-      - DEM met gebouwen: bewerkingen/dem.md
-      - BAG-vloerpeilen: bewerkingen/bag-vloerpeilen.md
-      - Functioneel landgebruik: bewerkingen/functioneel-landgebruik.md
-      - LIWO-selectie: bewerkingen/liwo-selectie.md
-      - Afwateringseenheden: bewerkingen/afwateringseenheden.md
-      - Woon-VBO's per CBS-buurt: bewerkingen/vbo-buurt.md
-      - Inwoners per woon-VBO: bewerkingen/inwoners-per-vbo.md
-      - Personenauto's per woon-VBO: bewerkingen/personenautos-per-vbo.md
+  - Bronlagen:
+      - Overzicht: bronlagen/index.md
+      - AHN: bronlagen/ahn.md
+      - BAG: bronlagen/bag.md
+      - Bestuurlijke gebieden: bronlagen/bestuurlijke-gebieden.md
+      - BGT: bronlagen/bgt.md
+      - BRP: bronlagen/brp.md
+      - CBS Wijk- en Buurtkaart en Kerncijfers: bronlagen/cbs.md
+      - Dijkringen: bronlagen/dijkringen.md
+      - GKW HYDAMO: bronlagen/hydamo.md
+      - LIWO overstromingsgevoelige gebieden: bronlagen/liwo.md
+      - OSM-drinkwaterlocaties: bronlagen/osm-drinkwater.md
+      - TOP10NL: bronlagen/top10nl.md
+      - Waterketen DAMO: bronlagen/waterketen-damo.md
+      - Waterschapsgrenzen: bronlagen/waterschapsgrenzen.md
+  - Bewerkte lagen:
+      - Overzicht: bewerkte-lagen/index.md
+      - Afwateringseenheden: bewerkte-lagen/afwateringseenheden.md
+      - Auto's: bewerkte-lagen/autos.md
+      - Functioneel landgebruik: bewerkte-lagen/functioneel-landgebruik.md
+      - Hoogtemodel: bewerkte-lagen/dem.md
+      - Inwoners: bewerkte-lagen/inwoners.md
   - Zelf produceren:
       - Overzicht: produceren/index.md
       - Installatie: produceren/installatie.md
@@ -60,7 +55,6 @@ nav:
       - Productie-API: reference/productie.md
       - AHN: reference/ahn.md
       - DEM: reference/dem.md
-      - DGM1: reference/dgm1.md
       - BAG: reference/bag.md
       - BGT: reference/bgt.md
       - BRP: reference/brp.md

@@ -1,3 +1,7 @@
+---
+editorial_status: ai
+---
+
 # OpenStreetMap-drinkwaterlocaties
 
 ## Beschrijving
@@ -21,7 +25,7 @@ OSM-ID en controledatum.
 ## Gebruik in Waterlagen
 
 De vlakken worden gebruikt bij
-[functioneel landgebruik](../bewerkingen/functioneel-landgebruik.md).
+[functioneel landgebruik](../bewerkte-lagen/functioneel-landgebruik.md).
 Voor het aanmaken van het GeoPackage zie
 [Functioneel landgebruik produceren](../produceren/landgebruik.md).
 

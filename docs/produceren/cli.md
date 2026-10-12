@@ -1,3 +1,7 @@
+---
+editorial_status: ai
+---
+
 # Gedeelde productiecommando's
 
 Waterlagen heeft vijf productie-ingangen: `autos`, `inwoners`,
