@@ -37,8 +37,8 @@ from waterlagen.functioneel_landgebruik.bag_landgebruik import determine_bag_cla
         (
             ["woonfunctie", "woonfunctie", "winkelfunctie", "kantoorfunctie"],
             [300, 300, 100, 100],
-            None,
-            "nog te beoordelen",
+            "winkelfunctie",
+            "gekozen",
         ),
         (
             ["woonfunctie", "woonfunctie", "kantoorfunctie"],
@@ -64,7 +64,12 @@ from waterlagen.functioneel_landgebruik.bag_landgebruik import determine_bag_cla
             "kantoorfunctie",
             "gekozen",
         ),
-        (["kantoorfunctie", "onderwijsfunctie"], [100, 100], None, "nog te beoordelen"),
+        (
+            ["kantoorfunctie", "onderwijsfunctie"],
+            [100, 100],
+            "kantoorfunctie",
+            "gekozen",
+        ),
         (
             ["woonfunctie", "overige gebruiksfunctie"],
             [150, 50],
@@ -120,7 +125,7 @@ def test_step3_keeps_source_and_explains_choice(goals, areas, expected, status):
     if goals == ["kantoorfunctie", "onderwijsfunctie"] and areas == [100, 100]:
         assert result.iloc[0]["reden_functiekeuze"] == (
             "kantoorfunctie: 100 m²; onderwijsfunctie: 100 m². "
-            "Gelijke grootste oppervlakte: voorrang nog te bepalen."
+            "Gelijke grootste oppervlakte: kies kantoorfunctie volgens prioriteit."
         )
     if goals == ["kantoorfunctie", "onderwijsfunctie"] and areas == [100, None]:
         assert (
@@ -185,8 +190,8 @@ def classify_functions(goals, areas, *, shared=False):
         ),
         (["overige gebruiksfunctie", "winkelfunctie"], [100, 120], "winkelfunctie"),
         (["overige gebruiksfunctie", "winkelfunctie"], [99, 99], "winkelfunctie"),
-        (["overige gebruiksfunctie", "winkelfunctie"], [100, 100], None),
-        (["winkelfunctie", "kantoorfunctie"], [100, 100], None),
+        (["overige gebruiksfunctie", "winkelfunctie"], [100, 100], "winkelfunctie"),
+        (["winkelfunctie", "kantoorfunctie"], [100, 100], "winkelfunctie"),
         (
             [None, "overige gebruiksfunctie", "winkelfunctie"],
             [1000, 90, 20],
@@ -195,7 +200,7 @@ def classify_functions(goals, areas, *, shared=False):
         (
             [None, "winkelfunctie", "kantoorfunctie"],
             [1000, 100, 100],
-            None,
+            "winkelfunctie",
         ),
         (
             ["overige gebruiksfunctie"] * 2 + ["winkelfunctie"],
@@ -222,11 +227,56 @@ def test_candidate_ranking_in_all_building_branches(
     candidates = [goal for goal in goals if goal != "woonfunctie"]
     if all(goal is None for goal in candidates):
         assert result["functiekeuze_status"] == "geen gebruiksdoel"
-    elif expected is None:
-        assert result["functiekeuze_status"] == "nog te beoordelen"
-        assert result["regel_functiekeuze"] == "gelijke grootste oppervlakten"
     else:
         assert result["functiekeuze_status"] == "gekozen"
+    assert "woonfunctie:" not in result["vergeleken_oppervlakten"]
+
+
+@pytest.mark.parametrize("residential_count", [0, 1, 3])
+@pytest.mark.parametrize("reverse", [False, True])
+@pytest.mark.parametrize(
+    "goals,areas,expected",
+    [
+        (
+            ["winkelfunctie", "winkelfunctie", "kantoorfunctie"],
+            [40, 60, 100],
+            "winkelfunctie",
+        ),
+        (
+            ["gezondheidszorgfunctie", "winkelfunctie", "kantoorfunctie"],
+            [50, 100, 100],
+            "winkelfunctie",
+        ),
+        (
+            ["sportfunctie", "onderwijsfunctie", "logiesfunctie"],
+            [100, 100, 100],
+            "logiesfunctie",
+        ),
+        (
+            ["gezondheidszorgfunctie", "winkelfunctie"],
+            [100, 100],
+            "gezondheidszorgfunctie",
+        ),
+        (
+            ["overige gebruiksfunctie", "celfunctie"],
+            [100, 100],
+            "celfunctie",
+        ),
+    ],
+)
+def test_equal_totals_use_priority_only_among_winners(
+    residential_count, reverse, goals, areas, expected
+):
+    goals = ["woonfunctie"] * residential_count + goals
+    areas = [10000] * residential_count + areas
+    if reverse:
+        goals = goals[::-1]
+        areas = areas[::-1]
+    result = classify_functions(goals, areas).iloc[0]
+    assert result["gekozen_pandfunctie"] == expected
+    assert result["functiekeuze_status"] == "gekozen"
+    assert result["regel_functiekeuze"] == "gelijke grootste oppervlakten"
+    assert f"kies {expected} volgens prioriteit" in result["reden_functiekeuze"]
     assert "woonfunctie:" not in result["vergeleken_oppervlakten"]
 
 
@@ -346,7 +396,11 @@ def test_priority_normalization_and_unknown_goals(value, expected):
             [60, 60, 100],
             "onderwijsfunctie",
         ),
-        (["onderwijsfunctie,sportfunctie", "kantoorfunctie"], [100, 100], None),
+        (
+            ["onderwijsfunctie,sportfunctie", "kantoorfunctie"],
+            [100, 100],
+            "kantoorfunctie",
+        ),
     ],
 )
 def test_selected_goals_drive_building_counts_and_area_totals(goals, areas, expected):
@@ -355,5 +409,3 @@ def test_selected_goals_drive_building_counts_and_area_totals(goals, areas, expe
     if len(goals) == 3:
         assert "onderwijsfunctie: 120 m²" in result["vergeleken_oppervlakten"]
         assert "sportfunctie:" not in result["vergeleken_oppervlakten"]
-    if expected is None:
-        assert result["regel_functiekeuze"] == "gelijke grootste oppervlakten"

@@ -1,4 +1,4 @@
----
+﻿---
 editorial_status: ai
 ---
 
@@ -6,461 +6,250 @@ editorial_status: ai
 
 ## Doel
 
-Deze bewerking maakt een geclassificeerd raster voor functioneel landgebruik.
+Deze bewerking combineert gebouwen, terreinen, wegen en water tot één landgebruikraster. Iedere cel krijgt een klasse voor het gebruik en de binnen- of buitendijkse ligging.
 
 ## Bronlagen
 
-- [TOP10NL](../bronlagen/top10nl.md)
-- [BRP](../bronlagen/brp.md)
-- [BGT](../bronlagen/bgt.md)
-- [BAG](../bronlagen/bag.md)
-- [LIWO](../bronlagen/liwo.md)
-- [GKW HYDAMO](../bronlagen/hydamo.md) voor gemaalpunten en capaciteit
-- [Waterketen DAMO](../bronlagen/waterketen-damo.md) voor bevestiging van RWZI-terreinen
-- [OpenStreetMap-drinkwaterlocaties](../bronlagen/osm-drinkwater.md) voor
-  drinkwaterproductielocaties
+| Bron | Gebruik |
+| --- | --- |
+| [BAG](../bronlagen/bag.md) | Panden, verblijfsobjecten (VBO's), gebruiksdoelen en oppervlakten. |
+| [BGT](../bronlagen/bgt.md) | Wegen, terreinen, oevers en water. |
+| [BRP](../bronlagen/brp.md) | Gewaspercelen en landschapselementen. |
+| [TOP10NL](../bronlagen/top10nl.md) | Functionele gebieden, landbouwterreinen en kassen. |
+| [GKW HYDAMO](../bronlagen/hydamo.md) | Gemaalpunten en capaciteit. |
+| [Waterketen DAMO](../bronlagen/waterketen-damo.md) | Bevestiging van RWZI-terreinen. |
+| [OSM-drinkwaterlocaties](../bronlagen/osm-drinkwater.md) | Beoordeelde drinkwaterproductieterreinen. |
+| [LIWO](../bronlagen/liwo.md) | Binnen- en buitendijkse indeling. |
+| [Bestuurlijke gebieden](../bronlagen/bestuurlijke-gebieden.md) | Begrenzing voor het aanvullen van gaten en de NoData-controle. |
 
 ## Werkwijze
 
-Waterlagen leest de benodigde vectorlagen binnen het gevraagde gebied,
-classificeert bronattributen naar de functionele-landgebruiklegenda en
-rasteriseert de lagen in een vaste prioriteitsvolgorde. TOP10NL, BRP, BGT
-en BAG-klassen worden onderscheiden naar binnen- en buitendijks op basis van
-hun representatieve punt en uitsluitend de LIWO-selectie
-`source_data/liwo/buitendijks_gebied_uit_liwo.gpkg`. Een punt binnen of op de
-grens van deze polygonen (`covered_by`) is buitendijks; alle overige punten
-zijn binnendijks. Alleen overlap van een object met een polygoon is dus niet
-voldoende. Objecten worden niet op de grens opgeknipt. Dijkringen worden
-hiervoor niet gebruikt. Zie [LIWO-selectie](#liwo-selectie).
+Het gekozen gebied wordt verdeeld in tegels. Per tegel worden vier stappen uitgevoerd:
 
-Bronnen, tegelrooster en uitvoer moeten hetzelfde project-CRS gebruiken
-(`settings.crs`, standaard `EPSG:28992`). Bij een afwijking stopt de verwerking;
-de bronnen worden niet automatisch geherprojecteerd.
+1. Gebouwen en overige bronobjecten indelen.
+2. Binnen- en buitendijkse codes toekennen.
+3. Bronnen in een vaste volgorde intekenen.
+4. Gaten aanvullen en controleren.
 
-Voor BAG-panden worden uitsluitend de statussen `Bouw gestart`, `Pand in gebruik`
-en `Verbouwing pand` meegenomen, volgens pagina 4 van de landgebruiknotitie
-van 17 september 2025. Andere of ontbrekende statussen worden uitgesloten,
-ook `Pand in gebruik (niet ingemeten)`. Deze selectie geldt eveneens voor
-panden zonder gekoppeld verblijfsobject. Een ontbrekende statuskolom geeft een
-foutmelding.
+De tegels krijgen een overlap voor berekeningen langs de randen. Daarna worden ze teruggesneden en samengevoegd tot één raster.
 
-### LIWO-selectie
+### 1. Gebouwen en overige bronobjecten indelen
 
-Voor de binnen-/buitendijkse ligging maakt Waterlagen polygonen van buitendijks
-en regionaal onbeschermd overstroombaar gebied uit [LIWO](../bronlagen/liwo.md).
-Het oorspronkelijke klassenraster wordt zonder herschaling of herprojectie
-gedownload. Alleen geldige cellen met waarde 1 of 6 worden gepolygoniseerd.
-NoData en alle overige waarden worden uitgesloten. Cellen met dezelfde klasse
-worden verbonden langs gedeelde zijden; alleen diagonaal rakende cellen blijven
-afzonderlijke polygonen. De twee klassen blijven gescheiden.
+#### Gebouwen selecteren
 
-De verwerking behoudt EPSG:28992 en het 25 m bronraster. Een gewijzigde nationale
-dekking, resolutie, gegevenstype of onverwachte klassewaarde geeft een foutmelding
-zodat de servicemetadata eerst opnieuw kan worden gecontroleerd.
+Alleen BAG-panden met deze statussen worden meegenomen:
 
-Het tussenresultaat is een GeoPackage met laag `buitendijks_gebied_uit_liwo`
-en attributen `klasse` en `omschrijving`. Het volledige gedownloade GeoTIFF
-blijft als bron bewaard. Bij een lege selectie bevat de uitvoer een lege
-polygonenlaag. De polygonen volgen exact de rastercellen; er wordt niet
-vereenvoudigd of gladgestreken. Representatieve punten binnen of op de grens
-zijn buitendijks; alle overige punten zijn binnendijks.
+- `Bouw gestart`;
+- `Pand in gebruik`;
+- `Verbouwing pand`.
 
-Voor het afzonderlijk produceren van deze selectie, zie
-[het scriptvoorbeeld](../reference/gebruik.md#losse-bronnen-en-bewerkingen).
+Andere of ontbrekende statussen vallen af. Ook `Pand in gebruik (niet ingemeten)` valt af.
 
-### Beslisboom voor de gebouwfunctie
+Een verblijfsobject (VBO) is bijvoorbeeld een woning of winkel binnen een pand. Alle VBO's die volgens de BAG bij het pand horen, tellen mee.
 
-De onderstaande beslisboom beschrijft de classificatie per pand.
-Een VBO is een verblijfsobject; `NULL` betekent een ontbrekende gebruiksfunctie.
-De diagramterm `overigegebruiksfunctie` komt overeen met
-`overige gebruiksfunctie` in de code en de overige documentatie.
+<a id="beslisboom-voor-de-gebouwfunctie"></a>
 
-Vooraf wordt per VBO één gebruiksfunctie gekozen. Bij meerdere, door komma's
-gescheiden doelen geldt deze prioriteit, van hoog naar laag:
+#### Gebouwfunctie kiezen
 
-1. `gezondheidszorgfunctie`
-2. `winkelfunctie`
-3. `kantoorfunctie`
-4. `industriefunctie`
-5. `woonfunctie`
-6. `logiesfunctie`
-7. `onderwijsfunctie`
-8. `sportfunctie`
-9. `bijeenkomstfunctie`
-10. `celfunctie`
-11. `overige gebruiksfunctie`
+Per VBO wordt eerst één gebruiksfunctie gekozen. Bij meerdere doelen geldt deze volgorde, van hoog naar laag:
 
-Hoofdletters, omliggende spaties, dubbele doelen en lege onderdelen beïnvloeden
-de keuze niet. Een onbekend doel laat de pandkeuze open, ook naast bekende doelen.
-Uitsluitend lege doelen blijven `NULL`. Het volledige VBO-oppervlak wordt voor
-de classificatie eenmaal aan de gekozen functie toegerekend; dit is geen gemeten
-verdeling van het vloeroppervlak. De oorspronkelijke doelen blijven bewaard,
-ook voor controles zoals de koppeling van gemalen. De prioriteitskeuze wordt
-toegelicht in de diagnostiek.
+**Gezondheidszorg → winkel → kantoor → industrie → wonen → logies → onderwijs → sport → bijeenkomst → cel → overige gebruiksfunctie.**
 
-De beslisboom hieronder gebruikt deze geselecteerde VBO-functies, ook voor
-de aanwezigheid van wonen en het aantal niet-woon-VBO's. Zo wordt
-`woonfunctie,winkelfunctie` één niet-woon-VBO met winkelfunctie.
-Eerst wordt onderscheid gemaakt tussen panden met en zonder geselecteerde `woonfunctie`.
-Zonder woonfunctie wordt het vloeroppervlak per gebruiksfunctie opgeteld.
-Eén functie wordt direct gekozen; bij meerdere functies met uitsluitend
-`overigegebruiksfunctie` en `NULL` wordt `overigegebruiksfunctie` gekozen.
-In alle andere gevallen worden de functies op aflopend totaal vloeroppervlak
-doorlopen: sla `NULL` en `overigegebruiksfunctie` met een totaal kleiner dan
-100 m² over en kies de eerste resterende functie. Precies 100 m² wordt dus
-niet overgeslagen. Deze uitsluitingsregel geldt alleen bij de rangschikking,
-niet bij de directe keuze van één functie of de combinatie overige en `NULL`.
-
-Met woonfunctie bepaalt eerst het totale aantal VBO's de tak. Bij maximaal
-drie VBO's geeft nul niet-woon-VBO's een woning; bij precies één bepaalt die
-andere functie de keuze, behalve bij overige of `NULL`, die ook een woning
-opleveren. Vanaf vier VBO's geven nul of één niet-woon-VBO een
-appartementencomplex. Bij minstens twee niet-woon-VBO's geldt in beide takken
-dezelfde sommeer-, uitsluitings- en rangschikkingslogica als zonder woonfunctie,
-maar uitsluitend voor de niet-woonfuncties.
+Bij gecombineerd gebruik telt het hele VBO-oppervlak mee bij de functie met de hoogste prioriteit.
 
 [![Beslisboom voor de gebouwfunctie op basis van BAG-verblijfsobjecten](../images/beslisboom_bag_vbo.svg)](../images/beslisboom_bag_vbo.svg)
 
-### Huidige uitvoering van de gebouwclassificatie
+Aanvullend op de beslisboom:
 
-De BAG-voorbereiding gebruikt dezelfde functiekeuze, bouwlagenberekening en
-gebouwklassen als het controlescript en volgt de beslisboom hierboven.
-Onbekende doelen binnen een VBO blijven open. De prioriteit binnen een VBO
-is geen voorrangsregel tussen verschillende VBO's. Bij rangschikking
-blijven gelijke grootste totalen na uitsluiting open: de beslisboom geeft
-geen voorrang bij gelijke oppervlakten. Ontbrekende, ongeldige of over meerdere
-panden gedeelde oppervlakten blijven open wanneer ze nodig zijn voor de
-vergelijking. De oppervlakte van `NULL` is daarvoor niet nodig. Bij directe
-functiekeuzes wordt geen oppervlaktevergelijking uitgevoerd.
-Uitsluitend `NULL` onder de kandidaatfuncties geeft `geen gebruiksdoel`,
-evenals een pand zonder gekoppelde VBO's.
-De code stelt niet vast op welke verdieping een functie werkelijk zit.
-Bouwlagen volgen uit alle gekoppelde VBO-oppervlakten gedeeld door de volledige
-pandoppervlakte, naar boven afgerond. Vanaf vier VBO's krijgt een gekozen
-woonfunctie de appartementklasse. De gebouwcodes volgen tabel 1 van de notitie.
+- `NULL` betekent een leeg gebruiksdoel. Geen VBO's of uitsluitend `NULL` bij de kandidaatfuncties geeft *geen gebruiksdoel*.
+- Bij een ingevuld maar niet-herkend gebruiksdoel is de pandfunctie niet te bepalen.
+- Bij gelijke grootste totale oppervlakten geldt de prioriteitsvolgorde hierboven.
+- Ontbrekende, ongeldige of over meerdere panden gedeelde oppervlakten worden niet geschat. Als de keuze deze gegevens nodig heeft, blijft die open.
 
-Als `overige gebruiksfunctie` de gekozen pandfunctie is, wordt alleen de som
-van de VBO-oppervlakten met die gekozen functie vergeleken met 100 m²:
-maximaal 100 m² geeft 33/161, meer dan 100 m² geeft 32/160. Dit geldt ook
-bij gemengde functies. Een ontbrekende of ongeldige oppervlakte van deze VBO's
-wordt niet als nul meegeteld; de klasse blijft dan open.
+<a id="bouwlagen-en-gebouwklasse-bepalen"></a>
 
-VBO's worden via hun pand-ID gekoppeld, ook als hun punt buiten de tegel ligt.
-Een openstaande klasse krijgt rastercode 0 (NoData); de gebouwgeometrie wist
-daarmee een eventueel eerder gerasterde terreinfunctie op die plek.
-Met `prepare_bag(..., include_details=True)` blijven de redenen zichtbaar.
+#### Gebouwklasse bepalen
 
-## Codes uit de CSV
+Het aantal bouwlagen wordt geschat: **som van alle VBO-oppervlakten ÷ volledige pandoppervlakte**, naar boven afgerond. Woonoppervlakte telt hierbij wel mee.
 
-De codes en omschrijvingen komen uit
-`src/waterlagen/functioneel_landgebruik/landgebruik_met_code.csv`.
-De tabel is gebaseerd op de notitie van 17 september 2025 en wordt met het
-pakket meegeleverd. Een eigen tabel kan via `mapping_csv` worden opgegeven.
-De kolommen `LGB-code_binnendijks` en `LGB-code_buitendijks` bevatten gehele
-getallen van 1 t/m 255; code 0 is gereserveerd voor NoData. `LGB_beschrijving`
-levert de klassenaam. `Toelichting` en `Documentatie` beïnvloeden de indeling niet.
-De tabel onderscheidt directe bronwaardekoppelingen (`mapping`) en vaste
-Python-regels (`functie`, geïdentificeerd door `Koppel-ID`). Elke nieuwe tabelrij
-bevat één bronwaarde. Zie [de codetabel aanpassen](../produceren/landgebruik.md#de-codetabel-aanpassen)
-voor het bestandsformaat en de bewerkbare kolommen.
-
-Een expliciete waarde gaat voor het vangnet `*`. Met een bronveld vangt dit
-alleen geldige, niet-lege waarden op; BRP vereist positieve gehele gewascodes.
-Zonder bronveld geldt de regel voor alle verder geschikte objecten. Die variant
-wordt gebruikt voor BGT-water en onbegroeide terreindelen. Ontbrekende of lege
-attribuutwaarden krijgen bij een veldgebonden koppeling geen klasse uit die laag.
-
-De CSV-volgorde bepaalt noch de classificatie, noch de presentatie. Als meerdere
-bronnen dezelfde code gebruiken, is de kleurvoorrang: BGT-water, gebouwen,
-BRP, TOP10NL, BGT-wegen en overige terreinen/gemalen. Dit is uitsluitend een
-kleurkeuze, geen rastervoorrang. Voor een gedeelde buitencode krijgt de
-beschrijving van de rij met `buitencode = binnencode + 128` voorrang. Ontbreekt
-zo'n rij, dan worden de verschillende beschrijvingen alfabetisch samengevoegd.
-Die voorkeur bepaalt alleen het legendalabel, niet de uitvoercode.
-
-- **BAG:** de functiekeuze en berekening van bouwlagen blijven afzonderlijke
-  stappen. De uitkomst kiest een vaste koppeling-ID; de CSV levert daarna de
-  omschrijving en beide codes. Er wordt geen code berekend met een vaste offset.
-  Koppeling-ID's blijven bij dezelfde betekenis horen wanneer je rijen sorteert
-  of toevoegt. De verwerking stopt als een vereiste BAG-ID naar een andere bron
-  of gebruiksfunctie verwijst. Bouwlagen en de aparte gebouwregels blijven in
-  Python vastgelegd; daarvoor zijn geen extra CSV-kolommen nodig. Het verwisselen
-  van twee bouwlagenklassen binnen dezelfde functie wordt niet door deze
-  functiecontrole herkend.
-- **BRP:** koppeling op `gewascode`, inclusief de in de CSV opgenomen
-  landschapselementen. Gewascodes 265 en 266 krijgen 50 binnendijks en 182
-  buitendijks, volgens de uitzondering op pagina 9. De overige codes uit
-  tabelrij 50/178 houden 50/178. Overige geldige gewascodes gebruiken alleen
-  het expliciete CSV-vangnet 53/181; het gebruik hiervan wordt gelogd.
-- **BGT:** wegen, ondersteunende wegdelen en begroeide terreindelen worden op
-  volledige bronwaarden gekoppeld. De CSV bevat ook een algemene regel voor
-  onbegroeide terreindelen en waterdelen. De afbakening van onbegroeide
-  terreindelen als erf is nog een inhoudelijk aandachtspunt.
-- **TOP10NL:** volledige bronwaarden van functionele gebieden worden gekoppeld.
-  Zowel `top10nl_functioneel_gebied_vlak` als
-  `top10nl_functioneel_gebied_multivlak` wordt verwerkt met de koppelingen uit
-  de CSV. Een multivlak behoudt zijn afzonderlijke terreindelen en krijgt op
-  dezelfde manier een binnen- of buitendijkse code. Beide lagen liggen op
-  dezelfde positie ten opzichte van de overige bronnen in de rastervolgorde.
-  Dit is een technische aanvulling op tabel 6 van de notitie, die alleen
-  `vlak` noemt; er worden geen extra landgebruikscategorieën toegevoegd.
-  `zonnepark` wordt daardoor niet via het woord `park` geclassificeerd.
-  Bronwaarden zonder koppeling worden gelogd en niet ingetekend.
-
-### Overlap en rastervoorrang
-
-Bij `mapping` krijgt een bronobject maximaal één koppeling: een expliciete
-bronwaarde gaat voor `*`. Dubbele bronwaarden binnen dezelfde bronlaag geven
-een foutmelding. Een object zonder koppeling wordt niet ingetekend en wist dus
-geen eerder ingetekende klasse.
-
-Verschillende bronobjecten kunnen wel dezelfde rastercel raken. Alle door een
-geometrie geraakte cellen worden ingetekend (`all_touched=True`), waardoor ook
-aangrenzende vlakken een cel kunnen delen. Voor zowel `mapping` als `functie`
-geldt deze tekenvolgorde; een latere laag overschrijft een eerdere laag:
-
-1. BGT-ondersteunende waterdelen: `bgt-type = oever, slootkant`, volgens de CSV
-   code 78 binnendijks en 206 buitendijks. Deze laag heeft de laagste prioriteit.
-2. BGT-begroeide terreindelen, daarna onbegroeide terreindelen.
-3. TOP10NL-functionele gebieden: eerst `vlak`, daarna `multivlak`.
-4. TOP10NL-terreinvlakken (`typelandgebruik`): grasland, akkerland,
-   boomkwekerij, boomgaard en fruitkwekerij volgens de CSV. Deze vullen gaten
-   in de BRP-dekking.
-5. BRP.
-6. BGT-ondersteunende wegdelen.
-7. BGT-wegdelen.
-8. BAG-panden met hun uiteindelijke gebouwklasse.
-9. Gemalen die als punt zijn behouden.
-10. BGT-waterdelen.
-
-Een BGT-weg die dezelfde cel raakt als BRP-gras overschrijft dus de grascode.
-Water gaat vervolgens voor wegen, gebouwen en landbouw en krijgt de binnen- of
-buitendijkse CSV-code (standaard 100/228). De overige volgorde is het huidige
-gedrag van de verwerking; hiermee zijn niet alle inhoudelijke vragen over
-overlap opgelost.
-
-Binnen één laag wint het laatst ingetekende object in de aangeleverde
-objectvolgorde. Er is geen algemene conflictcontrole of keuze op basis van
-grootste oppervlak. Bij overlappende objecten kan een gewijzigde bronvolgorde
-dus een ander raster opleveren. De volgorde van de CSV-rijen en de hoogte van
-de LGB-codes bepalen deze voorrang niet. De kleurvoorrang in de legenda staat
-hier eveneens los van.
-
-Voor `functie` wordt eerst de gebouwklasse bepaald. De gewone BAG-regels
-kiezen één uitkomst; onopgeloste functiekeuzes blijven open. Bijzondere
-gebouwregels hebben daarnaast de conflictcontrole hieronder. Een onopgelost
-gebouw krijgt code 0 (NoData): de gebouwgeometrie wist daarmee eerder
-ingetekende terreinklassen. Later ingetekende gemaalpunten of water kunnen
-die cellen alsnog overschrijven.
-
-### Bijzondere gebouwen en gemalen (stap 6)
-
-Na de gewone BAG-indeling worden de volgende aanvullingen toegepast. De codes
-komen uit dezelfde CSV. De controle bewaart de oorspronkelijke BAG-uitkomst
-in `basis_...`-kolommen, naast de uiteindelijke klasse en reden.
-
-| Onderwerp | Selectie en resultaat |
+| Uitkomst | Gebouwklasse |
 | --- | --- |
-| Kassen | TOP10NL-gebouwtype `kas, warenhuis`, ook als afzonderlijke waarde in een combinatie met `\|`. Als deze geometrie meer dan de helft van een BAG-pand bedekt, krijgt dat pand de kassenklasse. De BAG-geometrie blijft behouden. |
-| RWZI | Polygonen uit `top10nl_functioneel_gebied_vlak` met exact `typefunctioneelgebied == "zuiveringsinstallatie"`, die een object uit Waterketen DAMO-laag `rwzi` snijden. BAG-panden met hun representatieve punt strikt binnen zo'n terrein krijgen `RWZI (gebouw op RWZI-terrein)`, codes 36/164. Er geldt geen statusfilter. |
-| Drinkwater | BAG-panden waarvan het representatieve punt binnen een beoordeeld OSM-terrein met drinkwaterzuivering ligt krijgen de drinkwaterklasse 37/165. De BAG-pandgeometrie blijft behouden. Gebouwcontouren worden alleen op verzoek aan de koppellaag toegevoegd. |
-| Gemalen | Capaciteit in m³/min bepaalt de klasse. Gebruik een BAG-pand als het gemaalpunt binnen precies één geselecteerd pand ligt en het pand uitsluitend industrie-/overige gebruiksfunctie heeft, geen gekoppeld VBO heeft, of uitsluitend lege gebruiksdoelen heeft. Wonen, andere bekende functies, onbekende bronwaarden en deels ontbrekende doelen sluiten automatische pandkoppeling uit; het gemaal blijft dan een punt. |
+| Reguliere functie | Klasse voor 1, 2 of 3 of meer bouwlagen. |
+| Woonfunctie met minimaal 4 VBO's | Appartementencomplex, ongeacht de bouwlagen. Standaardcodes 4/132. |
+| Overige gebruiksfunctie | Alleen de oppervlakte van VBO's met die gekozen functie telt. Maximaal 100 m²: 33/161. Meer dan 100 m²: 32/160. |
+| Geen gebruiksdoel | Aparte klasse, standaardcodes 34/162. |
+| Onopgeloste functiekeuze of ontbrekende benodigde oppervlakte | Geen klasse: NoData. |
 
-De ruimtelijke grenzen voor deze koppelingen zijn uitvoeringskeuzes; de notitie
-schrijft geen overlappercentage of exacte koppelprocedure voor. Ook een kleine
-woonfunctie binnen een verder industrieel pand blokkeert automatische koppeling
-van een gemaal aan het gehele pand. Deels ontbrekende gebruiksdoelen en andere functies
-blijven eveneens als punt ter beoordeling. Er wordt geen dichtstbijzijnd pand gekozen.
+De codeparen noemen steeds binnendijks/buitendijks. Ontbrekende, ongeldige of gedeelde VBO-oppervlakten laten de bouwlagenberekening open. Klassen zonder bouwlagencriterium kunnen dan nog wel worden toegekend.
 
-Voor RWZI wordt het volledige TOP10NL-terrein gebruikt: het bevestigende DAMO-object
-mag buiten de verwerkte tegel of pandbegrenzing liggen. Een DAMO-object op de
-terreinrand bevestigt het terrein door `intersects`. Alleen raken van een terrein
-door een BAG-pand is onvoldoende; ook een representatief pandpunt op de rand
-wordt uitgesloten. De laag `top10nl_functioneel_gebied_multivlak` doet niet mee
-aan deze gebouwregel. De vaste koppeling-ID blijft `TOP10NL-NGR-BAG-001` voor
-compatibiliteit met bestaande codetabellen; de bron is nu DAMO. Eigen codetabellen
-blijven de codes en omschrijving bepalen.
+<a id="bijzondere-gebouwen-en-gemalen-stap-6"></a>
 
-Bij meerdere afzonderlijke gemalen in hetzelfde geschikte pand worden de
-capaciteiten opgeteld. Dezelfde `globalid` telt eenmaal; tegenstrijdige capaciteiten
-bij dezelfde ID, ontbrekende capaciteiten of ontbrekende IDs bij meerdere gemalen
-verhinderen een automatische som. De puntrecords blijven dan zichtbaar. Er worden
-geen pomp-records bij gemaalcapaciteiten opgeteld.
+#### Bijzondere functies controleren
 
-#### Conflicten tussen bijzondere gebouwregels
+Aanvullende bronnen kunnen de gewone BAG-klasse vervangen. De BAG-pandvorm blijft behouden.
 
-Een passende kas-, RWZI- of drinkwaterregel vervangt de gewone BAG-klasse.
-Als meerdere van deze regels bij hetzelfde pand passen, zijn ze alleen
-verenigbaar als hun volledige codeparen
-(`LGB-code_binnendijks`, `LGB-code_buitendijks`) gelijk zijn. Beide codes
-moeten overeenkomen, ook als het pand uitsluitend binnendijks ligt. Bij gelijke
-paren wordt dat paar gebruikt; de vaste verwerkingsvolgorde van de regels
-bepaalt de gerapporteerde `Koppel-ID`, terwijl alle passende IDs in de controle
-bewaard blijven. De CSV-volgorde bepaalt deze keuze niet.
+| Klasse | Selectie |
+| --- | --- |
+| Kas | TOP10NL-gebouwtype `kas, warenhuis` bedekt meer dan 50% van het BAG-pand. |
+| RWZI | Het representatieve pandpunt ligt strikt binnen een TOP10NL-zuiveringsterrein. Dit terrein moet een DAMO-RWZI-object raken of overlappen. Alleen de TOP10NL-laag `functioneel_gebied_vlak` doet mee. |
+| Drinkwater | Het representatieve pandpunt ligt strikt binnen een beoordeeld OSM-drinkwaterterrein. Losse OSM-gebouwcontouren doen standaard niet mee. |
+| Gemaal | Het gemaalpunt ligt strikt binnen precies één geselecteerd BAG-pand. Ook de gebruiksdoelen en capaciteit moeten aan de onderstaande regels voldoen. |
 
-Bij verschillende codeparen blijft het pand `nog te beoordelen`, zonder
-definitieve klasse. De verwerking valt dan niet terug op de gewone BAG-klasse;
-het pand wordt als NoData ingetekend volgens de
-[rastervoorrang](#overlap-en-rastervoorrang).
+Voor koppeling van een gemaal aan een pand geldt:
 
-Bijvoorbeeld: een pand past zowel bij de kasregel met codes `(35, 163)` als bij
-de RWZI-regel met `(36, 164)`. Dit levert een conflict op. Als beide regels in
-de CSV hetzelfde paar `(35, 163)` krijgen, is hun uitkomst verenigbaar. Alleen
-de binnencodes gelijk maken is onvoldoende. Het aanpassen van codes kan dus
-ook veranderen of een pand een definitieve klasse krijgt.
+- Alleen industrie en/of overige gebruiksfunctie: koppelen toegestaan.
+- Geen VBO's of uitsluitend lege gebruiksdoelen: koppelen toegestaan.
+- Wonen, andere functies, onbekende doelen of deels lege doelen: het gemaal blijft een punt.
+- Geen eenduidige ruimtelijke koppeling: het gemaal blijft een punt. Er wordt geen nabijgelegen pand gekozen.
 
-Voor een aan een pand gekoppeld gemaal geldt een strengere regel. Een geldige
-gemaalklasse kan de gewone BAG-klasse vervangen, maar een gelijktijdige kas-,
-RWZI- of drinkwaterkoppeling maakt het pand onopgelost, **ook bij gelijke
-codeparen**. Er is geen automatische voorrang tussen het gemaal en die
-bijzondere gebouwfuncties. Een ruimtelijk onduidelijke gemaalkoppeling kiest
-geen pand; het gemaal blijft dan een punt.
+Bij meerdere gemaalregistraties in hetzelfde geschikte BAG-pand worden de capaciteiten opgeteld. Dubbele registraties met dezelfde `globalid` tellen één keer mee.
 
-De zes capaciteitsintervallen zijn **10 ≤ Q < 20**, **20 ≤ Q < 50**,
-**50 ≤ Q < 100**, **100 ≤ Q < 400**, **400 ≤ Q ≤ 1000** en **Q > 1000**.
-Dit gebruikt alle zes tabelklassen vanaf 10, volgens de projectkeuze; het
-50-criterium uit de lopende tekst wordt niet gebruikt. Een pandtotaal wordt
-berekend vóór toepassing van de klassegrenzen. Ontbrekende, negatieve of
-ongeldige capaciteiten krijgen geen klasse.
+Ontbreken capaciteiten of IDs, of verschillen de capaciteiten bij dezelfde ID? Dan wordt geen totaal berekend en blijven de gemalen als punten behouden.
 
-Een overgebleven gemaalpunt beslaat één rastercel, zonder verondersteld
-gebouwoppervlak. Die punten worden na BAG en vóór BGT-water gerasterd. Water
-houdt dus de bestaande voorrang. Het puntenbestand blijft nodig voor controle:
-een punt op water kan in het samengestelde raster door water worden overschreven,
-en meerdere punten kunnen in dezelfde rastercel vallen.
+De totale capaciteit bepaalt de gemaalklasse. Er zijn zes capaciteitsklassen:
 
-De volledige productie gebruikt TOP10NL voor kassen, HYDAMO voor gemalen,
-Waterketen DAMO voor RWZI-terreinen en de beoordeelde OSM-terreinen voor
-drinkwatergebouwen. Ontbrekende bronnen worden automatisch voorbereid.
-Bij losse Python-bewerkingen kunnen optionele bronnen bewust ontbreken;
-de betreffende selecties worden dan overgeslagen en gelogd en de gewone
-BAG-klasse blijft staan. De RWZI-koppeling geeft geen oordeel over
-de bedrijfsstatus. De status van gemaalobjecten blijft in de controle zichtbaar;
-de capaciteitsindeling op zichzelf bevestigt niet dat een gemaal operationeel is.
+| Ondergrens (m³/min) | Bovengrens (m³/min) |
+| ---: | ---: |
+| ≥ 10 | < 20 |
+| ≥ 20 | < 50 |
+| ≥ 50 | < 100 |
+| ≥ 100 | < 400 |
+| ≥ 400 | ≤ 1.000 |
+| > 1.000 | — |
 
-Alle gebruikte BGT-lagen worden alleen verwerkt als de status `bestaand` is
-en zowel `eindRegistratie` als `objectEindTijd` leeg (NULL) zijn. Status alleen
-is onvoldoende: ook historische registraties kunnen `bestaand` vermelden.
-De selectie gebeurt per registratie; een beëindigde versie sluit een actuele
-versie van hetzelfde object niet uit. Ontbreken de benodigde kolommen, dan
-stopt de verwerking met een foutmelding. Maak dan de BGT-GeoPackage opnieuw
-met de einddatumvelden. Bestaande rasters worden hiermee niet automatisch
-opnieuw berekend.
+Een capaciteit onder 10 m³/min krijgt geen klasse. Dat geldt ook bij een ontbrekende of ongeldige capaciteit. Een overgebleven gemaalpunt beslaat één rastercel.
 
-Bij het omzetten van BGT-wegdelen en terreindelen naar GeoPackage gebruikt
-Waterlagen het vlak uit `geometrie2d`. Een aanwezige `kruinlijn` mag dit vlak
-niet vervangen. Anders kan een actuele registratie als lijn worden opgeslagen
-en ontstaat na het verwijderen van de historische versie onterecht NoData.
-Oudere GeoPackages met dit probleem moeten opnieuw uit de GML worden gemaakt;
-daarna moeten ook de betreffende rastertegels opnieuw worden berekend.
+##### Conflicten tussen bijzondere gebouwregels
+
+Bij de standaardcodetabel krijgt een pand dat aan meerdere bijzondere gebouwregels voldoet geen klasse (NoData). Ook de eerder bepaalde BAG-klasse vervalt.
+
+#### Terreinen, wegen en water indelen
+
+| Bron | Indeling |
+| --- | --- |
+| BRP | Op gewascode, inclusief de opgenomen landschapselementen. |
+| BGT | Wegen op functie; begroeide terreinen op fysiek voorkomen. Water en onbegroeide terreinen hebben een algemene koppeling. Oevers en slootkanten worden apart ingedeeld. |
+| TOP10NL | Functionele gebieden op de volledige bronwaarde. Zowel vlakken als multivlakken doen mee. Grasland, akkerland, boomkwekerij, boomgaard en fruitkwekerij vullen de BRP-dekking aan. |
+
+Voor BGT gelden drie voorwaarden: status `bestaand`, een lege `eindRegistratie` en een lege `objectEindTijd`. Alleen actuele registraties doen mee. Wegen en terreinen gebruiken het vlak uit `geometrie2d`.
+
+#### Codes uit de CSV
+
+De klassen en codeparen staan in `landgebruik_met_code.csv`. De gebruikte tabel wordt bij de productie bewaard. Zie [de codetabel](../produceren/landgebruik.md#de-codetabel-aanpassen) voor de locatie en het aanpassen ervan.
+
+- Codes 1 t/m 255 zijn landgebruiksklassen. Code 0 is NoData.
+- Een bronwaarde krijgt de klasse uit de bijbehorende tabelrij. Ontbreekt die rij, dan geldt de `*`-rij, als die aanwezig is.
+- De `*`-rij geldt alleen voor geldige, niet-lege bronwaarden. BRP vereist een positieve gehele gewascode.
+- Een leeg bronveld in de codetabel betekent dat geen extra kenmerk nodig is voor de indeling. Zo krijgen alle actuele BGT-waterdelen de waterklasse.
+- Objecten zonder koppeling in de codetabel worden overgeslagen.
+
+De tabel levert ook de codes bij berekende gebouwfuncties. Die beslisregels liggen vast in de software.
+
+<a id="liwo-selectie"></a>
+
+### 2. Binnen- en buitendijkse codes toekennen
+
+De binnen-/buitendijkse indeling gebruikt twee LIWO-klassen:
+
+- **1:** buitendijks gebied;
+- **6:** regionaal onbeschermd overstroombaar gebied.
+
+De cellen van het 25 m-raster worden omgezet naar vlakken. NoData en andere klassen vallen af.
+
+Voor elk vlak wordt één punt binnen het vlak bepaald (`representative_point()`). De ligging van dit punt ten opzichte van het LIWO-gebied bepaalt de code voor het hele vlak:
+
+- Binnen of op de grens van de LIWO-selectie: buitendijkse code.
+- Daarbuiten: binnendijkse code.
+
+<a id="overlap-en-rastervoorrang"></a>
+
+### 3. Bronnen in een vaste volgorde intekenen
+
+Alle door een object geraakte rastercellen worden ingetekend. Daardoor kunnen ook aangrenzende vlakken dezelfde cel raken.
+
+De tabel staat op volgorde van voorrang. Bij overlap gaat een hogere rij voor een lagere rij.
+
+| Broncode | Bronlaag |
+| --- | --- |
+| 12 | BGT-waterdelen |
+| 11 | Gemalen die als punt zijn behouden |
+| 10 | BAG-panden met hun uiteindelijke gebouwklasse |
+| 9 | BGT-wegdelen |
+| 8 | BGT-ondersteunende wegdelen |
+| 7 | BRP |
+| 6 | TOP10NL-landbouwterreinen |
+| 5 | TOP10NL-functionele gebieden: multivlak |
+| 4 | TOP10NL-functionele gebieden: vlak |
+| 3 | BGT-onbegroeide terreindelen |
+| 2 | BGT-begroeide terreindelen |
+| 1 | BGT-ondersteunende waterdelen: oever, slootkant |
+
+- Water heeft de hoogste voorrang. Het overschrijft ook gebouwen en gemaalpunten.
+- Een onopgelost BAG-pand schrijft NoData over eerder ingetekende terreinen. Later ingetekende gemaalpunten of water kunnen dit weer overschrijven.
+- Bij overlap binnen dezelfde laag krijgt het laatst ingetekende object voorrang.
+
+<a id="kleine-gaten-aanvullen-en-bronherkomst"></a>
+
+### 4. Gaten aanvullen en controleren
+
+Lege cellen krijgen de klasse van de dichtstbijzijnde geschikte cel binnen standaard **1 meter**, gemeten tussen celmiddens.
+
+- Alleen lege cellen zonder broncode waarvan het celmidden binnen `landgebied` ligt, worden aangevuld.
+- BAG-panden zonder klasse blijven leeg.
+- BAG, BRP en TOP10NL-landbouwterreinen leveren geen cellen voor aanvulling. De overige bronlagen wel.
+- Aangevulde cellen vullen geen andere gaten.
+- Bij gelijke afstand wint de noordelijkste cel, daarna de westelijkste.
+- Klasse én broncode worden overgenomen, inclusief de binnen-/buitendijkse indeling.
+
+Van twee kanten kan zo een gat van ongeveer 2 meter worden gevuld. Ook randen van grotere gaten kunnen worden aangevuld. De regel houdt geen rekening met barrières. Een klasse kan over een smal tussenliggend object heen worden overgenomen.
+
+Na het aanvullen worden de resterende gaten vastgelegd in `nodata.gpkg`. Zie de NoData-controle onder [Uitvoer](#uitvoer).
 
 ## Uitvoer
 
-De uitvoer is een gepaletteerde GeoTIFF met één `uint8`-band `Landgebruik`,
-NoData-waarde 0 en overviews. De standaardresolutie is 0,5 m en de standaard-CRS
-is `EPSG:28992`.
+De standaardresolutie is **0,5 meter**. Het standaard-CRS is **EPSG:28992**. Bronnen, tegelrooster en uitvoer moeten hetzelfde project-CRS gebruiken.
 
-Optioneel wordt één GeoPackage-laag met uitsluitend de NoData-vlakken
-geschreven. De kolommen `bron` en `reden` geven de bron en de open keuze of aangetroffen uitsluiting.
-Aanwezige aanvullende BGT-vlaklagen worden ook gecontroleerd op actuele objecten.
-Bijvoorbeeld: bron `BGT`, reden `Oever/slootkant: geen landgebruikscode.`
-Deze aanwijzing gaat voor historische registraties en TOP10NL-terrein.
-Een concrete BAG-keuze die NoData veroorzaakt blijft behouden. Dit verandert
-alleen de uitleg, niet de landgebruikscode. Lagen die niet in het BGT-GeoPackage
-staan zijn niet gecontroleerd; hun afwezigheid bewijst niet dat de ruwe BGT leeg is.
-Zonder specifieke aanwijzing staat er dat de gebruikte bronnen geen landgebruik
-hebben toegekend. De vlakken volgen exact de lege rastercellen. Zie
-[NoData controleren](../produceren/landgebruik.md#nodata-controleren)
-voor het inschakelen en bekijken in QGIS.
+| Bestand | Inhoud |
+| --- | --- |
+| `functioneel_landgebruik.tif` en `.vrt` | Landgebruik als Cloud Optimized GeoTIFF en virtueel tegelmozaïek. Eén `uint8`-band `Landgebruik`; 0 is NoData. |
+| `functioneel_landgebruik_bronnen.tif` en `.vrt` | Bronlaag per cel. Codes staan in de tabel bij [rastervoorrang](#overlap-en-rastervoorrang). Code 0 betekent geen bron. |
+| `functioneel_landgebruik_bronnen.json` | Bronlegenda en instellingen voor het aanvullen. |
+| `functioneel_landgebruik.qml` en `.tif.aux.xml` | QGIS-stijl en compatibiliteitskopie van de rasterattribuuttabel. Klassen en kleuren staan ook in de TIFF. |
+| `nodata.gpkg`, laag `nodata` | Resterende lege rastercellen als vlakken, met `bron` en `reden`. |
+| `landgebruik_met_code.csv` | De gebruikte codetabel. |
+
+Bij de standaardproductie worden ook gebouw-ID's en volledige pandvormen bewaard. Deze zijn invoer voor [DEM](dem.md). Aangrenzende panden blijven afzonderlijk herkenbaar. Ook BAG-panden zonder landgebruiksklasse behouden hun ID. Water verwijdert een gebouw-ID waar het de gebouwcel overschrijft.
+
+**Bronnenraster**
+
+- De broncode beschrijft de ingetekende geometrie. Een RWZI-gebouw houdt daarom BAG-code 10. Een los gemaalpunt krijgt code 11.
+- De code noemt niet alle bronnen die aan de classificatie hebben bijgedragen.
+- Oorspronkelijke en aangevulde cellen zijn niet afzonderlijk herkenbaar.
+
+**NoData-controle**
+
+- De controle volgt het eindraster, na het aanvullen.
+- Alleen het deel binnen `landgebied` wordt opgenomen. Dit knipt het landgebruikraster zelf niet af.
+- `bron` en `reden` verklaren open keuzes en gevonden bronuitsluitingen.
+- Een gevonden uitsluiting bewijst niet dat die bron de plek had moeten vullen.
+- Zonder aanwijzing staat er: *Geen bron vult deze plek.*
+- Alleen aanwezige bronlagen worden onderzocht. Zonder gaten is de laag leeg.
+
+Zie [NoData controleren](../produceren/landgebruik.md#nodata-controleren) voor het bekijken van de controle en het inschakelen bij eigen Python-bewerkingen.
 
 ## Aandachtspunten en beperkingen
 
-De classificatie volgt de in Waterlagen vastgelegde legenda en de beschikbare
-bronattributen. Het raster is daarom een afgeleid product, geen vervanging van
-een afzonderlijke bronregistratie. Ontbrekende bronbestanden kunnen desgewenst
-vooraf door de workflow worden gedownload.
+- De klasse is afgeleid uit bronregistraties. Het werkelijke gebruik kan afwijken.
+- Bouwlagen zijn geschat uit oppervlakten. De werkelijke verdieping van een functie is niet bekend.
+- De LIWO-indeling volgt een raster van 25 meter. Een uitvoercel van 0,5 meter maakt die grens niet nauwkeuriger.
+- Alle onbegroeide BGT-terreindelen krijgen dezelfde koppeling. Hun indeling als erf blijft een inhoudelijk aandachtspunt.
+- RWZI- en gemaalklassen bewijzen niet dat een installatie operationeel is. De RWZI-koppeling gebruikt geen statusfilter.
+- Bij eigen Python-bewerkingen kunnen optionele bronnen ontbreken. De bijbehorende bijzondere gebouwregels worden dan overgeslagen.
+- Bewaar de tegelbestanden zolang het VRT nodig is.
+
+Bekijk het **bronnenraster** en **nodata.gpkg** om de indeling en ontbrekende klassen te verklaren.
 
 ## Zelf produceren
 
-Volg [Functioneel landgebruik produceren](../produceren/landgebruik.md) voor
-de workflow met het productiepakket. Voor eigen Python-workflows gebruikt u
-`bouw_functioneel_landgebruik`; zie de [API-referentie](../reference/functioneel_landgebruik.md).
-
-
-De NoData-controle wordt afgeknipt op de laag `landgebied` uit
-[Bestuurlijke gebieden](../bronlagen/bestuurlijke-gebieden.md), dezelfde landsgrensbron
-als het tegelrooster. NoData buiten deze polygonen is toegestaan en verschijnt
-niet in `nodata.gpkg`. Grensoverschrijdende controlevlakken behouden alleen het
-gedeelte binnen landgebied; het landgebruikraster zelf verandert niet.
-Oudere controlebestanden moeten opnieuw worden gemaakt met `overwrite=True`.
-
-
-## Kleine gaten aanvullen en bronherkomst
-
-De categorische aanvulling gebruikt dichtstbijzijnde toegestane oorspronkelijke donors.
-Het landmasker begrenst uitsluitend de doelcellen; donors kunnen uit de
-tegeloverlap komen. De hier beschreven bronuitsluitingen en prioriteiten blijven
-van toepassing.
-
-Voor [DEM-productie](dem.md) worden ook individuele gebouw-ID's bewaard. Het
-ID-raster gebruikt precies de gebouwcellen van broncode 10, ook bij een nog
-onbekende landgebruiksklasse. Dezelfde voorbereide geometrieën en rastervolgorde
-bepalen de IDs. Water of andere hogere bronprioriteiten verwijderen een
-overschreven gebouw-ID. Raakvlakken tussen panden voegen hun IDs niet samen.
-De oorspronkelijke BAG-identificatie en volledige pandgeometrie blijven
-beschikbaar in de begeleidende gebouwgegevens.
-
-Na het intekenen van alle bronnen vult de verwerking lege rastercellen aan met
-de klasse van de dichtstbijzijnde toegestane donorcel. De standaardzoekafstand
-is **1 meter**, gemeten tussen celmiddens. Van twee kanten kan hierdoor een gat
-van ongeveer 2 meter worden gevuld; ook randen van grotere gaten kunnen worden
-aangevuld. `gap_fill_distance_m=0` schakelt het aanvullen uit.
-
-Het bronnenraster `functioneel_landgebruik_bronnen.tif` registreert de winnende
-bronlaag per cel. Het gebruikt vaste codes, onafhankelijk van de CSV-volgorde:
-
-| Code | Bron:laag | Donor toegestaan |
-| --- | --- | --- |
-| 0 | Geen bron | Nee |
-| 1 | BGT:bgt_ondersteunendwaterdeel | Ja |
-| 2 | BGT:bgt_begroeidterreindeel | Ja |
-| 3 | BGT:bgt_onbegroeidterreindeel | Ja |
-| 4 | TOP10NL:top10nl_functioneel_gebied_vlak | Ja |
-| 5 | TOP10NL:top10nl_functioneel_gebied_multivlak | Ja |
-| 6 | TOP10NL:top10nl_terrein_vlak | Nee |
-| 7 | BRP:brp_gewas | Nee |
-| 8 | BGT:bgt_ondersteunendwegdeel | Ja |
-| 9 | BGT:bgt_wegdeel | Ja |
-| 10 | BAG:pand | Nee |
-| 11 | HyDAMO:gemaal | Ja |
-| 12 | BGT:bgt_waterdeel | Ja |
-
-Bijzonder geclassificeerde BAG-gebouwen, waaronder RWZI- en gemaalgebouwen,
-blijven broncode 10 houden: de broncode beschrijft de ingetekende geometrie,
-niet alle bronnen die de classificatie hebben be?nvloed. Ongekoppelde
-HYDAMO-punten hebben code 11.
-
-Alleen lege cellen zonder broncode en met hun celmidden binnen `landgebied`
-worden aangevuld. Bestaande klassen en expliciet oningedeelde BAG-panden blijven
-ongewijzigd. Een aangevulde cel krijgt de klasse ?n broncode van de donor.
-Nieuw aangevulde cellen dienen niet zelf als donor. Bij gelijke afstand wint
-de noordelijkste donor, daarna de westelijkste. Dit is een eenvoudige
-nabijheidsregel zonder barri?res: een donor kan over een smal tussenliggend
-object heen worden gekozen. De bestaande binnen-/buitendijkse klasse van de
-donor wordt meegekopieerd.
-
-Tegels worden met een overlappende marge berekend en daarna teruggesneden,
-zodat ook donoren in een aangrenzende tegel beschikbaar zijn. De NoData-controle
-wordt na het aanvullen gemaakt. Het bronnenraster onderscheidt oorspronkelijke
-en aangevulde cellen niet; de zoekafstand en donormapping staan in de metadata.
-
-
-## Rasterattribuuttabel
-
-Het samengestelde landgebruikraster bevat een ingebedde rasterattribuuttabel
-(RAT) met de kolommen `Value`, `Name`, `Red`, `Green`, `Blue` en `Alpha`.
-De pixelcodes, omschrijvingen en kleuren komen uit hetzelfde palet als de
-QGIS-stijl. Een identieke `.tif.aux.xml`-bijlage ondersteunt oudere lezers.
-Beide tabellen worden samen bijgewerkt en gecontroleerd. Dit verandert de
-classificatie en rasterwaarden niet. Zie [productie en uitvoer](../produceren/landgebruik.md)
-voor hergebruik en het delen van bestanden.
+Zie [Functioneel landgebruik produceren](../produceren/landgebruik.md).
+De Python-interface staat in de [API-referentie](../reference/functioneel_landgebruik.md).

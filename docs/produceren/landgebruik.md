@@ -260,8 +260,9 @@ Bij meerdere doelen in een verblijfsobject wordt eerst één functie geselecteer
 volgens de prioriteit in de functionele beschrijving hierboven. De diagnostiek
 vermeldt deze keuze; het volledige VBO-oppervlak telt eenmaal mee bij die functie.
 
-Gelijke grootste oppervlakten na uitsluiting van kandidaatfuncties,
-ongeldige benodigde oppervlakten en niet-opgeloste combinaties krijgen
+Bij gelijke grootste totale oppervlakten geldt dezelfde prioriteit als bij
+meerdere doelen binnen één VBO. De diagnostiek vermeldt de gekozen functie.
+Ongeldige benodigde oppervlakten en niet-opgeloste combinaties krijgen
 `nog te beoordelen`. Bij een oppervlaktevergelijking geldt dit ook voor een
 verblijfsobject dat aan meerdere panden is gekoppeld: de verdeling is onbekend.
 Er wordt geen oppervlakte tussen panden verdeeld. Panden zonder
@@ -472,9 +473,12 @@ De functie zelf ligt vast in de software en wordt herkend via Koppel-ID. Je kunt
 Houd bij het aanpassen van codes rekening met
 [overlap en rastervoorrang](../bewerkte-lagen/functioneel-landgebruik.md#overlap-en-rastervoorrang).
 CSV-rijvolgorde en codehoogte bepalen niet welke bron bij overlap wint.
-Bij bijzondere gebouwregels kan een gewijzigd codepaar bovendien een conflict
-veroorzaken of oplossen; voor gekoppelde gemalen geldt een strengere uitzondering.
-Zie [conflicten tussen bijzondere gebouwregels](../bewerkte-lagen/functioneel-landgebruik.md#conflicten-tussen-bijzondere-gebouwregels).
+Bij aangepaste codetabellen geldt een uitzondering op de
+[conflictregel voor bijzondere gebouwen](../bewerkte-lagen/functioneel-landgebruik.md#conflicten-tussen-bijzondere-gebouwregels):
+
+- Meerdere passende kas-, RWZI- of drinkwaterregels mogen dezelfde klasse opleveren. Zowel de binnendijkse als de buitendijkse codes moeten overeenkomen.
+- Verschillen de codeparen, dan krijgt het pand NoData. Ook de eerder bepaalde BAG-klasse vervalt.
+- Een gekoppeld gemaal samen met een andere bijzondere gebouwfunctie blijft een conflict. Ook bij gelijke codeparen krijgt het pand NoData.
 
 De ondersteunde directe combinaties zijn:
 
