@@ -122,6 +122,14 @@ als de landelijke TIFF. Er zijn geen afzonderlijke overschrijfopties meer voor
 tegels en TIFF. Zie [productiemappen](configuratie.md#productiemappen) voor de
 gedeelde naamgeving en controles.
 
+Bij het hervatten van een compatibele run wordt de legenda van het samengestelde
+raster opnieuw geschreven. Als de labels afwijken van de ingebedde
+rasterattribuuttabel, wordt de COG opnieuw opgebouwd vanuit het bestaande VRT.
+Daarvoor hoeven de landgebruiksklassen niet opnieuw berekend te worden, maar
+het schrijven van de COG kost wel tijd en schijfruimte. De QGIS-stijl en de
+compatibiliteitskopie `.tif.aux.xml` krijgen dezelfde labels. Losse tegelrasters
+en hun stijlen blijven bij hergebruik ongewijzigd.
+
 ## Resultaten
 
 Onder `processed_data/functioneel_landgebruik/nederland/<run-id>` in uw datastore vindt u:
@@ -296,7 +304,7 @@ of landgebruikscode toe. Controle en productie gebruiken dezelfde berekening.
 Stap 5 voegt de volgende kolommen toe aan dezelfde laag:
 
 - `lgb_omschrijving`: gebouwklasse op basis van functie en bouwlagen;
-- `lgb_code_binnendijks` en `lgb_code_buitendijks`: beide mogelijke codes;
+- `lgb_code_binnendijks` en `lgb_code_buitendijks`: respectievelijk de standaardcode en de buitendijkse code;
 - `klasse_status` en `reden_klasse`: ingedeeld of nog te beoordelen, met uitleg.
 
 De codes volgen tabel 1 uit de notitie van 17 september 2025 (p. 3-5).
@@ -314,7 +322,7 @@ bij gemengde functies. Ontbrekende oppervlakten van deze VBO's worden niet als
 nul meegeteld. Geen gebruiksdoel in stap 3 geeft de
 aparte categorie 34/162, niet dezelfde categorie als een onopgeloste combinatie.
 
-Deze stap bepaalt nog geen binnen-/buitendijkse ligging. Er wordt geen
+Deze stap controleert nog niet op buitendijkse ligging. Er wordt geen
 definitieve rastercode gekozen. TOP10NL-aanvullingen zoals kassen zijn hier
 nog niet toegepast. Stap 5 leest codes en omschrijvingen uit de CSV;
 `lgb_koppeling_id` laat zien welke rij is gebruikt. De landelijke verwerking
@@ -455,8 +463,8 @@ Controleer bij het opslaan dat Excel ; als scheidingsteken gebruikt. Afhankelijk
 | `Koppel-ID` | Verplicht en vast voor `functie`; mag leeg blijven voor `mapping`. |
 | `Bron`, `Bronlaag`, `Bronveld` | Ondersteunde bron, laag en attribuut voor directe koppelingen. Bij functies beschrijven ze de invoer; de BAG-identiteit wordt gecontroleerd. |
 | `Bronwaarde` | Precies één volledige waarde per rij, of `*` als vangnet. |
-| `LGB-code_binnendijks`, `LGB-code_buitendijks` | Bewerkbare uitvoercodes van 1 t/m 255; 0 blijft NoData. Binnen- en buitencodes mogen niet overlappen. |
-| `LGB_beschrijving` | Bewerkbare klassenaam voor uitvoer en legenda. Dezelfde binnencode vereist dezelfde beschrijving. |
+| `LGB-code_binnendijks`, `LGB-code_buitendijks` | Respectievelijk de standaardcode en de buitendijkse code, bewerkbaar van 1 t/m 255; 0 blijft NoData. De twee codereeksen mogen niet overlappen. |
+| `LGB_beschrijving` | Bewerkbare klassenaam voor uitvoer en legenda. Dezelfde standaardcode vereist dezelfde beschrijving. |
 | `Toelichting` | Optionele vrije tekst, zonder invloed op verwerking. |
 | `Documentatie` | Optionele documentatie-URL; wordt tijdens verwerking niet opgehaald. |
 
@@ -476,7 +484,7 @@ CSV-rijvolgorde en codehoogte bepalen niet welke bron bij overlap wint.
 Bij aangepaste codetabellen geldt een uitzondering op de
 [conflictregel voor bijzondere gebouwen](../bewerkte-lagen/functioneel-landgebruik.md#conflicten-tussen-bijzondere-gebouwregels):
 
-- Meerdere passende kas-, RWZI- of drinkwaterregels mogen dezelfde klasse opleveren. Zowel de binnendijkse als de buitendijkse codes moeten overeenkomen.
+- Meerdere passende kas-, RWZI- of drinkwaterregels mogen dezelfde klasse opleveren. Zowel de standaardcodes als de buitendijkse codes moeten overeenkomen.
 - Verschillen de codeparen, dan krijgt het pand NoData. Ook de eerder bepaalde BAG-klasse vervalt.
 - Een gekoppeld gemaal samen met een andere bijzondere gebouwfunctie blijft een conflict. Ook bij gelijke codeparen krijgt het pand NoData.
 

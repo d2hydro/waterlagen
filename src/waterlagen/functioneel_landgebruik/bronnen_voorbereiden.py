@@ -315,7 +315,7 @@ def prepare_bgt_layer(
     bounds : tuple of float
         Read bounds in the source CRS.
     buitendijks_area : BaseGeometry or None
-        LIWO outside-area union. None selects inside codes for standalone use only.
+        LIWO outside-area union. None selects default codes for standalone use only.
     table : LanduseTable, optional
         Defaults to the packaged CSV.
     diagnostics : LanduseDiagnostics, optional
@@ -403,7 +403,7 @@ def prepare_water(
         Read bounds in the source CRS.
     buitendijks_area : BaseGeometry, optional
         LIWO outside-area union. Omitted for compatibility with standalone calls,
-        which then use the inside code. Production always provides it.
+        which then use the default code. Production always provides it.
     table : LanduseTable, optional
         Defaults to the packaged CSV.
     diagnostics : LanduseDiagnostics, optional
@@ -521,7 +521,7 @@ def classify_bag_panden(
     geopandas.GeoDataFrame
         Status-selected panden with decisions through the requested step.
         Excluded panden are left out; the control script keeps them separately.
-        No inside/outside location or raster code is assigned here.
+        No check for location in the LIWO selection or raster code assignment is performed here.
     """
     if through_step not in (2, 3, 4, 5, 6):
         raise ValueError("Kies een BAG-stap van 2 tot en met 6.")
@@ -566,7 +566,7 @@ def prepare_bag(
         pand geometries are not clipped before calculating their area.
     buitendijks_area : shapely.geometry.base.BaseGeometry
         LIWO outside-area geometry in the project CRS. A covered representative
-        point selects the outside code; otherwise the inside code is used.
+        point selects the outside code; otherwise the default code is used.
     include_details : bool, optional
         Keep source and decision columns. Excluded statuses remain excluded.
 
@@ -660,7 +660,8 @@ def prepare_gemalen(
     crs : str
         Expected source and bounds CRS; mismatches raise ValueError.
     buitendijks_area : BaseGeometry, optional
-        LIWO outside-area geometry; everything else is inside. Omitted for control of both possible codes.
+        LIWO outside-area geometry; elsewhere the default code applies.
+        Omitted for control of both possible codes.
     table : LanduseTable, optional
         CSV codes; defaults to the packaged table.
     include_details : bool, optional

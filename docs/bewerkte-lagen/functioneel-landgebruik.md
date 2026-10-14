@@ -6,7 +6,7 @@ editorial_status: human
 
 ## Doel
 
-Deze bewerking combineert gebouwen, terreinen, wegen en water tot één landgebruikraster. Iedere cel krijgt een klasse voor het gebruik en de binnen- of buitendijkse ligging.
+Deze bewerking combineert gebouwen, terreinen, wegen en water tot één landgebruikraster. Iedere cel krijgt een landgebruiksklasse, met een aparte code voor buitendijkse ligging.
 
 ## Bronlagen
 
@@ -19,7 +19,7 @@ Deze bewerking combineert gebouwen, terreinen, wegen en water tot één landgebr
 | [GKW HYDAMO](../bronlagen/hydamo.md) | Gemaalpunten en capaciteit. |
 | [Waterketen DAMO](../bronlagen/waterketen-damo.md) | Bevestiging van RWZI-terreinen. |
 | [OSM-drinkwaterlocaties](../bronlagen/osm-drinkwater.md) | Beoordeelde drinkwaterproductieterreinen. |
-| [LIWO](../bronlagen/liwo.md) | Binnen- en buitendijkse indeling. |
+| [LIWO](../bronlagen/liwo.md) | Afbakening voor de buitendijkse codering. |
 | [Bestuurlijke gebieden](../bronlagen/bestuurlijke-gebieden.md) | Begrenzing voor het aanvullen van gaten en de NoData-controle. |
 
 ## Werkwijze
@@ -27,7 +27,7 @@ Deze bewerking combineert gebouwen, terreinen, wegen en water tot één landgebr
 Het gekozen gebied wordt verdeeld in tegels. Per tegel worden vier stappen uitgevoerd:
 
 1. Landgebruiksklassen bepalen voor gebouwen, terreinen, wegen en water
-2. Binnen- en buitendijkse codes toekennen.
+2. Buitendijkse codes toekennen.
 3. Bronnen in een vaste volgorde intekenen.
 4. Gaten aanvullen en controleren.
 
@@ -75,12 +75,12 @@ Het aantal bouwlagen wordt geschat: 'som van alle VBO-oppervlakten / volledige p
 | Uitkomst | Gebouwklasse |
 | --- | --- |
 | Reguliere functie | Klasse voor 1, 2 of 3 of meer bouwlagen. |
-| Woonfunctie met minimaal 4 VBO's | Appartementencomplex, ongeacht de bouwlagen. Standaardcodes 4/132. |
+| Woonfunctie met minimaal 4 VBO's | Appartementencomplex, ongeacht de bouwlagen. Codes 4/132. |
 | Overige gebruiksfunctie | Alleen de oppervlakte van VBO's met die gekozen functie telt. Maximaal 100 m²: 33/161. Meer dan 100 m²: 32/160. |
-| Geen gebruiksdoel | Aparte klasse, standaardcodes 34/162. |
+| Geen gebruiksdoel | Aparte klasse, codes 34/162. |
 | Onopgeloste functiekeuze of ontbrekende benodigde oppervlakte | Geen klasse: NoData. |
 
-De codeparen noemen steeds binnendijks/buitendijks. Ontbrekende, ongeldige of gedeelde VBO-oppervlakten laten de bouwlagenberekening open. Klassen zonder bouwlagencriterium kunnen dan nog wel worden toegekend.
+De codeparen noemen steeds de standaardcode en de buitendijkse code uit de meegeleverde codetabel. Ontbrekende, ongeldige of gedeelde VBO-oppervlakten laten de bouwlagenberekening open. Klassen zonder bouwlagencriterium kunnen dan nog wel worden toegekend.
 
 <a id="bijzondere-gebouwen-en-gemalen-stap-6"></a>
 
@@ -147,19 +147,21 @@ De tabel levert ook de codes bij berekende gebouwfuncties. Die beslisregels ligg
 
 <a id="liwo-selectie"></a>
 
-### 2. Binnen- en buitendijkse codes toekennen
+### 2. Buitendijkse codes toekennen
 
-De binnen-/buitendijkse indeling gebruikt twee LIWO-klassen:
+Voor de buitendijkse codering worden twee LIWO-klassen geselecteerd:
 
 - **1:** buitendijks gebied;
 - **6:** regionaal onbeschermd overstroombaar gebied.
 
 De cellen van het 25 m-raster worden omgezet naar vlakken. NoData en andere klassen vallen af.
 
-Voor elk vlak wordt het [representatieve punt](https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoSeries.representative_point.html) bepaald. De ligging van dit punt ten opzichte van het LIWO-gebied bepaalt de code voor het hele vlak:
+Voor elk bronobject wordt het [representatieve punt](https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoSeries.representative_point.html) bepaald. De ligging van dit punt ten opzichte van de LIWO-selectie bepaalt de code voor het hele object:
 
 - Binnen of op de grens van de LIWO-selectie: buitendijkse code.
-- Daarbuiten: binnendijkse code.
+- Daarbuiten: standaardcode.
+
+De standaardcode betekent dat een object buiten deze LIWO-selectie valt. Er wordt geen afzonderlijke bescherming tegen overstromingen vastgesteld.
 
 <a id="overlap-en-rastervoorrang"></a>
 
@@ -199,7 +201,7 @@ Lege cellen krijgen de klasse van de dichtstbijzijnde geschikte cel binnen stand
 - BAG, BRP en TOP10NL-landbouwterreinen leveren geen cellen voor aanvulling. De overige bronlagen wel.
 - Aangevulde cellen vullen geen andere gaten.
 - Bij gelijke afstand wint de noordelijkste cel, daarna de westelijkste.
-- Klasse én broncode worden overgenomen, inclusief de binnen-/buitendijkse indeling.
+- Klasse én broncode worden overgenomen, inclusief een eventuele buitendijkse code.
 
 Van twee kanten kan zo een gat van ongeveer 2 meter worden gevuld. Ook randen van grotere gaten kunnen worden aangevuld. De regel houdt geen rekening met barrières. Een klasse kan over een smal tussenliggend object heen worden overgenomen.
 
@@ -217,6 +219,8 @@ De standaardresolutie is **0,5 meter**. Het standaard-CRS is **EPSG:28992**. Bro
 | `functioneel_landgebruik.qml` en `.tif.aux.xml` | QGIS-stijl en compatibiliteitskopie van de rasterattribuuttabel. Klassen en kleuren staan ook in de TIFF. |
 | `nodata.gpkg`, laag `nodata` | Resterende lege rastercellen als vlakken, met `bron` en `reden`. |
 | `landgebruik_met_code.csv` | De gebruikte codetabel. |
+
+In de legenda staat de gewone klassenaam zonder toevoeging. Alleen de buitendijkse variant krijgt de toevoeging `(buitendijks)`.
 
 Bij de standaardproductie worden ook gebouw-ID's en volledige pandvormen bewaard. Deze zijn invoer voor [DEM](dem.md). Aangrenzende panden blijven afzonderlijk herkenbaar. Ook BAG-panden zonder landgebruiksklasse behouden hun ID. Water verwijdert een gebouw-ID waar het de gebouwcel overschrijft.
 

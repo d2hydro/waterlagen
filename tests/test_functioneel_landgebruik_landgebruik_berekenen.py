@@ -90,7 +90,8 @@ def test_build_allocates_one_full_tile_raster_and_reuses_it(tmp_path, monkeypatc
         "./pipe/rasterrenderer/colorPalette/paletteEntry"
     )
     labels = {int(entry.attrib["value"]): entry.attrib for entry in palette}
-    assert "Water (binnendijks)" in labels[100]["label"]
+    assert labels[100]["label"] == "100 — Water"
+    assert all("binnendijks" not in entry["label"] for entry in labels.values())
     assert "Water (buitendijks)" in labels[228]["label"]
     assert "Overig gras/natuur" in labels[182]["label"]
     assert "Agrarisch" not in labels[182]["label"]

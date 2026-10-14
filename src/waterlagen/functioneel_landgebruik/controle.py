@@ -291,7 +291,7 @@ def main(
     logger.info("Controle tot en met stap %s.", stap)
     if stap >= 5:
         logger.info(
-            "Beide codes getoond; binnen-/buitendijkse ligging nog niet bepaald."
+            "Standaardcode en buitendijkse code getoond; buitendijkse ligging nog niet bepaald."
         )
     else:
         logger.info("Geen landgebruikscode.")

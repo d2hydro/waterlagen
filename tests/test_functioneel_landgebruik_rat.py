@@ -105,7 +105,8 @@ def test_national_cog_rat_survives_reopen_and_copy(tmp_path):
                 int(entry["color"][5:7], 16),
                 int(entry["alpha"]),
             )
-        assert labels[37]["label"].endswith("(binnendijks)")
+        assert labels[37]["label"] == "37 — Gebouwen op drinkwaterproductieterrein"
+        assert all("binnendijks" not in entry["label"] for entry in labels.values())
         assert labels[165]["label"].endswith("(buitendijks)")
     finally:
         rat = None
@@ -159,6 +160,49 @@ def test_dual_rat_upgrade_repair_and_failed_publication(tmp_path, monkeypatch):
     assert raster.read_bytes() == before
     assert sidecar.read_bytes() == original_sidecar
     assert not list(tmp_path.glob("*.publish.*"))
+
+
+def test_existing_cog_gets_new_labels_without_changing_pixels(tmp_path):
+    from waterlagen.functioneel_landgebruik import legenda
+    from waterlagen.raster.vrt import validate_raster_attribute_table
+
+    source = tmp_path / "tile.tif"
+    values = np.tile(np.array([0, 100, 228], dtype="uint8"), (16, 16))
+    with rasterio.open(
+        source,
+        "w",
+        driver="GTiff",
+        width=values.shape[1],
+        height=values.shape[0],
+        count=1,
+        dtype="uint8",
+        crs="EPSG:28992",
+        transform=from_origin(0, 16, 1, 1),
+        nodata=0,
+    ) as destination:
+        destination.write(values, 1)
+    vrt = create_vrt_file(tmp_path / "landuse.vrt", files=[source])
+    raster = tmp_path / "landuse.tif"
+    table = load_landuse_table()
+    style = write_qgis_style(raster, table)
+    tree = ET.parse(style)
+    tree.find(".//paletteEntry[@value='100']").set("label", "100 — Water (binnendijks)")
+    tree.write(style, encoding="utf-8")
+    create_landuse_cog(vrt, raster, style)
+
+    write_qgis_style(raster, table)
+    create_landuse_cog(vrt, raster, style, overwrite=False)
+
+    expected = legenda._build_raster_attribute_table(style)
+    validate_raster_attribute_table(raster, expected, embedded=True)
+    with rasterio.open(raster) as reopened:
+        np.testing.assert_array_equal(reopened.read(1), values)
+        assert reopened.crs.to_epsg() == 28992
+        assert reopened.nodata == 0
+        assert reopened.res == (1, 1)
+    sidecar = raster.with_name(raster.name + ".aux.xml")
+    shutil.copyfile(sidecar, source.with_name(source.name + ".aux.xml"))
+    validate_raster_attribute_table(source, expected)
 
 
 def test_dual_rat_requires_supported_gdal(tmp_path, monkeypatch):

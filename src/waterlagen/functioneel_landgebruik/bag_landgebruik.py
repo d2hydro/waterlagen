@@ -2,7 +2,7 @@
 
 - Gebruik de gekozen gebruiksfunctie en het aantal verdiepingen.
 - Pas aparte regels toe voor appartementencomplex en overige gebruiksfunctie.
-- Lees de codes voor binnendijks en buitendijks uit de CSV.
+- Lees de standaardcodes en buitendijkse codes uit de CSV.
 - Laat onopgeloste functiekeuzes open.
 """
 
@@ -165,7 +165,7 @@ def determine_bag_classes(
             mapping_id = FLOOR_MAPPING_IDS[function][floor_class]
             reason = "Gekozen gebruiksfunctie uit stap 3 en berekend aantal verdiepingen uit stap 4 gekoppeld aan tabel 1."
         if mapping_id is not None:
-            # Binnen- en buitendijkse code beide uit de CSV; ligging volgt later.
+            # Standaardcode en buitendijkse code uit de CSV; ligging volgt later.
             mapping = mappings[mapping_id]
             result.at[index, "lgb_code_binnendijks"] = mapping.inside
             result.at[index, "lgb_code_buitendijks"] = mapping.outside

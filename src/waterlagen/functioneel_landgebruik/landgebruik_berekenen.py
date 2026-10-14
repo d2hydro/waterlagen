@@ -511,7 +511,7 @@ def bouw_functioneel_landgebruik(
     overviews. Source geometries are read with the requested bounds as a bbox
     filter. Top10NL, BRP, BGT roads, and BAG classes are additionally adjusted
     using representative points covered by the LIWO outside-area polygons
-    (including boundaries). All other locations use inside codes.
+    (including boundaries). All other locations use default codes.
 
     Parameters
     ----------
