@@ -126,6 +126,15 @@ Keep these concerns separated.
 - When public behavior, processing methods, inputs, outputs, or workflows change, update the corresponding documentation in the same change.
 - Do not document intended behavior that is not actually implemented unless it is explicitly identified as planned or conceptual.
 
+## Agent Implementation Plans
+
+- Implementation plans and grilling outcomes intended for agents are internal repository working documents, not automatically part of the published documentation.
+- A request to save plans under `docs/` authorizes storing the files there, not adding them to the documentation site, MkDocs navigation, or published overview pages.
+- Store such plans under `docs/bijdragen/implementatieplannen/` unless the user specifies another location. An index and links between the plans may be kept inside that directory.
+- Keep agent plans excluded from the site with `exclude_docs` in `mkdocs.yml`. Removing navigation entries or using `not_in_nav` alone does not prevent publication.
+- Publish or link to these plans from the documentation site only when the user explicitly requests that publication.
+- After changing their publication configuration, build the documentation and verify that excluded plans are absent from both the generated pages and the search index.
+
 ## Documentation Editorial Status
 
 Documentation pages may declare an editorial status in YAML frontmatter:
