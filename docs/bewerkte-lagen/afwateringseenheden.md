@@ -33,7 +33,7 @@ Vanuit de geleverde (Hy)DAMO-set worden:
 
 ### Optionele brandlagen
 
-Aanvullende lijnen en polygonen uit GeoPackages kunnen het reken-DEM plaatselijk verhogen of verlagen, bijvoorbeeld bij wegen en waterlopen. De brandwaarde bepaalt de hoogteaanpassing in meters: negatief is verlagen, positief is verhogen. Deze aanpassingen beïnvloeden de afstroming, maar voegen geen afwateringsdoelen toe.
+Aanvullende lijnen en polygonen uit GeoPackages kunnen het reken-DEM plaatselijk verhogen of verlagen, bijvoorbeeld bij wegen en waterlopen. De brandwaarde bepaalt de hoogteaanpassing in meters: negatief is verlagen, positief is verhogen. Deze aanpassingen beïnvloeden de afstroming, maar zijn zelf geen doel voor afwateringseenheden
 
 Bij overlap met bestanden hydroobjecten gelden de volgende regels:
 - `Rangorde`: hydroobject:primair > hydroobject:secundair > optionele brandlaag.
