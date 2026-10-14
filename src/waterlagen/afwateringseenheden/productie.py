@@ -14,9 +14,18 @@ from waterlagen.afwateringseenheden import (
     read_puntobjecten,
     write_watersysteem,
 )
+from waterlagen.afwateringseenheden.brandlagen import (
+    _brand_identity,
+    _prepare_brandlagen,
+)
+from waterlagen.afwateringseenheden.config import BrandlagenConfig
 from waterlagen.afwateringseenheden.objects import CATEGORIE_OPPERVLAKTEWATER_COLUMN
 from waterlagen.afwateringseenheden.pcraster import require_pcraster
-from waterlagen.afwateringseenheden.tiles import _tiles_for_gebied
+from waterlagen.afwateringseenheden.raster import _grid_for_square
+from waterlagen.afwateringseenheden.tiles import (
+    _calculation_geometry,
+    _tiles_for_gebied,
+)
 from waterlagen.ahn.productie import prepare_ahn
 from waterlagen.areas import (
     Area,
@@ -45,6 +54,7 @@ def main(
     refresh_sources: bool = False,
     offline: bool = False,
     preparation: SourcePreparation | None = None,
+    brandlagen: BrandlagenConfig | None = None,
 ) -> Path:
     """Produce complete tile results using objects from every relevant authority.
 
@@ -64,6 +74,9 @@ def main(
         Refresh sources for a new run, or require local sources.
     preparation : SourcePreparation, optional
         Shared source policy for nested productions.
+    brandlagen : BrandlagenConfig, optional
+        User-supplied optional burn layers. Checked before AHN preparation.
+        Recorded source identities and defaults must match when resuming a run.
 
     Returns
     -------
@@ -94,6 +107,19 @@ def main(
         selected.geometry, tile_size_m=tile_size, origin_x=0, origin_y=0
     )
     context = unary_union([box(*tile.bounds) for tile in tiles]).buffer(tile_buffer)
+    parameters = {
+        "area": selected.identity,
+        "crs": settings.crs,
+        "tile_size_m": tile_size,
+        "tile_buffer_m": tile_buffer,
+        "burn_depth_m": 100,
+        "max_fill_depth_m": 50,
+        "random_seed": 12345,
+        "authority_filter": False,
+        "clip_to_area": False,
+    }
+    if brandlagen is not None:
+        parameters["brandlagen"] = _brand_identity(brandlagen)
     with production_run(
         store.processed_data_dir,
         "afwateringseenheden",
@@ -101,18 +127,19 @@ def main(
         run_id=run_id,
         resume=resume,
         overwrite=overwrite,
-        parameters={
-            "area": selected.identity,
-            "crs": settings.crs,
-            "tile_size_m": tile_size,
-            "tile_buffer_m": tile_buffer,
-            "burn_depth_m": 100,
-            "max_fill_depth_m": 50,
-            "random_seed": 12345,
-            "authority_filter": False,
-            "clip_to_area": False,
-        },
+        parameters=parameters,
     ) as run:
+        if brandlagen is not None:
+            grids = [
+                _grid_for_square(
+                    _calculation_geometry(tile, tile_buffer_m=tile_buffer),
+                    resolution_m=2,
+                )
+                for tile in tiles
+            ]
+            _prepare_brandlagen(
+                brandlagen, grids, run.path / "tiles" / "brandlagen.gpkg"
+            )
         boundary = ensure_land_boundary(store, preparation)
         hydamo = store.source_data_dir / "hydamo" / "hydamo.gpkg"
         preparation.ensure(
@@ -124,7 +151,15 @@ def main(
             ),
         )
         ahn = prepare_ahn(store, context, run.path / "input" / "ahn.vrt", preparation)
-        run.record_inputs({"ahn": ahn, "hydamo": hydamo, "landsgrens": boundary})
+        inputs = {"ahn": ahn, "hydamo": hydamo, "landsgrens": boundary}
+        if brandlagen is not None:
+            inputs.update(
+                {
+                    f"brandlaag_{i}": source.path
+                    for i, source in enumerate(brandlagen.lagen)
+                }
+            )
+        run.record_inputs(inputs)
         hydro = read_hydroobjecten(hydamo, spatial_selection=context)
         primary = hydro.loc[
             hydro[CATEGORIE_OPPERVLAKTEWATER_COLUMN].eq("primair")
@@ -158,6 +193,7 @@ def main(
             workers=workers,
             overwrite=overwrite,
             clip_to_area=False,
+            brandlagen=brandlagen,
         )
         if result.merged_path is None:
             raise ValueError("Geen afwateringseenheden geproduceerd voor dit gebied")

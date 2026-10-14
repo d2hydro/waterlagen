@@ -11,6 +11,7 @@ import rasterio
 from rasterio.enums import Resampling
 from rasterio.features import rasterize
 from rasterio.fill import fillnodata
+from rasterio.transform import from_origin
 from rasterio.warp import reproject
 from shapely.geometry import box
 from shapely.geometry.base import BaseGeometry
@@ -24,6 +25,13 @@ from waterlagen.raster.grid import RasterGrid
 from waterlagen.settings import settings
 
 from ._coverage import _coverage_mask, _landsgrens_version
+from .brandlagen import (
+    _burn_signature,
+    _optional_burn_values,
+    _prepare_brandlagen,
+    _PreparedBrandlagen,
+)
+from .config import BrandlagenConfig
 
 logger = get_logger(__name__)
 
@@ -81,10 +89,13 @@ def _grid_for_square(
             "ruimtelijk_vierkant bounds must align with the requested resolution"
         )
 
-    return RasterGrid.from_bounds(
-        (minx, miny, maxx, maxy),
+    return RasterGrid(
+        bounds=(minx, miny, maxx, maxy),
         resolution=resolution_m,
         crs=settings.crs,
+        width=width,
+        height=height,
+        transform=from_origin(minx, maxy, resolution_m, resolution_m),
     )
 
 
@@ -262,8 +273,8 @@ def _rasterize_mask(features: gpd.GeoDataFrame, grid: RasterGrid) -> np.ndarray:
 
 def _burn_depth_in_stored_units(burn_depth_m: float, *, scale: float) -> float:
     """Convert a physical burn depth in metres to the DEM storage units."""
-    if burn_depth_m < 0:
-        raise ValueError("burn_depth_m must not be negative")
+    if not np.isfinite(burn_depth_m) or burn_depth_m < 0:
+        raise ValueError("burn_depth_m must be finite and non-negative")
     if not np.isfinite(scale) or scale == 0:
         raise ValueError("DEM scale must be a finite, non-zero value")
     return burn_depth_m / scale
@@ -286,8 +297,16 @@ def _cast_dem_data(
             rounded[missing] = nodata
         if (rounded < limits.min).any() or (rounded > limits.max).any():
             raise ValueError(f"Burned DEM values do not fit in {target_dtype}")
+        if nodata is not None and np.any((rounded == nodata) & ~missing):
+            raise ValueError("Burned DEM values collide with NoData")
         return rounded.astype(target_dtype)
+    limits = np.finfo(target_dtype)
+    finite = np.isfinite(data)
+    if np.any(np.abs(data[finite]) > limits.max):
+        raise ValueError(f"Burned DEM values do not fit in {target_dtype}")
     result = data.astype(target_dtype)
+    if nodata is not None and np.any((result == nodata) & finite):
+        raise ValueError("Burned DEM values collide with NoData")
     if nodata is not None:
         result[~np.isfinite(result)] = nodata
     return result
@@ -324,6 +343,7 @@ def _write_dem(
     scales: tuple[float, ...],
     offsets: tuple[float, ...],
     landsgrens_version: str = "none",
+    burn_signature: str = "",
 ) -> None:
     """Write a DEM while retaining its source scale and offset metadata."""
     with rasterio.open(target_path, "w", **profile) as destination:
@@ -331,6 +351,7 @@ def _write_dem(
         destination.offsets = offsets
         destination.update_tags(waterlagen_dem_coverage=COVERAGE_VERSION)
         destination.update_tags(waterlagen_dem_landsgrens=landsgrens_version)
+        destination.update_tags(waterlagen_burn=burn_signature)
         destination.write(data, 1)
 
 
@@ -418,6 +439,7 @@ def prepare_watersysteem_rasters(
     data_store: DataStore | None = None,
     resolution_m: float = 2.0,
     overwrite: bool = False,
+    brandlagen: BrandlagenConfig | None = None,
 ) -> WatersysteemRasters:
     """Create aligned DEM and hydroobject-segment rasters for one spatial square.
 
@@ -467,6 +489,11 @@ def prepare_watersysteem_rasters(
         Outputs with missing or outdated coverage metadata or a changed
         landsgrens source (path, modification time or size) or masking policy
         are regenerated.
+    brandlagen : BrandlagenConfig, optional
+        Local optional burn layers, checked for attribute and pixel conflicts
+        before reading AHN elevations. Primary and secondary masks always win.
+        Source or default changes invalidate the cached raster pair. A validated
+        local snapshot is stored in ``output_dir/brandlagen.gpkg``.
 
     Returns
     -------
@@ -486,23 +513,54 @@ def prepare_watersysteem_rasters(
         watersysteem_path or data_store.afwateringseenheden_path / "watersysteem.gpkg"
     )
     output_dir = Path(output_dir or data_store.afwateringseenheden_path / "rasters")
+    prepared = _prepare_brandlagen(brandlagen, [grid], output_dir / "brandlagen.gpkg")
+    return _prepare_rasters(
+        grid=grid,
+        burn_depth_m=burn_depth_m,
+        ahn_vrt_path=ahn_vrt_path,
+        landsgrens_path=landsgrens_path,
+        watersysteem_path=watersysteem_path,
+        output_dir=output_dir,
+        overwrite=overwrite,
+        prepared=prepared,
+    )
+
+
+def _prepare_rasters(
+    *,
+    grid: RasterGrid,
+    burn_depth_m: float,
+    ahn_vrt_path: Path,
+    landsgrens_path: Path | None,
+    watersysteem_path: Path,
+    output_dir: Path,
+    overwrite: bool,
+    prepared: _PreparedBrandlagen | None,
+) -> WatersysteemRasters:
+    """Apply already validated optional burns; used by independent tile workers."""
     dem_path = output_dir / DEM_FILENAME
     segment_path = output_dir / HYDROOBJECT_SEGMENT_FILENAME
     result = WatersysteemRasters(dem_path, segment_path)
     landsgrens_version = _landsgrens_version(landsgrens_path)
+    burn_signature = _burn_signature(watersysteem_path, burn_depth_m, prepared)
 
     if dem_path.exists() and segment_path.exists() and not overwrite:
         with rasterio.open(dem_path) as existing:
             version = existing.tags().get("waterlagen_dem_coverage")
             boundary_version = existing.tags().get("waterlagen_dem_landsgrens", "none")
-        if version == COVERAGE_VERSION and boundary_version == landsgrens_version:
+            previous_burn = existing.tags().get("waterlagen_burn")
+        if (
+            version == COVERAGE_VERSION
+            and boundary_version == landsgrens_version
+            and previous_burn == burn_signature
+        ):
             with rasterio.open(ahn_vrt_path) as source:
                 coverage = _coverage_mask(source, grid, landsgrens_path)
             _validate_rasters(dem_path, segment_path, grid=grid, coverage_mask=coverage)
             logger.info("Reusing validated watersysteem rasters in %s", output_dir)
             return result
         logger.info(
-            "Regenerating rasters with missing or outdated source-coverage metadata in %s",
+            "Regenerating rasters with changed burn inputs or coverage metadata in %s",
             output_dir,
         )
 
@@ -538,13 +596,22 @@ def prepare_watersysteem_rasters(
             primary_mask = _rasterize_mask(primary, grid)
             secondary_mask = _rasterize_mask(secondary, grid)
             burn_depth = _burn_depth_in_stored_units(burn_depth_m, scale=scale)
+            optional_values = 0.0
+            if prepared is not None:
+                optional_values = _optional_burn_values(prepared, grid) / scale
             burn_values = np.where(
                 primary_mask,
-                2 * burn_depth,
-                np.where(secondary_mask, burn_depth, 0),
+                -2 * burn_depth,
+                np.where(secondary_mask, -burn_depth, optional_values),
             )
+            with np.errstate(over="ignore", invalid="ignore"):
+                burned_values = dem_data + burn_values
+            if np.any(np.isfinite(dem_data) & ~np.isfinite(burned_values)):
+                raise ValueError(
+                    "Burned DEM values overflow the elevation representation"
+                )
             burned_dem = _cast_dem_data(
-                dem_data - burn_values,
+                burned_values,
                 dtype=source.dtypes[0],
                 nodata=source.nodata,
             )
@@ -555,6 +622,7 @@ def prepare_watersysteem_rasters(
                 scales=source.scales,
                 offsets=source.offsets,
                 landsgrens_version=landsgrens_version,
+                burn_signature=burn_signature,
             )
 
         logger.info("Rasterizing hydroobject_segment from %s", watersysteem_path)
