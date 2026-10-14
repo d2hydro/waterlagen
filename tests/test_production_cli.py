@@ -13,8 +13,8 @@ from waterlagen._cli import production_parser, run_cli
 from waterlagen._run_logging import executor_logging, production_logging, run_log
 from waterlagen._sources import SourcePreparation, prepare_cached, source_options
 from waterlagen.areas import (
-    Area,
     NAMED_AREAS,
+    Area,
     ProductionArea,
     area_name,
     select_area_tiles,
@@ -28,6 +28,29 @@ PRODUCTS = [
     "functioneel_landgebruik",
     "dem",
 ]
+
+
+def test_brandlagen_cli_reads_relative_sources_and_defaults(tmp_path, monkeypatch):
+    path = Path(__file__).parents[1] / "scripts" / "afwateringseenheden.py"
+    spec = importlib.util.spec_from_file_location("afwateringseenheden_cli", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    main = Mock(return_value=tmp_path / "result")
+    monkeypatch.setattr(module, "main", main)
+    config = tmp_path / "burn.toml"
+    config.write_text(
+        '[defaults]\nbrandwaarde = -3\nprioriteit = 2\n[[lagen]]\npath = "roads.gpkg"\nlayer = "roads"\n'
+    )
+    monkeypatch.setattr(
+        "sys.argv",
+        [str(path), "--data-dir", str(tmp_path), "--brandlagen-config", str(config)],
+    )
+    module.cli()
+    value = main.call_args.kwargs["brandlagen"]
+    assert value.lagen[0].path == tmp_path / "roads.gpkg"
+    assert value.lagen[0].layer == "roads"
+    assert value.brandwaarde == -3
+    assert value.prioriteit == 2
 
 
 @pytest.mark.parametrize("product", PRODUCTS)

@@ -1,5 +1,7 @@
 """Tools for preparing vector input for afwateringseenheden."""
 
+from .brandlagen import read_brandlagen
+from .config import Brandlaag, BrandlagenConfig, read_brandlagen_config
 from .lines import (
     WatersysteemResult,
     split_hydroobjecten_at_points,
@@ -24,21 +26,25 @@ from .workflow import (
 )
 
 __all__ = [
-    "WatersysteemResult",
-    "WatersysteemRasters",
-    "SubcatchmentResult",
     "AfwateringseenhedenTileResult",
     "AfwateringseenhedenTilesResult",
-    "calculate_subcatchments",
+    "Brandlaag",
+    "BrandlagenConfig",
+    "SubcatchmentResult",
+    "WatersysteemRasters",
+    "WatersysteemResult",
     "calculate_afwateringseenheden_tiles",
+    "calculate_subcatchments",
     "prepare_watersysteem",
     "prepare_watersysteem_rasters",
+    "read_brandlagen",
+    "read_brandlagen_config",
     "read_hydroobjecten",
     "read_puntobjecten",
     "require_pcraster",
+    "split_connected_secondary_hydroobjecten",
     "split_hydroobjecten_at_points",
     "split_hydroobjecten_by_length",
-    "split_connected_secondary_hydroobjecten",
     "waterbeheercode_from_nen3610id",
     "write_watersysteem",
 ]

@@ -11,8 +11,8 @@ from unittest.mock import create_autospec
 
 import geopandas as gpd
 import pytest
-from shapely.geometry import Point, LineString, box
 import requests
+from shapely.geometry import LineString, Point, box
 
 from waterlagen._downloads import GeoPackageDownload
 from waterlagen.areas import NAMED_AREAS
@@ -371,7 +371,10 @@ def test_dem_example_requests_full_building_context_and_passes_config(
     assert mask.covers(NAMED_AREAS["alkmaar_centrum"].buffer(125))
 
 
-def test_afwatering_example_connects_steps_and_passes_settings(tmp_path, monkeypatch):
+@pytest.mark.parametrize("with_brandlagen", [False, True])
+def test_afwatering_example_connects_steps_and_passes_settings(
+    tmp_path, monkeypatch, with_brandlagen
+):
     from waterlagen.afwateringseenheden import (
         AfwateringseenhedenTilesResult,
         WatersysteemResult,
@@ -404,16 +407,26 @@ def test_afwatering_example_connects_steps_and_passes_settings(tmp_path, monkeyp
             tmp_path, (), tmp_path / "result.gpkg", points, (), ()
         ),
     )
-    _run_product(
-        "afwateringseenheden",
-        tmp_path,
-        [
-            ("TOLERANCE_M = 2.0", "TOLERANCE_M = 3.0"),
-            ("TILE_SIZE_M = 1000", "TILE_SIZE_M = 2000"),
-            ("TILE_BUFFER_M = 2000", "TILE_BUFFER_M = 1500"),
-            ("BURN_DEPTH_M = 100.0", "BURN_DEPTH_M = 80.0"),
-        ],
-    )
+    replacements = [
+        ("TOLERANCE_M = 2.0", "TOLERANCE_M = 3.0"),
+        ("TILE_SIZE_M = 1000", "TILE_SIZE_M = 2000"),
+        ("TILE_BUFFER_M = 2000", "TILE_BUFFER_M = 1500"),
+        ("BURN_DEPTH_M = 100.0", "BURN_DEPTH_M = 80.0"),
+    ]
+    if with_brandlagen:
+        hydro.to_file(tmp_path / "brandlagen.gpkg", layer="waterlopen", driver="GPKG")
+        (tmp_path / "brandlagen.toml").write_text(
+            "[defaults]\nbrandwaarde = -3.0\nprioriteit = 2\n"
+            '[[lagen]]\npath = "brandlagen.gpkg"\nlayer = "waterlopen"\n',
+            encoding="utf-8",
+        )
+        replacements.append(
+            (
+                "BRANDLAGEN_CONFIG: Path | None = None",
+                'BRANDLAGEN_CONFIG: Path | None = Path("brandlagen.toml")',
+            )
+        )
+    _run_product("afwateringseenheden", tmp_path, replacements)
     prepare.assert_called_once()
     assert prepare.call_args.args[0].bron_id.tolist() == ["p"]
     assert prepare.call_args.kwargs["hydroobject_secundair"].bron_id.tolist() == ["s"]
@@ -426,6 +439,11 @@ def test_afwatering_example_connects_steps_and_passes_settings(tmp_path, monkeyp
     assert arguments["burn_depth_m"] == 80.0
     assert arguments["tile_size_m"] == 2000
     assert arguments["tile_buffer_m"] == 1500
+    if with_brandlagen:
+        assert arguments["brandlagen"].brandwaarde == -3.0
+        assert arguments["brandlagen"].lagen[0].path == tmp_path / "brandlagen.gpkg"
+    else:
+        assert arguments["brandlagen"] is None
     mask = downloads["download_ahn"].call_args.kwargs["poly_mask"]
     assert mask.equals(read_hydro.call_args.kwargs["spatial_selection"])
     x, y = NAMED_AREAS["alkmaar_centrum"].bounds[:2]

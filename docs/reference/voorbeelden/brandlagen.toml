@@ -1,0 +1,17 @@
+# Voorbeeld: lever brandlagen.gpkg zelf aan en pas de laagnamen aan.
+# Relatieve paden zijn relatief aan dit TOML-bestand.
+[defaults]
+brandwaarde = -1.0
+prioriteit = 0
+
+[[lagen]]
+path = "brandlagen.gpkg"
+layer = "wegen"
+brandwaarde = 1.0
+prioriteit = 10
+
+[[lagen]]
+path = "brandlagen.gpkg"
+layer = "waterlopen"
+brandwaarde = -2.0
+prioriteit = 20

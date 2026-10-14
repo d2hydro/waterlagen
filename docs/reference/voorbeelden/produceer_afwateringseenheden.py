@@ -13,6 +13,8 @@ from waterlagen.administratieve_gebieden import (
 from waterlagen.afwateringseenheden import (
     calculate_afwateringseenheden_tiles,
     prepare_watersysteem,
+    read_brandlagen,
+    read_brandlagen_config,
     read_hydroobjecten,
     read_puntobjecten,
     write_watersysteem,
@@ -35,6 +37,7 @@ MAX_SEGMENT_LENGTH_M = 500.0
 BURN_DEPTH_M = 100.0
 MAX_FILL_DEPTH_M = 50.0
 WORKERS = 1
+BRANDLAGEN_CONFIG: Path | None = None  # Bijvoorbeeld Path("brandlagen.toml").
 
 if __name__ == "__main__":
     store = DataStore(
@@ -67,6 +70,13 @@ if __name__ == "__main__":
     context = tile_bounds.buffer(TILE_BUFFER_M).envelope
 
     with production_logging():
+        # Optioneel: lees eigen QGIS-lagen; rastercelconflicten worden bij de
+        # tegelvoorbereiding gecontroleerd op het daadwerkelijke rekenraster.
+        brandlagen = None
+        if BRANDLAGEN_CONFIG is not None:
+            brandlagen = read_brandlagen_config(BRANDLAGEN_CONFIG)
+            brandobjecten = read_brandlagen(brandlagen, spatial_selection=context)
+            print("Optionele brandobjecten in het rekengebied:", len(brandobjecten))
         # 1. Bronnen ophalen. HYDAMO en de landsgrens zijn landelijke bestanden.
         hydamo = download_hydamo(download_dir=store.hydamo_dir, overwrite=False)
         landsgrens = download_bestuurlijke_gebieden(
@@ -127,6 +137,7 @@ if __name__ == "__main__":
             random_seed=12345,
             clip_to_area=True,
             overwrite=False,
+            brandlagen=brandlagen,
         )
         print(resultaat.merged_path)
         print("Tegels met randproblemen:", resultaat.boundary_issue_tile_ids)

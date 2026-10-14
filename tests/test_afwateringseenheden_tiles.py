@@ -70,6 +70,13 @@ def _write_cached_tile(
         driver="GPKG",
         index=False,
     )
+    # Current caches carry provenance, independently of their raster metadata.
+    signature = tiles_module._burn_signature(
+        tiles_module.default_datastore.afwateringseenheden_path / "watersysteem.gpkg",
+        1,
+        None,
+    )
+    (tile_dir / "subcatchments_burn.txt").write_text(signature, encoding="utf-8")
     with rasterio.open(
         tile_dir / tiles_module.SUBCATCHMENTS_FILENAME,
         "w",

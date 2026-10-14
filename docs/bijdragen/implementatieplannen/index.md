@@ -4,10 +4,9 @@ editorial_status: ai
 
 # Implementatieplannen afwateringseenheden
 
-Deze plannen beschrijven **geplande, nog niet geïmplementeerde wijzigingen**.
-Ze worden via een ontwerpgesprek uitgewerkt tot opdrachten voor coding agents.
-De drie conceptplannen zijn uitgewerkt en liggen voor gezamenlijke eindcontrole;
-start de implementatie pas nadat de plannen gezamenlijk inhoudelijk zijn bevestigd.
+Deze plannen leggen de ontwerpafspraken en opdrachten voor coding agents vast.
+#65 is op verzoek geïmplementeerd en ligt ter review. #53 en #67 beschrijven
+nog geplande wijzigingen; hun implementatie is niet gestart.
 
 Deze bestanden zijn interne werkdocumenten voor agents. Ze blijven in de
 repository beschikbaar en zijn uitgesloten van de gepubliceerde MkDocs-site.
@@ -16,14 +15,14 @@ repository beschikbaar en zijn uitgesloten van de gepubliceerde MkDocs-site.
 
 | Volgorde | Issue | Planstatus | Voorgestelde implementatiebranch |
 | --- | --- | --- | --- |
-| 1 | [#65 Brandlaag](https://github.com/d2hydro/waterlagen/issues/65) | [Conceptplan; ontwerpkeuzes besproken](issue-65-brandlagen.md) | `feature/65-brandlagen` |
+| 1 | [#65 Brandlaag](https://github.com/d2hydro/waterlagen/issues/65) | [Geïmplementeerd; PR #79 ter review](issue-65-brandlagen.md) | `issue/65_brandlagen` |
 | 2 | [#53 Rijkswateren](https://github.com/d2hydro/waterlagen/issues/53) | [Conceptplan; ontwerpkeuzes besproken](issue-53-rijkswateren.md) | `feature/53-rijkswateren` |
 | 3 | [#67 Duikers zonder eigen afwateringseenheid](https://github.com/d2hydro/waterlagen/issues/67) | [Conceptplan voor eindcontrole](issue-67-duikers.md) | `feature/67-duikers-afwateringsdoelen` |
 
 Ieder issue krijgt een eigen implementatiebranch en PR. Rond de voorgaande PR af
 voordat de volgende implementatiebranch vanaf de bijgewerkte hoofdbranch wordt
-gestart. De bovenstaande branchnamen zijn voorstellen; er zijn hiermee geen
-branches of PR's aangemaakt.
+gestart. Voor #65 bestaat [PR #79](https://github.com/d2hydro/waterlagen/pull/79).
+De branchnamen voor #53 en #67 blijven voorstellen.
 
 Issues #57, #63 en #64 vallen buiten deze reeks.
 

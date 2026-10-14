@@ -21,6 +21,7 @@ from waterlagen import _geopandas as wgpd
 from waterlagen import datastore as default_datastore
 from waterlagen._crs import format_crs, same_crs
 from waterlagen._downloads import _temporary_path
+from waterlagen._filesystem import replace_file
 from waterlagen._geopackage import write_geopackage_layer
 from waterlagen._run_logging import executor_logging
 from waterlagen.datastore import DataStore
@@ -29,6 +30,8 @@ from waterlagen.raster.tiles import TILES_LAYER, Tile, read_tiles, tile_from_row
 from waterlagen.settings import settings
 
 from ._coverage import _landsgrens_version
+from .brandlagen import _burn_signature, _prepare_brandlagen, _PreparedBrandlagen
+from .config import BrandlagenConfig
 from .pcraster import (
     SUBCATCHMENTS_FILENAME,
     SUBCATCHMENTS_GPKG_FILENAME,
@@ -37,7 +40,12 @@ from .pcraster import (
     calculate_subcatchments,
     require_pcraster,
 )
-from .raster import WatersysteemRasters, prepare_watersysteem_rasters
+from .raster import (
+    WatersysteemRasters,
+    _grid_for_square,
+    _prepare_rasters,
+    prepare_watersysteem_rasters,
+)
 
 logger = get_logger(__name__)
 
@@ -118,6 +126,7 @@ class _TileJob:
     crs: str
     random_seed: int | None
     landsgrens_path: Path | None = None
+    brandlagen: _PreparedBrandlagen | None = None
 
 
 def _validate_tile_inputs(
@@ -675,7 +684,15 @@ def _calculate_tile(job: _TileJob) -> AfwateringseenhedenTileResult:
     job.output_dir.mkdir(parents=True, exist_ok=True)
     calculation_buffer_m = job.tile_buffer_m
     existing_subcatchments = None
-    if not job.overwrite:
+    burn_signature = _burn_signature(
+        job.watersysteem_path, job.burn_depth_m, job.brandlagen
+    )
+    burn_manifest = job.output_dir / "subcatchments_burn.txt"
+    current_burn = (
+        burn_manifest.is_file()
+        and burn_manifest.read_text(encoding="utf-8") == burn_signature
+    )
+    if not job.overwrite and current_burn:
         existing_subcatchments = _read_existing_subcatchments(
             job.output_dir / SUBCATCHMENTS_GPKG_FILENAME
         )
@@ -696,21 +713,35 @@ def _calculate_tile(job: _TileJob) -> AfwateringseenhedenTileResult:
             calculation_buffer_m = _cached_buffer_m(job)
 
     if existing_subcatchments is None:
+        burn_manifest.unlink(missing_ok=True)
         logger.info(
             "Calculating afwateringseenheden tile %s with a %s m buffer",
             tile.tile_id,
             calculation_buffer_m,
         )
-        rasters = prepare_watersysteem_rasters(
-            _calculation_geometry(tile, tile_buffer_m=calculation_buffer_m),
-            burn_depth_m=job.burn_depth_m,
-            ahn_vrt_path=job.ahn_vrt_path,
-            landsgrens_path=job.landsgrens_path,
-            watersysteem_path=job.watersysteem_path,
-            output_dir=job.output_dir,
-            resolution_m=job.resolution_m,
-            overwrite=job.overwrite,
+        calculation_geometry = _calculation_geometry(
+            tile, tile_buffer_m=calculation_buffer_m
         )
+        raster_options = {
+            "burn_depth_m": job.burn_depth_m,
+            "ahn_vrt_path": job.ahn_vrt_path,
+            "landsgrens_path": job.landsgrens_path,
+            "watersysteem_path": job.watersysteem_path,
+            "output_dir": job.output_dir,
+            "overwrite": job.overwrite,
+        }
+        if job.brandlagen is None:
+            rasters = prepare_watersysteem_rasters(
+                calculation_geometry, resolution_m=job.resolution_m, **raster_options
+            )
+        else:
+            rasters = _prepare_rasters(
+                grid=_grid_for_square(
+                    calculation_geometry, resolution_m=job.resolution_m
+                ),
+                prepared=job.brandlagen,
+                **raster_options,
+            )
         if not _has_segment_cells(rasters):
             logger.info(
                 "Skipping afwateringseenheden tile %s without hydroobject segments "
@@ -735,6 +766,9 @@ def _calculate_tile(job: _TileJob) -> AfwateringseenhedenTileResult:
             engine=job.engine,
         )
         subcatchments = subcatchment_result.subcatchments
+        temporary_manifest = burn_manifest.with_suffix(".tmp")
+        temporary_manifest.write_text(burn_signature, encoding="utf-8")
+        replace_file(temporary_manifest, burn_manifest)
     else:
         rasters = WatersysteemRasters(
             dem_path=job.output_dir / "dem_2m.tif",
@@ -860,6 +894,7 @@ def calculate_afwateringseenheden_tiles(
     workers: int = 1,
     clip_to_area: bool = True,
     random_seed: int | None = None,
+    brandlagen: BrandlagenConfig | None = None,
 ) -> AfwateringseenhedenTilesResult:
     """Calculate afwateringseenheden for every tile intersecting an area.
 
@@ -872,6 +907,10 @@ def calculate_afwateringseenheden_tiles(
         Production workflows set False to retain complete tile cores.
     burn_depth_m : float
         Burn depth passed to :func:`prepare_watersysteem_rasters`.
+    brandlagen : BrandlagenConfig, optional
+        Optional layers, validated once on the selected buffered calculation
+        grids. Workers read local selections from ``output_dir/brandlagen.gpkg``.
+        Changed sources, defaults or burn depth invalidate raster and tile reuse.
     ahn_vrt_path : Path, optional
         AHN VRT used for every tile. Defaults to the datastore AHN DTM VRT.
     landsgrens_path : Path, optional
@@ -992,6 +1031,15 @@ def calculate_afwateringseenheden_tiles(
     _write_selected_tiles(output_dir, selected_tiles)
     logger.info("Selected %s afwateringseenheden tile(s)", len(selected_tiles))
 
+    grids = [
+        _grid_for_square(
+            _calculation_geometry(tile, tile_buffer_m=tile_buffer_m),
+            resolution_m=resolution_m,
+        )
+        for tile in selected_tiles
+    ]
+    prepared = _prepare_brandlagen(brandlagen, grids, output_dir / "brandlagen.gpkg")
+
     jobs = [
         _TileJob(
             tile=tile,
@@ -1007,6 +1055,7 @@ def calculate_afwateringseenheden_tiles(
             engine=engine,
             crs=format_crs(settings.crs),
             random_seed=random_seed,
+            brandlagen=prepared,
         )
         for tile in selected_tiles
     ]

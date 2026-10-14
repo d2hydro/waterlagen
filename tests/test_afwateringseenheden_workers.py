@@ -8,7 +8,11 @@ from geopandas.testing import assert_geodataframe_equal
 from rasterio.transform import from_origin
 from shapely.geometry import LineString, box
 
-from waterlagen.afwateringseenheden import calculate_afwateringseenheden_tiles
+from waterlagen.afwateringseenheden import (
+    Brandlaag,
+    BrandlagenConfig,
+    calculate_afwateringseenheden_tiles,
+)
 from waterlagen.settings import settings
 
 
@@ -43,6 +47,91 @@ def sources(tmp_path: Path) -> tuple[Path, Path]:
         watersysteem_path, layer="hydroobject_secundair", driver="GPKG", index=False
     )
     return dem_path, watersysteem_path
+
+
+def test_brandlagen_parallel_reuse_changes_and_failed_recalculation(
+    sources, tmp_path, monkeypatch
+):
+    from dataclasses import replace
+
+    from waterlagen.afwateringseenheden import brandlagen as burns
+    from waterlagen.afwateringseenheden import tiles
+
+    pytest.importorskip("pcraster")
+    dem, network = sources
+    source = tmp_path / "burn.gpkg"
+    gpd.GeoDataFrame(geometry=[box(8, 8, 40, 24)], crs=settings.crs).to_file(
+        source, layer="roads"
+    )
+    config = BrandlagenConfig(
+        (Brandlaag(source, "roads"),), brandwaarde=1, prioriteit=0
+    )
+    options = {
+        "burn_depth_m": 1,
+        "ahn_vrt_path": dem,
+        "watersysteem_path": network,
+        "tile_size_m": 16,
+        "tile_buffer_m": 4,
+        "origin_x": 8,
+        "origin_y": 8,
+        "resolution_m": 2,
+        "random_seed": 12345,
+        "brandlagen": config,
+    }
+    area = box(8, 8, 40, 24)
+    serial = calculate_afwateringseenheden_tiles(
+        area, **options, output_dir=tmp_path / "serial"
+    )
+    parallel = calculate_afwateringseenheden_tiles(
+        area, **options, workers=2, output_dir=tmp_path / "parallel"
+    )
+    assert_geodataframe_equal(
+        serial.merged_subcatchments, parallel.merged_subcatchments
+    )
+    for a, b in zip(serial.tile_results, parallel.tile_results, strict=True):
+        with (
+            rasterio.open(a.rasters.dem_path) as first,
+            rasterio.open(b.rasters.dem_path) as second,
+        ):
+            np.testing.assert_array_equal(first.read(1), second.read(1))
+    with monkeypatch.context() as patch:
+        patch.setattr(
+            burns, "_conflict_errors", lambda *args: pytest.fail("Repeated preflight")
+        )
+        patch.setattr(
+            tiles,
+            "calculate_subcatchments",
+            lambda *a, **k: pytest.fail("Unchanged tile recalculated"),
+        )
+        reused = calculate_afwateringseenheden_tiles(
+            area, **options, output_dir=tmp_path / "serial"
+        )
+        assert all(result.subcatchments is None for result in reused.tile_results)
+    options["brandlagen"] = replace(config, brandwaarde=2)
+    with monkeypatch.context() as patch:
+
+        def fail(*args, **kwargs):
+            raise ValueError("Simulated PCRaster failure after the DEM was updated")
+
+        patch.setattr(tiles, "calculate_subcatchments", fail)
+        with pytest.raises(RuntimeError, match="Simulated PCRaster failure"):
+            calculate_afwateringseenheden_tiles(
+                area, **options, output_dir=tmp_path / "serial"
+            )
+    assert not list((tmp_path / "serial").glob("*/subcatchments_burn.txt"))
+    changed = calculate_afwateringseenheden_tiles(
+        area, **options, output_dir=tmp_path / "serial"
+    )
+    assert all(result.subcatchments is not None for result in changed.tile_results)
+    with rasterio.open(changed.tile_results[0].rasters.dem_path) as dataset:
+        assert 1200 in dataset.read(1)
+    options["brandlagen"] = None
+    removed = calculate_afwateringseenheden_tiles(
+        area, **options, output_dir=tmp_path / "serial"
+    )
+    assert all(result.subcatchments is not None for result in removed.tile_results)
+    with rasterio.open(removed.tile_results[0].rasters.dem_path) as dataset:
+        assert 1200 not in dataset.read(1)
 
 
 @pytest.mark.parametrize("use_landsgrens", [False, True])

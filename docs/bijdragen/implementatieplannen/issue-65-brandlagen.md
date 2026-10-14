@@ -4,13 +4,36 @@ editorial_status: ai
 
 # #65 — Configureerbare brandlagen
 
-**Status:** conceptplan. De onderstaande functionele keuzes zijn in het
-ontwerpgesprek bevestigd; de gezamenlijke review met #53 en #67 volgt nog.
-Dit document beschrijft gepland gedrag, geen reeds beschikbare functionaliteit.
+**Status:** geïmplementeerd op `issue/65_brandlagen`, ter review in
+[PR #79](https://github.com/d2hydro/waterlagen/pull/79).
+De onderstaande afspraken vormen het acceptatiecontract voor de implementatie.
 
 Issue: [#65 Brandlaag](https://github.com/d2hydro/waterlagen/issues/65).
 Uitvoering: eerste afzonderlijke branch en PR uit het
 [gezamenlijke overzicht](index.md).
+
+## Uitvoeringsverslag
+
+- `Brandlaag`, `BrandlagenConfig`, `read_brandlagen_config` en `read_brandlagen`
+  zijn publiek beschikbaar; de productie ondersteunt `--brandlagen-config`.
+- De voorbereiding schrijft een gevalideerde lokale selectie met bronherkomst.
+  Workers lezen hun eigen selectie en herhalen de gezamenlijke controle niet.
+- Zowel DEM- als tegelhergebruik volgt bronidentiteit, defaults en brandbeleid.
+  Een onderbroken herberekening krijgt geen geldige tegelcachemarkering.
+- De bestaande gridhelper gebruikt de al gecontroleerde gehele celafmetingen,
+  zodat afrondingsruis bij verschoven oorsprongen geen extra rastercel toevoegt.
+- De relevante afwateringseenheden-, CLI- en voorbeeldsuite is uitgevoerd:
+  189 tests geslaagd. Na aanvullende randgevallen en een correctie voor NoData
+  na floatafronding zijn alle 44 brandlaag- en rastertests opnieuw geslaagd.
+  Ruff en de strikte MkDocs-build slagen eveneens.
+- Productie-instructies, API-referentie, Python-voorbeeld en een TOML-voorbeeld
+  zijn bijgewerkt. Er zijn geen externe productiedatasets gedownload.
+
+Documentatiebevinding: de beschermde functionele pagina
+[Afwateringseenheden](../../bewerkte-lagen/afwateringseenheden.md) beschrijft
+alleen de vaste brandbewerking. Uitleg over optionele relatieve wijzigingen,
+voorrang, tekenconflicten en de scheiding van afwateringsdoelen ontbreekt daar
+nog. De pagina is vanwege `editorial_status: human` niet aangepast.
 
 ## Doel en scope
 

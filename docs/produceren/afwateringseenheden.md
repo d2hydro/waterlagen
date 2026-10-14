@@ -37,6 +37,71 @@ van de gekozen gebiedsgrens als invoerselectie.
 De betekenis en beperkingen staan bij
 [Afwateringseenheden](../bewerkte-lagen/afwateringseenheden.md).
 
+## Optionele brandlagen
+
+U kunt eigen GeoPackage-lagen met lijnen en polygonen gebruiken om het reken-DEM
+te verhogen of te verlagen. Bereid de geometrie en attributen in QGIS voor.
+Er worden geen bronnen voor deze lagen gedownload of watergangen automatisch
+uit afgeleid. De lagen voegen geen afwateringsdoelen toe.
+
+| QGIS-kolom | Waarde |
+| --- | --- |
+| `brandwaarde` | Relatieve wijziging in meters: negatief verlaagt, positief verhoogt. |
+| `prioriteit` | Geheel getal; hoger heeft voorrang binnen de optionele lagen. |
+
+De ingevulde objectwaarde gaat voor de laagdefault, die voor de globale default
+gaat. Ontbrekende kolommen en `NULL` gebruiken de defaults. Zonder beschikbare
+waarde volgt een fout. Het getal **0** is een expliciete waarde: geen
+hoogtewijziging, maar bij hogere prioriteit wel blokkering van een lagere
+optionele bewerking. Ongeldige ingevulde waarden worden niet door defaults vervangen.
+
+De vaste rangorde is **primair > secundair > optioneel**, ongeacht de optionele
+prioriteitsgetallen. Bij gelijke optionele prioriteit wint de grootste absolute
+brandwaarde. Positief en negatief bij dezelfde prioriteit op dezelfde rastercel
+is een fout, ook als een hogere prioriteit of vaste waterloop die cel overstemt.
+Brandwaarden worden niet opgeteld. De gekozen wijziging wordt eenmaal toegepast.
+
+Lijnen krijgen geen automatische breedtebuffer. Lever voor een fysieke breedte
+een polygoon aan. Polygonen gebruiken celcentrumselectie; lijnen de bestaande
+lijnrasterisatie. Ook geometrieën die elkaar niet kruisen kunnen in één cel
+terechtkomen. Branden verandert geen NoData buiten de geldige DEM-dekking.
+
+### TOML-configuratie
+
+[Download het configuratievoorbeeld](../reference/voorbeelden/brandlagen.toml).
+Het voorbeeld bevat geen GeoPackage; lever de twee genoemde lagen zelf aan.
+
+```toml
+--8<-- "docs/reference/voorbeelden/brandlagen.toml"
+```
+
+`[defaults]` is optioneel en bevat globale defaults. Elke `[[lagen]]` heeft
+verplicht `path` en `layer`, met optioneel `brandwaarde` en `prioriteit` als
+laagdefaults. Relatieve paden worden ten opzichte van het TOML-bestand opgelost,
+niet ten opzichte van de werkdirectory. Kolomnamen in QGIS staan vast;
+onbekende configuratiesleutels worden afgewezen. Defaults zijn niet verplicht
+als alle geselecteerde objecten zelf geldige waarden hebben.
+
+```console
+pixi run --locked afwateringseenheden --area alkmaar --brandlagen-config brandlagen.toml
+```
+
+De gewone productie controleert brandinvoer vóór de AHN-voorbereiding. Invoer-
+en tekenconflicten worden gezamenlijk gemeld met bestand, laag en FID. De
+conflictcontrole geldt op de gekozen rekenrasters, inclusief tegelbuffers,
+onafhankelijk van de AHN-dekking. De controletijd hangt af van het aantal
+geometrieën en hun overlap.
+
+Een gevalideerde selectie wordt lokaal opgeslagen; workers lezen daaruit hun
+eigen rekengebied. Bij ongewijzigde bronnen en instellingen wordt ook deze
+voorbereiding hergebruikt. Bewerk bronbestanden niet tijdens een berekening.
+
+Voor Python gebruikt u `Brandlaag`, `BrandlagenConfig`, `read_brandlagen_config`
+en `read_brandlagen`; zie het
+[uitvoerbare voorbeeld](../reference/bewerkte-lagen-produceren.md#afwateringseenheden).
+Dat voorbeeld toont de losse bouwstenen; de normale productie-ingang voert
+de volledige controle al vóór de zware bronvoorbereiding uit.
+
 ## Uitvoer en hervatten
 
 Elke run staat onder `processed_data/afwateringseenheden/<gebied>/<run-id>/`.
@@ -47,6 +112,7 @@ Elke run staat onder `processed_data/afwateringseenheden/<gebied>/<run-id>/`.
 | `watersysteem.gpkg` | Voorbereid watersysteem voor alle geselecteerde tegels. |
 | `input/ahn.vrt` | Gebiedsspecifieke verwijzingen naar gedeelde AHN-tegels. |
 | `tiles/tiles.gpkg` | Geselecteerde tegelkernen. |
+| `tiles/brandlagen.gpkg` en `tiles/brandlagen.json` | Gevalideerde optionele brandobjecten en bron-/grididentiteit, indien gebruikt. |
 | `tiles/<tegel-id>/` | Rasters, polygonen en status per rekentegel. |
 | `productie.log` | Hoofdlog, inclusief de werkprocessen. |
 | `run.json` | Instellingen, bronidentiteit, pakketversie en runstatus. |
@@ -59,6 +125,13 @@ pixi run --locked afwateringseenheden --area alkmaar --run-id proef --resume
 Fouten in afzonderlijke tegels verhinderen het samenvoegen, terwijl overige
 onafhankelijke tegels worden afgewerkt. Hervatten hergebruikt geldige resultaten.
 Zie [productiemappen](configuratie.md#productiemappen) voor de compatibiliteitsvoorwaarden.
+
+De brandconfiguratie en bronidentiteiten worden vastgelegd in `run.json`.
+Gewijzigde bronnen of instellingen vereisen bij de productie een nieuwe run-ID.
+Lagere Python-functies vernieuwen raster- en tegeluitvoer met gewijzigde
+brandinvoer ook bij `overwrite=False`. Oude uitvoer zonder brandmetadata wordt
+eenmalig opnieuw berekend; zie het
+[API-hergebruikcontract](../reference/afwateringseenheden.md#dekking-en-hergebruik).
 
 Gebruik voor eigen code de [Python-ingang](../reference/gebruik.md) of de
 [lagere API](../reference/afwateringseenheden.md#dekking-en-hergebruik).

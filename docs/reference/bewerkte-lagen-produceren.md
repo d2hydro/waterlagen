@@ -38,6 +38,11 @@ samengevoegde resultaat wordt op Alkmaar-centrum geknipt. AHN en watersysteem
 worden ook voor de omgeving opgehaald. HYDAMO blijft een landelijke download.
 Gebruik de omgeving met PCRaster.
 
+Met `BRANDLAGEN_CONFIG` kunt u een lokaal TOML-bestand voor eigen QGIS-lagen
+instellen. Standaard is dit `None`. Het voorbeeld leest de samengestelde
+brandobjecten met de publieke inleesfunctie en geeft de configuratie door aan
+de tegelberekening. Zie het [schema en de brandregels](../produceren/afwateringseenheden.md#optionele-brandlagen).
+
 Uitvoer: `watersysteem.gpkg`, tegelbestanden en `afwateringseenheden.gpkg`.
 Bekijk ook de gemelde randproblemen en resterende gaten in het resultaat.
 
