@@ -1,5 +1,5 @@
 ﻿---
-editorial_status: ai
+editorial_status: human
 ---
 
 # Functioneel landgebruik
@@ -26,14 +26,14 @@ Deze bewerking combineert gebouwen, terreinen, wegen en water tot één landgebr
 
 Het gekozen gebied wordt verdeeld in tegels. Per tegel worden vier stappen uitgevoerd:
 
-1. Gebouwen en overige bronobjecten indelen.
+1. Landgebruiksklassen bepalen voor gebouwen, terreinen, wegen en water
 2. Binnen- en buitendijkse codes toekennen.
 3. Bronnen in een vaste volgorde intekenen.
 4. Gaten aanvullen en controleren.
 
 De tegels krijgen een overlap voor berekeningen langs de randen. Daarna worden ze teruggesneden en samengevoegd tot één raster.
 
-### 1. Gebouwen en overige bronobjecten indelen
+### 1. Landgebruiksklassen bepalen voor gebouwen, terreinen, wegen en water
 
 #### Gebouwen selecteren
 
@@ -53,7 +53,7 @@ Een verblijfsobject (VBO) is bijvoorbeeld een woning of winkel binnen een pand. 
 
 Per VBO wordt eerst één gebruiksfunctie gekozen. Bij meerdere doelen geldt deze volgorde, van hoog naar laag:
 
-**Gezondheidszorg → winkel → kantoor → industrie → wonen → logies → onderwijs → sport → bijeenkomst → cel → overige gebruiksfunctie.**
+'Gezondheidszorg → winkel → kantoor → industrie → wonen → logies → onderwijs → sport → bijeenkomst → cel → overige gebruiksfunctie.'
 
 Bij gecombineerd gebruik telt het hele VBO-oppervlak mee bij de functie met de hoogste prioriteit.
 
@@ -70,7 +70,7 @@ Aanvullend op de beslisboom:
 
 #### Gebouwklasse bepalen
 
-Het aantal bouwlagen wordt geschat: **som van alle VBO-oppervlakten ÷ volledige pandoppervlakte**, naar boven afgerond. Woonoppervlakte telt hierbij wel mee.
+Het aantal bouwlagen wordt geschat: 'som van alle VBO-oppervlakten / volledige pandoppervlakte', naar boven afgerond. Woonoppervlakte telt hierbij wel mee.
 
 | Uitkomst | Gebouwklasse |
 | --- | --- |
@@ -131,7 +131,7 @@ Bij de standaardcodetabel krijgt een pand dat aan meerdere bijzondere gebouwrege
 | BGT | Wegen op functie; begroeide terreinen op fysiek voorkomen. Water en onbegroeide terreinen hebben een algemene koppeling. Oevers en slootkanten worden apart ingedeeld. |
 | TOP10NL | Functionele gebieden op de volledige bronwaarde. Zowel vlakken als multivlakken doen mee. Grasland, akkerland, boomkwekerij, boomgaard en fruitkwekerij vullen de BRP-dekking aan. |
 
-Voor BGT gelden drie voorwaarden: status `bestaand`, een lege `eindRegistratie` en een lege `objectEindTijd`. Alleen actuele registraties doen mee. Wegen en terreinen gebruiken het vlak uit `geometrie2d`.
+Voor BGT gelden drie voorwaarden: status `bestaand`, een lege `eindRegistratie` en een lege `objectEindTijd`. Alleen actuele registraties doen mee.
 
 #### Codes uit de CSV
 
@@ -156,7 +156,7 @@ De binnen-/buitendijkse indeling gebruikt twee LIWO-klassen:
 
 De cellen van het 25 m-raster worden omgezet naar vlakken. NoData en andere klassen vallen af.
 
-Voor elk vlak wordt één punt binnen het vlak bepaald (`representative_point()`). De ligging van dit punt ten opzichte van het LIWO-gebied bepaalt de code voor het hele vlak:
+Voor elk vlak wordt het [representatieve punt](https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoSeries.representative_point.html) bepaald. De ligging van dit punt ten opzichte van het LIWO-gebied bepaalt de code voor het hele vlak:
 
 - Binnen of op de grens van de LIWO-selectie: buitendijkse code.
 - Daarbuiten: binnendijkse code.
@@ -239,12 +239,13 @@ Zie [NoData controleren](../produceren/landgebruik.md#nodata-controleren) voor h
 
 ## Aandachtspunten en beperkingen
 
-- De klasse is afgeleid uit bronregistraties. Het werkelijke gebruik kan afwijken.
+- De functioneel landgebruik klasse is afgeleid uit bronregistraties; het werkelijke gebruik kan afwijken.
 - Bouwlagen zijn geschat uit oppervlakten. De werkelijke verdieping van een functie is niet bekend.
 - De LIWO-indeling volgt een raster van 25 meter. Een uitvoercel van 0,5 meter maakt die grens niet nauwkeuriger.
 - Alle onbegroeide BGT-terreindelen krijgen dezelfde koppeling. Hun indeling als erf blijft een inhoudelijk aandachtspunt.
-- RWZI- en gemaalklassen bewijzen niet dat een installatie operationeel is. De RWZI-koppeling gebruikt geen statusfilter.
-- Bij eigen Python-bewerkingen kunnen optionele bronnen ontbreken. De bijbehorende bijzondere gebouwregels worden dan overgeslagen.
+- Voor het herkennen van bijzondere gebouwfuncties zijn aanvullende bronnen nodig. Ontbreekt zo’n bron, dan kunnen gebouwen hun gewone BAG-classificatie behouden terwijl ze bijvoorbeeld bij een RWZI of drinkwaterproductielocatie horen.
+- RWZI- en gemaalklassen zijn (nog) niet gefilterd op DAMO `statusobject`.
+- BGT-vlakken zijn niet ingebrand in volgorde van de kolom `relatieveHoogteligging`.
 - Bewaar de tegelbestanden zolang het VRT nodig is.
 
 Bekijk het **bronnenraster** en **nodata.gpkg** om de indeling en ontbrekende klassen te verklaren.

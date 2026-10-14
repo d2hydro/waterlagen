@@ -10,9 +10,11 @@ Het berekenen van `afvoergebieden` gekoppeld aan `hydroobjecten`.
 
 ## Bronlagen
 
-- [GKW HYDAMO](../bronlagen/hydamo.md)
-- [AHN](../bronlagen/ahn.md)
-- [Bestuurlijke gebieden](../bronlagen/bestuurlijke-gebieden.md) voor begrenzing tot Nederland
+| Bron | Gebruik |
+| --- | --- |
+| [GKW HYDAMO](../bronlagen/hydamo.md) | Hydroobjecten en verbindingspunten voor het watersysteem. |
+| [AHN](../bronlagen/ahn.md) | Maaiveldhoogte voor het afleiden van afstroomrichtingen en afwateringseenheden. |
+| [Bestuurlijke gebieden](../bronlagen/bestuurlijke-gebieden.md) | Begrenzing tot Nederland. |
 
 ## Werkwijze
 

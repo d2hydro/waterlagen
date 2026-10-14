@@ -12,11 +12,10 @@ individueel gebouw. De gebouwcellen zijn gedefinieerd in het bronnenraster van
 
 ## Bronlagen
 
-- [AHN-DTM](../bronlagen/ahn.md), inclusief omliggende rastertegels.
-- De landgebruiktegels met `bronnen`, `gebouw_ids` en volledige voorbereide
-  gebouwgeometrieën. De oorspronkelijke [BAG-identificatie](../bronlagen/bag.md)
-  blijft in deze afgeleide gebouwgegevens bewaard. De DEM-bewerking selecteert
-  zelf geen BAG-panden.
+| Bron | Gebruik |
+| --- | --- |
+| [AHN-DTM](../bronlagen/ahn.md) | Terreinhoogtes, inclusief omliggende rastertegels. |
+| [Functioneel landgebruik](functioneel-landgebruik.md) | Landgebruiktegels met `bronnen`, `gebouw_ids` en volledige voorbereide gebouwgeometrieën. De oorspronkelijke [BAG-identificatie](../bronlagen/bag.md) blijft in deze afgeleide gebouwgegevens bewaard. De DEM-bewerking selecteert zelf geen BAG-panden. |
 
 ## Werkwijze
 

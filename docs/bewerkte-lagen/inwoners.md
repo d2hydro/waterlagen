@@ -10,10 +10,10 @@ Deze bewerking verdeelt het aantal inwoners vanuit de CBS buurtstatistiek buurt 
 
 ## Bronlagen
 
-De volgende bronnen worden gebruikt in deze berekening
-- [BAG](../bronlagen/bag.md): verblijfsobjecten met woonfunctie en status in gebruik.
-- [CBS Wijk- en Buurtkaart en Kerncijfers](../bronlagen/cbs.md):
-  `personenautos_totaal` per buurt.
+| Bron | Gebruik |
+| --- | --- |
+| [BAG](../bronlagen/bag.md) | Verblijfsobjecten met woonfunctie en status in gebruik. |
+| [CBS Wijk- en Buurtkaart en Kerncijfers](../bronlagen/cbs.md) | `aantal_inwoners` en `aantal_huishoudens` per buurt. |
 
 ## Werkwijze
 
