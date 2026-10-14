@@ -620,15 +620,11 @@ def test_landuse_run_validation_checks_real_companions(
     assert len(selected.paths) == 4
     # Exercise the default Nederland entry point and its pinned resume metadata
     # on small real rasters; no national data or network access is involved.
-    import importlib.util
-    from pathlib import Path
     from types import SimpleNamespace
 
-    script_path = Path(__file__).resolve().parents[1] / "scripts" / "dem.py"
-    spec = importlib.util.spec_from_file_location("dem_script", script_path)
-    script = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(script)
-    monkeypatch.setattr(script, "configure_logging", lambda **kwargs: None)
+    from waterlagen.dem import workflow as script
+
+    gpd.GeoDataFrame(rows, crs=28992).to_file(run / "grid.gpkg", layer="tiles")
     boundary_dir = tmp_path / "boundaries"
     boundary_dir.mkdir()
     gpd.GeoDataFrame(geometry=[box(0, 0, 64, 64)], crs=28992).to_file(
@@ -929,3 +925,30 @@ def test_missing_float_export_repairs_without_rebuilding_integer_dem(
     assert (result.read_bytes(), result.stat().st_mtime_ns) == before
     assert result.with_name("dem_complete.json").exists()
     validate_float_dem(result, float_path)
+
+
+def test_tile_failure_finishes_other_dem_tiles_without_publication(
+    tmp_path, landuse_inputs, monkeypatch
+):
+    from waterlagen.dem import productie
+
+    ahn = write_ahn(tmp_path / "failure_ahn.tif", np.ones((64, 64), dtype="float32"))
+    target = tmp_path / "failed_dem"
+    original = productie._build_tile_worker
+    attempted = []
+
+    def build(arguments):
+        attempted.append(arguments[0])
+        if arguments[0] == landuse_inputs[0]:
+            raise RuntimeError("synthetic failed tile")
+        return original(arguments)
+
+    monkeypatch.setattr(productie, "_build_tile_worker", build)
+    with pytest.raises(RuntimeError, match="synthetic failed tile"):
+        bouw_dem_tiles(
+            target, ahn_vrt_path=ahn, landuse_tiles=landuse_inputs, workers=1
+        )
+    assert attempted == landuse_inputs
+    assert not (target / "dem.tif").exists()
+    assert not (target / "dem_complete.json").exists()
+    assert _tile_paths(target, landuse_inputs[-1]).terrain.is_file()

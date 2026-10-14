@@ -1,6 +1,4 @@
-import importlib.util
 import logging
-from pathlib import Path
 from types import SimpleNamespace
 
 import geopandas as gpd
@@ -9,16 +7,9 @@ from shapely.geometry import Point, box
 
 
 def _load_script():
-    script_path = (
-        Path(__file__).resolve().parents[1] / "scripts" / "statistiek_inwoners_autos.py"
-    )
-    spec = importlib.util.spec_from_file_location(
-        "statistiek_inwoners_autos", script_path
-    )
-    module = importlib.util.module_from_spec(spec)
-    assert spec.loader is not None
-    spec.loader.exec_module(module)
-    return module
+    from waterlagen.vbo_buurt import statistiek
+
+    return statistiek
 
 
 @pytest.mark.parametrize("explicit_paths", [False, True])
@@ -54,7 +45,7 @@ def test_script_logs_cbs_and_derived_totals(tmp_path, caplog, explicit_paths):
         inwoners_path=inwoners_path,
         autos_path=autos_path,
     )
-    caplog.set_level(logging.INFO, logger="statistiek_inwoners_autos")
+    caplog.set_level(logging.INFO, logger="waterlagen.vbo_buurt.statistiek")
 
     if explicit_paths:
         data_store.inwoners_path = tmp_path / "missing_inwoners.gpkg"

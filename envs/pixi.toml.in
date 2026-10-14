@@ -12,13 +12,9 @@ platforms = @PLATFORMS@
 waterlagen = "==@VERSION@"
 
 [tasks]
-controleer = "python ./scripts/controleer_productie.py"
+controleer = 'python -c "from waterlagen._environment import main; main()"'
 afwateringseenheden = "python ./scripts/afwateringseenheden.py"
-landgebruik = "python ./scripts/functioneel_landgebruik.py"
-functioneel_landgebruik = "python ./scripts/functioneel_landgebruik.py"
+autos = "python ./scripts/autos.py"
 dem = "python ./scripts/dem.py"
-bag = "python ./scripts/bag.py"
-inwoners = { cmd = "python ./scripts/inwoners.py", depends-on = ["bag"] }
-auto = { cmd = "python ./scripts/auto.py", depends-on = ["bag"] }
-autos = { depends-on = ["auto"] }
-statistiek_inwoners_autos = "python ./scripts/statistiek_inwoners_autos.py"
+functioneel_landgebruik = "python ./scripts/functioneel_landgebruik.py"
+inwoners = "python ./scripts/inwoners.py"

@@ -37,7 +37,7 @@ def test_script_reuses_validated_gpkg_without_archive(tmp_path):
         json.dumps(status), encoding="utf-8"
     )
     script = runpy.run_path(
-        str(Path(__file__).parents[1] / "scripts/bgt_actuele_vlakken.py")
+        str(Path(__file__).parents[1] / "src/waterlagen/bgt/productie.py")
     )
     before = target.read_bytes()
     script["main"](store)

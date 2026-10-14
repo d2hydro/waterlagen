@@ -1,3 +1,7 @@
+---
+editorial_status: ai
+---
+
 # Bijdragen
 
 Dit onderdeel is bedoeld voor wie code wil bijdragen aan Waterlagen. Begin met

@@ -66,7 +66,7 @@ def _is_valid_ahn_tile(path: Path) -> bool:
             if not src.profile.get("driver") or not src.dtypes[0]:
                 return False
             src.read(1)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 - GDAL/raster validation failures must enter the retry policy
         logger.debug("Invalid AHN TIFF %s: %s", path, exc)
         return False
     return True
@@ -101,11 +101,10 @@ def _tif_bytes_from_response(response: Response, *, tile_index: str) -> bytes:
 
 def _write_ahn_tile(temporary_path: Path, data_bytes: bytes) -> None:
     """Write an AHN response to a temporary TIFF and build its overviews."""
-    with MemoryFile(data_bytes) as memfile:
-        with memfile.open() as source:
-            data = source.read(1)
-            profile = source.profile.copy()
-            source_nodata = source.nodata
+    with MemoryFile(data_bytes) as memfile, memfile.open() as source:
+        data = source.read(1)
+        profile = source.profile.copy()
+        source_nodata = source.nodata
 
     if settings.m_to_cm:
         data, nodata = array_float_m_to_cm_int(data, nodata=source_nodata)
@@ -283,6 +282,7 @@ def download_ahn(
     create_vrt: bool = True,
     save_tiles_index: bool = False,
     *,
+    tile_index: gpd.GeoDataFrame | None = None,
     retries: int = 10,
     timeout: float = DEFAULT_HTTP_TIMEOUT,
 ) -> Path:
@@ -310,6 +310,9 @@ def download_ahn(
         Create a vrt-file so all tiles can be opened as one, by default True
     save_tiles_index : bool, optional
         Save the tile index as a GeoPackage in the download-dir, by default False
+    tile_index : geopandas.GeoDataFrame, optional
+        Prepared index with tile identifiers and service download URLs. Avoids
+        an index network request; source data and CRS must match the service.
     retries : int, optional
         Maximum total download attempts for each tile, by default 10. Set to 0
         to make every requested tile fail without an HTTP request.
@@ -334,15 +337,18 @@ def download_ahn(
     ahn_service = AHNService(service=service)
     ahn_service._validate_inputs(cell_size=cell_size, ahn_version=ahn_version)
     # get AHN tiles as gdf
-    tiles_gdf = get_tiles_features(
-        poly_mask=poly_mask,
-        select_indices=select_indices,
-        ahn_service=ahn_service,
-        model=model,
-        cell_size=cell_size,
-        ahn_version=ahn_version,
-        timeout=timeout,
-    )
+    if tile_index is None:
+        tiles_gdf = get_tiles_features(
+            poly_mask=poly_mask,
+            select_indices=select_indices,
+            ahn_service=ahn_service,
+            model=model,
+            cell_size=cell_size,
+            ahn_version=ahn_version,
+            timeout=timeout,
+        )
+    else:
+        tiles_gdf = tile_index.copy()
 
     # make download dir if not existing
     download_dir = Path(ahn_dir).joinpath(f"{model}_{cell_size}")
@@ -455,7 +461,7 @@ def download_ahn(
                         retried_tiles += 1
                     successful = True
                     break
-                except Exception as exc:
+                except Exception as exc:  # noqa: BLE001 - GDAL/raster validation failures must enter the retry policy
                     last_error = exc
                     if attempt < retries:
                         logger.warning(

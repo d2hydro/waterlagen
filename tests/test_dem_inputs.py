@@ -33,8 +33,7 @@ def test_shared_areas_and_worker_overrides():
     selected = select_area_tiles(tiles, Area.alkmaar)
     assert len(selected) == 4
     assert selected.total_bounds.tolist() == [105000, 510000, 115000, 520000]
-    with pytest.raises(ValueError, match="2x2"):
-        select_area_tiles(selected.iloc[:3], Area.alkmaar)
+    assert len(select_area_tiles(selected.iloc[:3], Area.alkmaar)) == 3
     assert resolve_workers(None, 4) == 4
     assert resolve_workers(2, 4) == 2
     for workers in (0, -1, True, 1.5):

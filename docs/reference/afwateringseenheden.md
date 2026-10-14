@@ -1,6 +1,10 @@
+---
+editorial_status: ai
+---
+
 # Afwateringseenheden
 
-De functionele uitleg staat bij [Afwateringseenheden](../bewerkingen/afwateringseenheden.md).
+De functionele uitleg staat bij [Afwateringseenheden](../bewerkte-lagen/afwateringseenheden.md).
 Zie [Afwateringseenheden produceren](../produceren/afwateringseenheden.md) voor
 de uitvoering, parallel rekenen en logbestanden.
 
@@ -45,5 +49,3 @@ De functie gebruikt standaard een worker. Parallelle berekeningen gebruiken
 afzonderlijke `spawn`-processen en vereisen een script met een `__main__`-guard.
 
 ::: waterlagen.afwateringseenheden
-
-::: waterlagen.afwateringseenheden.dem.prepare_ahn_dgm1_dem

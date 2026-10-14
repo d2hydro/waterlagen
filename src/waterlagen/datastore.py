@@ -66,13 +66,6 @@ class DataStore(BaseSettings):
 
     @computed_field
     @property
-    def dgm1_dir(self) -> Path:
-        dgm1_dir = self.source_data_dir / "dgm1_nrw"
-        dgm1_dir.mkdir(exist_ok=True, parents=True)
-        return dgm1_dir
-
-    @computed_field
-    @property
     def bgt_dir(self) -> Path:
         bgt_dir = self.source_data_dir / "bgt"
         bgt_dir.mkdir(exist_ok=True, parents=True)

@@ -4,6 +4,7 @@ repo_name: d2hydro/waterlagen
 
 theme:
   name: material
+  custom_dir: overrides
   language: nl
   logo: icons/logo.png
   favicon: icons/favicon.png
@@ -16,59 +17,66 @@ theme:
 
 nav:
   - Over Waterlagen: index.md
-  - Bronnen:
-      - Overzicht: bronnen/index.md
-      - AHN: bronnen/ahn.md
-      - DGM1 Nordrhein-Westfalen: bronnen/dgm1.md
-      - BAG: bronnen/bag.md
-      - BGT: bronnen/bgt.md
-      - BRP: bronnen/brp.md
-      - TOP10NL: bronnen/top10nl.md
-      - OSM-drinkwaterlocaties: bronnen/osm-drinkwater.md
-      - Dijkringen: bronnen/dijkringen.md
-      - LIWO overstromingsgevoelige gebieden: bronnen/liwo.md
-      - GKW HYDAMO: bronnen/hydamo.md
-      - Waterketen DAMO: bronnen/waterketen-damo.md
-      - Bestuurlijke gebieden: bronnen/bestuurlijke-gebieden.md
-      - Waterschapsgrenzen: bronnen/waterschapsgrenzen.md
-      - CBS Wijk- en Buurtkaart en Kerncijfers: bronnen/cbs.md
-  - Bewerkingen:
-      - Overzicht: bewerkingen/index.md
-      - AHN interpoleren: bewerkingen/ahn-interpoleren.md
-      - DEM met gebouwen: bewerkingen/dem.md
-      - BAG-vloerpeilen: bewerkingen/bag-vloerpeilen.md
-      - Functioneel landgebruik: bewerkingen/functioneel-landgebruik.md
-      - LIWO-selectie: bewerkingen/liwo-selectie.md
-      - Afwateringseenheden: bewerkingen/afwateringseenheden.md
-      - Woon-VBO's per CBS-buurt: bewerkingen/vbo-buurt.md
-      - Inwoners per woon-VBO: bewerkingen/inwoners-per-vbo.md
-      - Personenauto's per woon-VBO: bewerkingen/personenautos-per-vbo.md
+  - Bronlagen:
+      - Overzicht: bronlagen/index.md
+      - AHN: bronlagen/ahn.md
+      - BAG: bronlagen/bag.md
+      - Bestuurlijke gebieden: bronlagen/bestuurlijke-gebieden.md
+      - BGT: bronlagen/bgt.md
+      - BRP: bronlagen/brp.md
+      - CBS Wijk- en Buurtkaart en Kerncijfers: bronlagen/cbs.md
+      - Dijkringen: bronlagen/dijkringen.md
+      - GKW HYDAMO: bronlagen/hydamo.md
+      - LIWO overstromingsgevoelige gebieden: bronlagen/liwo.md
+      - OSM-drinkwaterlocaties: bronlagen/osm-drinkwater.md
+      - TOP10NL: bronlagen/top10nl.md
+      - Waterketen DAMO: bronlagen/waterketen-damo.md
+      - Waterschapsgrenzen: bronlagen/waterschapsgrenzen.md
+  - Bewerkte lagen:
+      - Overzicht: bewerkte-lagen/index.md
+      - Afwateringseenheden: bewerkte-lagen/afwateringseenheden.md
+      - Auto's: bewerkte-lagen/autos.md
+      - Functioneel landgebruik: bewerkte-lagen/functioneel-landgebruik.md
+      - Hoogtemodel: bewerkte-lagen/dem.md
+      - Inwoners: bewerkte-lagen/inwoners.md
   - Zelf produceren:
       - Overzicht: produceren/index.md
       - Installatie: produceren/installatie.md
+      - Productiecommando's: produceren/cli.md
       - Opslag van gegevens: produceren/configuratie.md
       - Afwateringseenheden: produceren/afwateringseenheden.md
       - Functioneel landgebruik: produceren/landgebruik.md
-      - DEM rond Alkmaar: produceren/dem.md
+      - DEM: produceren/dem.md
       - BGT-vlakken voor QGIS: produceren/bgt-vlakken.md
       - Waterketen DAMO downloaden: produceren/waterketen-damo.md
       - Inwoners en personenauto's: produceren/inwoners-personenautos.md
-  - API-referentie:
-      - AHN: reference/ahn.md
-      - DEM: reference/dem.md
-      - DGM1: reference/dgm1.md
-      - BAG: reference/bag.md
-      - BGT: reference/bgt.md
-      - BRP: reference/brp.md
-      - TOP10NL: reference/top10nl.md
-      - Dijkringen: reference/dijkringen.md
-      - Administratieve gebieden: reference/administratieve_gebieden.md
-      - Afwateringseenheden: reference/afwateringseenheden.md
-      - Functioneel landgebruik: reference/functioneel_landgebruik.md
-      - HYDAMO: reference/hydamo.md
-      - Waterketen DAMO: reference/waterketen_damo.md
-      - DataStore: reference/datastore.md
-      - Rasters: reference/raster.md
+  - Python:
+      - Aan de slag: reference/gebruik.md
+      - Bronlagen downloaden: reference/bronlagen-downloaden.md
+      - Bewerkte lagen samenstellen: reference/bewerkte-lagen-produceren.md
+      - API-referentie:
+          - Overzicht: reference/api.md
+          - Productie-ingangen: reference/productie.md
+          - AHN: reference/ahn.md
+          - DEM: reference/dem.md
+          - BAG: reference/bag.md
+          - BGT: reference/bgt.md
+          - BRP: reference/brp.md
+          - CBS: reference/cbs.md
+          - TOP10NL: reference/top10nl.md
+          - Dijkringen: reference/dijkringen.md
+          - Administratieve gebieden: reference/administratieve_gebieden.md
+          - Afwateringseenheden: reference/afwateringseenheden.md
+          - Auto's: reference/autos.md
+          - Functioneel landgebruik: reference/functioneel_landgebruik.md
+          - Inwoners: reference/inwoners.md
+          - Woon-VBO's per buurt: reference/vbo_buurt.md
+          - HYDAMO: reference/hydamo.md
+          - LIWO: reference/liwo.md
+          - OSM-drinkwaterlocaties: reference/osm_drinkwater.md
+          - Waterketen DAMO: reference/waterketen_damo.md
+          - DataStore: reference/datastore.md
+          - Rasters: reference/raster.md
   - Bijdragen:
       - Overzicht: bijdragen/index.md
       - Ontwikkelomgeving: bijdragen/ontwikkelomgeving.md
@@ -80,6 +88,9 @@ plugins:
   - search
   - mkdocs-jupyter:
       execute: false
+      include: ["*.ipynb"]
+      # Skip API Markdown before Jupytext interprets mkdocstrings' ::: directives.
+      ignore: ["*.md"]
   - mkdocstrings:
       handlers:
         python:
@@ -93,7 +104,8 @@ markdown_extensions:
   - pymdownx.details
   - pymdownx.highlight
   - pymdownx.inlinehilite
-  - pymdownx.snippets
+  - pymdownx.snippets:
+      check_paths: true
   - pymdownx.tabbed:
       alternate_style: true
 

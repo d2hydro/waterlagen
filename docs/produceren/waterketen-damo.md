@@ -1,7 +1,11 @@
+---
+editorial_status: ai
+---
+
 # Waterketen DAMO downloaden
 
 Volg eerst de [installatie-instructies](installatie.md). De betekenis en
-beperkingen van de gegevens staan bij [Waterketen DAMO](../bronnen/waterketen-damo.md).
+beperkingen van de gegevens staan bij [Waterketen DAMO](../bronlagen/waterketen-damo.md).
 
 Gebruik in Python:
 

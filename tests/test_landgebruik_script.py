@@ -1,9 +1,31 @@
 import hashlib
+from dataclasses import replace
 from types import SimpleNamespace
 
 import pytest
+from shapely.geometry import box
 
 from waterlagen import _production
+from waterlagen.areas import ProductionArea
+from waterlagen.functioneel_landgebruik import FunctioneelLandgebruikSources
+
+AREA = ProductionArea("nederland", box(0, 0, 10000, 5000), "EPSG:28992")
+
+
+@pytest.fixture(autouse=True)
+def local_selection(monkeypatch, tmp_path):
+    from waterlagen.functioneel_landgebruik import productie
+
+    monkeypatch.setattr(productie, "resolve_area", lambda *args: AREA)
+    monkeypatch.setattr(
+        productie, "ensure_land_boundary", lambda *args: tmp_path / "boundary.gpkg"
+    )
+
+    def sources(store, preparation, *, bgt_path=None, workers=1):
+        sources = FunctioneelLandgebruikSources.from_datastore(store)
+        return replace(sources, bgt_gpkg=bgt_path or sources.bgt_gpkg)
+
+    monkeypatch.setattr(productie, "prepare_sources", sources)
 
 
 def _load_landgebruik_script():
@@ -22,6 +44,7 @@ def test_csv_mismatch_explains_runfolder_and_recovery(tmp_path, monkeypatch):
         "nederland",
         run_id="test",
         parameters={
+            "area": AREA.identity,
             "building_ids": True,
             "tile_layout_version": 2,
             "building_context_m": 5.0,
@@ -38,7 +61,6 @@ def test_csv_mismatch_explains_runfolder_and_recovery(tmp_path, monkeypatch):
         pass
     csv_path = output / "landgebruik_met_code.csv"
     csv_path.write_text("Andere CSV", encoding="utf-8")
-    monkeypatch.setattr(landgebruik, "configure_logging", lambda **kwargs: None)
 
     with pytest.raises(ValueError) as error:
         landgebruik.main(data_store=store, run_id="test", resume=True)
@@ -132,7 +154,6 @@ def test_landgebruik_script_builds_tiles_vrt_and_cog_in_order(
         top10nl_dir=tmp_path / "source/top10nl",
     )
     monkeypatch.setattr(landgebruik.settings, "functioneel_landgebruik_workers", 2)
-    monkeypatch.setattr(landgebruik, "configure_logging", lambda **kwargs: None)
     original_read_info = landgebruik.pyogrio.read_info
 
     def read_info(*args, **kwargs):
@@ -163,7 +184,7 @@ def test_landgebruik_script_builds_tiles_vrt_and_cog_in_order(
         bgt_path.touch()
     if missing_bgt:
         (bgt_path or default_bgt).unlink()
-        with pytest.raises(FileNotFoundError, match="bgt_actuele_vlakken.py"):
+        with pytest.raises(FileNotFoundError, match="BGT-bestand ontbreekt"):
             landgebruik.main(data_store=data_store, bgt_path=bgt_path)
         assert events == []
         return
@@ -198,6 +219,7 @@ def test_landgebruik_script_builds_tiles_vrt_and_cog_in_order(
     assert events[0][1] == {
         "target_path": tiles_path.with_name("grid.gpkg"),
         "tile_size_m": 5000,
+        "boundary_path": tmp_path / "boundary.gpkg",
         "overwrite": False,
     }
     assert events[1][1]["target_dir"] == tiles_dir

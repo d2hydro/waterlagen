@@ -56,8 +56,14 @@ def test_bundle_is_standalone_and_contains_only_public_inputs(
             not {"pytest", "ruff", "ipykernel", "mkdocs"}
             & manifest["dependencies"].keys()
         )
-        assert manifest["tasks"]["inwoners"]["depends-on"] == ["bag"]
-        assert manifest["tasks"]["auto"]["depends-on"] == ["bag"]
+        assert set(manifest["tasks"]) == {
+            "controleer",
+            "autos",
+            "inwoners",
+            "afwateringseenheden",
+            "functioneel_landgebruik",
+            "dem",
+        }
         (cwd / "pixi.lock").write_text(public_lock(version))
         (cwd / "unexpected.log").write_text("never-copy-me")
 

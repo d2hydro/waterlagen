@@ -14,13 +14,10 @@ from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PRODUCTION_SCRIPTS = (
     "afwateringseenheden.py",
-    "functioneel_landgebruik.py",
+    "autos.py",
     "dem.py",
+    "functioneel_landgebruik.py",
     "inwoners.py",
-    "auto.py",
-    "bag.py",
-    "statistiek_inwoners_autos.py",
-    "controleer_productie.py",
 )
 
 

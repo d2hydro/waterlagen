@@ -10,12 +10,7 @@ from rasterio.transform import from_origin
 
 @pytest.fixture
 def script():
-    return runpy.run_path(
-        str(
-            Path(__file__).parents[1]
-            / "scripts/liwo_overstromingsgevoelige_gebieden.py"
-        )
-    )
+    return runpy.run_path(str(Path(__file__).parents[1] / "src/waterlagen/liwo.py"))
 
 
 def write_raster(path, values, *, nodata=255, count=1):

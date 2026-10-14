@@ -321,7 +321,7 @@ def load_landuse_table(path: Path | None = None) -> LanduseTable:
             if len(row.ids) != len(set(row.ids)) or seen_ids.intersection(row.ids):
                 raise ValueError(f"{context}: dubbel Koppel-ID (Koppeling-ID)")
             seen_ids.update(row.ids)
-            # Several inside classes can deliberately share one outside code,
+            # Several default classes can deliberately share one outside code,
             # e.g. agricultural grass and nature both become 182 outside dikes.
             if (
                 row.inside in descriptions
@@ -335,7 +335,9 @@ def load_landuse_table(path: Path | None = None) -> LanduseTable:
     if not rows:
         raise ValueError(f"CSV {path} bevat geen koppelingen")
     if {row.inside for row in rows} & {row.outside for row in rows}:
-        raise ValueError("CSV gebruikt dezelfde code voor binnen- en buitendijks")
+        raise ValueError(
+            "CSV gebruikt dezelfde code als standaardcode en buitendijkse code"
+        )
     table = LanduseTable(path=path, rows=tuple(rows))
     for source, layer in sorted(
         {(row.source, row.layer) for row in rows if row.method == "mapping"}

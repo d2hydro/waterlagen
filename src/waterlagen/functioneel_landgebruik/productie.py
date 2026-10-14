@@ -3,7 +3,6 @@
 import hashlib
 import json
 import shutil
-from dataclasses import replace
 from datetime import datetime
 from math import isfinite
 from pathlib import Path
@@ -13,11 +12,19 @@ from osgeo import gdal
 
 from waterlagen._filesystem import replace_file
 from waterlagen._geopackage import write_geopackage_layer_atomically
-from waterlagen._production import ProductionRun, production_run
-from waterlagen.areas import Area, resolve_workers, select_area_tiles
+from waterlagen._production import ProductionRun, production_run, validate_run_target
+from waterlagen._sources import SourcePreparation, source_options
+from waterlagen.areas import (
+    Area,
+    ProductionArea,
+    area_name,
+    ensure_land_boundary,
+    resolve_area,
+    resolve_workers,
+    select_area_tiles,
+)
 from waterlagen.datastore import DataStore
 from waterlagen.functioneel_landgebruik import (
-    FunctioneelLandgebruikSources,
     bouw_functioneel_landgebruik_tiles,
 )
 from waterlagen.functioneel_landgebruik.aanvullen import DONOR_ALLOWED, SOURCE_LAYERS
@@ -31,7 +38,8 @@ from waterlagen.functioneel_landgebruik.legenda import (
     write_qgis_style,
 )
 from waterlagen.functioneel_landgebruik.paths import building_paths, source_path
-from waterlagen.logger import configure_logging, get_logger
+from waterlagen.functioneel_landgebruik.sources import prepare_sources
+from waterlagen.logger import get_logger
 from waterlagen.raster.tiles import build_tiles, read_tiles
 from waterlagen.raster.vrt import create_cog_file, create_vrt_file
 from waterlagen.settings import settings
@@ -49,7 +57,7 @@ CONTROLE_OPSLAAN = True  # Alleen NoData-vlakken met bron en reden.
 def main(
     data_store: DataStore | None = None,
     *,
-    area: Area = Area.nederland,
+    area: str | Area | ProductionArea = Area.nederland,
     workers: int | None = None,
     building_context_m: float = 5.0,
     mapping_csv: Path | None = None,
@@ -57,6 +65,9 @@ def main(
     run_id: str | None = None,
     resume: bool = False,
     overwrite: bool = False,
+    refresh_sources: bool = False,
+    offline: bool = False,
+    preparation: SourcePreparation | None = None,
 ) -> Path:
     """Produce functional land use with building companions for an area.
 
@@ -65,7 +76,7 @@ def main(
     data_store : DataStore, optional
         Configured source and processed-data locations.
     area : Area
-        Nederland by default, or the four Alkmaar tile cores.
+        Named input area or water authority code; complete intersecting tiles are retained.
     workers : int, optional
         Override settings.functioneel_landgebruik_workers; may change on resume.
     building_context_m : float
@@ -77,6 +88,11 @@ def main(
     resume, overwrite : bool
         Explicitly reuse or rebuild a compatible run. Existing inputs are checked.
 
+    refresh_sources, offline : bool
+        Refresh sources for a new run, or require local inputs without downloads.
+    preparation : SourcePreparation, optional
+        Shared source policy for nested productions.
+
     Returns
     -------
     pathlib.Path
@@ -84,25 +100,27 @@ def main(
     """
     if not isfinite(building_context_m) or building_context_m < 0:
         raise ValueError("building_context_m must be finite and non-negative")
-    area = Area(area)
     workers = resolve_workers(workers, settings.functioneel_landgebruik_workers)
     store = data_store or DataStore()
+    validate_run_target(
+        store.processed_data_dir,
+        "functioneel_landgebruik",
+        area_name(area),
+        run_id,
+        resume=resume,
+        overwrite=overwrite,
+    )
+    preparation = source_options(
+        preparation,
+        refresh_sources=refresh_sources,
+        offline=offline,
+        resume=resume,
+        overwrite=overwrite,
+    )
+    area = resolve_area(area, store, preparation)
     mapping_csv = Path(mapping_csv or LANDGEBRUIK_CSV)
     table = load_landuse_table(mapping_csv)
     context_parameters = {"building_context_m": building_context_m}
-    # Default-context national runs created before this extraction remain resumable.
-    if (resume or overwrite) and run_id and building_context_m == 5.0:
-        metadata_path = (
-            store.processed_data_dir
-            / "functioneel_landgebruik"
-            / area.value
-            / run_id
-            / "run.json"
-        )
-        if metadata_path.exists():
-            previous = json.loads(metadata_path.read_text(encoding="utf-8"))
-            if "building_context_m" not in previous.get("parameters", {}):
-                context_parameters = {}
     with production_run(
         store.processed_data_dir,
         "functioneel_landgebruik",
@@ -111,6 +129,7 @@ def main(
         resume=resume,
         overwrite=overwrite,
         parameters={
+            "area": area.identity,
             "building_ids": True,
             "tile_layout_version": 2,
             **context_parameters,
@@ -132,6 +151,7 @@ def main(
             area=area,
             workers=workers,
             building_context_m=building_context_m,
+            preparation=preparation,
         )
 
 
@@ -143,14 +163,14 @@ def _produce(
     table: LanduseTable,
     bgt_path: Path | None,
     overwrite: bool,
-    area: Area,
+    area: str | Area | ProductionArea,
     workers: int,
     building_context_m: float,
+    preparation: SourcePreparation,
 ) -> Path:
     if int(gdal.VersionInfo()) < 3120000:
         raise RuntimeError("Embedded raster attribute tables require GDAL >= 3.12")
     output = run.path
-    configure_logging(log_file=output / "productie.log", stdout=True)
     logger = get_logger(__name__)
     logger.info("Productie-uitvoermap: %s", output)
     csv_path = output / "landgebruik_met_code.csv"
@@ -186,7 +206,10 @@ def _produce(
         logger.info("%s", name)
 
     try:
-        bgt = Path(bgt_path) if bgt_path is not None else store.bgt_dir / BGT_BESTAND
+        sources = prepare_sources(
+            store, preparation, bgt_path=bgt_path, workers=workers
+        )
+        bgt = sources.bgt_gpkg
         featuretypes = [
             "waterdeel",
             "wegdeel",
@@ -199,7 +222,7 @@ def _produce(
         if not bgt.is_file():
             raise FileNotFoundError(
                 f"BGT-bestand ontbreekt: {bgt}. "
-                "Voer eerst scripts/bgt_actuele_vlakken.py uit."
+                "Bronvoorbereiding heeft geen BGT opgeleverd."
             )
         for name in featuretypes:
             columns = set(pyogrio.read_info(bgt, layer="bgt_" + name)["fields"])
@@ -207,9 +230,6 @@ def _produce(
                 columns
             ):
                 raise ValueError("Einddatumvelden ontbreken in " + name)
-        sources = replace(
-            FunctioneelLandgebruikSources.from_datastore(store), bgt_gpkg=bgt
-        )
         status["rwzi"] = (
             str(sources.rwzi_gpkg)
             if sources.rwzi_gpkg is not None
@@ -227,6 +247,7 @@ def _produce(
         stage("Landelijk tegelrooster maken")
         tiles = build_tiles(
             target_path=output / "grid.gpkg",
+            boundary_path=ensure_land_boundary(store, preparation),
             tile_size_m=TEGELGROOTTE_M,
             overwrite=overwrite,
         )

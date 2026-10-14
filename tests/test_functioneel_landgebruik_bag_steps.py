@@ -40,7 +40,13 @@ def test_combined_control_preserves_sources_and_explains_exclusion(tmp_path, all
     )
     panden.to_file(path, layer="pand", driver="GPKG")
     vbo.to_file(path, layer="verblijfsobject", driver="GPKG")
-    script = Path(__file__).parents[1] / "scripts" / "controle_bag_landgebruik.py"
+    script = (
+        Path(__file__).parents[1]
+        / "src"
+        / "waterlagen"
+        / "functioneel_landgebruik"
+        / "controle.py"
+    )
     main = runpy.run_path(str(script))["main"]
     target = main(store, bounds=(-1, -1, 6, 2), stap=5)
     assert pyogrio.list_layers(target)[:, 0].tolist() == ["bag_controle"]

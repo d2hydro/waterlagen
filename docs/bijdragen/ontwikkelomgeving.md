@@ -1,3 +1,7 @@
+---
+editorial_status: ai
+---
+
 # Ontwikkelomgeving
 
 Deze pagina is bedoeld voor ontwikkelaars die de broncode aanpassen of testen.

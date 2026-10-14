@@ -501,6 +501,7 @@ def bouw_functioneel_landgebruik(
     diagnostics_path: Path | None = None,
     building_index_path: Path | None = None,
     building_context_m: float = 5.0,
+    landgebied_path: Path | None = None,
 ) -> Path:
     """Build a functional land-use GeoTIFF for one requested extent.
 
@@ -510,7 +511,7 @@ def bouw_functioneel_landgebruik(
     overviews. Source geometries are read with the requested bounds as a bbox
     filter. Top10NL, BRP, BGT roads, and BAG classes are additionally adjusted
     using representative points covered by the LIWO outside-area polygons
-    (including boundaries). All other locations use inside codes.
+    (including boundaries). All other locations use default codes.
 
     Parameters
     ----------
@@ -560,6 +561,10 @@ def bouw_functioneel_landgebruik(
     building_context_m : float, optional
         Extra prepared neighbours around complete footprints for DEM donor
         exclusion. Must cover the DEM's maximum building search distance.
+    landgebied_path : Path, optional
+        Bestuurlijke gebieden GeoPackage with the landgebied boundary used
+        when filling gaps. If omitted, use the default boundary location.
+        Only read when gap_fill_distance_m is greater than zero.
 
     Returns
     -------
@@ -670,7 +675,11 @@ def bouw_functioneel_landgebruik(
             )
 
     if gap_fill_distance_m:
-        landgebied = read_landsgrens()
+        landgebied = (
+            read_landsgrens(path=landgebied_path)
+            if landgebied_path is not None
+            else read_landsgrens()
+        )
         if landgebied.crs is None:
             raise ValueError("Landgebied heeft geen CRS.")
         if not same_crs(landgebied.crs, crs):

@@ -207,7 +207,10 @@ def test_control_and_national_raster_use_same_pump_decisions(tmp_path):
         sources.buitendijks_gpkg, layer="buitendijks_gebied_uit_liwo", driver="GPKG"
     )
     script = runpy.run_path(
-        str(Path(__file__).parents[1] / "scripts/controle_bag_landgebruik.py")
+        str(
+            Path(__file__).parents[1]
+            / "src/waterlagen/functioneel_landgebruik/controle.py"
+        )
     )
     control_path = script["main"](store, bounds=(0, 0, 25, 12), stap=6)
     control = wgpd.read_file(control_path, layer="bag_controle")

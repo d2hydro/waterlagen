@@ -89,6 +89,8 @@ def test_note_codes_and_unresolved_choices(
         (["kantoorfunctie", "overige gebruiksfunctie"], [50, 150], 32),
         (["kantoorfunctie", "overige gebruiksfunctie"], [20, 100], 33),
         (["kantoorfunctie", "overige gebruiksfunctie"], [20, 101], 32),
+        (["kantoorfunctie", "winkelfunctie"], [100, 100], 30),
+        (["winkelfunctie", "kantoorfunctie"], [100, 100], 30),
         (
             ["kantoorfunctie", "overige gebruiksfunctie", "overige gebruiksfunctie"],
             [80, 50, 50],

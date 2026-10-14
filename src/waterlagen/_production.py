@@ -13,6 +13,7 @@ from pathlib import Path
 from xml.etree import ElementTree
 
 from waterlagen._filesystem import replace_file
+from waterlagen._run_logging import run_log
 from waterlagen.logger import get_logger
 
 logger = get_logger(__name__)
@@ -121,6 +122,32 @@ class ProductionRun:
         self._save()
 
 
+def validate_run_target(
+    processed_data_dir: Path,
+    dataset: str,
+    scope: str,
+    run_id: str | None,
+    *,
+    resume: bool,
+    overwrite: bool,
+) -> None:
+    """Reject an invalid destination before any source downloads or refreshes."""
+    validate_run_options(run_id, resume=resume, overwrite=overwrite)
+    if run_id is None:
+        return
+    path = processed_data_dir / dataset / scope / run_id
+    if not resume and not overwrite and path.exists():
+        raise ValueError(f"Runfolder '{path}' bestaat al. Kies een nieuwe --run-id.")
+    if (resume or overwrite) and not (path / "run.json").is_file():
+        raise ValueError(
+            f"Runfolder '{path}' heeft geen run.json. Kies een nieuwe --run-id."
+        )
+    if (path / ".run.lock").exists():
+        raise ValueError(
+            f"Runfolder '{path}' is vergrendeld; er is mogelijk nog een productie actief."
+        )
+
+
 @contextmanager
 def production_run(
     processed_data_dir: Path,
@@ -185,7 +212,8 @@ def production_run(
         run._save()
         logger.info("Productie-uitvoermap: %s", path)
         try:
-            yield run
+            with run_log(path):
+                yield run
         except BaseException as error:
             run.metadata.update(status="failed", error=str(error))
             run._save()

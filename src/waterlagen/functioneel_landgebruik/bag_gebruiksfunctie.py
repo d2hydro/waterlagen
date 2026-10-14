@@ -5,7 +5,8 @@
 - Neem één kandidaatfunctie of uitsluitend overige met NULL direct over.
 - Rangschik anders de opgetelde oppervlakten, met uitsluiting van NULL en
   overige gebruiksfunctie onder 100 m².
-- Laat ongeldige brongegevens en gelijke grootste resterende totalen open.
+- Kies bij gelijke grootste totalen de functie met de hoogste prioriteit.
+- Laat ongeldige brongegevens open.
 """
 
 from dataclasses import dataclass
@@ -93,12 +94,15 @@ def _choose_candidate_function(vbo: pd.DataFrame, goals: pd.Series) -> _Function
     eligible = ranked[(ranked.index != "overige gebruiksfunctie") | (ranked >= 100)]
     winners = eligible[eligible == eligible.iloc[0]]
     if len(winners) != 1:
+        function = next(goal for goal in GOAL_PRIORITY if goal in winners.index)
         tied = "; ".join(
             f"{goal}: {_format_area(area)}" for goal, area in winners.items()
         )
         return _FunctionChoice(
+            function=function,
+            status="gekozen",
             rule="gelijke grootste oppervlakten",
-            reason=f"{tied}. Gelijke grootste oppervlakte: voorrang nog te bepalen.",
+            reason=f"{tied}. Gelijke grootste oppervlakte: kies {function} volgens prioriteit.",
             areas=overview,
         )
     return _FunctionChoice(
@@ -223,7 +227,8 @@ def determine_bag_functions(
     appartementenregels. Anders worden kandidaatfuncties per oppervlakte
     opgeteld, zonder woonfunctie. Eén functie en uitsluitend overige met NULL
     worden direct gekozen. Bij rangschikking vallen NULL en overige onder
-    100 m² af. Gelijke grootste resterende totalen blijven te beoordelen.
+    100 m² af. Bij gelijke grootste resterende totalen wint de functie met de
+    hoogste prioriteit volgens ``GOAL_PRIORITY``.
     Meervoudige doelen worden eerst per VBO volgens ``GOAL_PRIORITY`` teruggebracht
     tot één functie. Het volledige VBO-oppervlak telt eenmaal mee bij die functie.
     De geselecteerde functies bepalen ook de aanwezigheid van wonen en de

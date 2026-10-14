@@ -1,3 +1,7 @@
+---
+editorial_status: ai
+---
+
 # AI coding agents
 
 AI coding agents kunnen contributors helpen bij code en documentatie. De

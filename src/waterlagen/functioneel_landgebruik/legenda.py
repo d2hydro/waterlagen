@@ -266,7 +266,7 @@ def write_qgis_style(raster_path: Path, table: LanduseTable) -> Path:
     """
     labels = {0: "0 — NoData / niet ingedeeld"}
     for row in table.rows:
-        labels[row.inside] = f"{row.inside} — {row.description} (binnendijks)"
+        labels[row.inside] = f"{row.inside} — {row.description}"
     for code in sorted({row.outside for row in table.rows}):
         rows = [row for row in table.rows if row.outside == code]
         preferred = [row for row in rows if row.outside == row.inside + 128]
