@@ -32,6 +32,7 @@ def cli() -> None:
         "building_initial_buffer_m": "Eerste zoekafstand rond gebouwen in meters",
         "building_buffer_step_m": "Toename van de gebouwzoekafstand in meters",
         "building_percentile": "Hoogtepercentiel bij de eerste geslaagde zoekactie (0-100)",
+        "building_offset_m": "Toeslag op de geschatte gebouwhoogte in meters (standaard 0.05; 0 schakelt de toeslag uit)",
         "building_max_search_distance_m": "Maximale zoekafstand rond gebouwen in meters",
         "interpolation_max_distance_m": "Maximale AHN-interpolatieafstand in meters; 0 schakelt vullen uit",
     }

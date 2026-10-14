@@ -24,6 +24,9 @@ class DemConfig:
         AHN filling distance, default 250 m. Zero disables interpolation.
     output : RasterOutputConfig
         Tile block sizes and overview factors.
+    building_offset_m : float
+        Offset added to the estimated building height in metres, default 0.05.
+        Must be finite. Zero disables the offset; negative values lower the height.
     """
 
     building_initial_buffer_m: float = 1.0
@@ -32,8 +35,11 @@ class DemConfig:
     building_max_search_distance_m: float = 5.0
     interpolation_max_distance_m: float = 250.0
     output: RasterOutputConfig = field(default_factory=RasterOutputConfig)
+    building_offset_m: float = 0.05
 
     def __post_init__(self) -> None:
+        if not isfinite(self.building_offset_m):
+            raise ValueError("building_offset_m must be finite")
         for name in (
             "building_initial_buffer_m",
             "building_buffer_step_m",

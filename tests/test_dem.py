@@ -1,3 +1,4 @@
+import json
 from dataclasses import replace
 
 import geopandas as gpd
@@ -155,7 +156,7 @@ def test_dem_pipeline_provenance_precedence_cogs_and_resume(
     assert np.all(ahn_provenance[data != -9999] == 1)
     assert np.all(ahn_provenance[data == -9999] == 3)
     np.testing.assert_array_equal(dem[provenance == 1], data[provenance == 1])
-    assert np.all(dem[provenance == 2] == 200)
+    assert np.all(dem[provenance == 2] == 205)
     assert np.all(dem[provenance == 0] == -9999)
     assert np.all(provenance[4, 31:34] == 3)
     for name in ("dem", "dem_bron", "ahn_bron"):
@@ -163,7 +164,9 @@ def test_dem_pipeline_provenance_precedence_cogs_and_resume(
             read(result.parent / f"{name}.vrt"), read(result.parent / f"{name}.tif")
         )
     heights = wgpd.read_file(result.parent / "gebouwhoogten.gpkg")
-    assert heights.loc[heights.gebouw_id == 1, "hoogte_m"].iloc[0] == 4.0
+    assert heights.loc[heights.gebouw_id == 1, "hoogte_m"].iloc[0] == pytest.approx(
+        4.05
+    )
     diagnostics = wgpd.read_file(result.parent / "nodata.gpkg", layer="nodata")
     unresolved = diagnostics[diagnostics.bron == "Gebouw"]
     assert unresolved.categorie.eq("Gebouw").all()
@@ -185,7 +188,7 @@ def test_dem_pipeline_provenance_precedence_cogs_and_resume(
     # Every piece of the crossing building receives the same stored value.
     for tile in landuse_inputs:
         ids = read(building_paths(tile)[0])
-        assert np.all(read(_tile_paths(result.parent, tile).buildings)[ids == 1] == 200)
+        assert np.all(read(_tile_paths(result.parent, tile).buildings)[ids == 1] == 205)
     before = (result.parent / "gebouwhoogten.gpkg").stat().st_mtime_ns
     calls.clear()
     bouw_dem_tiles(
@@ -198,16 +201,30 @@ def test_dem_pipeline_provenance_precedence_cogs_and_resume(
         result.parent, ahn_vrt_path=ahn, landuse_tiles=landuse_inputs, config=config
     )
     assert calls == ["inverse_distance"]
+    for changed_config in (
+        replace(config, building_percentile=80),
+        replace(config, building_offset_m=0),
+    ):
+        with pytest.raises(ValueError, match="configuration changed"):
+            bouw_dem_tiles(
+                result.parent,
+                ahn_vrt_path=ahn,
+                landuse_tiles=landuse_inputs,
+                config=changed_config,
+            )
+
+    manifest = result.parent / "dem_inputs.json"
+    legacy_identity = json.loads(manifest.read_text(encoding="utf-8"))
+    del legacy_identity["config"]["building_offset_m"]
+    manifest.write_text(json.dumps(legacy_identity), encoding="utf-8")
     with pytest.raises(ValueError, match="configuration changed"):
         bouw_dem_tiles(
-            result.parent,
-            ahn_vrt_path=ahn,
-            landuse_tiles=landuse_inputs,
-            config=replace(config, building_percentile=80),
+            result.parent, ahn_vrt_path=ahn, landuse_tiles=landuse_inputs, config=config
         )
 
 
-def test_iterative_search_limit_percentile_and_neighbour_exclusion(tmp_path):
+@pytest.mark.parametrize("offset_m", [0.05, 0.0, 0.2, -0.1])
+def test_iterative_search_limit_percentile_and_neighbour_exclusion(tmp_path, offset_m):
     data = np.full((24, 24), -9999, dtype="float32")
     # Building at x/y 10..12; neighbouring building contains tempting false donors.
     data[12:14, 12:14] = 999
@@ -220,12 +237,13 @@ def test_iterative_search_limit_percentile_and_neighbour_exclusion(tmp_path):
     )
     ahn = write_ahn(tmp_path / "sample.tif", data)
     with rasterio.open(ahn) as source:
-        heights = calculate_building_elevations(buildings, {1}, source, DemConfig())
-        assert heights.hoogte_m.iloc[0] == 25
+        config = DemConfig(building_offset_m=offset_m)
+        heights = calculate_building_elevations(buildings, {1}, source, config)
+        assert heights.hoogte_m.iloc[0] == pytest.approx(25 + offset_m)
         assert heights.zoekafstand_m.iloc[0] == 3
         assert heights.donor_aantal.iloc[0] == 2
         limited = calculate_building_elevations(
-            buildings, {1}, source, DemConfig(building_max_search_distance_m=2)
+            buildings, {1}, source, replace(config, building_max_search_distance_m=2)
         )
         assert limited.hoogte_m.isna().all()
         assert limited.zoekafstand_m.iloc[0] == 2
@@ -256,7 +274,7 @@ def test_excludes_neighbour_touching_donor_pixel_outside_search_ring(tmp_path):
     with rasterio.open(ahn) as source:
         heights = calculate_building_elevations(buildings, {1}, source, DemConfig())
     # Its geometry misses the ring, but all_touched marks the candidate pixel.
-    assert heights.hoogte_m.iloc[0] == 10
+    assert heights.hoogte_m.iloc[0] == pytest.approx(10.05)
     assert heights.donor_aantal.iloc[0] == 1
 
 
@@ -384,6 +402,9 @@ def test_rejects_insufficient_prepared_building_context(tmp_path, landuse_inputs
         {"building_max_search_distance_m": 0},
         {"building_buffer_step_m": 0},
         {"building_percentile": 101},
+        {"building_offset_m": float("nan")},
+        {"building_offset_m": float("inf")},
+        {"building_offset_m": float("-inf")},
         {"interpolation_max_distance_m": float("nan")},
     ],
 )
@@ -746,7 +767,7 @@ def test_diagnostics_split_ahn_gaps_before_building_overlay(tmp_path, landuse_in
     assert categories[0, :3].tolist() == [1, 1, 2]
     assert categories[1, :3].tolist() == [2, 2, 2]
     assert categories[32, 32] == 2
-    assert read(result)[32, 32] == 10
+    assert read(result)[32, 32] == pytest.approx(10.05)
     missing = read(result) == -9999
     assert missing.sum() == 6
     np.testing.assert_array_equal(

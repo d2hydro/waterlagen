@@ -36,7 +36,7 @@ Alleen rastercellen waarvoor BAG de bron is in het functionele landgebruik, tell
 
 De gebouwhoogte wordt afgeleid uit de oorspronkelijke AHN-hoogtes rondom het volledige pand, ook als dat over een tegelgrens ligt. Hoogtes binnen het pand of buurpanden tellen niet mee. De zoekafstand begint bij 1 meter en wordt zo nodig in stappen van 1 meter vergroot tot maximaal 5 meter.
 
-Zodra bruikbare hoogtes zijn gevonden, wordt het 75e percentiel als gebouwhoogte gebruikt: een hoogte waar ongeveer driekwart van de gevonden waarden op of onder ligt. Er wordt geen vaste vloerhoogtetoeslag bij opgeteld.
+Voor bruikbare hoogtes wordt het 75e percentiel bepaald. Hierbij wordt standaard 0,05 m (5 cm) opgeteld als schatting van het vloerpeil boven maaiveld. Deze toeslag is instelbaar (0 = geen toeslag) en geldt alleen voor succesvol geschatte gebouwhoogtes.
 
 De hoogte, BAG-identificatie, zoekafstand en het aantal donors (gebruikte AHN-hoogtes) worden bewaard in `gebouwhoogten.gpkg`.
 

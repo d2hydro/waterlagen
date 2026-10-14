@@ -355,12 +355,14 @@ def test_dem_example_requests_full_building_context_and_passes_config(
                 "interpolation_max_distance_m=125.0",
             ),
             ("building_percentile=75.0", "building_percentile=60.0"),
+            ("building_offset_m=0.05", "building_offset_m=0.15"),
         ],
     )
     build.assert_called_once()
     config = build.call_args.kwargs["config"]
     assert config.interpolation_max_distance_m == 125.0
     assert config.building_percentile == 60.0
+    assert config.building_offset_m == 0.15
     assert build.call_args.kwargs["landuse_tiles"] == [
         landuse_dir.relative_to(tmp_path) / "functioneel_landgebruik.tif"
     ]

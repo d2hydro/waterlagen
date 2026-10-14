@@ -99,6 +99,24 @@ def test_invalid_arguments_do_not_start_production(arguments):
     workflow.assert_not_called()
 
 
+@pytest.mark.parametrize("offset", [None, "0", "0.15"])
+def test_dem_cli_passes_building_offset(tmp_path, monkeypatch, offset):
+    path = Path(__file__).parents[1] / "scripts" / "dem.py"
+    spec = importlib.util.spec_from_file_location("dem", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    main = Mock(return_value=tmp_path / "result")
+    monkeypatch.setattr(module, "main", main)
+    arguments = [str(path), "--data-dir", str(tmp_path)]
+    if offset is not None:
+        arguments.extend(["--building-offset-m", offset])
+    monkeypatch.setattr("sys.argv", arguments)
+    module.cli()
+    main.assert_called_once()
+    expected = 0.05 if offset is None else float(offset)
+    assert main.call_args.kwargs["config"].building_offset_m == expected
+
+
 def test_cli_directories_override_environment(tmp_path, monkeypatch):
     monkeypatch.setenv("DATA_DIR", str(tmp_path / "environment"))
     monkeypatch.setenv("SOURCE_DATA_DIR", str(tmp_path / "environment_sources"))
