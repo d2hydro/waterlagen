@@ -63,8 +63,10 @@ Met `--ahn-vrt PAD` gebruikt u een eigen DTM-mozaïek dat ook de donoromgeving d
 | `--building-initial-buffer-m` | 1 | Eerste gebouwzoekafstand |
 | `--building-buffer-step-m` | 1 | Toename zonder geldige donor |
 | `--building-percentile` | 75 | Percentiel bij eerste geslaagde zoekactie |
+| `--building-offset-m` | 0.05 | Toeslag op de geschatte vloerpeil t.o.v. lokaal maaiveld in meters; 0 schakelt de toeslag uit |
 | `--building-max-search-distance-m` | 5 | Maximale gebouwzoekafstand |
 | `--interpolation-max-distance-m` | 250 | AHN-interpolatieafstand; 0 schakelt vullen uit |
+
 
 Stel bijvoorbeeld in `.env` in:
 

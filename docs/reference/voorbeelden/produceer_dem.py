@@ -28,6 +28,7 @@ CONFIG = DemConfig(
     building_buffer_step_m=1.0,
     building_max_search_distance_m=5.0,
     building_percentile=75.0,
+    building_offset_m=0.05,
 )
 WORKERS = 1
 

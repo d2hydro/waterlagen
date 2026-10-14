@@ -64,12 +64,12 @@ def _sample_building(
         donors = raw.data[valid & inside].astype("float64")
         if donors.size:
             elevations = donors * ahn.scales[0] + ahn.offsets[0]
+            percentile_height_m = float(
+                np.percentile(elevations, config.building_percentile, method="linear")
+            )
+            building_height_m = percentile_height_m + config.building_offset_m
             return (
-                float(
-                    np.percentile(
-                        elevations, config.building_percentile, method="linear"
-                    )
-                ),
+                building_height_m,
                 radius,
                 int(donors.size),
             )
@@ -99,12 +99,13 @@ def calculate_building_elevations(
     ahn : rasterio.io.DatasetReader
         Original DTM, including surrounding donor coverage.
     config : DemConfig
-        Search distances and percentile.
+        Search distances, percentile and building height offset in metres.
 
     Returns
     -------
     geopandas.GeoDataFrame
         One row per selected ID with hoogte_m, zoekafstand_m and donor_aantal.
+        hoogte_m includes the configured offset after converting AHN values to metres.
         Unresolved heights are NaN and are not a production failure.
     """
     result = buildings[buildings.gebouw_id.isin(selected_ids)].copy()
