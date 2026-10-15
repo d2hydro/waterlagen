@@ -31,6 +31,10 @@ RELEVANT_FIELDS: dict[str, tuple[str, ...]] = {
         "naam",
         "nen3610id",
         CATEGORIE_OPPERVLAKTEWATER_COLUMN,
+        "categorieoppervlaktewater",
+        "bron",
+        "osm_id",
+        "osm_laag",
         "statusleggerwatersysteem",
         "statusobject",
     ),
@@ -254,7 +258,11 @@ def _read_hydamo_layer(
     fields = list(dict.fromkeys(fields))
 
     source_selection = None
-    read_kwargs: dict[str, object] = {"layer": layer, "columns": fields}
+    read_kwargs: dict[str, object] = {
+        "layer": layer,
+        "columns": fields,
+        "fid_as_index": True,
+    }
     if spatial_selection is not None:
         source_selection = _selection_geometry_in_source_crs(
             spatial_selection,
@@ -271,11 +279,21 @@ def _read_hydamo_layer(
         logger.info("Reading all HyDAMO %s features", layer)
 
     features = wgpd.read_file(hydamo_path, **read_kwargs)
+    features["bronbestand"] = str(hydamo_path.resolve())
+    features["bronlaag"] = layer
+    features["bron_fid"] = features.index
     if source_selection is not None:
         features = features[features.geometry.intersects(source_selection)].copy()
     if features.crs is None:
         raise ValueError(f"HyDAMO layer '{layer}' has no CRS")
     if not same_crs(features.crs, settings.crs):
+        logger.info(
+            "Transforming %s / %s from %s to %s",
+            hydamo_path,
+            layer,
+            features.crs,
+            settings.crs,
+        )
         features = features.to_crs(settings.crs)
     features = _to_2d(features)
 

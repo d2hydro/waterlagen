@@ -2,16 +2,13 @@
 
 from pathlib import Path
 
-from shapely.geometry import box
 from shapely.ops import unary_union
 
-from waterlagen._production import production_run, validate_run_target
+from waterlagen._production import _file_identity, production_run, validate_run_target
 from waterlagen._sources import SourcePreparation, source_options
 from waterlagen.afwateringseenheden import (
     calculate_afwateringseenheden_tiles,
     prepare_watersysteem,
-    read_hydroobjecten,
-    read_puntobjecten,
     write_watersysteem,
 )
 from waterlagen.afwateringseenheden.brandlagen import (
@@ -19,7 +16,12 @@ from waterlagen.afwateringseenheden.brandlagen import (
     _prepare_brandlagen,
 )
 from waterlagen.afwateringseenheden.config import BrandlagenConfig
-from waterlagen.afwateringseenheden.objects import CATEGORIE_OPPERVLAKTEWATER_COLUMN
+from waterlagen.afwateringseenheden.sources import (
+    CONNECTION_POLICY,
+    SOURCE_POLICY,
+    read_watersysteem_sources,
+    validate_authority_options,
+)
 from waterlagen.afwateringseenheden.pcraster import require_pcraster
 from waterlagen.afwateringseenheden.raster import _grid_for_square
 from waterlagen.afwateringseenheden.tiles import (
@@ -38,6 +40,7 @@ from waterlagen.areas import (
 from waterlagen.datastore import DataStore
 from waterlagen.hydamo import download_hydamo
 from waterlagen.logger import get_logger
+from waterlagen.rijkswateren.download import RIJKSWATEREN_URL, download_rijkswateren
 from waterlagen.settings import settings
 
 logger = get_logger(__name__)
@@ -55,15 +58,19 @@ def main(
     offline: bool = False,
     preparation: SourcePreparation | None = None,
     brandlagen: BrandlagenConfig | None = None,
+    overige_waterschappen: bool = False,
+    eigen_hydamo: Path | None = None,
+    rijkswateren_url: str = RIJKSWATEREN_URL,
 ) -> Path:
-    """Produce complete tile results using objects from every relevant authority.
+    """Produce full tiles with separate drainage targets and surrounding burn context.
 
     Parameters
     ----------
     data_store : DataStore, optional
         Source and output locations.
     area : str or Area or ProductionArea
-        Input selection; results are not clipped to this boundary.
+        Input selection; results are not clipped to this boundary. A water
+        authority code also selects that authority's primary drainage targets.
     workers : int, optional
         Override the configured number of processes.
     run_id : str, optional
@@ -77,12 +84,24 @@ def main(
     brandlagen : BrandlagenConfig, optional
         User-supplied optional burn layers. Checked before AHN preparation.
         Recorded source identities and defaults must match when resuming a run.
+    overige_waterschappen : bool, optional
+        Include surrounding water authorities as targets, default False. Requires
+        an authority area. RWS remains burn context when an authority is chosen.
+    eigen_hydamo : pathlib.Path, optional
+        Complete hydroobject/gemaal/stuw replacement for the selected authority.
+        Validated before AHN preparation. Requires an authority area.
+    rijkswateren_url : str, optional
+        Published RWS source location. Local sources are reused unless refresh
+        is requested. Without an authority code, RWS also supplies targets.
 
     Returns
     -------
     pathlib.Path
         Combined afwateringseenheden GeoPackage.
     """
+    name = area_name(area)
+    code = name.removeprefix("waterschap_") if name.startswith("waterschap_") else None
+    validate_authority_options(code, overige_waterschappen, eigen_hydamo)
     require_pcraster()
     store = data_store or DataStore()
     validate_run_target(
@@ -106,7 +125,9 @@ def main(
     tiles = _tiles_for_gebied(
         selected.geometry, tile_size_m=tile_size, origin_x=0, origin_y=0
     )
-    context = unary_union([box(*tile.bounds) for tile in tiles]).buffer(tile_buffer)
+    context = unary_union(
+        [_calculation_geometry(tile, tile_buffer_m=tile_buffer) for tile in tiles]
+    )
     parameters = {
         "area": selected.identity,
         "crs": settings.crs,
@@ -115,7 +136,22 @@ def main(
         "burn_depth_m": 100,
         "max_fill_depth_m": 50,
         "random_seed": 12345,
-        "authority_filter": False,
+        "waterbeheercode": code,
+        "overige_waterschappen": overige_waterschappen,
+        "eigen_hydamo": str(Path(eigen_hydamo).resolve())
+        if eigen_hydamo is not None
+        else None,
+        "rijkswateren_url": rijkswateren_url,
+        "source_policy": SOURCE_POLICY,
+        "source_layers": {
+            "gkw": ["hydroobject", "gemaal", "stuw"],
+            "rws": ["hydroobject"],
+        },
+        "secondary_connection_policy": CONNECTION_POLICY,
+        "secondary_connection_tolerance_m": 2.0,
+        "max_segment_length_m": 500.0,
+        "resolution_m": 2.0,
+        "burn_categories": ["optional", "secundair", "primair"],
         "clip_to_area": False,
     }
     if brandlagen is not None:
@@ -150,8 +186,52 @@ def main(
                 progress=False,
             ),
         )
+        rijkswateren = store.hydamo_dir / "rws_hydamo.gpkg"
+        preparation.ensure(
+            rijkswateren,
+            lambda: download_rijkswateren(
+                store.hydamo_dir,
+                source_url=rijkswateren_url,
+                overwrite=preparation.refresh,
+                progress=False,
+            ),
+        )
+        source_paths = {"hydamo": hydamo, "rijkswateren": rijkswateren}
+        if eigen_hydamo is not None:
+            source_paths["eigen_hydamo"] = Path(eigen_hydamo)
+        for label, path in list(source_paths.items()):
+            source_paths[f"{label}_wal"] = Path(str(path) + "-wal")
+        source_identity = {
+            name: _file_identity(path) for name, path in source_paths.items()
+        }
+        previous_inputs = run.metadata.get("inputs")
+        if previous_inputs is not None and any(
+            previous_inputs.get(name) != identity
+            for name, identity in source_identity.items()
+        ):
+            raise ValueError(
+                "Runfolder heeft andere bronbestanden. Kies een nieuwe --run-id."
+            )
+        sources = read_watersysteem_sources(
+            hydamo,
+            rijkswateren,
+            spatial_selection=context,
+            waterbeheercode=code,
+            overige_waterschappen=overige_waterschappen,
+            eigen_hydamo=eigen_hydamo,
+        )
         ahn = prepare_ahn(store, context, run.path / "input" / "ahn.vrt", preparation)
-        inputs = {"ahn": ahn, "hydamo": hydamo, "landsgrens": boundary}
+        inputs = {
+            **source_paths,
+            "ahn": ahn,
+            "landsgrens": boundary,
+        }
+        if source_identity != {
+            name: _file_identity(path) for name, path in source_paths.items()
+        }:
+            raise ValueError(
+                "Watersysteem sources changed during preparation; retry with stable sources"
+            )
         if brandlagen is not None:
             inputs.update(
                 {
@@ -160,20 +240,10 @@ def main(
                 }
             )
         run.record_inputs(inputs)
-        hydro = read_hydroobjecten(hydamo, spatial_selection=context)
-        primary = hydro.loc[
-            hydro[CATEGORIE_OPPERVLAKTEWATER_COLUMN].eq("primair")
-        ].copy()
-        secondary = hydro.loc[
-            hydro[CATEGORIE_OPPERVLAKTEWATER_COLUMN].eq("secundair")
-        ].copy()
-        points = read_puntobjecten(
-            hydamo, layers=["gemaal", "stuw"], spatial_selection=context
-        )
-        network = prepare_watersysteem(primary, points, hydroobject_secundair=secondary)
+        network = prepare_watersysteem(sources.targets, sources.points)
         network_path = write_watersysteem(
-            hydroobject_primair=primary,
-            hydroobject_secundair=secondary,
+            hydroobject_primair=sources.primary,
+            hydroobject_secundair=sources.secondary,
             watersysteem=network,
             output_path=run.path / "watersysteem.gpkg",
             overwrite=overwrite,

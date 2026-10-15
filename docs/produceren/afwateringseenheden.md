@@ -23,10 +23,12 @@ bronvernieuwing, offline gebruik en hervatten.
 ## Workflow
 
 1. Het gebied selecteert volledige tegelkernen van 10 x 10 km.
-2. De productie haalt de benodigde AHN-tegels, bestuurlijke gebieden en HYDAMO
-   op, of hergebruikt lokale bronnen. De AHN-selectie dekt ook de tegelbuffers.
-3. HYDAMO-objecten worden ruimtelijk geselecteerd met de benodigde context.
-   De beheerder van een object vormt geen extra filter.
+2. GKW HYDAMO en de gepubliceerde Rijkswaterenbron worden opgehaald of lokaal
+   hergebruikt. Een eventuele eigen levering en de geselecteerde bronobjecten
+   worden gecontroleerd vóór de AHN-voorbereiding.
+3. Bronnen worden geselecteerd voor volledige tegelkernen en rechthoekige
+   buffers. Hun geometrie blijft volledig behouden. De AHN-selectie dekt
+   dezelfde rekencontext. Doelen en brandcontext worden afzonderlijk gekozen.
 4. De productie berekent de tegels en voegt de bruikbare resultaten samen.
    De gebiedsgrens knipt het resultaat niet af.
 
@@ -36,6 +38,67 @@ secundaire waterlopen 100 m en de maximale opvuldiepte 50 m. De vaste seed is
 van de gekozen gebiedsgrens als invoerselectie.
 De betekenis en beperkingen staan bij
 [Afwateringseenheden](../bewerkte-lagen/afwateringseenheden.md).
+
+## Doelmodi en bronnen
+
+| Selectie | Primaire afwateringsdoelen | Alleen brandcontext |
+| --- | --- | --- |
+| Waterschapscode, standaard | Eigen waterschap | Overige waterschappen en RWS |
+| Waterschapscode met `--overige-waterschappen` | Eigen en overige waterschappen | RWS |
+| Geen waterschapscode | Alle geselecteerde waterschappen en RWS | Geen afzonderlijke beheerdergroep |
+
+De nieuwe standaard bij een waterschapscode verschilt van de eerdere productie,
+die alle ruimtelijk geselecteerde GKW-beheerders als doelen gebruikte.
+Zonder waterschapscode leveren Rijkswateren ook in een uitsnede zoals
+`--area alkmaar` doelen. De vlag verandert de brandselectie en het gebrande DEM
+niet, maar wel de segmenten en mogelijke doeltoekenning. Secundaire lijnen
+leveren nooit zelf doelen. Alleen kunstwerken van deelnemende beheerders
+worden gebruikt bij de bestaande segmentvoorbereiding.
+
+De [Rijkswaterenbron](../bronlagen/rijkswateren.md) levert alle RWS-lijnen.
+GKW-hydroobjecten met code `80` worden uitgesloten, ook uit de brandcontext.
+GKW-gemalen en -stuwen van code `80` blijven beschikbaar wanneer RWS doelen
+levert. Ontbrekende RWS-lijnen worden niet uit GKW aangevuld.
+`--rijkswateren-url` stelt een andere publieke share of directe GeoPackage-URL in.
+Publicatie blijft handmatig; lokale opslag is `source_data/hydamo/rws_hydamo.gpkg`.
+
+```console
+pixi run --environment afwateringseenheden afwateringseenheden --waterbeheercode 38 --run-id aa-maas-eigen
+pixi run --environment afwateringseenheden afwateringseenheden --waterbeheercode 38 --overige-waterschappen --run-id aa-maas-samen
+pixi run --environment afwateringseenheden afwateringseenheden --waterbeheercode 38 --eigen-hydamo eigen.gpkg --run-id eigen-bron
+```
+
+### Eigen levering
+
+`--eigen-hydamo` vervangt alle GKW-objecten van de gekozen beheerder, ook in
+de brandcontext. De lagen `hydroobject`, `gemaal` en `stuw` zijn verplicht;
+kunstwerklagen mogen leeg zijn. Alle objecten moeten een geldige `nen3610id`
+van de gekozen beheerder hebben (`NL.WBHCODE.<code>.<rest>`). Ook identifiers
+buiten de ruimtelijke selectie worden gecontroleerd. Selecteer een levering
+met meerdere beheerders vooraf. Er is geen fallback naar GKW bij brongaten.
+GKW blijft nodig voor de omgeving. Beide beheerderopties vereisen een
+waterschapscode; in Python heten ze `eigen_hydamo` en `overige_waterschappen`.
+
+Beide categorievelden `categorieoppwaterlichaam` en `categorieoppervlaktewater`
+worden herkend. Bekende waarden zijn `primair`, `secundair` en `tertiair`;
+tertiaire lijnen worden niet gebruikt. Onbekende of ontbrekende categorieën,
+tegenstrijdige kolommen en ontbrekende CRS-definities geven een fout.
+Een bekend afwijkend CRS wordt expliciet naar het project-CRS getransformeerd.
+
+### Gezamenlijke secundaire verbindingstoets
+
+Alle geselecteerde secundaire lijnen worden gezamenlijk gegroepeerd met een
+tolerantie van 2 m. Een groep wordt gebrand zodra één lid binnen 2 m van een
+geselecteerde primaire lijn ligt. Een keten over beheerdergrenzen of een
+aansluiting uitsluitend op RWS kan dus voldoende zijn. De volledige
+lijngeometrie telt, niet alleen eindpunten. Niet-verbonden groepen blijven
+beschikbaar voor controle. Verbindingen via niet-geselecteerde objecten kunnen
+ontbreken. Deze geometrische toets bewijst geen hydraulische verbinding.
+
+De vaste categorievolgorde geldt over alle beheerders: **primair > verbonden
+secundair > optioneel**. Primaire lijnen krijgen `-2 * burn_depth_m`, secundaire
+lijnen `-burn_depth_m`: standaard -200 en -100 m. Dit zijn rekenkundige
+verlagingen, geen bodemhoogtes. De keuze van doelen verandert deze regels niet.
 
 ## Optionele brandlagen
 
@@ -116,6 +179,20 @@ Elke run staat onder `processed_data/afwateringseenheden/<gebied>/<run-id>/`.
 | `tiles/<tegel-id>/` | Rasters, polygonen en status per rekentegel. |
 | `productie.log` | Hoofdlog, inclusief de werkprocessen. |
 | `run.json` | Instellingen, bronidentiteit, pakketversie en runstatus. |
+
+Afwateringseenheden behouden de beheerder, oorspronkelijke identifiers en
+bronbestand/laag/FID van hun doelsegment. `watersysteem.gpkg` bevat alle
+primaire brandlijnen, verbonden secundaire lijnen en de controlelaag
+`hydroobject_secundair_niet_verbonden`; alleen deelnemende primaire lijnen
+staan in `hydroobject_segment`.
+
+Het eindbestand bevat ook `niet_toegewezen` en `aanvulling_buurtegels`.
+De tweede laag bewaart donor- en doeltegel en de keuzevolgorde. Bij uitsluitend
+lege tegelresultaten staan deze controles in `tiles/controle.gpkg` en meldt
+de productie dat geen afwateringseenheden zijn gemaakt. Niet-toegewezen gebied
+is niet automatisch correcte externe afwatering: brongaten, tegelranden en
+rekenproblemen kunnen eveneens een oorzaak zijn. Toekenning aan het gekozen
+waterschap wordt niet geforceerd.
 
 ```console
 pixi run --locked afwateringseenheden --area alkmaar --run-id proef

@@ -38,8 +38,9 @@ De gebiedsgrens selecteert de invoer. De uitvoer wordt **niet op die grens
 geknipt**: volledige tegelkernen, objecten en noodzakelijke rekencontext blijven
 behouden. Daardoor kan uitvoer buiten het gekozen gebied liggen.
 Inwoners en auto's gebruiken volledige intersecterende CBS-buurten met alle
-bijbehorende woon-VBO's. Afwateringseenheden selecteert objecten ruimtelijk,
-zonder extra filter op de waterbeheerder van een object.
+bijbehorende woon-VBO's. Bij afwateringseenheden bepaalt een waterschapscode
+ook welke beheerder standaard afwateringsdoelen levert; de omringende objecten
+blijven brandcontext. Zie de [doelmodi](afwateringseenheden.md#doelmodi-en-bronnen).
 
 Alkmaar is een vaste Polygon in `waterlagen.areas`, in EPSG:28992 met begrenzing
 `(105000, 510000, 115000, 520000)`. De polygon verandert niet met de tegelgrootte.

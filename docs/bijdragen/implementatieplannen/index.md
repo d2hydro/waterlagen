@@ -6,8 +6,9 @@ editorial_status: ai
 
 Deze plannen leggen de ontwerpafspraken en opdrachten voor coding agents vast.
 #65 is op verzoek geïmplementeerd en ligt ter review. Het verruimde ontwerp voor
-#53 is na grilling bevestigd op 15 oktober 2026; alleen het plan is bijgewerkt.
-#53 en #67 beschrijven geplande wijzigingen, geen beschikbare implementaties.
+#53 is op 15 oktober 2026 op verzoek geïmplementeerd; de inhoudelijke
+productievergelijking en menselijke kaartbeoordeling staan nog open.
+#67 beschrijft geplande wijzigingen, geen beschikbare implementatie.
 
 Deze bestanden zijn interne werkdocumenten voor agents. Ze blijven in de
 repository beschikbaar en zijn uitgesloten van de gepubliceerde MkDocs-site.
@@ -17,14 +18,14 @@ repository beschikbaar en zijn uitgesloten van de gepubliceerde MkDocs-site.
 | Volgorde | Issue | Planstatus | Voorgestelde implementatiebranch |
 | --- | --- | --- | --- |
 | 1 | [#65 Brandlaag](https://github.com/d2hydro/waterlagen/issues/65) | [Geïmplementeerd; PR #79 ter review](issue-65-brandlagen.md) | `issue/65_brandlagen` |
-| 2 | [#53 Rijkswateren en omringende brandcontext](https://github.com/d2hydro/waterlagen/issues/53) | [Verruimd ontwerp bevestigd; nog niet geïmplementeerd](issue-53-rijkswateren.md) | `issue/53_opname_rijkswateren` |
+| 2 | [#53 Rijkswateren en omringende brandcontext](https://github.com/d2hydro/waterlagen/issues/53) | [Technisch geïmplementeerd; inhoudelijke acceptatie open](issue-53-rijkswateren.md) | `issue/53_opname_rijkswateren` |
 | 3 | [#67 Duikers zonder eigen afwateringseenheid](https://github.com/d2hydro/waterlagen/issues/67) | [Conceptplan voor eindcontrole](issue-67-duikers.md) | `feature/67-duikers-afwateringsdoelen` |
 
 Ieder issue krijgt een eigen implementatiebranch en PR. Rond de voorgaande PR af
 voordat de volgende implementatiebranch vanaf de bijgewerkte hoofdbranch wordt
 gestart. Voor #65 bestaat [PR #79](https://github.com/d2hydro/waterlagen/pull/79).
 Het #53-plan is bijgewerkt op `issue/53_opname_rijkswateren`, met de #65-code
-al aanwezig. Dit geeft nog geen opdracht tot implementatie. De branchnaam voor
+al aanwezig. De gebruiker heeft daarna opdracht tot implementatie gegeven. De branchnaam voor
 #67 blijft een voorstel.
 
 Issues #57, #63 en #64 vallen buiten deze reeks.

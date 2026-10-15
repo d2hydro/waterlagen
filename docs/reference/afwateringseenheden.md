@@ -8,6 +8,24 @@ De functionele uitleg staat bij [Afwateringseenheden](../bewerkte-lagen/afwateri
 Zie [Afwateringseenheden produceren](../produceren/afwateringseenheden.md) voor
 de uitvoering, parallel rekenen en logbestanden.
 
+## Bronselectie en afwateringsdoelen
+
+`read_watersysteem_sources` levert afzonderlijke primaire en secundaire
+brandcontext (`primary`, `secondary`), primaire doelen (`targets`) en
+deelnemende kunstwerken (`points`). Gebruik `targets` en `points` voor
+`prepare_watersysteem`; geef de volledige `primary` en `secondary` aan
+`write_watersysteem`. Die schrijft expliciete categorielagen en classificeert
+secundaire groepen gezamenlijk tegen de volledige primaire brongeometrie.
+Zo hangt de brandselectie niet af van de doelmodus.
+
+De oorspronkelijke identifiers blijven behouden naast `bronbestand`, `bronlaag`
+en `bron_fid`. Samengestelde `bron_id`-waarden bevatten bestand, laag, FID en
+het oorspronkelijke bron-ID, zodat FIDs en globalids tussen bronnen mogen overlappen.
+
+::: waterlagen.afwateringseenheden.read_watersysteem_sources
+
+::: waterlagen.afwateringseenheden.WatersysteemSources
+
 ## Brandlagen
 
 `read_brandlagen` combineert de bronnen uit `BrandlagenConfig` in één GeoDataFrame

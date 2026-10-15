@@ -398,12 +398,14 @@ def write_watersysteem(
     Parameters
     ----------
     hydroobject_primair : geopandas.GeoDataFrame
-        Selected primary source hydroobjecten. Written without topology changes.
+        All selected primary burn-context lines, including non-target authorities.
+        Written without topology changes and used for the joint secondary test.
     hydroobject_secundair : geopandas.GeoDataFrame
         Selected secondary source hydroobjecten. They are divided into connected
         and unconnected output layers using their complete line geometry.
     watersysteem : WatersysteemResult
-        Geometrically prepared primary segments and point-induced connections.
+        Geometrically prepared participating primary targets and point-induced
+        connections. These may be a subset of the primary burn context.
     data_store : DataStore, optional
         Supplies the default output directory.
     output_path : Path, optional

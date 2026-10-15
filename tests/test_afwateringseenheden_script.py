@@ -13,7 +13,7 @@ from waterlagen.datastore import DataStore
 
 @pytest.mark.parametrize("name", ["nederland", "alkmaar", "waterschap_38"])
 @pytest.mark.parametrize("optional_burn", [False, True])
-def test_one_area_product_with_full_tiles_and_all_authorities(
+def test_one_area_product_with_full_tiles_and_selected_authorities(
     tmp_path, monkeypatch, name, optional_burn
 ):
     store = DataStore(data_dir=tmp_path, _env_file=None)
@@ -21,26 +21,34 @@ def test_one_area_product_with_full_tiles_and_all_authorities(
     hydamo = store.hydamo_dir / "hydamo.gpkg"
     boundary = tmp_path / "boundary.gpkg"
     ahn = tmp_path / "ahn.vrt"
-    for path in (hydamo, boundary, ahn):
+    for path in (boundary, ahn):
         path.write_text("existing")
     ahn.write_text("<VRTDataset />")
     hydro = gpd.GeoDataFrame(
-        {production.CATEGORIE_OPPERVLAKTEWATER_COLUMN: ["primair", "secundair"]},
+        {
+            "categorieoppwaterlichaam": ["primair", "secundair"],
+            "nen3610id": ["NL.WBHCODE.38.p", "NL.WBHCODE.30.s"],
+        },
         geometry=[LineString([(150000, 400000), (151000, 401000)])] * 2,
         crs=28992,
     )
-    points = gpd.GeoDataFrame(geometry=[Point(150000, 400000)], crs=28992)
+    hydro.to_file(hydamo, layer="hydroobject")
+    points = gpd.GeoDataFrame(
+        {"nen3610id": ["NL.WBHCODE.38.point"]},
+        geometry=[Point(150000, 400000)],
+        crs=28992,
+    )
+    for layer in ("gemaal", "stuw"):
+        points.to_file(hydamo, layer=layer)
+    rws = hydro.iloc[:1].copy()
+    rws["nen3610id"] = "NL.WBHCODE.80.rws"
+    rws.to_file(store.hydamo_dir / "rws_hydamo.gpkg", layer="hydroobject")
     monkeypatch.setattr(production, "require_pcraster", Mock())
     monkeypatch.setattr(production, "ensure_land_boundary", Mock(return_value=boundary))
     prepare_ahn = Mock(return_value=ahn)
     monkeypatch.setattr(production, "prepare_ahn", prepare_ahn)
-    monkeypatch.setattr(production, "read_hydroobjecten", Mock(return_value=hydro))
-    read_points = Mock(return_value=points)
-    monkeypatch.setattr(production, "read_puntobjecten", read_points)
-    monkeypatch.setattr(production, "prepare_watersysteem", Mock(return_value=object()))
-    monkeypatch.setattr(
-        production, "write_watersysteem", lambda **kw: kw["output_path"]
-    )
+    prepare = Mock(wraps=production.prepare_watersysteem)
+    monkeypatch.setattr(production, "prepare_watersysteem", prepare)
     calculate = Mock(
         side_effect=lambda *args, **kw: SimpleNamespace(
             merged_path=kw["merged_output_path"]
@@ -74,7 +82,8 @@ def test_one_area_product_with_full_tiles_and_all_authorities(
     assert calculate.call_args.kwargs["brandlagen"] == config
     if optional_burn:
         assert (result.parent / "tiles" / "brandlagen.gpkg").exists()
-    assert "waterbeheercodes" not in read_points.call_args.kwargs
+    expected = {"38"} if name == "waterschap_38" else {"38", "80"}
+    assert set(prepare.call_args.args[0].waterbeheercode) == expected
     context = prepare_ahn.call_args.args[1]
     assert context.covers(box(150000, 400000, 160000, 410000))
     for mode in ("resume", "overwrite"):
@@ -87,6 +96,29 @@ def test_one_area_product_with_full_tiles_and_all_authorities(
             **{mode: True},
         )
         assert calculate.call_args.kwargs["overwrite"] is (mode == "overwrite")
+    if name == "waterschap_38":
+        with pytest.raises(ValueError, match="andere instellingen"):
+            production.main(
+                store,
+                area=area,
+                run_id="test",
+                offline=True,
+                resume=True,
+                brandlagen=config,
+                overige_waterschappen=True,
+            )
+    # Source changes must not reuse the already prepared network/tile outputs.
+    rws["naam"] = "changed source"
+    rws.to_file(store.hydamo_dir / "rws_hydamo.gpkg", layer="hydroobject")
+    with pytest.raises(ValueError, match="andere bronbestanden"):
+        production.main(
+            store,
+            area=area,
+            run_id="test",
+            offline=True,
+            resume=True,
+            brandlagen=config,
+        )
 
 
 def test_bad_brandlagen_stop_before_heavy_sources(tmp_path, monkeypatch):
@@ -110,4 +142,38 @@ def test_bad_brandlagen_stop_before_heavy_sources(tmp_path, monkeypatch):
             area=area,
             run_id="bad",
             brandlagen=BrandlagenConfig((Brandlaag(source, "objects"),)),
+        )
+
+
+@pytest.mark.parametrize(
+    "kwargs", [{"eigen_hydamo": "own.gpkg"}, {"overige_waterschappen": True}]
+)
+def test_authority_options_rejected_before_environment_or_sources(monkeypatch, kwargs):
+    monkeypatch.setattr(production, "require_pcraster", lambda: pytest.fail("Too late"))
+    with pytest.raises(ValueError, match="waterbeheercode"):
+        production.main(area="alkmaar", **kwargs)
+
+
+def test_own_contract_rejected_before_ahn(tmp_path, monkeypatch):
+    store = DataStore(data_dir=tmp_path, _env_file=None)
+    for name in ("hydamo.gpkg", "rws_hydamo.gpkg"):
+        (store.hydamo_dir / name).write_text("not read before own validation")
+    own = tmp_path / "own.gpkg"
+    gpd.GeoDataFrame(geometry=[Point(0, 0)], crs=28992).to_file(own, layer="gemaal")
+    monkeypatch.setattr(production, "require_pcraster", Mock())
+    monkeypatch.setattr(
+        production, "ensure_land_boundary", Mock(return_value=tmp_path / "boundary")
+    )
+    monkeypatch.setattr(
+        production,
+        "prepare_ahn",
+        lambda *a: pytest.fail("AHN prepared before validation"),
+    )
+    with pytest.raises(ValueError, match="missing required layers"):
+        production.main(
+            store,
+            area=ProductionArea("waterschap_30", box(0, 0, 1, 1), "EPSG:28992"),
+            eigen_hydamo=own,
+            offline=True,
+            run_id="invalid",
         )

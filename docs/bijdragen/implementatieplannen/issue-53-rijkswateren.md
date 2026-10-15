@@ -4,10 +4,10 @@ editorial_status: ai
 
 # #53 — Afwateringseenheden met eigen watersysteem en omringende brandcontext
 
-**Status:** ontwerp bevestigd na grilling op 15 oktober 2026. De gebruiker heeft
-het bijwerken van dit plan en de plannenindex goedgekeurd, niet de implementatie.
-Dit document beschrijft gepland gedrag. De eerdere implementatieaanzet is
-teruggedraaid; de hieronder beschreven uitbreiding is nog niet geïmplementeerd.
+**Status:** op verzoek geïmplementeerd op 15 oktober 2026 op
+`issue/53_opname_rijkswateren`. Technische controles en bevindingen staan onder
+[Uitvoeringsverslag](#uitvoeringsverslag). De inhoudelijke acceptatie met echte
+productiegegevens en menselijke kaartbeoordeling is nog niet voltooid.
 
 Issue: [#53 Expliciet opnemen Rijkswateren](https://github.com/d2hydro/waterlagen/issues/53).
 De scope is op verzoek verruimd. Hergebruik de aanwezige implementatie van
@@ -16,10 +16,10 @@ Houd de uitvoering in een afzonderlijke branch en PR voor #53.
 
 ## Doel en afbakening
 
-Leid afwateringseenheden af voor heel Aa en Maas, waterbeheercode **30**. Gebruik
+Leid afwateringseenheden af voor heel Aa en Maas, waterbeheercode **38**. Gebruik
 de eigen hydroobjecten en kunstwerken voor het watersysteem en gebruik de
 hydroobjecten van overige waterschappen en Rijkswaterstaat als brandcontext.
-Dezelfde werkwijze moet voor andere waterschappen werken, bijvoorbeeld code 38.
+Dezelfde werkwijze moet voor andere waterschappen werken, bijvoorbeeld code 27.
 
 Maak deelname als afwateringsdoel afzonderlijk instelbaar voor overige
 waterschappen. Zonder gekozen waterschap leveren ook Rijkswateren doelen.
@@ -310,7 +310,7 @@ echte downloads en vormen geen inhoudelijke landelijke validatie.
 
 ## Inhoudelijke acceptatie
 
-Gebruik Aa en Maas, waterbeheercode 30, met de Maas, Brabantse kanalen en relevante
+Gebruik Aa en Maas, waterbeheercode 38, met de Maas, Brabantse kanalen en relevante
 grensgebieden. Leg bronversies, publicatielocatie, eigen levering indien gebruikt,
 doelmodus en rekeninstellingen vast. Vergelijk bij gelijke bronnen en grids:
 
@@ -362,3 +362,73 @@ doeltoekenning afzonderlijk.
 Voeg daarvoor in #53 geen tweede gebiedsinterface toe. Deze plannen blijven
 uitgesloten van de MkDocs-site; pas voor dit plan geen navigatie of publicatie
 aan.
+
+## Uitvoeringsverslag
+
+De productie gebruikt `overige_waterschappen` / `--overige-waterschappen` en
+`eigen_hydamo` / `--eigen-hydamo`. De bestaande gebiedscode bepaalt tevens de
+doelbeheerders. `rijkswateren_url` / `--rijkswateren-url` configureert de bron.
+De gedeelde bronpolicy regelt lokaal hergebruik, offline werken en vernieuwen.
+
+`read_watersysteem_sources` levert volledige primaire/secundaire brandcontext
+en afzonderlijke primaire doelen en deelnemende kunstwerken. De bestaande
+categorielagen in `watersysteem.gpkg` blijven het gevalideerde lokale snapshot
+voor rasterisatie en workers; `brandcategorie` maakt de herkomst expliciet.
+`write_watersysteem` krijgt de volledige primaire context en classificeert
+secundair daarom gezamenlijk, onafhankelijk van de voorbereide doelsegmenten.
+De bestaande #65-rasterroutine en optionele brandconfiguratie blijven in gebruik.
+
+Afwateringseenheden behouden beheerder en bronherkomst. De controlelagen
+`niet_toegewezen` en `aanvulling_buurtegels` worden meegeleverd; bij uitsluitend
+lege resultaten staan ze in `tiles/controle.gpkg`. De uitgesloten secundaire
+lijnen staan in het watersysteem. Bronidentiteiten, inclusief SQLite-WAL,
+worden gecontroleerd vóór hergebruik. Een gewijzigde doelmodus vereist een
+nieuwe run; ontbrekende of mislukte resultaten worden opnieuw berekend.
+
+De echte RWS-download via de openbare redirect is uitgevoerd en gecontroleerd:
+2.305 lijnen in EPSG:28992, met de verwachte categorie en identifiers. Dit is
+een technische broncontrole, geen inhoudelijke acceptatie. De bestanden blijven
+in de genegeerde gegevensmap. De bronpagina bevat de geverifieerde verwijzingen.
+
+### Technische controles
+
+De gerichte acceptatiesuite heeft 266 geslaagde tests in de omgeving
+`afwateringseenheden`, inclusief echte PCRaster-berekeningen voor de drie
+doelmodi, de gedeelde downloads, productie/CLI en offline voorbeelden.
+Rasterio/Affine geeft bestaande deprecatiewaarschuwingen. Ruff en de strikte
+documentatiebuild zijn gecontroleerd. De beschermde pagina's zijn niet gewijzigd.
+
+### Inhoudelijke vergelijking
+
+De gebruiker heeft een bestaande DataStore aangeleverd, lokaal ingesteld via
+de genegeerde `.datastore`. De waterschapsgrenzen identificeren Aa en Maas als
+code **38**, niet 30. De gebruiker heeft gebruik van code 38 bevestigd; het
+plan en de productievoorbeelden zijn daarop gecorrigeerd.
+
+De selectie bestaat uit 30 volledige rekentegels. De context vraagt 150 AHN-
+brontegels, waarvan er bij inventarisatie 121 beschikbaar waren. GKW bevat
+ook `overig` en enkele lijnen zonder categorie. Voor die ontbrekende
+categorieën is expliciet een bronpolicy uitgevraagd voordat de productie start.
+De Aa-en-Maas-vergelijking, het gecontroleerde experiment zonder RWS-brandcontext
+en de kaartbeoordeling zijn nog open. Er is geen eigen levering verstrekt.
+Synthetische controles vervangen deze inhoudelijke vergelijking niet.
+
+### Afzonderlijke documentatiebevindingen
+
+Documentatie-impact: **confirmed**. Bronpagina, productie-instructies, gedeelde
+CLI-uitleg, API-reference en uitvoerbare voorbeelden zijn aangepast.
+
+De volgende beschermde pagina's zijn ongewijzigd gebleven:
+
+- `docs/bewerkte-lagen/afwateringseenheden.md`: de beschrijving zonder extra
+  beheerderfilter past niet meer bij de standaardproductie in
+  `afwateringseenheden/productie.py` en `sources.py`. RWS als bron, de drie
+  doelmodi, volledige vervanging, categorievoorrang over beheerders, de
+  gezamenlijke secundaire toets en de nieuwe controlelagen moeten worden
+  verwerkt. De pagina noemt ook 5-km-tegels en terugknippen naar het gebied;
+  de productie gebruikt 10-km-tegels en `clip_to_area=False`.
+- `docs/bronlagen/index.md`: de nieuwe Rijkswaterenbron ontbreekt in de lijst.
+
+Het #67-plan moet vóór uitvoering worden aangepast aan primaire RWS-context
+en aan het onderscheid tussen branden en doelen. In #53 zijn geen
+duikeruitsluitingen of herstelregels toegevoegd.

@@ -17,6 +17,19 @@ een klein voorbeeldgebied maakt die downloads niet kleiner.
 Een volledige productie haalt de benodigde bronnen zelf op; het is niet nodig
 alle onderstaande scripts eerst uit te voeren.
 
+## Rijkswateren
+
+De volledige handmatig gepubliceerde GeoPackage is ook voor kleine gebieden nodig.
+Het voorbeeld hergebruikt een geldige lokale bron zonder netwerkverkeer.
+
+[Over deze bron](../bronlagen/rijkswateren.md) · [API-referentie](rijkswateren.md)
+
+```python
+--8<-- "docs/reference/voorbeelden/download_rijkswateren.py"
+```
+
+[Download het script](voorbeelden/download_rijkswateren.py).
+
 ## AHN
 
 Download de AHN4-DTM-tegels die Alkmaar-centrum raken, met resolutie 0,5 m. Hele AHN-tegels worden opgehaald; de download is groter dan het voorbeeldgebied. Het resultaat is een VRT met bijbehorende GeoTIFFs.

@@ -15,8 +15,7 @@ from waterlagen.afwateringseenheden import (
     prepare_watersysteem,
     read_brandlagen,
     read_brandlagen_config,
-    read_hydroobjecten,
-    read_puntobjecten,
+    read_watersysteem_sources,
     write_watersysteem,
 )
 from waterlagen.ahn import download_ahn
@@ -24,6 +23,7 @@ from waterlagen.areas import NAMED_AREAS, NAMED_AREAS_CRS
 from waterlagen.datastore import DataStore
 from waterlagen.hydamo import download_hydamo
 from waterlagen.logger import production_logging
+from waterlagen.rijkswateren import download_rijkswateren
 from waterlagen.settings import settings
 
 DATA_DIR = Path("data")
@@ -38,6 +38,9 @@ BURN_DEPTH_M = 100.0
 MAX_FILL_DEPTH_M = 50.0
 WORKERS = 1
 BRANDLAGEN_CONFIG: Path | None = None  # Bijvoorbeeld Path("brandlagen.toml").
+WATERBEHEERCODE: str | None = None  # Zonder code levert ook RWS doelen.
+OVERIGE_WATERSCHAPPEN = False
+EIGEN_HYDAMO: Path | None = None
 
 if __name__ == "__main__":
     store = DataStore(
@@ -79,6 +82,15 @@ if __name__ == "__main__":
             print("Optionele brandobjecten in het rekengebied:", len(brandobjecten))
         # 1. Bronnen ophalen. HYDAMO en de landsgrens zijn landelijke bestanden.
         hydamo = download_hydamo(download_dir=store.hydamo_dir, overwrite=False)
+        rijkswateren = download_rijkswateren(store.hydamo_dir, overwrite=False)
+        bronnen = read_watersysteem_sources(
+            hydamo.target_path,
+            rijkswateren,
+            spatial_selection=context,
+            waterbeheercode=WATERBEHEERCODE,
+            overige_waterschappen=OVERIGE_WATERSCHAPPEN,
+            eigen_hydamo=EIGEN_HYDAMO,
+        )
         landsgrens = download_bestuurlijke_gebieden(
             year=DEFAULT_BESTUURLIJKE_GEBIEDEN_YEAR,
             download_dir=store.administratieve_gebieden_dir,
@@ -96,22 +108,15 @@ if __name__ == "__main__":
         )
 
         # 2. Lees het watersysteem inclusief omgeving; pas de selectie hier aan.
-        hydro = read_hydroobjecten(hydamo.target_path, spatial_selection=context)
-        primair = hydro.loc[hydro.categorieoppwaterlichaam.eq("primair")].copy()
-        secundair = hydro.loc[hydro.categorieoppwaterlichaam.eq("secundair")].copy()
-        punten = read_puntobjecten(
-            hydamo.target_path, layers=["gemaal", "stuw"], spatial_selection=context
-        )
         netwerk = prepare_watersysteem(
-            primair,
-            punten,
-            hydroobject_secundair=secundair,
+            bronnen.targets,
+            bronnen.points,
             tolerance=TOLERANCE_M,
             max_length=MAX_SEGMENT_LENGTH_M,
         )
         watersysteem = write_watersysteem(
-            hydroobject_primair=primair,
-            hydroobject_secundair=secundair,
+            hydroobject_primair=bronnen.primary,
+            hydroobject_secundair=bronnen.secondary,
             watersysteem=netwerk,
             output_path=output_dir / "watersysteem.gpkg",
             secondary_connection_tolerance=TOLERANCE_M,
