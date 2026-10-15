@@ -2,165 +2,363 @@
 editorial_status: ai
 ---
 
-# #53 — Rijkswateren gebruiken als brandlaag
+# #53 — Afwateringseenheden met eigen watersysteem en omringende brandcontext
 
-**Status:** conceptplan. De scope en acceptatie zijn in het ontwerpgesprek
-bevestigd; de gezamenlijke review met #65 en #67 volgt nog. Dit document
-beschrijft gepland gedrag, geen reeds beschikbare functionaliteit.
+**Status:** ontwerp bevestigd na grilling op 15 oktober 2026. De gebruiker heeft
+het bijwerken van dit plan en de plannenindex goedgekeurd, niet de implementatie.
+Dit document beschrijft gepland gedrag. De eerdere implementatieaanzet is
+teruggedraaid; de hieronder beschreven uitbreiding is nog niet geïmplementeerd.
 
 Issue: [#53 Expliciet opnemen Rijkswateren](https://github.com/d2hydro/waterlagen/issues/53).
-Uitvoering: afzonderlijke branch en PR na samenvoegen van
-[#65 Configureerbare brandlagen](issue-65-brandlagen.md).
+De scope is op verzoek verruimd. Hergebruik de aanwezige implementatie van
+[#65 Configureerbare brandlagen](issue-65-brandlagen.md) op deze branch.
+Houd de uitvoering in een afzonderlijke branch en PR voor #53.
 
 ## Doel en afbakening
 
-Gebruik een aangeleverde Rijkswaterenlaag om het reken-DEM langs die waterlopen
-te verlagen. De laag wordt als gewone optionele brandlaag verwerkt via #65.
-Rijkswateren krijgen in deze versie geen eigen afwateringsdoelen of
-afwateringseenheden.
+Leid afwateringseenheden af voor heel Aa en Maas, waterbeheercode **30**. Gebruik
+de eigen hydroobjecten en kunstwerken voor het watersysteem en gebruik de
+hydroobjecten van overige waterschappen en Rijkswaterstaat als brandcontext.
+Dezelfde werkwijze moet voor andere waterschappen werken, bijvoorbeeld code 38.
 
-Deze PR bevat configuratie, gebruiksinstructies en gerichte verificatie.
-Voeg geen tweede inleesfunctie, brandroutine of Rijkswateren-specifieke
-vertakking in de rasterberekening toe als de generieke invoer uit #65 volstaat.
-Een documentatie- en voorbeeldgerichte PR is voor deze beperkte scope voldoende.
+Maak deelname als afwateringsdoel afzonderlijk instelbaar voor overige
+waterschappen. Zonder gekozen waterschap leveren ook Rijkswateren doelen.
+Ondersteun daarnaast een eigen GeoPackage als volledige vervanging van de
+GKW-objecten van het gekozen waterschap.
 
-De volgende onderdelen uit het oorspronkelijke issue zijn uitgesteld:
+Deze scope vervangt het oude plan voor uitsluitend een optionele Rijkswaterenlaag
+met een TOML-voorbeeld. Bronselectie, netwerkvoorbereiding, categoriegestuurd
+branden, productie-invoer en controle-uitvoer moeten worden uitgebreid.
 
-- automatisch downloaden van OSM-bronnen;
-- selecteren en opwaarderen van OSM-objecten tot Rijkswateren-hydroobjecten;
-- productiegeschikt maken van de bestaande voorbereidende code;
-- verwijderen van overlappende hydroobjecten uit het beheerregister;
-- Rijkswateren toevoegen als afwateringsdoelen.
+Buiten scope blijven:
 
-De productie van hydroobjecten wordt in een ander issue opgepakt. Verzin geen
-issueverwijzing zolang dat issue niet bekend is. Beschrijf de beperkte afronding
-expliciet in de PR; claim niet dat alle oorspronkelijke checklistonderdelen zijn
-geïmplementeerd.
+- automatisch ophalen en bewerken van OSM tot Rijkswateren-hydroobjecten;
+- porteren of uitvoeren van de voorbereidende Rijkswateren-productieketen;
+- automatisch publiceren of uploaden naar de waterlagen-cloud;
+- nieuwe kunstwerktypen of duikerverwerking uit #67;
+- hydraulische berekening van kunstwerken;
+- geometrische ontdubbeling op basis van alleen overlap tussen verschillende
+  beheerders. De afgesproken vervanging per beheerder vindt wel plaats.
 
-## Beschikbare invoer
+De ruimere interpretatie rondt niet automatisch alle oorspronkelijke onderdelen
+van het issue af. Beschrijf de uitgevoerde scope later expliciet in de PR.
 
-De bestaande voorbereidende code in
+## Productiemodi en afwateringsdoelen
+
+Gebruik één waterbeheercode voor de keuze van het waterschap en de selectie van
+zijn bronobjecten. Voeg geen afzonderlijke `doelbeheerder` toe. Leid de beheerder
+van objecten af uit `nen3610id`, volgens het bestaande patroon
+`NL.WBHCODE.<code>.<rest>`.
+
+| Productiemodus | Primaire lijnen met afwateringsdoelen | Lijnen die uitsluitend brandcontext zijn |
+| --- | --- | --- |
+| Waterschap gekozen, overige waterschappen uit | Eigen waterschap | Overige waterschappen en Rijkswaterstaat |
+| Waterschap gekozen, overige waterschappen aan | Eigen en overige waterschappen | Rijkswaterstaat |
+| Geen waterschap gekozen | Alle geselecteerde waterschappen en Rijkswaterstaat | Geen afzonderlijke beheerdergroep |
+
+De vlag voor overige waterschappen staat standaard **uit**. Zij bepaalt alleen
+deelname als afwateringsdoel; de omringende hydroobjecten blijven in beide
+standen beschikbaar voor het branden. Secundaire lijnen leveren nooit zelf
+afwateringsdoelen.
+
+Zonder waterbeheercode geldt de laatste rij ook voor een geografische uitsnede,
+zoals `--area alkmaar`. Rijkswaterdoelen hangen dus niet af van de omvang of naam
+van het gebied. Een eigen GeoPackage en de vlag voor overige waterschappen zijn
+alleen toegestaan wanneer een waterbeheercode is opgegeven.
+
+Dit verandert de huidige productie: die gebruikt alle ruimtelijk geselecteerde
+GKW-beheerders als watersysteem, ook bij selectie van één waterschap. Leg dit
+gedragsverschil vast in productie-instructies en tests.
+
+## Bronnen en vervanging
+
+### GKW-HyDAMO
+
+Behoud de bestaande downloader en de bestaande GKW-bron voor waterschapsobjecten.
+Gebruik de gedeelde bronvoorbereiding voor lokaal hergebruik, offline werken en
+expliciete bronvernieuwing. GKW blijft nodig wanneer een eigen GeoPackage wordt
+opgegeven: die vervangt alleen de gekozen beheerder, niet de omringende bronnen.
+
+### Rijkswateren
+
+De handmatig gepubliceerde bron staat op
+[de waterlagen-cloud](https://waterlagen.d2hydro.nl), in map `hydamo`, bestand
+`rws_hydamo.gpkg`, laag `hydroobject`.
+
+Op 15 oktober 2026 is de redirect en het bestand gecontroleerd. De openbare URL
+verwees naar een Nextcloud-share. Het bestand is uitsluitend in het geheugen
+uitgelezen: 2.305 LineStrings in `EPSG:28992`, met `categorieoppervlaktewater`
+gelijk aan `primair`. De attributen omvatten `globalid`, `nen3610id`,
+`categorieoppervlaktewater`, `naam`, `bron`, `osm_id` en `osm_laag`.
+Dit is een waarneming van die bronversie, geen vast feature-aantal voor tests en
+geen verklaring van volledige of inhoudelijk gevalideerde landelijke dekking.
+
+Volg eerst de redirect naar de openbare share en bepaal daarna de download van
+het afzonderlijke bestand. Een sharepagina is geen GeoPackage. Maak de bronlocatie
+instelbaar en leg de actuele sharetoken niet als vaste pakketconfiguratie vast.
+Gebruik generieke download-, timeout-, voortgangs- en payloadvalidatiehelpers.
+Valideer nieuwe bestanden vóór atomaire vervanging van een bestaande bron.
+Een geldige lokale bron moet zonder netwerkverkeer herbruikbaar zijn.
+
+Sla de bron via `DataStore` lokaal op. Publicatie blijft een handmatige stap van
+de gebruiker; de productie haalt de gepubliceerde bron op of hergebruikt haar.
+
+Gebruik **uitsluitend deze bron voor Rijkswaterstaat-hydroobjecten**. Sluit
+GKW-hydroobjecten met code `80` volledig uit, voor branden én doelen. Eventuele
+GKW-gemalen en -stuwen van code `80` blijven beschikbaar wanneer Rijkswaterstaat
+doelen levert. De RWS-distributie hoeft zelf alleen `hydroobject` te bevatten.
+Vul ontbrekende Rijkswaterlijnen niet automatisch vanuit GKW aan.
+
+De voorbereidende code in
 [`d2hydro/rws_hydroobject`](https://github.com/d2hydro/rws_hydroobject)
-schrijft `data/hydroobject.gpkg`, laag `hydroobject`. De betreffende
-`bouw_hydroobjecten.py` schrijft LineStrings met onder andere `globalid`,
-`nen3610id`, `objectid`, `categorieoppervlaktewater`, `naam`, `bron`,
-`osm_id` en `osm_laag`.
+blijft achtergrondinformatie. Het produceren van die bron hoort niet bij deze
+implementatie. De bron-URLs worden bij latere publicatie canoniek gedocumenteerd
+op een bronpagina; dit plan blijft een intern werkdocument.
 
-De gegevensbestanden zijn niet in die repository meegeleverd. Er is in de
-aangetroffen code geen downloadvoorziening of expliciete CRS-controle. De code
-is achtergrond voor het invoercontract; porteren of uitvoeren daarvan hoort
-niet bij deze PR. Behandel de onvolledige bronvoorbereiding niet als gevalideerde
-landelijke dekking.
+### Eigen GeoPackage van een waterschap
 
-Gebruik een door de gebruiker aangeleverd bestand met bekende herkomst en CRS.
-De generieke validatie uit #65 controleert de gegevens vóór verwerking.
-Een ontbrekende CRS mag niet stilzwijgend als `EPSG:28992` worden geïnterpreteerd.
+Een opgegeven eigen GeoPackage vervangt **alle** GKW-hydroobjecten, gemalen en
+stuwen van de gekozen waterbeheercode. Verwijder deze GKW-objecten ook uit de
+brandcontext en bij ingeschakelde deelname van overige waterschappen.
+Gebruik geen fallback naar GKW om gaten in de eigen levering te vullen.
 
-`brandwaarde` en `prioriteit` ontbreken in de bestaande uitvoer. Vul ze aan via
-de laagdefaults uit de TOML-configuratie. De gebruiker kan de attributen later
-in QGIS toevoegen en per object afwijken.
+Vereis de lagen `hydroobject`, `gemaal` en `stuw`. Kunstwerklagen mogen leeg zijn;
+een ontbrekende laag geeft een duidelijke fout. Controleer de identificaties
+in de gebruikte lagen: ontbrekende, ongeldige of van de gekozen beheerder
+afwijkende `nen3610id`-waarden worden afgewezen, niet stilzwijgend weggefilterd.
+Een levering met meerdere beheerders moet vooraf worden geselecteerd.
 
-Het bronattribuut `categorieoppervlaktewater="primair"` maakt deze objecten
-in deze toepassing niet tot de vaste primaire brandlaag. De invoer wordt
-uitsluitend als optionele brandlaag gebruikt, zonder opname in het
-watersysteem of het afwateringsdoelraster.
+Controleer dit broncontract vóór zware rastervoorbereiding. De eis voor drie
+lagen geldt voor de eigen vervangende levering, niet voor `rws_hydamo`.
 
-## Brandinstellingen en overlap
+### Normalisatie en herkomst
 
-Gebruik dezelfde relatieve verlaging als de primaire waterlopen:
-`brandwaarde = -2 * burn_depth_m`. Bij de huidige standaardproductie met
-`burn_depth_m=100` bevat het configuratievoorbeeld dus `brandwaarde = -200`.
-Dit is een rekenkundige verlaging, geen uitspraak over de werkelijke bodemhoogte.
+De bestaande GKW-reader gebruikt `categorieoppwaterlichaam`; de gecontroleerde
+RWS-bron gebruikt `categorieoppervlaktewater`. De bestaande alias voor
+filterargumenten normaliseert bronkolommen niet automatisch. Voeg een expliciete,
+kleine normalisatiestap toe en valideer de benodigde categorieën. Ken onbekende
+waarden niet stilzwijgend aan primair, secundair of een andere beheerder toe.
 
-Gebruik `prioriteit = 0` als begininstelling voor deze optionele laag.
-De waarden blijven aanpasbaar via laagdefaults en de QGIS-attributen volgens
-het contract van #65. Het TOML-voorbeeld bevat getallen, geen formule-evaluatie;
-bij een afwijkende primaire branddiepte moet de voorbeeldwaarde overeenkomstig
-worden aangepast om dezelfde verlaging te behouden.
+Gebruik de bestaande CRS-helpers en de GeoPackage-reader voor gemeten geometrieën.
+Een ontbrekend CRS is een fout; transformeer bekende bron-CRS expliciet naar
+`settings.crs`. Bewaar oorspronkelijke identifiers, bronbestand, laag en FID.
+Zorg dat samengestelde bron- en segmentidentiteiten niet botsen tussen bestanden;
+gebruik geen GeoPackage-FID als globale bronidentiteit.
 
-De vaste rangorde blijft **primair > secundair > optioneel**. Een Rijkswaterlijn
-met brandwaarde -200 m verliest dus op een overlappende cel van de vaste
-secundaire waterloop, ook als die slechts -100 m wordt verlaagd. Branddiepte en
-voorrang zijn verschillende instellingen. Tel waarden niet op en verwijder
-geen beheerregisterobjecten om de optionele laag te laten winnen.
+## Ruimtelijke selectie en netwerkvoorbereiding
+
+Selecteer de volledige rekentegels die het gekozen gebied raken en hun buffers,
+volgens de bestaande gridinstellingen. Gebruik alle andere waterschappen met
+objecten binnen die context, zonder afzonderlijke lijst administratieve buren.
+Behoud de volledige geometrie van geselecteerde objecten; knip bronlijnen niet
+op de waterschapsgrens af.
+
+Bereid uitsluitend de primaire lijnen van deelnemende beheerders voor als
+afwateringsdoelen. Gebruik daarvoor dezelfde bestaande functies voor splitsen
+bij gemalen en stuwen, maximale segmentlengte en verbindingen. Gebruik alleen
+kunstwerken van deelnemende beheerders. Bij landelijke combinatie kunnen deze
+kunstwerken volgens de bestaande nabijheidsregels ook lijnen van een andere
+deelnemende beheerder splitsen.
+
+Primaire Rijkswaterlijnen doorlopen deze voorbereiding alleen zonder gekozen
+waterschap. Er komt geen afzonderlijke Rijkswateren-segmentatie. Het ontbreken
+van Rijkswaterstaat-kunstwerken mag niet tot verzonnen kunstwerken leiden.
+
+### Verbonden secundaire lijnen
+
+Classificeer **alle geselecteerde secundaire lijnen gezamenlijk**, tegen **alle
+geselecteerde primaire lijnen**, inclusief lijnen van beheerders zonder doelen.
+Doe dit voor het hele geselecteerde netwerk, niet opnieuw per tegel of alleen
+tegen de doelgeometrieën.
+
+Hergebruik `split_connected_secondary_hydroobjecten` en de bestaande toets:
+
+- secundaire lijnen op maximaal de verbindingstolerantie vormen groepen;
+- een groep is verbonden zodra minstens één lid binnen die tolerantie van een
+  primaire lijn ligt, eventueel via andere secundaire lijnen;
+- de standaardtolerantie blijft 2 m;
+- de minimumafstand tussen volledige lijngeometrieën telt, niet alleen eindpunten;
+- richting, hoogte en kunstwerkhydrauliek worden niet gebruikt.
+
+Brand uitsluitend de verbonden secundaire groepen. Bewaar de uitgesloten lijnen
+voor controle. Dit criterium geldt voor eigen en externe lijnen, met en zonder
+gekozen waterschap. Een aansluiting uitsluitend op de Maas kan dus voldoende
+zijn, ook wanneer de Maas alleen brandcontext is.
+
+De classificatie blijft beperkt tot de beschikbare geselecteerde bronnen. Een
+keten via niet-geselecteerde objecten kan ontbreken. Verbindingen buiten de
+selectiegrens kunnen wel meetellen wanneer de volledige betrokken geometrieën
+zijn ingelezen. Presenteer deze geometrische toets niet als bewezen hydraulische
+verbinding.
+
+## Brandwerking en hergebruik van #65
+
+De vaste rangorde wordt **alle primaire lijnen > alle verbonden secundaire
+lijnen > gewone optionele brandlagen**, ongeacht beheerder of deelname als doel.
+Een externe primaire lijn wint dus van een eigen secundaire lijn.
+
+Gebruik één ingestelde `burn_depth_m`: primair krijgt `-2 * burn_depth_m`,
+secundair `-burn_depth_m`. Bij de huidige standaard zijn dat -200 en -100 m.
+Dit zijn rekenkundige verlagingen, geen werkelijke bodemhoogtes. Tel waarden
+bij overlap niet op en voer geen handmatige formule-evaluatie in TOML in.
+
+De technische voorkeursroute is een expliciete primaire/secundaire categorie in
+de voorbereide brandinvoer. Hergebruik de voorzieningen uit #65 voor validatie,
+herkomst, snapshots, rasterisatie, workers en cachecontrole. Gewone optionele
+lagen behouden hun bestaande QGIS/TOML-contract, defaults, prioriteiten,
+tekenconflicten en nulwaarden. Gebruik een hoog optioneel `prioriteit`-getal niet
+als vervanging van de categorievolgorde.
+
+Houd doelgeometrieën en brandgeometrieën expliciet gescheiden. De bestaande
+`write_watersysteem` classificeert secundaire lijnen tijdens het schrijven tegen
+de meegegeven primaire lijnen. Voorkom dat daar de gezamenlijke classificatie
+alsnog wordt vervangen door een toets tegen alleen de doelbeheerders.
+
+Laat de rasterberekening dezelfde categorieën combineren; voeg geen tweede
+brandroutine of Rijkswateren-specifieke rastervertakking toe. Het omschakelen
+van de doelvlag moet bij dezelfde bronnen, grids en brandinstellingen dezelfde
+brandselectie en hetzelfde gebrande DEM opleveren. Het segmentraster en de
+afwateringseenheden mogen daarbij wel veranderen.
+
+Behoud CRS, grid, resolutie, NoData, schaal, offset, compressie en overviews.
+Branden maakt geen geldige hoogtes buiten de DEM-dekking.
+
+## Productie-invoer, caches en uitvoer
+
+Voeg een expliciete vlag voor deelname van overige waterschappen en een optioneel
+pad voor de eigen GeoPackage toe aan de productie-API en CLI. De definitieve
+parameternamen worden bij implementatie gekozen; hun hierboven vastgelegde
+betekenis staat vast. Behoud de bestaande generieke `brandlagen`-invoer en
+`--brandlagen-config` voor aanvullende gebruikerslagen.
+
+Voer bronvervanging en validatie uit vóór de voorbereiding van AHN. Leg in
+`run.json` en toepasselijke cache-identiteiten ten minste vast:
+
+- gekozen waterbeheercode en deelname van overige waterschappen;
+- GKW-, RWS- en eventuele eigen bronidentiteiten en relevante lagen;
+- beleid voor bronvervanging en categorie-normalisatie;
+- de gezamenlijke secundaire verbindingstoets en tolerantie;
+- brandcategorieën, `burn_depth_m` en instellingen van gewone optionele lagen;
+- doelselectie, grid en bronherkomst van voorbereide resultaten.
+
+Een gewijzigde doelvlag maakt oude segmenten en afwateringseenheden ongeschikt
+voor hergebruik, ook als het DEM gelijk blijft. Wijzigingen in bronnen,
+verbindingsbeleid of brandinstellingen moeten de daarvan afhankelijke caches
+vernieuwen. Bewaar het #65-contract voor controle vóór workers, offline bronnen,
+expliciet vernieuwen en het niet hergebruiken van mislukte berekeningen.
+
+Knip de uiteindelijke afwateringseenheden niet op de administratieve gebiedsgrens
+af. Bij ingeschakelde overige waterschappen blijven ook hun eenheden herkenbaar
+in de uitvoer. Bewaar beheerder en bronherkomst om resultaten te kunnen duiden.
+
+Maak niet-verbonden secundaire lijnen en niet-toegewezen gebieden zichtbaar in
+controle-uitvoer. Forceer geen volledige toekenning aan het gekozen waterschap.
+Noem niet-toegewezen gebied niet automatisch correcte externe afwatering: ook
+brongaten, tegelranden of rekenproblemen kunnen een rol spelen. Houd het bestaande
+aanvullen uit buurtegels herkenbaar en controleer dit bij de inhoudelijke review.
 
 ## Implementatiestappen
 
-1. Controleer na samenvoegen van #65 dat de generieke inleesfunctie de
-   aangeleverde lijnlaag zonder `brandwaarde` en `prioriteit` accepteert met
-   expliciete laagdefaults. Hergebruik de bestaande CRS- en invoercontrole.
-2. Voeg een klein TOML-gebruiksvoorbeeld toe voor `hydroobject.gpkg`, laag
-   `hydroobject`, met brandwaarde -200 en prioriteit 0. Gebruik een relatief
-   voorbeeldpad, opgelost ten opzichte van het configuratiebestand.
-3. Documenteer het aanleveren van de lokale bron en de productieaanroep via
-   `--brandlagen-config`. Vermeld dat het voorbeeldbestand zelf geen
-   Rijkswaterengegevens downloadt of bevat.
-4. Voeg gerichte verificatie toe voor toepassing van de configuratie en de
-   combinatie met de vaste lagen. Hergebruik tests uit #65; dupliceer geen
-   volledige testsuite voor de generieke brandregels.
-5. Voer de onderstaande menselijke vergelijking uit met de aangeleverde
-   bron vóór inhoudelijke acceptatie van deze PR.
+1. Controleer de aanwezige #65-bouwstenen en rechtstreeks betrokken tests.
+2. Voeg RWS-download en lokale opslag toe met de gedeelde download- en bronpolicy;
+   ondersteun de openbare redirect en handmatige publicatie.
+3. Implementeer eigen-bronvalidatie, categorie-normalisatie en volledige
+   beheerdervervanging, inclusief uitsluiting van GKW-hydroobjecten met code 80.
+4. Maak expliciete selecties voor primaire doelen, deelnemende kunstwerken en
+   het volledige netwerk voor brandcontext. Classificeer secundair gezamenlijk.
+5. Breid de voorbereiding uit met brandcategorieën en hergebruik #65; houd
+   gewone optionele lagen compatibel en scheid netwerkdoelen van brandwerking.
+6. Verbind dit met productie-API, CLI, manifests, cachecontrole en controle-uitvoer.
+7. Voeg gerichte tests, broninformatie, productie-instructies en uitvoerbare
+   voorbeelden toe. Rapporteer bevindingen voor beschermde documentatie apart.
+8. Voer de inhoudelijke vergelijking voor Aa en Maas uit en laat deze door de
+   gebruiker beoordelen vóór inhoudelijke acceptatie.
 
-## Technische acceptatiecriteria
+## Technische acceptatie
 
-- De bronlaag wordt via dezelfde publieke functies als iedere andere
-  optionele brandlaag verwerkt.
-- Bij ontbrekende brandattributen werken de expliciete laagdefaults.
-- Zonder vaste of hoger geprioriteerde optionele overlap verlaagt de
-  standaardconfiguratie de geraakte cellen met 200 m.
-- De aanwezigheid van `categorieoppervlaktewater="primair"` in deze bron
-  verandert de vaste rangorde niet.
-- Bij overlap met primaire of secundaire waterlopen blijft het effect van
-  die vaste laag ongewijzigd ten opzichte van de berekening zonder Rijkswateren.
-- Het segmentraster en de verzameling afwateringsdoelen veranderen niet door
-  het toevoegen van deze brandlaag. Afgeleide afwateringseenheden kunnen door
-  de gewijzigde stromingsberekening wel veranderen.
-- Hergebruik reageert op gewijzigde brongegevens of brandinstellingen volgens
-  het cachecontract uit #65.
+Gebruik kleine synthetische GeoPackages en rasters en gemockte downloads.
+Hergebruik de tests uit #65; dupliceer geen volledige generieke brandsuite.
+Controleer ten minste:
 
-Gebruik een kleine synthetische GeoPackage met dezelfde relevante invoervorm,
-zonder netwerkverkeer of echte landelijke bestanden. Voer de gerichte tests
-uit met `pixi run pytest <test-bestanden>`. Controleer gewijzigde Python met Ruff
-indien code of voorbeelden worden aangepast. Bouw documentatie met
-`pixi run --environment docs docs-build`.
+- de drie productiemodi uit de tabel, inclusief een geografische uitsnede zonder
+  waterbeheercode en afwijzing van beheerderopties zonder gekozen beheerder;
+- eigen vervanging voor bijvoorbeeld code 30 en 38: geen GKW-object van die
+  beheerder blijft in doelen, kunstwerken of brandcontext achter;
+- ontbrekende lagen, lege kunstwerklagen en ontbrekende/afwijkende identifiers
+  in een eigen levering, vóór zware rasterverwerking;
+- RWS-categorie-normalisatie, CRS, bronherkomst en uitsluiting van GKW-code 80
+  hydroobjecten, met behoud van toepasselijke GKW-kunstwerken;
+- RWS als uitsluitend brandcontext bij waterschapsproductie en als primaire
+  segmentdoelen zonder gekozen waterschap;
+- verbonden secundaire ketens over beheerdergrenzen en via RWS, en uitsluiting
+  van werkelijk losse groepen bij alle productiemodi;
+- externe primaire lijn over eigen secundair en eigen primaire lijn over extern
+  secundair, met gekoppelde branddieptes en zonder optelling;
+- gelijke brandselectie en DEM bij omschakelen van de doelvlag, maar de juiste
+  gewijzigde doelraster- en eenhedenselectie;
+- behoud van gewone optionele brandregels en van rastereigenschappen/NoData;
+- hergebruik en invalidatie van bron-, netwerk-, brand-, DEM- en tegelresultaten;
+- cloudredirect, foutpagina in plaats van GeoPackage, HTTP-fouten, onvolledige
+  download, lokale reuse zonder netwerk en behoud van een bestaand bestand bij
+  een mislukte vernieuwing;
+- zichtbare uitgesloten secundaire lijnen en niet-toegewezen gebieden.
+
+Voer de gerichte afwateringseenheden-, download-, productie-, CLI- en
+voorbeeldtests uit met pixi. Controleer gewijzigde Python met Ruff. Bouw
+documentatie met `pixi run --environment docs docs-build`. Unit tests doen geen
+echte downloads en vormen geen inhoudelijke landelijke validatie.
 
 ## Inhoudelijke acceptatie
 
-Vergelijk een productie zonder en met de Rijkswaterenlaag bij de Maas en de
-Brabantse kanalen in het gebied van Aa en Maas. Gebruik dezelfde bronversies,
-gebieden en overige rekeninstellingen. Leg ten minste vast:
+Gebruik Aa en Maas, waterbeheercode 30, met de Maas, Brabantse kanalen en relevante
+grensgebieden. Leg bronversies, publicatielocatie, eigen levering indien gebruikt,
+doelmodus en rekeninstellingen vast. Vergelijk bij gelijke bronnen en grids:
 
-- welk bronbestand, welke laag en welke brandinstellingen zijn gebruikt;
-- of de gewenste Rijkswaterlijnen aanwezig zijn en correct worden verlaagd;
-- of overlap met bestaande primaire en secundaire lijnen hun effect behoudt;
-- hoe stroomrichtingen en afwateringseenheden veranderen nabij de Rijkswateren;
-- of nieuwe gaten, ongewenste afvoer of andere onbedoelde grensverschuivingen
-  zichtbaar worden.
+- de doelvlag uit en aan: gelijk DEM, juiste verschillen in doeltoekenning;
+- een run met en zonder RWS-brandcontext als gecontroleerde vergelijking van
+  het effect op stroming, niet als extra standaardproductiemodus;
+- verbonden en uitgesloten secundaire groepen, met name bij beheerdergrenzen;
+- niet-toegewezen gebieden, randproblemen, aanvulling uit buurtegels en
+  onverwachte grensverschuivingen;
+- eigen bronvervanging, indien een eigen levering beschikbaar is.
 
-De gebruiker beoordeelt deze kaarten inhoudelijk. Een aantoonbaar verdiept
-raster bewijst op zichzelf geen betere hydrologische afbakening. Rapporteer
-tekortkomingen van de beperkte aanpak, zonder tijdens deze PR alsnog een
-OSM-productieketen of eigen Rijkswateren-afwateringsdoelen toe te voegen.
+Controleer aanvullend in een geschikte uitsnede zonder waterbeheercode dat
+Rijkswatersegmenten eigen afwateringseenheden krijgen. Dit vereist geen volledige
+landelijke productie voor de technische acceptatie en bewijst geen landelijke
+bronkwaliteit.
 
-De echte bron is een externe voorwaarde voor deze kaartcontrole. Synthetische
-tests mogen wel vooraf worden uitgevoerd; markeer de inhoudelijke controle
-niet als voltooid zolang brongegevens of menselijke beoordeling ontbreken.
+De gebruiker beoordeelt de kaarten inhoudelijk. Een verdiept DEM bewijst geen
+betere hydrologische afbakening. Markeer deze controle niet als voltooid zolang
+de productiegegevens, berekeningen of menselijke beoordeling ontbreken.
 
-## Documentatie en aansluiting op #67
+## Documentatie en aansluiting op andere plannen
 
-Documentatie-impact: **confirmed**. Beschrijf de aangeleverde Rijkswaterenbron
-en de externe verwijzingen op een eigen bronpagina onder `docs/bronlagen/`.
-Vermeld daar de onvolledige voorbereiding en de scheiding met de toekomstige
-automatische bronproductie. Verifieer externe URLs bij het schrijven daarvan.
+Documentatie-impact: **confirmed**. Voeg bij implementatie een bronpagina voor
+Rijkswateren toe met actuele, geverifieerde verwijzingen en bronbeperkingen.
+Werk productie-instructies bij voor bronvervanging, de doelvlag, de gewijzigde
+standaard bij waterschapsselectie en Rijkswaterdoelen zonder waterbeheercode.
+Documenteer Python-interfaces in docstrings en API-reference; plaats uitvoerbare
+voorbeelden op de bestaande canonieke locatie.
 
-De gebruiksinstructies horen bij de productie van afwateringseenheden en linken
-naar die bronpagina. De functionele pagina
-[Afwateringseenheden](../../bewerkte-lagen/afwateringseenheden.md) is beschermd
-met `editorial_status: human`: rapporteer de benodigde aanvulling afzonderlijk
-en wijzig die pagina uitsluitend met expliciete toestemming.
+De beschermde pagina [Afwateringseenheden](../../bewerkte-lagen/afwateringseenheden.md)
+beschrijft nu een productie zonder aanvullend beheerderfilter. Zij moet bij
+implementatie ook de categorievolgorde over alle beheerders, gezamenlijke
+secundaire classificatie, doelmodi en controle-uitvoer verklaren. De beschermde
+[bronlagenindex](../../bronlagen/index.md) mist dan de nieuwe Rijkswaterenbron.
+Rapporteer deze bevindingen afzonderlijk; dit plan verleent geen toestemming om
+de beschermde pagina's te wijzigen.
 
-Deze PR introduceert geen nieuwe afwateringsdoelen. [#67](issue-67-duikers.md)
-sluit duikertrajecten in primaire hydroobjecten uit van de primaire brandwerking
-en van de afwateringsdoelen. Optionele brandlagen, waaronder deze Rijkswaterenlaag,
-blijven op die trajecten toegestaan. Brandinvoer en doeltoekenning blijven
-afzonderlijke functies; voeg hiervoor geen Rijkswateren-specifieke brandroutine toe.
+[#67](issue-67-duikers.md) blijft een afzonderlijke implementatie. De bestaande
+tekst daarin gaat nog uit van Rijkswateren als gewone optionele brandlaag zonder
+doelen. Die aanname moet vóór uitvoering van #67 met dit vernieuwde #53-plan
+worden verzoend. De nieuwe primaire RWS-brandcategorie mag niet zonder nadere
+beoordeling als de oude optionele klasse worden behandeld. Implementeer in #53
+geen duikeruitsluitingen en herstel later geen uitgesloten primaire trajecten
+door ze nogmaals vanuit ongefilterde brandcontext toe te voegen. Bewaar de
+volledige primaire bron voor de secundaire verbindingstoets en houd branden en
+doeltoekenning afzonderlijk.
+
+[#63](issue-63-bounds.md) blijft verantwoordelijk voor vrije gebiedsselectie.
+Voeg daarvoor in #53 geen tweede gebiedsinterface toe. Deze plannen blijven
+uitgesloten van de MkDocs-site; pas voor dit plan geen navigatie of publicatie
+aan.

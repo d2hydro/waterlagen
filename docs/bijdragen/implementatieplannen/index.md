@@ -5,8 +5,9 @@ editorial_status: ai
 # Implementatieplannen afwateringseenheden
 
 Deze plannen leggen de ontwerpafspraken en opdrachten voor coding agents vast.
-#65 is op verzoek geïmplementeerd en ligt ter review. #53 en #67 beschrijven
-nog geplande wijzigingen; hun implementatie is niet gestart.
+#65 is op verzoek geïmplementeerd en ligt ter review. Het verruimde ontwerp voor
+#53 is na grilling bevestigd op 15 oktober 2026; alleen het plan is bijgewerkt.
+#53 en #67 beschrijven geplande wijzigingen, geen beschikbare implementaties.
 
 Deze bestanden zijn interne werkdocumenten voor agents. Ze blijven in de
 repository beschikbaar en zijn uitgesloten van de gepubliceerde MkDocs-site.
@@ -16,13 +17,15 @@ repository beschikbaar en zijn uitgesloten van de gepubliceerde MkDocs-site.
 | Volgorde | Issue | Planstatus | Voorgestelde implementatiebranch |
 | --- | --- | --- | --- |
 | 1 | [#65 Brandlaag](https://github.com/d2hydro/waterlagen/issues/65) | [Geïmplementeerd; PR #79 ter review](issue-65-brandlagen.md) | `issue/65_brandlagen` |
-| 2 | [#53 Rijkswateren](https://github.com/d2hydro/waterlagen/issues/53) | [Conceptplan; ontwerpkeuzes besproken](issue-53-rijkswateren.md) | `feature/53-rijkswateren` |
+| 2 | [#53 Rijkswateren en omringende brandcontext](https://github.com/d2hydro/waterlagen/issues/53) | [Verruimd ontwerp bevestigd; nog niet geïmplementeerd](issue-53-rijkswateren.md) | `issue/53_opname_rijkswateren` |
 | 3 | [#67 Duikers zonder eigen afwateringseenheid](https://github.com/d2hydro/waterlagen/issues/67) | [Conceptplan voor eindcontrole](issue-67-duikers.md) | `feature/67-duikers-afwateringsdoelen` |
 
 Ieder issue krijgt een eigen implementatiebranch en PR. Rond de voorgaande PR af
 voordat de volgende implementatiebranch vanaf de bijgewerkte hoofdbranch wordt
 gestart. Voor #65 bestaat [PR #79](https://github.com/d2hydro/waterlagen/pull/79).
-De branchnamen voor #53 en #67 blijven voorstellen.
+Het #53-plan is bijgewerkt op `issue/53_opname_rijkswateren`, met de #65-code
+al aanwezig. Dit geeft nog geen opdracht tot implementatie. De branchnaam voor
+#67 blijft een voorstel.
 
 Issues #57, #63 en #64 vallen buiten deze reeks.
 
@@ -40,9 +43,17 @@ van bovenstaande PR-volgorde en introduceert geen gebruikstestframework.
   brandobject krijgt niet automatisch een eigen afwateringseenheid.
 - Bij branden blijft de vaste rangorde primair > secundair > optioneel gelden.
   Een gebruikersprioriteit kan deze rangorde niet doorbreken.
-- #53 gebruikt Rijkswateren uitsluitend als optionele brandlaag via #65, zonder
-  eigen afwateringsdoelen. Productie van Rijkswateren-hydroobjecten uit OSM wordt
-  in een ander issue uitgewerkt.
+- #53 scheidt bronselectie, brandcontext en afwateringsdoelen. Een eigen
+  GeoPackage vervangt alle GKW-objecten van het gekozen waterschap. Een vlag
+  bepaalt of overige waterschappen ook doelen leveren; hun brandwerking blijft.
+  Rijkswateren leveren bij een gekozen waterschap uitsluitend brandcontext en
+  zonder gekozen waterschap ook primaire afwateringsdoelen, zelfs bij een kleine
+  geografische uitsnede. #53 hergebruikt #65 met expliciete brandcategorieën.
+  Automatische productie van Rijkswateren-hydroobjecten uit OSM blijft buiten scope.
+- Classificeer in #53 alle secundaire lijnen gezamenlijk tegen alle geselecteerde
+  primaire lijnen, ongeacht deelname als doel. Alleen verbonden groepen worden
+  gebrand; uitgesloten lijnen en niet-toegewezen gebieden blijven zichtbaar voor
+  controle. De categorie, niet de beheerder, bepaalt de brandvoorrang.
 - #67 knipt alleen primaire hydroobjecten bij duikers, sifons en hevels.
   Duikertrajecten krijgen geen primaire brandwerking en geen afwateringsdoel.
   Directe aansluitstukken tot een instelbare lengte blijven branden maar verliezen
@@ -64,13 +75,19 @@ van bovenstaande PR-volgorde en introduceert geen gebruikstestframework.
 | Direct aansluitstuk <= ingestelde lengtegrens | Behouden | Uitgesloten | Bestaande rangorde |
 | Aansluitstuk bij `None` of boven de lengtegrens | Behouden | Behouden | Bestaande rangorde |
 | Niet goed gekoppelde duiker | Gewone verwerking behouden | Gewone verwerking behouden | Bestaande rangorde; duiker naar controlebestand |
-| Rijkswaterenlaag uit #53 | Geen nieuwe primaire geometrie | Geen nieuw doel | Optionele brandlaag, voorbeeld -200 m |
+| Rijkswateren uit #53, waterschap gekozen | Primaire categorie, gekoppeld aan branddiepte | Geen nieuw doel | Gezamenlijke secundaire verbindingstoets; gewone optionele lagen blijven ondergeschikt |
+| Rijkswateren uit #53, geen waterschap gekozen | Primaire categorie, gekoppeld aan branddiepte | Primaire RWS-segmenten | Dezelfde categorievolgorde en verbindingstoets |
 
 Behoud de volledige primaire bron voor de bestaande classificatie van verbonden
 secundaire lijnen. Gebruik aparte selecties voor primaire brandwerking en doelen.
-Filter het doelraster zonder opgeslagen segment-FIDs te hernummeren. Zo blokkeert
-het brandontwerp uit #65 de duikeraanpak uit #67 niet en blijft #53 een gewone
-toepassing van de optionele brandlagen.
+Filter het doelraster zonder opgeslagen segment-FIDs te hernummeren. #53 breidt
+de voorbereiding uit met categoriegestuurde brandcontext, terwijl gewone
+optionele lagen hun #65-contract behouden.
+
+De #67-tekst gaat nog uit van het oude #53-ontwerp: Rijkswateren als gewone
+optionele laag zonder doelen. Verzoen die aanname vóór implementatie van #67
+met de nieuwe primaire brandcategorie en de doelmodi. Herstel uitgesloten
+primaire duikertrajecten niet via een tweede, ongefilterde brandcontext.
 
 ## Uitvoering en documentatie
 
