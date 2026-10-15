@@ -24,9 +24,10 @@ repository beschikbaar en zijn uitgesloten van de gepubliceerde MkDocs-site.
 Ieder issue krijgt een eigen implementatiebranch en PR. Rond de voorgaande PR af
 voordat de volgende implementatiebranch vanaf de bijgewerkte hoofdbranch wordt
 gestart. Voor #65 bestaat [PR #79](https://github.com/d2hydro/waterlagen/pull/79).
-Het #53-plan is bijgewerkt op `issue/53_opname_rijkswateren`, met de #65-code
-al aanwezig. De gebruiker heeft daarna opdracht tot implementatie gegeven. De branchnaam voor
-#67 blijft een voorstel.
+De implementatie van #53 staat in [concept-PR #80](https://github.com/d2hydro/waterlagen/pull/80),
+met `issue/65_brandlagen` als basis zolang #79 nog niet is samengevoegd.
+De gebruiker heeft opdracht tot implementatie gegeven op de branch met de
+#65-code al aanwezig. De branchnaam voor #67 blijft een voorstel.
 
 Issues #57, #63 en #64 vallen buiten deze reeks.
 

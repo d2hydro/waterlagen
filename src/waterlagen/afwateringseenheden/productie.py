@@ -244,6 +244,7 @@ def main(
         network_path = write_watersysteem(
             hydroobject_primair=sources.primary,
             hydroobject_secundair=sources.secondary,
+            hydroobject_zonder_categorie=sources.missing_category,
             watersysteem=network,
             output_path=run.path / "watersysteem.gpkg",
             overwrite=overwrite,

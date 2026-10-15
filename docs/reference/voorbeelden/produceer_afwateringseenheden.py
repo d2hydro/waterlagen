@@ -117,6 +117,7 @@ if __name__ == "__main__":
         watersysteem = write_watersysteem(
             hydroobject_primair=bronnen.primary,
             hydroobject_secundair=bronnen.secondary,
+            hydroobject_zonder_categorie=bronnen.missing_category,
             watersysteem=netwerk,
             output_path=output_dir / "watersysteem.gpkg",
             secondary_connection_tolerance=TOLERANCE_M,

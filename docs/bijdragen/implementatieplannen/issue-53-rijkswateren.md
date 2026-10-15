@@ -139,6 +139,13 @@ filterargumenten normaliseert bronkolommen niet automatisch. Voeg een expliciete
 kleine normalisatiestap toe en valideer de benodigde categorieën. Ken onbekende
 waarden niet stilzwijgend aan primair, secundair of een andere beheerder toe.
 
+Na controle van de aangeleverde GKW-bron heeft de gebruiker bevestigd dat
+`overig`, net als `tertiair`, buiten branden en doelen blijft. GKW-lijnen met
+een ontbrekende categorie worden met een waarschuwing uitgesloten en in
+`hydroobject_zonder_categorie` bewaard, inclusief identifiers, bronbestand,
+laag, FID en uitsluitreden. Onbekende ingevulde categorieën blijven een fout.
+Deze uitzondering geldt niet voor een eigen levering of de RWS-bron.
+
 Gebruik de bestaande CRS-helpers en de GeoPackage-reader voor gemeten geometrieën.
 Een ontbrekend CRS is een fout; transformeer bekende bron-CRS expliciet naar
 `settings.crs`. Bewaar oorspronkelijke identifiers, bronbestand, laag en FID.
@@ -397,6 +404,10 @@ De gerichte acceptatiesuite heeft 266 geslaagde tests in de omgeving
 doelmodi, de gedeelde downloads, productie/CLI en offline voorbeelden.
 Rasterio/Affine geeft bestaande deprecatiewaarschuwingen. Ruff en de strikte
 documentatiebuild zijn gecontroleerd. De beschermde pagina's zijn niet gewijzigd.
+Na de bevestigde GKW-categoriepolicy zijn nogmaals 91 gerichte tests geslaagd,
+inclusief echte PCRaster-berekeningen, controle-uitvoer en vervanging van oudere
+snapshots zonder de nieuwe controlelaag. Ruff en de strikte documentatiebuild
+slagen ook na deze aanvulling.
 
 ### Inhoudelijke vergelijking
 
@@ -407,8 +418,10 @@ plan en de productievoorbeelden zijn daarop gecorrigeerd.
 
 De selectie bestaat uit 30 volledige rekentegels. De context vraagt 150 AHN-
 brontegels, waarvan er bij inventarisatie 121 beschikbaar waren. GKW bevat
-ook `overig` en enkele lijnen zonder categorie. Voor die ontbrekende
-categorieën is expliciet een bronpolicy uitgevraagd voordat de productie start.
+ook `overig` en enkele lijnen zonder categorie. De gebruiker heeft de policy
+voor uitsluiting met waarschuwing en controle-uitvoer bevestigd. In de exacte
+rekencontext zijn twee GKW-lijnen zonder categorie aangetroffen. De productie
+is met deze policy gestart en vult alleen de ontbrekende AHN-tegels aan.
 De Aa-en-Maas-vergelijking, het gecontroleerde experiment zonder RWS-brandcontext
 en de kaartbeoordeling zijn nog open. Er is geen eigen levering verstrekt.
 Synthetische controles vervangen deze inhoudelijke vergelijking niet.

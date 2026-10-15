@@ -80,8 +80,12 @@ GKW blijft nodig voor de omgeving. Beide beheerderopties vereisen een
 waterschapscode; in Python heten ze `eigen_hydamo` en `overige_waterschappen`.
 
 Beide categorievelden `categorieoppwaterlichaam` en `categorieoppervlaktewater`
-worden herkend. Bekende waarden zijn `primair`, `secundair` en `tertiair`;
-tertiaire lijnen worden niet gebruikt. Onbekende of ontbrekende categorieën,
+worden herkend. Bekende waarden zijn `primair`, `secundair`, `tertiair` en
+`overig`; tertiaire en overige lijnen worden niet gebruikt. GKW-lijnen zonder
+categorie blijven buiten branden en doelen en worden met een waarschuwing in
+`hydroobject_zonder_categorie` bewaard, inclusief oorspronkelijke identificaties,
+bronbestand, laag en FID. Er wordt geen categorie geraden. Onbekende ingevulde
+waarden, ontbrekende categorieën in een eigen levering of RWS-bron,
 tegenstrijdige kolommen en ontbrekende CRS-definities geven een fout.
 Een bekend afwijkend CRS wordt expliciet naar het project-CRS getransformeerd.
 
@@ -185,6 +189,8 @@ bronbestand/laag/FID van hun doelsegment. `watersysteem.gpkg` bevat alle
 primaire brandlijnen, verbonden secundaire lijnen en de controlelaag
 `hydroobject_secundair_niet_verbonden`; alleen deelnemende primaire lijnen
 staan in `hydroobject_segment`.
+De aanvullende controlelaag `hydroobject_zonder_categorie` bevat uitgesloten
+GKW-lijnen zonder categorie, met `uitsluitreden`.
 
 Het eindbestand bevat ook `niet_toegewezen` en `aanvulling_buurtegels`.
 De tweede laag bewaart donor- en doeltegel en de keuzevolgorde. Bij uitsluitend

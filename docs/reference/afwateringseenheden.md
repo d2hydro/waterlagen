@@ -18,6 +18,10 @@ deelnemende kunstwerken (`points`). Gebruik `targets` en `points` voor
 secundaire groepen gezamenlijk tegen de volledige primaire brongeometrie.
 Zo hangt de brandselectie niet af van de doelmodus.
 
+Geef `missing_category` als `hydroobject_zonder_categorie` aan
+`write_watersysteem` mee om de uitgesloten GKW-lijnen zonder categorie zichtbaar
+te houden. Ze doen niet mee aan branden, doelen of de secundaire verbindingstoets.
+
 De oorspronkelijke identifiers blijven behouden naast `bronbestand`, `bronlaag`
 en `bron_fid`. Samengestelde `bron_id`-waarden bevatten bestand, laag, FID en
 het oorspronkelijke bron-ID, zodat FIDs en globalids tussen bronnen mogen overlappen.

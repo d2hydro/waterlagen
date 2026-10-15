@@ -202,6 +202,44 @@ def test_missing_crs_rejected(sources):
         read_watersysteem_sources(*sources, spatial_selection=box(-5, -5, 100, 100))
 
 
+@pytest.mark.parametrize("code,others", [("30", False), ("30", True), (None, False)])
+def test_gkw_missing_category_is_visible_but_never_burned(
+    tmp_path, sources, caplog, code, others
+):
+    frame = wgpd.read_file(sources[0], layer="hydroobject")
+    frame.loc[3:5, "categorieoppwaterlichaam"] = ["overig", "tertiair", None]
+    frame.to_file(sources[0], layer="hydroobject")
+    selected = read_watersysteem_sources(
+        *sources,
+        spatial_selection=box(-5, -5, 100, 100),
+        waterbeheercode=code,
+        overige_waterschappen=others,
+    )
+    assert len(selected.primary) == 3
+    assert selected.secondary.empty
+    assert len(selected.missing_category) == 1
+    assert selected.missing_category.bron_fid.tolist() == [6]
+    assert selected.missing_category.nen3610id.tolist() == ["NL.WBHCODE.30.5"]
+    assert "without a category" in caplog.text
+    network = prepare_watersysteem(selected.targets, selected.points)
+    options = dict(
+        hydroobject_primair=selected.primary,
+        hydroobject_secundair=selected.secondary,
+        watersysteem=network,
+        output_path=tmp_path / "network.gpkg",
+    )
+    # Older snapshots lacking the newly requested inspection layer cannot be reused.
+    write_watersysteem(**options)
+    path = write_watersysteem(
+        **options, hydroobject_zonder_categorie=selected.missing_category
+    )
+    control = wgpd.read_file(path, layer="hydroobject_zonder_categorie")
+    assert control.bronbestand.tolist() == [str(sources[0])]
+    assert control.bron_fid.tolist() == [6]
+    assert control.uitsluitreden.tolist() == ["categorie ontbreekt"]
+    assert control.categorieoppwaterlichaam.isna().all()
+
+
 def test_conflicting_categories_rejected(sources):
     frame = wgpd.read_file(sources[1], layer="hydroobject")
     frame["categorieoppwaterlichaam"] = "secundair"

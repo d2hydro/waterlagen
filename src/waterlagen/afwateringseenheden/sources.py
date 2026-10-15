@@ -20,7 +20,7 @@ from .objects import (
 )
 
 logger = get_logger(__name__)
-SOURCE_POLICY = "replace_authority_exclude_gkw80_categories_v1"
+SOURCE_POLICY = "replace_authority_exclude_gkw80_missing_category_control_v2"
 CONNECTION_POLICY = "all_selected_full_lines_components_v1"
 
 
@@ -37,12 +37,16 @@ class WatersysteemSources:
         Primary lines of participating authorities, before segmentation.
     points : geopandas.GeoDataFrame
         Gemaal and stuw objects of participating authorities.
+    missing_category : geopandas.GeoDataFrame, optional
+        GKW lines without a category, excluded from burning and targets and
+        retained with provenance for inspection.
     """
 
     primary: gpd.GeoDataFrame
     secondary: gpd.GeoDataFrame
     targets: gpd.GeoDataFrame
     points: gpd.GeoDataFrame
+    missing_category: gpd.GeoDataFrame | None = None
 
 
 def validate_authority_options(
@@ -102,7 +106,9 @@ def _validate_own_source(path: Path, code: str) -> None:
             _normalize_categories(features, str(path))
 
 
-def _normalize_categories(features: gpd.GeoDataFrame, label: str) -> gpd.GeoDataFrame:
+def _normalize_categories(
+    features: gpd.GeoDataFrame, label: str, *, allow_missing: bool = False
+) -> gpd.GeoDataFrame:
     """Normalize explicit source column aliases; never infer unknown categories."""
     result = features.copy()
     canonical = CATEGORIE_OPPERVLAKTEWATER_COLUMN
@@ -120,7 +126,10 @@ def _normalize_categories(features: gpd.GeoDataFrame, label: str) -> gpd.GeoData
         result[canonical] = result[canonical].fillna(result[alias])
     elif canonical not in result:
         result[canonical] = result[alias]
-    if not result[canonical].isin(["primair", "secundair", "tertiair"]).all():
+    accepted = result[canonical].isin(["primair", "secundair", "tertiair", "overig"])
+    if allow_missing:
+        accepted = accepted | result[canonical].isna()
+    if not accepted.all():
         raise ValueError(f"{label}: unknown or missing surface-water category")
     return result
 
@@ -168,6 +177,8 @@ def read_watersysteem_sources(
     WatersysteemSources
         Primary and secondary burn context, primary targets and participating
         points, with original identifiers and file/layer/FID provenance.
+        GKW lines without a category are warned about and retained separately;
+        ``overig`` and ``tertiair`` supply neither burning nor targets.
 
     Raises
     ------
@@ -193,7 +204,7 @@ def read_watersysteem_sources(
         )
         hydro = pd.concat([hydro, own_hydro], ignore_index=True)
         points = pd.concat([points, own_points], ignore_index=True)
-    hydro = _normalize_categories(hydro, str(hydamo_path))
+    hydro = _normalize_categories(hydro, str(hydamo_path), allow_missing=True)
     rws = read_hydroobjecten(rijkswateren_path, spatial_selection=spatial_selection)
     _check_identifiers(rws, str(rijkswateren_path), "80")
     rws = _normalize_categories(rws, str(rijkswateren_path))
@@ -204,6 +215,14 @@ def read_watersysteem_sources(
     _check_identifiers(points, "Selected point objects")
     hydro = _source_ids(hydro)
     points = _source_ids(points)
+    missing_category = hydro.loc[hydro[CATEGORIE_OPPERVLAKTEWATER_COLUMN].isna()].copy()
+    missing_category["uitsluitreden"] = "categorie ontbreekt"
+    if not missing_category.empty:
+        logger.warning(
+            "Excluded %s GKW hydroobjects without a category from burning and targets; "
+            "retained in hydroobject_zonder_categorie with file/layer/FID provenance",
+            len(missing_category),
+        )
     primary = hydro.loc[hydro[CATEGORIE_OPPERVLAKTEWATER_COLUMN].eq("primair")].copy()
     secondary = hydro.loc[
         hydro[CATEGORIE_OPPERVLAKTEWATER_COLUMN].eq("secundair")
@@ -225,4 +244,4 @@ def read_watersysteem_sources(
         len(targets),
         len(points),
     )
-    return WatersysteemSources(primary, secondary, targets, points)
+    return WatersysteemSources(primary, secondary, targets, points, missing_category)

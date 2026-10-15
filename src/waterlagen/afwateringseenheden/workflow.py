@@ -136,17 +136,20 @@ def _temporary_output_path(output_path: Path) -> Path:
     return temporary_path
 
 
-def _validate_watersysteem_output(path: Path) -> None:
+def _validate_watersysteem_output(
+    path: Path, *, extra_layers: tuple[str, ...] = ()
+) -> None:
     """Validate the required layers and their project CRS before replacement."""
     validate_geopackage(path)
     layers = {info.layer: info for info in read_layer_crs_info(path)}
-    missing_layers = set(OUTPUT_LAYERS) - set(layers)
+    required_layers = (*OUTPUT_LAYERS, *extra_layers)
+    missing_layers = set(required_layers) - set(layers)
     if missing_layers:
         raise ValueError(
             "Watersysteem output is missing layers: "
             f"{', '.join(sorted(missing_layers))}"
         )
-    for layer_name in OUTPUT_LAYERS:
+    for layer_name in required_layers:
         layer_info = layers[layer_name]
         if not layer_info.is_spatial:
             raise ValueError(f"Watersysteem layer '{layer_name}' is not spatial")
@@ -387,6 +390,7 @@ def write_watersysteem(
     output_path: Path | None = None,
     overwrite: bool = False,
     secondary_connection_tolerance: float = 2.0,
+    hydroobject_zonder_categorie: gpd.GeoDataFrame | None = None,
 ) -> Path:
     """Atomically write the prepared watersysteem layers to a GeoPackage.
 
@@ -419,19 +423,27 @@ def write_watersysteem(
         Maximum distance in metres between complete primary and secondary
         hydroobject geometries when classifying connected secondary objects, by
         default 2.
+    hydroobject_zonder_categorie : geopandas.GeoDataFrame, optional
+        Excluded GKW lines without a category. Written unchanged to a separate
+        inspection layer, never included in burning or secondary connectivity.
 
     Returns
     -------
     Path
-        Validated GeoPackage with exactly the required output layers.
+        Validated GeoPackage with the required layers and optional inspection layer.
     """
     data_store = data_store or datastore
     output_path = Path(
         output_path or data_store.afwateringseenheden_path / DEFAULT_OUTPUT_FILENAME
     )
+    extra_layers = (
+        ("hydroobject_zonder_categorie",)
+        if hydroobject_zonder_categorie is not None
+        else ()
+    )
     if output_path.exists() and not overwrite:
         try:
-            _validate_watersysteem_output(output_path)
+            _validate_watersysteem_output(output_path, extra_layers=extra_layers)
         except Exception as exc:
             logger.warning(
                 "Existing watersysteem output %s is invalid and will be replaced: %s",
@@ -458,6 +470,11 @@ def write_watersysteem(
         ("hydroobject_segment", watersysteem.hydroobject_segmenten),
         ("hydroobject_verbinding", watersysteem.hydroobject_verbinding),
     )
+    if hydroobject_zonder_categorie is not None:
+        layers = (
+            *layers,
+            ("hydroobject_zonder_categorie", hydroobject_zonder_categorie),
+        )
     normalized_layers = [
         (_layer_name, _to_project_crs(features, layer_name=_layer_name))
         for _layer_name, features in layers
@@ -477,10 +494,14 @@ def write_watersysteem(
                 layer_name=layer_name,
             )
         logger.info("Validating temporary watersysteem GeoPackage %s", temporary_path)
-        _validate_watersysteem_output(temporary_path)
+        _validate_watersysteem_output(temporary_path, extra_layers=extra_layers)
         temporary_path.replace(output_path)
     except Exception:
         temporary_path.unlink(missing_ok=True)
         raise
-    logger.info("Wrote watersysteem layers %s to %s", OUTPUT_LAYERS, output_path)
+    logger.info(
+        "Wrote watersysteem layers %s to %s",
+        (*OUTPUT_LAYERS, *extra_layers),
+        output_path,
+    )
     return output_path
