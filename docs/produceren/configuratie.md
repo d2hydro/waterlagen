@@ -36,6 +36,12 @@ Alle vijf producten ondersteunen `nederland`, `alkmaar`, `alkmaar_centrum` en
 `waterschap_<code>`.
 Zie [gebieden en CLI-opties](cli.md) voor hun betekenis.
 
+Bij `--bounds` heet de gebiedsmap `xmin_ymin_xmax_ymax`, bijvoorbeeld
+`184285_392054_185285_393054`. Deze naam gebruikt de ingevoerde grenzen,
+niet de geselecteerde tegelkernen. Gehele waarden krijgen geen `.0`;
+equivalente invoer krijgt dezelfde mapnaam. Geometrie en CRS worden daarnaast
+in de runidentiteit vastgelegd.
+
 Zonder opties maakt iedere opdracht een nieuwe run met een UTC-tijdstempel
 `YYYYMMDDTHHMMSSZ`. Die tijd duidt de productie aan, niet het peiljaar van de
 bron. Een opdracht verwerkt een gebied. Een naamconflict geeft een foutmelding;

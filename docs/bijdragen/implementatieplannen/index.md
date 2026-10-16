@@ -26,6 +26,14 @@ De branchnamen voor #53 en #67 blijven voorstellen.
 
 Issues #57, #63 en #64 vallen buiten deze reeks.
 
+## Vrije gebiedsselectie
+
+Voor [#63 Testgebieden](https://github.com/d2hydro/waterlagen/issues/63) is een
+[implementatieplan voor vrije gebiedsselectie](issue-63-bounds.md) opgesteld.
+Het voegt gedeelde CLI-bounds en een PowerShell-voorbeeld voor gebruik met
+QGIS-brandlagen toe. De implementatie is nog niet gestart. Dit plan staat los
+van bovenstaande PR-volgorde en introduceert geen gebruikstestframework.
+
 ## Gezamenlijke ontwerpafspraken
 
 - Hoogtebeïnvloeding en afwateringsdoelen blijven afzonderlijke functies. Een

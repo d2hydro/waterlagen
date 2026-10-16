@@ -4,6 +4,7 @@ import json
 from collections.abc import Sequence
 from dataclasses import dataclass
 from hashlib import sha256
+from itertools import groupby
 from math import ceil, floor
 from pathlib import Path
 
@@ -11,6 +12,7 @@ import geopandas as gpd
 import numpy as np
 import pandas as pd
 import pyogrio
+from affine import Affine
 from rasterio.features import rasterize
 from rasterio.windows import Window
 from rasterio.windows import transform as window_transform
@@ -30,7 +32,7 @@ from waterlagen.settings import settings
 from .config import BrandlagenConfig, _brand_number
 
 logger = get_logger(__name__)
-BRAND_POLICY = "relative_priority_abs_v1"
+BRAND_POLICY = "relative_priority_abs_sources_polygon_touch_v3"
 BRAND_LAYER = "brandlagen"
 SOURCE_COLUMNS = ["bronbestand", "bronlaag", "bron_fid"]
 
@@ -41,6 +43,15 @@ class _PreparedBrandlagen:
 
     path: Path
     signature: str
+
+
+@dataclass(frozen=True)
+class _BurnRaster:
+    """Aligned optional changes and the source selected by the same ordering."""
+
+    values: np.ndarray
+    sources: np.ndarray
+    legend: dict[int, str]
 
 
 def _digest(values: object) -> str:
@@ -74,6 +85,7 @@ def _empty_brandlagen() -> gpd.GeoDataFrame:
     return gpd.GeoDataFrame(
         {
             "brandwaarde": pd.Series(dtype="float64"),
+            "broncode": pd.Series(dtype="int32"),
             "prioriteit": pd.Series(dtype="int64"),
             "bronbestand": pd.Series(dtype="str"),
             "bronlaag": pd.Series(dtype="str"),
@@ -100,7 +112,7 @@ def _read_brandlagen(
     errors = []
     if spatial_selection is not None and spatial_selection.is_empty:
         return _empty_brandlagen(), errors
-    for source in config.lagen:
+    for source_code, source in enumerate(config.lagen, start=3):
         label = f"{source.path} / {source.layer}"
         try:
             info = pyogrio.read_info(source.path, layer=source.layer)
@@ -155,6 +167,7 @@ def _read_brandlagen(
                 records.append(
                     {
                         **values,
+                        "broncode": source_code,
                         "bronbestand": str(source.path),
                         "bronlaag": source.layer,
                         "bron_fid": int(fid),
@@ -189,7 +202,9 @@ def read_brandlagen(
     -------
     geopandas.GeoDataFrame
         Project-CRS 2D geometries, signed metre ``brandwaarde``, integer
-        ``prioriteit`` and ``bronbestand``, ``bronlaag``, ``bron_fid`` provenance.
+        ``prioriteit`` and ``broncode``, ``bronbestand``, ``bronlaag``,
+        ``bron_fid`` provenance. Codes start at 3 in configuration order;
+        codes 1 and 2 are reserved for primary and secondary HYDAMO.
         Sorted by increasing priority and absolute value for replacement burning.
 
     Raises
@@ -219,6 +234,23 @@ def _conflict_window(features: gpd.GeoDataFrame, grid: RasterGrid) -> Window:
     return Window(col, row, stop_col - col, stop_row - row)
 
 
+def _rasterize_brand_shapes(
+    shapes: list[tuple[BaseGeometry, float | int]],
+    *,
+    out_shape: tuple[int, int],
+    transform: Affine,
+    dtype: str,
+    fill: int = 0,
+) -> np.ndarray:
+    """Burn touched polygon cells, preserving line rules and input precedence."""
+    result = np.full(out_shape, fill, dtype=dtype)
+    for all_touched, group in groupby(
+        shapes, key=lambda item: item[0].geom_type in {"Polygon", "MultiPolygon"}
+    ):
+        rasterize(list(group), out=result, transform=transform, all_touched=all_touched)
+    return result
+
+
 def _conflict_errors(
     features: gpd.GeoDataFrame, grids: Sequence[RasterGrid]
 ) -> list[str]:
@@ -239,17 +271,20 @@ def _conflict_errors(
                 "out_shape": (int(window.height), int(window.width)),
                 "transform": window_transform(window, grid.transform),
                 "dtype": "uint8",
-                "all_touched": False,
             }
-            positive_mask = rasterize([(g, 1) for g in positive.geometry], **options)
-            negative_mask = rasterize([(g, 1) for g in negative.geometry], **options)
+            positive_mask = _rasterize_brand_shapes(
+                [(g, 1) for g in positive.geometry], **options
+            )
+            negative_mask = _rasterize_brand_shapes(
+                [(g, 1) for g in negative.geometry], **options
+            )
             overlap = (positive_mask != 0) & (negative_mask != 0)
             if not overlap.any():
                 continue
             for row in group.itertuples():
                 if row.brandwaarde == 0:
                     continue
-                mask = rasterize([(row.geometry, 1)], **options)
+                mask = _rasterize_brand_shapes([(row.geometry, 1)], **options)
                 if np.any(overlap & (mask != 0)):
                     conflicts.add(
                         f"{row.bronbestand} / {row.bronlaag} / FID {row.bron_fid}: "
@@ -320,23 +355,44 @@ def _prepare_brandlagen(
 def _optional_burn_values(
     prepared: _PreparedBrandlagen | None, grid: RasterGrid
 ) -> np.ndarray:
+    return _optional_burn_raster(prepared, grid).values
+
+
+def _optional_burn_raster(
+    prepared: _PreparedBrandlagen | None, grid: RasterGrid
+) -> _BurnRaster:
+    """Rasterize changes and source codes, including explicit zero changes."""
+    empty = _BurnRaster(
+        np.zeros((grid.height, grid.width), dtype="float64"),
+        np.zeros((grid.height, grid.width), dtype="int32"),
+        {},
+    )
     if prepared is None:
-        return np.zeros((grid.height, grid.width), dtype="float64")
+        return empty
     features = wgpd.read_file(prepared.path, layer=BRAND_LAYER, bbox=grid.bounds)
     if features.empty:
-        return np.zeros((grid.height, grid.width), dtype="float64")
+        return empty
+    del empty
     features = _sort_brandlagen(features)
     logger.info(
         "Rasterizing %s optional brandobjects from %s", len(features), prepared.path
     )
-    return rasterize(
-        list(zip(features.geometry, features.brandwaarde)),
+    options = dict(
         out_shape=(grid.height, grid.width),
         transform=grid.transform,
-        dtype="float64",
         fill=0,
-        all_touched=False,
     )
+    values = _rasterize_brand_shapes(
+        list(zip(features.geometry, features.brandwaarde)), dtype="float64", **options
+    )
+    sources = _rasterize_brand_shapes(
+        list(zip(features.geometry, features.broncode)), dtype="int32", **options
+    )
+    legend = {
+        int(row.broncode): f"{row.bronbestand} / {row.bronlaag}"
+        for row in features.itertuples()
+    }
+    return _BurnRaster(values, sources, legend)
 
 
 def _burn_signature(

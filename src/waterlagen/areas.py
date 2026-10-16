@@ -1,12 +1,15 @@
 """Shared input selections; areas never clip production outputs."""
 
 import hashlib
+import math
+from collections.abc import Sequence
 from dataclasses import dataclass
+from decimal import Decimal
 from enum import StrEnum
 from pathlib import Path
 
 import geopandas as gpd
-from shapely.geometry import Polygon
+from shapely.geometry import Polygon, box
 from shapely.geometry.base import BaseGeometry
 
 from waterlagen._crs import same_crs
@@ -63,11 +66,58 @@ class ProductionArea:
         }
 
 
+def area_from_bounds(bounds: Sequence[float]) -> ProductionArea:
+    """Create a rectangular input selection without performing I/O.
+
+    Parameters
+    ----------
+    bounds : sequence of float
+        Four finite coordinates: xmin, ymin, xmax, ymax, in ``settings.crs``.
+        Both maximum coordinates must exceed their minimum.
+
+    Returns
+    -------
+    ProductionArea
+        Bbox polygon with a canonical coordinate-based name. The selection
+        does not clip production outputs or change their grids.
+
+    Raises
+    ------
+    ValueError
+        If the coordinates do not describe a finite, nonempty rectangle.
+    """
+    if len(bounds) != 4:
+        raise ValueError("Bounds vereisen vier getallen: xmin ymin xmax ymax")
+    try:
+        coordinates = tuple(float(value) for value in bounds)
+    except (TypeError, ValueError, OverflowError) as error:
+        raise ValueError("Bounds moeten eindige getallen zijn") from error
+    if not all(math.isfinite(value) for value in coordinates):
+        raise ValueError("Bounds moeten eindige getallen zijn")
+    coordinates = tuple(0.0 if value == 0 else value for value in coordinates)
+    xmin, ymin, xmax, ymax = coordinates
+    if xmin >= xmax or ymin >= ymax:
+        raise ValueError("Bounds vereisen xmin < xmax en ymin < ymax")
+    parts = []
+    for value in coordinates:
+        # Decimal preserves the shortest round-trippable float representation,
+        # while fixed notation keeps names independent of exponent spelling.
+        part = format(Decimal(str(value)), "f") if value != 0 else "0"
+        if "." in part:
+            part = part.rstrip("0").rstrip(".")
+        parts.append(part)
+    return ProductionArea("_".join(parts), box(*coordinates), settings.crs)
+
+
 def area_name(value: str | Area | ProductionArea) -> str:
-    """Validate a named area or water authority code without performing I/O."""
+    """Validate a known name, water authority code or constructed bbox without I/O."""
     name = value.value if isinstance(value, ProductionArea) else str(value)
     if name in {"nederland", *NAMED_AREAS}:
         return name
+    if isinstance(value, ProductionArea) and not value.geometry.is_empty:
+        rectangle = area_from_bounds(value.geometry.bounds)
+        if name == rectangle.value and value.geometry.equals(rectangle.geometry):
+            return name
     code = name.removeprefix("waterschap_")
     if code.isascii() and code.isdigit():
         return f"waterschap_{code}"
@@ -84,7 +134,8 @@ def resolve_area(
     Parameters
     ----------
     area : str or Area or ProductionArea
-        Named polygon, Nederland, or a water authority code.
+        Named polygon, Nederland, a water authority code, or a rectangle made
+        with ``area_from_bounds``.
     store : DataStore
         Source cache locations.
     preparation : SourcePreparation

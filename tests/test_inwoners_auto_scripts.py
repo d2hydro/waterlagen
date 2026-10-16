@@ -90,7 +90,10 @@ def test_production_prepares_and_reuses_shared_sources(dataset, tmp_path, monkey
     assert len(downloads) == 6
 
 
-def test_area_keeps_complete_buurt_and_vbo_context(tmp_path):
+@pytest.mark.parametrize("bounds", [(0, 0, 2, 2), (0, 0, 10, 10)])
+def test_area_keeps_complete_buurt_and_vbo_context(tmp_path, bounds):
+    from waterlagen.areas import area_from_bounds
+
     buurten = gpd.GeoDataFrame(
         {"buurtcode": ["A", "B"], "aantal_inwoners": [100, 200]},
         geometry=[box(0, 0, 10, 10), box(10, 0, 20, 10)],
@@ -104,7 +107,7 @@ def test_area_keeps_complete_buurt_and_vbo_context(tmp_path):
     bag_path, buurt_path = tmp_path / "bag.gpkg", tmp_path / "buurt.gpkg"
     bag.to_file(bag_path, layer=production.BAG_VBO_LAYER)
     buurten.to_file(buurt_path, layer=production.CBS_BUURT_OUTPUT_LAYER)
-    area = ProductionArea("alkmaar", box(0, 0, 2, 2), "EPSG:28992")
+    area = area_from_bounds(bounds)
     bag_output, buurt_output = production.select_buurt_context(
         bag_path, buurt_path, area, tmp_path / "selection"
     )
@@ -112,3 +115,4 @@ def test_area_keeps_complete_buurt_and_vbo_context(tmp_path):
     assert selected.id.tolist() == [1, 2]
     assert selected.geometry.iloc[1].equals(Point(9, 9))
     assert gpd.read_file(buurt_output).aantal_inwoners.tolist() == [100]
+    assert gpd.read_file(buurt_output).geometry.iloc[0].equals(box(0, 0, 10, 10))
