@@ -40,7 +40,7 @@ def production_parser(
     )
     selection.add_argument(
         "--waterbeheercode",
-        help="Waterschapscode als gebiedsselectie, zonder beheerderfilter op objecten",
+        help="Waterschapscode als gebiedsselectie; bij afwateringseenheden ook selectie van doelen",
     )
     parser.add_argument(
         "--data-dir", type=Path, help="Gegevensmap; standaard uit DataStore/.datastore"

@@ -90,6 +90,18 @@ def test_gap_filling_uses_safe_neighbour_and_preserves_existing_assignment(
         )
 
     domain = box(0, 0, 20, 10)
+    network = tmp_path / "network.gpkg"
+    gpd.GeoDataFrame(
+        {
+            "segment_id": ["safe", "boundary", "existing"],
+            "waterbeheercode": ["38", "80", "30"],
+            "bronbestand": ["source.gpkg"] * 3,
+            "bronlaag": ["hydroobject"] * 3,
+            "bron_fid": [1, 2, 3],
+        },
+        geometry=[LineString([(0, 0), (1, 1)])] * 3,
+        crs=settings.crs,
+    ).to_file(network, layer="hydroobject_segment")
     monkeypatch.setattr(
         tiles_module, "_calculate_tile_timed", lambda job: tile_results[job.tile.column]
     )
@@ -98,6 +110,7 @@ def test_gap_filling_uses_safe_neighbour_and_preserves_existing_assignment(
         burn_depth_m=1,
         output_dir=tmp_path / "tiles",
         merged_output_path=tmp_path / "merged.gpkg",
+        watersysteem_path=network,
         tile_size_m=10,
         tile_buffer_m=5,
         resolution_m=1,
@@ -113,6 +126,12 @@ def test_gap_filling_uses_safe_neighbour_and_preserves_existing_assignment(
     assert "boundary" not in merged.index
     assert merged.geometry.union_all().intersection(box(10, 8, 12, 9)).area == 0
     assert merged.area.sum() == merged.geometry.union_all().area
+    assert merged.loc["safe"].waterbeheercode == "38"
+    assert merged.loc["existing"].bron_fid == 3
+    additions = gpd.read_file(result.merged_path, layer="aanvulling_buurtegels")
+    remaining = gpd.read_file(result.merged_path, layer="niet_toegewezen")
+    assert additions.bron_tegel.tolist() == ["west"]
+    assert remaining.area.sum() == pytest.approx(result.remaining_gaps.area.sum())
 
 
 def test_merge_rejects_inconsistent_segment_ids() -> None:

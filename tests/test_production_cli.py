@@ -30,6 +30,43 @@ PRODUCTS = [
 ]
 
 
+@pytest.mark.parametrize(
+    "options,valid",
+    [
+        (
+            [
+                "--waterbeheercode",
+                "30",
+                "--overige-waterschappen",
+                "--eigen-hydamo",
+                "own.gpkg",
+            ],
+            True,
+        ),
+        (["--area", "alkmaar", "--overige-waterschappen"], False),
+        (["--eigen-hydamo", "own.gpkg"], False),
+    ],
+)
+def test_authority_cli_options(tmp_path, monkeypatch, options, valid):
+    path = Path(__file__).parents[1] / "scripts" / "afwateringseenheden.py"
+    spec = importlib.util.spec_from_file_location("afwateringseenheden_cli", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    main = Mock(return_value=tmp_path / "result")
+    monkeypatch.setattr(module, "main", main)
+    monkeypatch.setattr("sys.argv", [str(path), "--data-dir", str(tmp_path), *options])
+    if valid:
+        module.cli()
+        assert main.call_args.kwargs["area"] == "waterschap_30"
+        assert main.call_args.kwargs["overige_waterschappen"] is True
+        assert main.call_args.kwargs["eigen_hydamo"] == Path("own.gpkg")
+    else:
+        with pytest.raises(SystemExit) as result:
+            module.cli()
+        assert result.value.code == 2
+        main.assert_not_called()
+
+
 def test_brandlagen_cli_reads_relative_sources_and_defaults(tmp_path, monkeypatch):
     path = Path(__file__).parents[1] / "scripts" / "afwateringseenheden.py"
     spec = importlib.util.spec_from_file_location("afwateringseenheden_cli", path)

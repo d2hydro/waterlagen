@@ -624,6 +624,9 @@ def _fill_gaps_from_neighbours(
 def _write_merged_subcatchments(
     output_path: Path,
     subcatchments: gpd.GeoDataFrame,
+    *,
+    gap_additions: gpd.GeoDataFrame | None = None,
+    remaining_gaps: gpd.GeoDataFrame | None = None,
 ) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     temporary_path = _temporary_path(output_path, suffix=".gpkg")
@@ -641,6 +644,14 @@ def _write_merged_subcatchments(
             raise ValueError(
                 f"Non-polygon geometry in written layer {SUBCATCHMENTS_LAYER}"
             )
+        for layer, features in (
+            ("aanvulling_buurtegels", gap_additions),
+            ("niet_toegewezen", remaining_gaps),
+        ):
+            if features is not None:
+                write_geopackage_layer(
+                    features, temporary_path, layer_name=layer, mode="a"
+                )
         temporary_path.replace(output_path)
     except Exception:
         temporary_path.unlink(missing_ok=True)
@@ -1113,9 +1124,42 @@ def calculate_afwateringseenheden_tiles(
         logger.warning(
             "No merged afwateringseenheden written because all selected tiles are empty"
         )
+        _write_merged_subcatchments(
+            output_dir / "controle.gpkg",
+            merged_subcatchments.set_crs(settings.crs),
+            gap_additions=gap_fill.additions,
+            remaining_gaps=gap_fill.remaining,
+        )
     elif merged_output_path is not None:
         merged_path = Path(merged_output_path)
-        _write_merged_subcatchments(merged_path, merged_subcatchments)
+        if watersysteem_path.is_file():
+            segments = wgpd.read_file(watersysteem_path, layer="hydroobject_segment")
+            provenance = [
+                name
+                for name in (
+                    "bron_id",
+                    "waterbeheercode",
+                    "nen3610id",
+                    "globalid",
+                    "bronbestand",
+                    "bronlaag",
+                    "bron_fid",
+                )
+                if name in segments
+            ]
+            if provenance:
+                merged_subcatchments = merged_subcatchments.merge(
+                    segments[["segment_id", *provenance]],
+                    on="segment_id",
+                    how="left",
+                    validate="many_to_one",
+                )
+        _write_merged_subcatchments(
+            merged_path,
+            merged_subcatchments,
+            gap_additions=gap_fill.additions,
+            remaining_gaps=gap_fill.remaining,
+        )
         logger.info(
             "Wrote merged afwateringseenheden with %s feature(s) to %s",
             len(merged_subcatchments),

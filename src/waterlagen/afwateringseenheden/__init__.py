@@ -14,6 +14,7 @@ from .objects import (
 )
 from .pcraster import SubcatchmentResult, calculate_subcatchments, require_pcraster
 from .raster import WatersysteemRasters, prepare_watersysteem_rasters
+from .sources import WatersysteemSources, read_watersysteem_sources
 from .tiles import (
     AfwateringseenhedenTileResult,
     AfwateringseenhedenTilesResult,
@@ -33,6 +34,7 @@ __all__ = [
     "SubcatchmentResult",
     "WatersysteemRasters",
     "WatersysteemResult",
+    "WatersysteemSources",
     "calculate_afwateringseenheden_tiles",
     "calculate_subcatchments",
     "prepare_watersysteem",
@@ -41,6 +43,7 @@ __all__ = [
     "read_brandlagen_config",
     "read_hydroobjecten",
     "read_puntobjecten",
+    "read_watersysteem_sources",
     "require_pcraster",
     "split_connected_secondary_hydroobjecten",
     "split_hydroobjecten_at_points",

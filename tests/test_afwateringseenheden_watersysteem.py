@@ -787,7 +787,9 @@ def test_failed_write_cleans_temporary_file_and_preserves_existing_output(
     monkeypatch.setattr(
         workflow,
         "_validate_watersysteem_output",
-        lambda path: (_ for _ in ()).throw(ValueError("temporary output is invalid")),
+        lambda path, **kwargs: (_ for _ in ()).throw(
+            ValueError("temporary output is invalid")
+        ),
     )
 
     with pytest.raises(ValueError, match="temporary output is invalid"):

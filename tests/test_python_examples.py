@@ -54,6 +54,7 @@ DOWNLOADS = {
     ],
     "dijkringen": [Call("waterlagen.dijkringen", "download_dijkringen", "gpkg")],
     "hydamo": [Call("waterlagen.hydamo", "download_hydamo", "gpkg")],
+    "rijkswateren": [Call("waterlagen.rijkswateren", "download_rijkswateren", "path")],
     "liwo": [Call("waterlagen.liwo", "download_raster")],
     "osm_drinkwater": [
         Call(
@@ -378,6 +379,7 @@ def test_afwatering_example_connects_steps_and_passes_settings(
     from waterlagen.afwateringseenheden import (
         AfwateringseenhedenTilesResult,
         WatersysteemResult,
+        WatersysteemSources,
     )
 
     downloads = _mock_downloads(monkeypatch, tmp_path)
@@ -391,8 +393,12 @@ def test_afwatering_example_connects_steps_and_passes_settings(
     )
     points = gpd.GeoDataFrame(geometry=[Point(111550, 516000)], crs=hydro.crs)
     module = "waterlagen.afwateringseenheden"
-    read_hydro = _mock_api(monkeypatch, module, "read_hydroobjecten", hydro)
-    _mock_api(monkeypatch, module, "read_puntobjecten", points)
+    read_sources = _mock_api(
+        monkeypatch,
+        module,
+        "read_watersysteem_sources",
+        WatersysteemSources(hydro.iloc[:1], hydro.iloc[1:], hydro.iloc[:1], points),
+    )
     prepare = _mock_api(
         monkeypatch, module, "prepare_watersysteem", WatersysteemResult(hydro, points)
     )
@@ -429,7 +435,7 @@ def test_afwatering_example_connects_steps_and_passes_settings(
     _run_product("afwateringseenheden", tmp_path, replacements)
     prepare.assert_called_once()
     assert prepare.call_args.args[0].bron_id.tolist() == ["p"]
-    assert prepare.call_args.kwargs["hydroobject_secundair"].bron_id.tolist() == ["s"]
+    assert write.call_args.kwargs["hydroobject_secundair"].bron_id.tolist() == ["s"]
     assert prepare.call_args.kwargs["tolerance"] == 3.0
     assert write.call_args.kwargs["watersysteem"] is prepare.return_value
     assert write.call_args.kwargs["secondary_connection_tolerance"] == 3.0
@@ -445,7 +451,7 @@ def test_afwatering_example_connects_steps_and_passes_settings(
     else:
         assert arguments["brandlagen"] is None
     mask = downloads["download_ahn"].call_args.kwargs["poly_mask"]
-    assert mask.equals(read_hydro.call_args.kwargs["spatial_selection"])
+    assert mask.equals(read_sources.call_args.kwargs["spatial_selection"])
     x, y = NAMED_AREAS["alkmaar_centrum"].bounds[:2]
     assert mask.covers(box(x, y, x + 2000, y + 2000).buffer(1500))
 
