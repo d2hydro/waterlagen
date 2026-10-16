@@ -17,6 +17,7 @@ from waterlagen.areas import (
     Area,
     ProductionArea,
     area_name,
+    area_from_bounds,
     select_area_tiles,
 )
 from waterlagen.logger import get_logger, tile_logging
@@ -43,7 +44,18 @@ def test_brandlagen_cli_reads_relative_sources_and_defaults(tmp_path, monkeypatc
     )
     monkeypatch.setattr(
         "sys.argv",
-        [str(path), "--data-dir", str(tmp_path), "--brandlagen-config", str(config)],
+        [
+            str(path),
+            "--data-dir",
+            str(tmp_path),
+            "--brandlagen-config",
+            str(config),
+            "--bounds",
+            "184285",
+            "392054",
+            "185285",
+            "393054",
+        ],
     )
     module.cli()
     value = main.call_args.kwargs["brandlagen"]
@@ -51,6 +63,9 @@ def test_brandlagen_cli_reads_relative_sources_and_defaults(tmp_path, monkeypatc
     assert value.lagen[0].layer == "roads"
     assert value.brandwaarde == -3
     assert value.prioriteit == 2
+    assert main.call_args.kwargs["area"] == area_from_bounds(
+        (184285, 392054, 185285, 393054)
+    )
 
 
 @pytest.mark.parametrize("product", PRODUCTS)
@@ -71,6 +86,7 @@ def test_help_is_shared_and_does_not_start_production(product, monkeypatch, caps
         option in help_text
         for option in (
             "--area",
+            "--bounds",
             "--waterbeheercode",
             "--data-dir",
             "--output-root",
@@ -83,6 +99,69 @@ def test_help_is_shared_and_does_not_start_production(product, monkeypatch, caps
         )
     )
     main.assert_not_called()
+
+
+@pytest.mark.parametrize("product", PRODUCTS)
+def test_cli_passes_bounds_in_project_crs(product, tmp_path, monkeypatch):
+    from waterlagen.settings import settings
+
+    monkeypatch.setattr(settings, "crs", "EPSG:4326")
+    path = Path(__file__).parents[1] / "scripts" / f"{product}.py"
+    spec = importlib.util.spec_from_file_location(product, path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    main = Mock(return_value=tmp_path / "result")
+    monkeypatch.setattr(module, "main", main)
+    monkeypatch.setattr(
+        "sys.argv",
+        [str(path), "--bounds", "-1.5", "0", "2", "3", "--data-dir", str(tmp_path)],
+    )
+    module.cli()
+    area = main.call_args.kwargs["area"]
+    assert isinstance(area, ProductionArea)
+    assert area.geometry.equals(box(-1.5, 0, 2, 3))
+    assert area.crs == "EPSG:4326"
+    assert area.value == "-1.5_0_2_3"
+    assert "bounds" not in main.call_args.kwargs
+
+
+def test_cli_default_remains_nederland(tmp_path):
+    main = Mock(return_value=tmp_path / "result")
+    run_cli(production_parser("test"), main, ["--data-dir", str(tmp_path)])
+    assert main.call_args.kwargs["area"] == "nederland"
+
+
+@pytest.mark.parametrize(
+    "values",
+    [
+        [],
+        ["0", "1", "2"],
+        ["0", "0", "1", "1", "2"],
+        ["a", "0", "1", "1"],
+        ["nan", "0", "1", "1"],
+        ["0", "0", "inf", "1"],
+        ["1", "0", "0", "1"],
+        ["0", "1", "1", "0"],
+        ["0", "0", "0", "1"],
+        ["0", "0", "1", "0"],
+        ["0", "0", "1", "1", "--area", "alkmaar"],
+        ["0", "0", "1", "1", "--waterbeheercode", "38"],
+    ],
+)
+def test_invalid_bounds_fail_before_io(tmp_path, monkeypatch, values):
+    store = Mock(side_effect=AssertionError("DataStore must not start"))
+    monkeypatch.setattr("waterlagen._cli.DataStore", store)
+    workflow = Mock()
+    with pytest.raises(SystemExit) as result:
+        run_cli(
+            production_parser("test"),
+            workflow,
+            ["--data-dir", str(tmp_path / "new"), "--bounds", *values],
+        )
+    assert result.value.code == 2
+    store.assert_not_called()
+    workflow.assert_not_called()
+    assert not (tmp_path / "new").exists()
 
 
 @pytest.mark.parametrize("product", PRODUCTS)

@@ -29,6 +29,10 @@ Zie [Python gebruiken](gebruik.md) voor voorbeelden en
 
 ## Gebieden
 
+::: waterlagen.areas.area_from_bounds
+
+::: waterlagen.areas.ProductionArea
+
 ::: waterlagen.areas.resolve_area
 
 ::: waterlagen.areas.Area

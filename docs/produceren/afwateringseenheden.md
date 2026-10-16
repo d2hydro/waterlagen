@@ -22,6 +22,36 @@ bronvernieuwing, offline gebruik en hervatten.
 
 ## Workflow
 
+### Eigen gebied met brandlagen
+
+[Download het PowerShell-voorbeeld](voorbeelden/afwateringseenheden_issue63.ps1).
+Het selecteert 1 × 1 km rond RD-punt `(184785, 392554)` uit issue 63.
+Gebruik hiervoor `settings.crs = EPSG:28992`. Zie de
+[gedeelde gebiedsuitleg](cli.md#eigen-rechthoekig-gebied).
+
+1. Maak de brandlagen in QGIS en sla ze op in een GeoPackage.
+2. Wijs de bestanden en lagen aan in de [brandlagen-TOML](#toml-configuratie).
+3. Start vanuit de repositoryroot:
+
+   ```powershell
+   .\docs\produceren\voorbeelden\afwateringseenheden_issue63.ps1 -BrandlagenConfig '.\invoer\brandlagen.toml'
+   ```
+
+4. Open de gelogde resultaatmap en laad de uitvoer in QGIS.
+5. Pas zo nodig de brandlagen aan, sla ze op en start opnieuw.
+
+De vier grenzen en het configuratiepad zijn parameters bovenaan het script.
+Een relatief configuratiepad geldt vanaf de werkdirectory waarin u het script
+start. GeoPackage-paden in de TOML blijven relatief aan het TOML-bestand.
+Het script voert de productie vanuit de repositoryroot uit en geeft fouten door.
+
+Iedere uitvoering krijgt een nieuwe UTC-runmap. Na wijzigingen aan brandlagen
+is een nieuwe run nodig, ook bij `--overwrite`. Gebruik `--resume` alleen voor
+een onderbroken run met dezelfde invoer. Bewerk invoer niet tijdens een run.
+Ook zonder optionele brandlagen blijft de vaste HYDAMO-inbranding actief.
+
+### Verwerking
+
 1. Het gebied selecteert volledige tegelkernen van 10 x 10 km.
 2. De productie haalt de benodigde AHN-tegels, bestuurlijke gebieden en HYDAMO
    op, of hergebruikt lokale bronnen. De AHN-selectie dekt ook de tegelbuffers.

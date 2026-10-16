@@ -7,17 +7,20 @@ from shapely.geometry import LineString, Point, box
 
 from waterlagen.afwateringseenheden import Brandlaag, BrandlagenConfig
 from waterlagen.afwateringseenheden import productie as production
-from waterlagen.areas import ProductionArea
+from waterlagen.areas import ProductionArea, area_from_bounds
 from waterlagen.datastore import DataStore
 
 
-@pytest.mark.parametrize("name", ["nederland", "alkmaar", "waterschap_38"])
+@pytest.mark.parametrize("name", ["nederland", "alkmaar", "waterschap_38", "bounds"])
 @pytest.mark.parametrize("optional_burn", [False, True])
 def test_one_area_product_with_full_tiles_and_all_authorities(
     tmp_path, monkeypatch, name, optional_burn
 ):
     store = DataStore(data_dir=tmp_path, _env_file=None)
     area = ProductionArea(name, box(150100, 400100, 151000, 401000), "EPSG:28992")
+    if name == "bounds":
+        area = area_from_bounds(area.geometry.bounds)
+        name = area.value
     hydamo = store.hydamo_dir / "hydamo.gpkg"
     boundary = tmp_path / "boundary.gpkg"
     ahn = tmp_path / "ahn.vrt"
@@ -77,6 +80,7 @@ def test_one_area_product_with_full_tiles_and_all_authorities(
     assert "waterbeheercodes" not in read_points.call_args.kwargs
     context = prepare_ahn.call_args.args[1]
     assert context.covers(box(150000, 400000, 160000, 410000))
+    assert context.bounds == (148000, 398000, 162000, 412000)
     for mode in ("resume", "overwrite"):
         production.main(
             store,

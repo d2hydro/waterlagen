@@ -9,6 +9,38 @@ from waterlagen import _production
 from waterlagen._production import production_run
 
 
+def test_bounds_folder_and_run_identity(tmp_path):
+    from waterlagen.areas import area_from_bounds
+
+    area = area_from_bounds((184285, 392054, 185285, 393054))
+    with production_run(
+        tmp_path, "dem", area.value, run_id="test", parameters={"area": area.identity}
+    ) as run:
+        assert run.path == tmp_path / "dem" / "184285_392054_185285_393054" / "test"
+    with production_run(
+        tmp_path,
+        "dem",
+        area.value,
+        run_id="test",
+        resume=True,
+        parameters={"area": area.identity},
+    ):
+        pass
+    changed = dict(area.identity, crs="EPSG:4326")
+    with (
+        pytest.raises(ValueError, match="andere instellingen"),
+        production_run(
+            tmp_path,
+            "dem",
+            area.value,
+            run_id="test",
+            resume=True,
+            parameters={"area": changed},
+        ),
+    ):
+        pytest.fail("Changed area identity accepted")
+
+
 def test_timestamp_scope_and_metadata(tmp_path):
     with production_run(
         tmp_path, "autos", "nederland", parameters={"year": 2025}

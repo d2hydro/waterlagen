@@ -4,7 +4,7 @@ editorial_status: ai
 
 # #63 — Vrije gebiedsselectie via de productie-CLI
 
-**Status:** implementatieplan na afgeronde grilling; implementatie niet gestart.
+**Status:** geïmplementeerd op branch `63_gebieden_met_bounds`.
 De gebruiker heeft de onderstaande functionele keuzes bevestigd.
 
 Aanleiding: [#63 Testgebieden](https://github.com/d2hydro/waterlagen/issues/63),
@@ -147,7 +147,7 @@ Verander dit bestaande contract niet. Bewerk invoer niet tijdens een run.
 Voorgestelde locatie voor het uitvoerbare voorbeeld:
 `docs/produceren/voorbeelden/afwateringseenheden_issue63.ps1`.
 De implementatie voegt dit bestand toe en linkt ernaar vanuit de
-productie-instructies. Het huidige plan maakt het script nog niet aan.
+productie-instructies. Het script is beschikbaar op deze locatie.
 
 Zet de vier bounds en het pad naar de brandlagen-TOML als herkenbare variabelen
 bovenaan. Gebruik bovengenoemde 1 km-bbox als aanpasbaar voorbeeld. Start
@@ -157,7 +157,7 @@ vanuit de repositoryroot één normale productieopdracht met PCRaster:
 pixi run --environment afwateringseenheden afwateringseenheden --bounds 184285 392054 185285 393054 --brandlagen-config PAD_NAAR_BRANDLAGEN.toml
 ```
 
-Dit is de beoogde aanroep na implementatie; `--bounds` bestaat nu nog niet.
+Deze aanroep is beschikbaar met de geïmplementeerde `--bounds`-optie.
 
 Het script bevat geen vaste run-ID, vergelijking, downloadvernieuwing of
 automatische hervatting. Geef argumenten veilig als afzonderlijke waarden door,

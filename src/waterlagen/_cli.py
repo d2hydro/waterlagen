@@ -7,9 +7,10 @@ from pathlib import Path
 
 from waterlagen._production import add_run_arguments, validate_run_options
 from waterlagen._run_logging import production_logging
-from waterlagen.areas import NAMED_AREAS, area_name
+from waterlagen.areas import NAMED_AREAS, area_from_bounds, area_name
 from waterlagen.datastore import DataStore
 from waterlagen.logger import get_logger
+from waterlagen.settings import settings
 
 
 def positive_int(value: str) -> int:
@@ -37,6 +38,13 @@ def production_parser(
             f"Invoergebied: nederland, {', '.join(NAMED_AREAS)} of waterschap_CODE; "
             "uitvoer wordt niet afgeknipt"
         ),
+    )
+    selection.add_argument(
+        "--bounds",
+        nargs=4,
+        type=float,
+        metavar=("XMIN", "YMIN", "XMAX", "YMAX"),
+        help=f"Rechthoekige invoerselectie in project-CRS {settings.crs}; uitvoer wordt niet afgeknipt",
     )
     selection.add_argument(
         "--waterbeheercode",
@@ -88,9 +96,12 @@ def run_cli(
     data_dir = arguments.pop("data_dir")
     output_root = arguments.pop("output_root")
     try:
-        arguments["area"] = area_name(
-            arguments.pop("waterbeheercode") or arguments["area"]
-        )
+        bounds = arguments.pop("bounds")
+        authority = arguments.pop("waterbeheercode")
+        if bounds is not None:
+            arguments["area"] = area_from_bounds(bounds)
+        else:
+            arguments["area"] = area_name(authority or arguments["area"])
         validate_run_options(
             arguments["run_id"],
             resume=arguments["resume"],
