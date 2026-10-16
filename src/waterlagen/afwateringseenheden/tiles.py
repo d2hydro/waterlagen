@@ -41,6 +41,7 @@ from .pcraster import (
     require_pcraster,
 )
 from .raster import (
+    BRANDBRON_FILENAME,
     WatersysteemRasters,
     _grid_for_square,
     _prepare_rasters,
@@ -711,6 +712,12 @@ def _calculate_tile(job: _TileJob) -> AfwateringseenhedenTileResult:
                 existing_subcatchments = None
         if existing_subcatchments is not None:
             calculation_buffer_m = _cached_buffer_m(job)
+            if not (job.output_dir / BRANDBRON_FILENAME).is_file():
+                logger.info(
+                    "Recalculating tile %s with missing burn-source raster",
+                    tile.tile_id,
+                )
+                existing_subcatchments = None
 
     if existing_subcatchments is None:
         burn_manifest.unlink(missing_ok=True)
