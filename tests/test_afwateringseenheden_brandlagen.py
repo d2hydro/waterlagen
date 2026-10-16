@@ -50,7 +50,7 @@ def test_local_conflict_check_matches_full_buffered_rasters(tmp_path, origin):
                 out_shape=(grid.height, grid.width),
                 transform=grid.transform,
                 dtype="uint8",
-                all_touched=False,
+                all_touched=row.geometry.geom_type in {"Polygon", "MultiPolygon"},
             ).astype(bool)
             for row in features.itertuples()
         ]
@@ -65,6 +65,43 @@ def test_local_conflict_check_matches_full_buffered_rasters(tmp_path, origin):
     assert len(errors) == len(expected)
     for fid in features.bron_fid:
         assert any(f"FID {fid}:" in error for error in errors) == (fid in expected)
+
+
+def test_narrow_polygon_burns_continuously_and_preserves_line_priority(tmp_path):
+    path = write_layer(
+        tmp_path / "narrow.gpkg",
+        [box(0.1, 0.1, 0.3, 7.9), LineString([(0.2, 6.5), (7.8, 2.5)])],
+        brandwaarde=[-40, -20],
+        prioriteit=[1, 2],
+    )
+    grid = _grid_for_square(box(0, 0, 8, 8), resolution_m=2)
+    config = BrandlagenConfig((Brandlaag(path, "objects"),))
+    prepared = module._prepare_brandlagen(config, [grid], tmp_path / "prepared.gpkg")
+    result = module._optional_burn_raster(prepared, grid)
+    expected = np.zeros((4, 4))
+    expected[:, 0] = -40
+    line_mask = rasterize(
+        [(LineString([(0.2, 6.5), (7.8, 2.5)]), 1)],
+        out_shape=(4, 4),
+        transform=grid.transform,
+        all_touched=False,
+    ).astype(bool)
+    expected[line_mask] = -20
+    np.testing.assert_array_equal(result.values, expected)
+    np.testing.assert_array_equal(result.sources != 0, expected != 0)
+
+
+def test_narrow_disjoint_polygons_conflict_in_touched_cell(tmp_path):
+    path = write_layer(
+        tmp_path / "conflict.gpkg",
+        [box(0.1, 0.1, 0.3, 7.9), box(0.4, 0.1, 0.6, 7.9)],
+        brandwaarde=[-40, 1],
+        prioriteit=[1, 1],
+    )
+    grid = _grid_for_square(box(0, 0, 8, 8), resolution_m=2)
+    config = BrandlagenConfig((Brandlaag(path, "objects"),))
+    with pytest.raises(ValueError, match="opposite signs"):
+        module._prepare_brandlagen(config, [grid], tmp_path / "prepared.gpkg")
 
 
 def write_layer(path, geometries, *, layer="objects", crs=None, **attributes):

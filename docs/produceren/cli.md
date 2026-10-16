@@ -65,9 +65,34 @@ geselecteerd die het voorbeeldgebied raken.
 
 ## Opties
 
+### Eigen rechthoekig gebied
+
+Alle vijf commando's accepteren `--bounds xmin ymin xmax ymax`:
+
+```console
+pixi run dem --bounds 184285 392054 185285 393054
+```
+
+- Coördinaten staan in `settings.crs`, standaard `EPSG:28992` (RD).
+- Geef vier eindige getallen met `xmin < xmax` en `ymin < ymax`.
+- Decimalen en negatieve coördinaten zijn toegestaan. Gebruik een punt als decimaalteken.
+- Kies één gebiedsoptie: `--bounds`, `--area` of `--waterbeheercode`.
+- Zonder gebiedsoptie blijft Nederland de standaard.
+
+De rechthoek selecteert volledige overlappende tegelkernen of CBS-buurten.
+Alleen aanraking aan de grens selecteert geen extra tegel of buurt.
+Rasteroorsprong, resolutie en buffers blijven gelijk. De bounds zijn geen
+uitvoerclip of downloadlimiet.
+
+Bij afwateringseenheden selecteert dit voorbeeld één kern van 10 × 10 km.
+Met de buffer van 2 km blijft de rekenomgeving 14 × 14 km.
+
+### Overige opties
+
 | Optie | Gedrag |
 | --- | --- |
 | `--area GEBIED` | Gedeelde invoerselectie; standaard Nederland. |
+| `--bounds XMIN YMIN XMAX YMAX` | Eigen rechthoek in het project-CRS, met behoud van volledige tegels/objecten. |
 | `--data-dir PAD` | Bronmap en productiemap onder `PAD/source_data` en `PAD/processed_data`. |
 | `--output-root PAD` | Productiemap, ook voor automatisch geproduceerde afhankelijkheden. |
 | `--run-id NAAM` | Eigen runnaam; standaard een UTC-tijdstempel. |
