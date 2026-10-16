@@ -420,11 +420,31 @@ De selectie bestaat uit 30 volledige rekentegels. De context vraagt 150 AHN-
 brontegels, waarvan er bij inventarisatie 121 beschikbaar waren. GKW bevat
 ook `overig` en enkele lijnen zonder categorie. De gebruiker heeft de policy
 voor uitsluiting met waarschuwing en controle-uitvoer bevestigd. In de exacte
-rekencontext zijn twee GKW-lijnen zonder categorie aangetroffen. De productie
-is met deze policy gestart en vult alleen de ontbrekende AHN-tegels aan.
-De Aa-en-Maas-vergelijking, het gecontroleerde experiment zonder RWS-brandcontext
-en de kaartbeoordeling zijn nog open. Er is geen eigen levering verstrekt.
-Synthetische controles vervangen deze inhoudelijke vergelijking niet.
+rekencontext zijn twee GKW-lijnen zonder categorie aangetroffen. Alle 29
+ontbrekende AHN-tegels zijn opgehaald en gevalideerd; bestaande tegels zijn
+hergebruikt.
+
+Het echte netwerk bevat 28.574 primaire brandlijnen, waaronder 167 RWS-lijnen,
+en 11.539 doelsegmenten van uitsluitend Aa en Maas. Van 26.606 secundaire lijnen
+zijn er 25.559 verbonden en 1.047 uitgesloten. In het gecontroleerde netwerk
+zonder RWS blijven de doelsegmenten en de geselecteerde secundaire lijnen exact
+gelijk. Bij de kunstwerkvoorbereiding vallen 64 punten buiten de bestaande
+koppeltolerantie van 2 m.
+
+De echte Maasuitsnede zonder waterschapscode (RD 150000–160000,
+410000–420000) is afgerond. Zij bevat 1.256 eenheden, waarvan 49 van RWS,
+1.011 van Aa en Maas, 165 van beheerder 9 en 31 van beheerder 27.
+De toegewezen oppervlakte is 97,996916 km²; 2,003084 km² blijft niet toegewezen.
+Er is bij deze enkele tegel geen aanvulling uit buurtegels. De controlekaart
+en tellingen staan lokaal onder `processed_data/afwateringseenheden_review/`
+als `issue53_rws_doelen.png` en `issue53_uitsnede_controle.json`.
+Dit bevestigt technisch de doelmodus, niet de hydrologische juistheid.
+
+De volledige Aa-en-Maas-vergelijking, het gecontroleerde rasterexperiment zonder
+RWS-brandcontext en de kaartbeoordeling zijn nog open. De berekeningen lopen
+met dezelfde grids, 2 m resolutie, 2 km buffers en vaste seed. Er is geen eigen
+levering verstrekt. Synthetische controles vervangen de inhoudelijke vergelijking
+niet.
 
 ### Afzonderlijke documentatiebevindingen
 
