@@ -10,17 +10,19 @@ import pyogrio
 from shapely.geometry.base import BaseGeometry
 
 from waterlagen import _geopandas as wgpd
+from waterlagen._production import _file_identity
 from waterlagen.logger import get_logger
 from waterlagen.settings import settings
 
 from .objects import (
     CATEGORIE_OPPERVLAKTEWATER_COLUMN,
+    read_duikersifonhevel,
     read_hydroobjecten,
     read_puntobjecten,
 )
 
 logger = get_logger(__name__)
-SOURCE_POLICY = "replace_authority_exclude_gkw80_missing_category_control_v2"
+SOURCE_POLICY = "replace_authority_exclude_gkw80_required_culverts_v3"
 CONNECTION_POLICY = "all_selected_full_lines_components_v1"
 
 
@@ -40,6 +42,11 @@ class WatersysteemSources:
     missing_category : geopandas.GeoDataFrame, optional
         GKW lines without a category, excluded from burning and targets and
         retained with provenance for inspection.
+    culverts : geopandas.GeoDataFrame, optional
+        Full selected culvert geometries, independent of target participation.
+        GKW code 80 is excluded; only the optional RWS layer supplies RWS culverts.
+    rws_culverts_present : bool
+        Whether the RWS source includes the optional culvert layer, even if empty.
     """
 
     primary: gpd.GeoDataFrame
@@ -47,6 +54,8 @@ class WatersysteemSources:
     targets: gpd.GeoDataFrame
     points: gpd.GeoDataFrame
     missing_category: gpd.GeoDataFrame | None = None
+    culverts: gpd.GeoDataFrame | None = None
+    rws_culverts_present: bool = False
 
 
 def validate_authority_options(
@@ -92,12 +101,12 @@ def _validate_own_source(path: Path, code: str) -> None:
     """Check the entire delivery, including objects outside the selected context."""
     logger.info("Validating own HyDAMO delivery %s for authority %s", path, code)
     available = set(pyogrio.list_layers(path)[:, 0])
-    missing = {"hydroobject", "gemaal", "stuw"} - available
+    missing = {"hydroobject", "gemaal", "stuw", "duikersifonhevel"} - available
     if missing:
         raise ValueError(
             f"{path}: missing required layers: {', '.join(sorted(missing))}"
         )
-    for layer in ("hydroobject", "gemaal", "stuw"):
+    for layer in ("hydroobject", "gemaal", "stuw", "duikersifonhevel"):
         features = wgpd.read_file(path, layer=layer, fid_as_index=True)
         if features.crs is None:
             raise ValueError(f"{path} / {layer}: missing CRS")
@@ -138,6 +147,7 @@ def _source_ids(features: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     result = features.copy()
     if result.empty:
         return result
+    result["oorspronkelijk_bron_id"] = result["bron_id"]
     # Include the path, layer and original FID, even when globalids are reused.
     result["bron_id"] = [
         f"{row.bronbestand}|{row.bronlaag}|{row.bron_fid}|{row.bron_id}"
@@ -169,7 +179,8 @@ def read_watersysteem_sources(
     overige_waterschappen : bool, optional
         Include other water authorities as targets, default False. Requires a code.
     eigen_hydamo : pathlib.Path, optional
-        Completely replaces the selected authority's hydroobject, gemaal and stuw
+        Completely replaces the selected authority's hydroobject, gemaal, stuw
+        and required duikersifonhevel
         layers. All identifiers are checked before spatial selection; no fallback.
 
     Returns
@@ -192,10 +203,17 @@ def read_watersysteem_sources(
         _validate_own_source(eigen_hydamo, waterbeheercode)
     hydro = read_hydroobjecten(hydamo_path, spatial_selection=spatial_selection)
     points = read_puntobjecten(hydamo_path, spatial_selection=spatial_selection)
+    culverts = read_duikersifonhevel(hydamo_path, spatial_selection=spatial_selection)
+    culverts = culverts.loc[culverts.waterbeheercode.ne("80")].copy()
     hydro = hydro.loc[hydro.waterbeheercode.ne("80")].copy()
     if eigen_hydamo is not None:
         hydro = hydro.loc[hydro.waterbeheercode.ne(waterbeheercode)].copy()
         points = points.loc[points.waterbeheercode.ne(waterbeheercode)].copy()
+        culverts = culverts.loc[culverts.waterbeheercode.ne(waterbeheercode)].copy()
+        own_culverts = read_duikersifonhevel(
+            eigen_hydamo, spatial_selection=spatial_selection
+        )
+        culverts = pd.concat([culverts, own_culverts], ignore_index=True)
         own_hydro = read_hydroobjecten(
             eigen_hydamo, spatial_selection=spatial_selection
         )
@@ -208,6 +226,30 @@ def read_watersysteem_sources(
     rws = read_hydroobjecten(rijkswateren_path, spatial_selection=spatial_selection)
     _check_identifiers(rws, str(rijkswateren_path), "80")
     rws = _normalize_categories(rws, str(rijkswateren_path))
+    rws_culverts_present = "duikersifonhevel" in set(
+        pyogrio.list_layers(rijkswateren_path)[:, 0]
+    )
+    logger.info("RWS duikersifonhevel layer present: %s", rws_culverts_present)
+    if rws_culverts_present:
+        rws_culverts = read_duikersifonhevel(rijkswateren_path)
+        _check_identifiers(
+            rws_culverts, f"{rijkswateren_path} / duikersifonhevel", "80"
+        )
+        rws_culverts = rws_culverts.loc[
+            rws_culverts.intersects(spatial_selection)
+        ].copy()
+        culverts = pd.concat([culverts, rws_culverts], ignore_index=True)
+    _check_identifiers(culverts, "Selected duikersifonhevel")
+    culverts = _source_ids(gpd.GeoDataFrame(culverts, crs=settings.crs))
+    source_paths = [Path(hydamo_path), Path(rijkswateren_path)]
+    if eigen_hydamo is not None:
+        source_paths.append(Path(eigen_hydamo))
+    culverts.attrs["source_identity"] = {
+        "policy": SOURCE_POLICY,
+        "rws_culverts_present": rws_culverts_present,
+        "files": [_file_identity(path) for path in source_paths],
+        "wal": [_file_identity(Path(str(path) + "-wal")) for path in source_paths],
+    }
     hydro = gpd.GeoDataFrame(
         pd.concat([hydro, rws], ignore_index=True), crs=settings.crs
     )
@@ -244,4 +286,12 @@ def read_watersysteem_sources(
         len(targets),
         len(points),
     )
-    return WatersysteemSources(primary, secondary, targets, points, missing_category)
+    return WatersysteemSources(
+        primary,
+        secondary,
+        targets,
+        points,
+        missing_category,
+        culverts,
+        rws_culverts_present,
+    )

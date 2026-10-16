@@ -360,6 +360,8 @@ def _segment_raster(
     grid: RasterGrid,
 ) -> np.ndarray:
     """Rasterize hydroobject segment FIDs, reserving zero for cells without a segment."""
+    if "doelgeschikt" in segments:
+        segments = segments.loc[segments.doelgeschikt.eq(True)]
     shapes = [
         (geometry, int(fid))
         for fid, geometry in zip(segments.index, segments.geometry)
@@ -472,6 +474,9 @@ def prepare_watersysteem_rasters(
         GeoPackage containing ``hydroobject_primair``,
         ``hydroobject_secundair``, and ``hydroobject_segment``. Defaults to
         ``datastore.afwateringseenheden_path / 'watersysteem.gpkg'``.
+        With culvert preparation, ``hydroobject_primair`` already excludes
+        culvert routes; the full source layer is never burned. Only segments
+        with ``doelgeschikt=True`` supply targets, retaining their stored FIDs.
     landsgrens_path : Path, optional
         Bestuurlijke gebieden GeoPackage with the Dutch ``landgebied`` layer.
         Reprojected to the target CRS; pixel centres determine inclusion.

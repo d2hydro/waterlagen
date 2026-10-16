@@ -13,7 +13,8 @@ de uitvoering, parallel rekenen en logbestanden.
 `read_watersysteem_sources` levert afzonderlijke primaire en secundaire
 brandcontext (`primary`, `secondary`), primaire doelen (`targets`) en
 deelnemende kunstwerken (`points`). Gebruik `targets` en `points` voor
-`prepare_watersysteem`; geef de volledige `primary` en `secondary` aan
+`prepare_watersysteem`, samen met `hydroobject_primair=sources.primary` en
+`duikersifonhevel=sources.culverts`; geef de volledige `primary` en `secondary` aan
 `write_watersysteem`. Die schrijft expliciete categorielagen en classificeert
 secundaire groepen gezamenlijk tegen de volledige primaire brongeometrie.
 Zo hangt de brandselectie niet af van de doelmodus.
@@ -29,6 +30,62 @@ het oorspronkelijke bron-ID, zodat FIDs en globalids tussen bronnen mogen overla
 ::: waterlagen.afwateringseenheden.read_watersysteem_sources
 
 ::: waterlagen.afwateringseenheden.WatersysteemSources
+
+## Duikervoorbereiding
+
+`read_duikersifonhevel` leest volledige brongeometrieën in het project-CRS,
+met bronbestand, laag en oorspronkelijke FID. Onbruikbare geselecteerde
+geometrieën worden behouden voor controle. Zonder ruimtelijke selectie worden
+ook geometrieën zonder locatie gelezen; een ruimtelijke selectie kan objecten
+zonder locatie niet aan een rekencontext toewijzen.
+
+`prepare_watersysteem` koppelt duikers eenmaal aan de volledige primaire
+context, vóór de doelafhankelijke voorbereiding. Zonder `duikersifonhevel`
+blijven bestaande lagere aanroepen werken. Met duikerinvoer geldt de
+uitsluiting altijd, ook met `max_aansluitlengte=None`.
+
+Kandidaten worden bepaald met de inclusieve `duiker_tolerance` per uiteinde.
+Routes volgen bestaande gedeelde bronlijneindpunten en moeten in de
+projectierichting langs de duiker voortgaan. Kruisingen zonder bestaand
+knooppunt zijn geen verbinding. Bij meerdere routes bepaalt de kleinste
+Hausdorff-afstand tot de duikergeometrie de kandidaat; gelijke scores blijven
+ambigu. Beheerder, FID en netwerkafstand geven geen doorslag. Er wordt geen
+bufferstrook voor het hele duikertraject gebruikt.
+
+Dit is een geometrische koppeling, geen bewijs van een hydraulische relatie.
+Niet-monotone routes, onbruikbare of gesloten duikerlijnen en niet te
+onderscheiden routes gaan naar controle. Aaneengesloten multipartduikers
+worden samengevoegd voor de koppeling; de originele controlegeometrie blijft
+behouden. Om onbegrensd zoeken in complexe netwerken te vermijden worden
+meer dan 128 kandidaattrajecten of 10.000 zoekstappen als ambigu gemeld.
+
+`WatersysteemResult` bevat de volledige primaire bron, de geknipte primaire
+delen, de volledige doelsegmentlaag en `duiker_controle`. De schrijver bewaart
+de volledige bron in `hydroobject_primair_bron`, alle geknipte context in
+`hydroobject_primair_delen` en de geschikte branddelen in `hydroobject_primair`.
+De secundaire toets blijft de volledige bron gebruiken.
+De controles staan zowel in het snapshot (`duikersifonhevel_controle`) als in
+`controle_path` (standaard naast het snapshot, laag `duikersifonhevel`).
+
+De segmentkolommen `brandgeschikt` en `doelgeschikt` hebben afzonderlijke
+betekenissen. `duiker_ids` identificeert overlappende duikers;
+`aansluit_duiker_ids` identificeert directe aansluitingen. Lengteclassificatie
+vindt vóór `max_length` plaats en wordt doorgegeven aan de deelsegmenten.
+Filtering van het doelraster behoudt de opgeslagen FIDs voor de terugkoppeling
+naar `segment_id`; gaten worden niet opgevuld.
+
+Voorbereiding en schrijven controleren inhoudelijke invoeridentiteiten,
+inclusief controleobjecten, doelmodus en instellingen. Bronlezers voegen ook
+bestandsidentiteiten en SQLite-WAL toe. Een afwijkende duikersnapshot wordt
+ook met `overwrite=False` vernieuwd; een gewijzigd snapshot maakt via de
+bestaande brandidentiteit zowel rasters als tegelresultaten ongeldig. Ontbrekende
+controle-uitvoer wordt bij schrijven hersteld. Het uitschakelen van duikerinvoer
+maakt een eerder met duikers voorbereid snapshot eveneens ongeldig.
+
+Zie het [uitvoerbare voorbeeld](bewerkte-lagen-produceren.md#afwateringseenheden)
+en de [controle-instructies](../produceren/afwateringseenheden.md#controle-in-qgis).
+
+::: waterlagen.afwateringseenheden.read_duikersifonhevel
 
 ## Brandlagen
 

@@ -40,6 +40,10 @@ PRODUCTS = [
                 "--overige-waterschappen",
                 "--eigen-hydamo",
                 "own.gpkg",
+                "--duiker-tolerance",
+                "0.3",
+                "--max-aansluitlengte",
+                "25",
             ],
             True,
         ),
@@ -60,6 +64,8 @@ def test_authority_cli_options(tmp_path, monkeypatch, options, valid):
         assert main.call_args.kwargs["area"] == "waterschap_30"
         assert main.call_args.kwargs["overige_waterschappen"] is True
         assert main.call_args.kwargs["eigen_hydamo"] == Path("own.gpkg")
+        assert main.call_args.kwargs["duiker_tolerance"] == 0.3
+        assert main.call_args.kwargs["max_aansluitlengte"] == 25.0
     else:
         with pytest.raises(SystemExit) as result:
             module.cli()

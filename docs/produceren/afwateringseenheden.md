@@ -71,13 +71,16 @@ pixi run --environment afwateringseenheden afwateringseenheden --waterbeheercode
 ### Eigen levering
 
 `--eigen-hydamo` vervangt alle GKW-objecten van de gekozen beheerder, ook in
-de brandcontext. De lagen `hydroobject`, `gemaal` en `stuw` zijn verplicht;
+de brandcontext. De lagen `hydroobject`, `gemaal`, `stuw` en `duikersifonhevel` zijn verplicht;
 kunstwerklagen mogen leeg zijn. Alle objecten moeten een geldige `nen3610id`
 van de gekozen beheerder hebben (`NL.WBHCODE.<code>.<rest>`). Ook identifiers
 buiten de ruimtelijke selectie worden gecontroleerd. Selecteer een levering
 met meerdere beheerders vooraf. Er is geen fallback naar GKW bij brongaten.
 GKW blijft nodig voor de omgeving. Beide beheerderopties vereisen een
 waterschapscode; in Python heten ze `eigen_hydamo` en `overige_waterschappen`.
+Ook een lege eigen duikerlaag vervangt alle GKW-duikers van die beheerder;
+er wordt niets uit GKW aangevuld. Leveringen zonder deze vierde laag geven
+vóór AHN-voorbereiding een fout.
 
 Beide categorievelden `categorieoppwaterlichaam` en `categorieoppervlaktewater`
 worden herkend. Bekende waarden zijn `primair`, `secundair`, `tertiair` en
@@ -103,6 +106,63 @@ De vaste categorievolgorde geldt over alle beheerders: **primair > verbonden
 secundair > optioneel**. Primaire lijnen krijgen `-2 * burn_depth_m`, secundaire
 lijnen `-burn_depth_m`: standaard -200 en -100 m. Dit zijn rekenkundige
 verlagingen, geen bodemhoogtes. De keuze van doelen verandert deze regels niet.
+
+## Duikers, sifons en hevels
+
+De productie leest `duikersifonhevel` voor de volledige tegelcontext, inclusief
+buffers en beheerders die uitsluitend brandcontext leveren. In GKW is deze
+laag verplicht; een lege laag is geldig. GKW-duikers met beheerdercode `80`
+worden altijd uitgesloten. RWS-duikers worden uitsluitend uit de optionele
+laag `duikersifonhevel` in `rws_hydamo.gpkg` gelezen. Een ontbrekende of lege
+RWS-laag is geldig; een aanwezige laag moet leesbaar zijn en geldige identifiers
+met code `80` hebben. De aanwezigheid wordt vastgelegd in `run.json`.
+
+Beide uiteinden worden met maximaal **0,5 m** afstand aan een eenduidig primair
+traject gekoppeld. De grenswaarde telt mee. Koppeling over bron- en
+beheerdergrenzen is toegestaan; een duikergrens maakt geen nieuwe verbinding
+met een nabije watergang. De technische
+[koppelregels en beperkingen](../reference/afwateringseenheden.md#duikervoorbereiding)
+staan bij de API.
+
+```console
+pixi run --environment afwateringseenheden afwateringseenheden --waterbeheercode 38 --duiker-tolerance 0.5 --max-aansluitlengte 50 --run-id duikers-50m
+```
+
+`--duiker-tolerance` stelt de koppelafstand per uiteinde in. De algemene
+netwerktolerantie blijft 2 m. `--max-aansluitlengte` sluit directe aansluitstukken
+tot en met de opgegeven lengte uit als afwateringsdoel. Zonder deze optie
+(`None` in Python) behouden alle aansluitstukken hun doelstatus. Nul is geldig;
+negatieve of niet-eindige waarden zijn ongeldig. De lengte wordt gemeten na
+duikerknippen en fysieke objectgrenzen, vóór de maximumlengtesplitsing. De
+selectie loopt niet verder door een keten van korte stukken.
+
+Het gekoppelde duikertraject wordt altijd uitgesloten van primaire brandwerking
+en doelen. Aansluitstukken blijven primair branden, ook wanneer ze geen doel
+meer zijn. Optionele brandgeometrie en verbonden secundaire lijnen kunnen
+nog steeds dezelfde rastercellen beïnvloeden. Er wordt geen ondergrondse
+stromingsverbinding toegevoegd. Een andere aansluitlengte verandert het
+gebrande DEM niet; de afwateringstoekenning kan wel veranderen.
+
+### Controle in QGIS
+
+Een voltooide run kan controleobjecten bevatten. Open `<run>/controle.gpkg`,
+laag `duikersifonhevel`, samen met `watersysteem.gpkg`. Beoordeel `reden`,
+`afstand_begin`, `afstand_eind`, de geometrie en de oorspronkelijke
+bronidentificaties (`bronbestand`, `bronlaag`, `bron_fid` en `bron_id`). Er zijn
+afzonderlijke meldingen voor geen match, één gekoppeld uiteinde, ambiguïteit,
+een ontbrekend aaneengesloten traject en onbruikbare geometrie. Een duiker
+zonder primaire match kan legitiem bij een secundaire watergang horen.
+
+Mislukte koppelingen veranderen het netwerk niet gedeeltelijk. Andere duikers
+worden wel verwerkt. Technische lees- en schrijffouten blijven fouten. Controleer
+ook de uitgesloten trajecten in `hydroobject_primair_delen` en de kolommen
+`brandgeschikt`, `doelgeschikt`, `duiker_ids` en `aansluit_duiker_ids` in
+`hydroobject_segment`. De IDs in de duikerkolommen zijn JSON-lijsten.
+
+De controlelaag wordt ook leeg geschreven en bij hervatten hersteld. Na
+correctie en een nieuwe verwerking verdwijnen oude meldingen; andere lagen
+in hetzelfde controlebestand blijven behouden. De controle is er ook als geen
+afwateringseenheden kunnen worden geproduceerd.
 
 ## Optionele brandlagen
 
@@ -177,6 +237,7 @@ Elke run staat onder `processed_data/afwateringseenheden/<gebied>/<run-id>/`.
 | --- | --- |
 | `afwateringseenheden.gpkg` | Samengestelde afwateringseenheden. |
 | `watersysteem.gpkg` | Voorbereid watersysteem voor alle geselecteerde tegels. |
+| `controle.gpkg` | Laag `duikersifonhevel` met mislukte of onduidelijke koppelingen, ook geldig als deze leeg is. |
 | `input/ahn.vrt` | Gebiedsspecifieke verwijzingen naar gedeelde AHN-tegels. |
 | `tiles/tiles.gpkg` | Geselecteerde tegelkernen. |
 | `tiles/brandlagen.gpkg` en `tiles/brandlagen.json` | Gevalideerde optionele brandobjecten en bron-/grididentiteit, indien gebruikt. |
@@ -189,6 +250,11 @@ bronbestand/laag/FID van hun doelsegment. `watersysteem.gpkg` bevat alle
 primaire brandlijnen, verbonden secundaire lijnen en de controlelaag
 `hydroobject_secundair_niet_verbonden`; alleen deelnemende primaire lijnen
 staan in `hydroobject_segment`.
+Bij duikervoorbereiding bevat `hydroobject_primair` uitsluitend de geschikte
+brandgeometrie. `hydroobject_primair_bron` bewaart de volledige bron voor de
+secundaire toets; `hydroobject_primair_delen` bewaart ook de uitgesloten
+duikertrajecten van alle beheerders. De segmentlaag bevat ook ongeschikte
+doelsegmenten; het doelraster gebruikt uitsluitend `doelgeschikt = true`.
 De aanvullende controlelaag `hydroobject_zonder_categorie` bevat uitgesloten
 GKW-lijnen zonder categorie, met `uitsluitreden`.
 
@@ -211,6 +277,10 @@ Zie [productiemappen](configuratie.md#productiemappen) voor de compatibiliteitsv
 
 De brandconfiguratie en bronidentiteiten worden vastgelegd in `run.json`.
 Gewijzigde bronnen of instellingen vereisen bij de productie een nieuwe run-ID.
+Dit geldt ook voor gewijzigde duikergeometrie, koppelafstand, aansluitlengte,
+een gewijzigde eigen levering en een later toegevoegde RWS-duikerlaag. Zowel
+bronbestanden als SQLite-WAL-wijzigingen worden gevolgd. Oude snapshots zonder
+duikermetadata zijn bij duikervoorbereiding niet herbruikbaar.
 Lagere Python-functies vernieuwen raster- en tegeluitvoer met gewijzigde
 brandinvoer ook bij `overwrite=False`. Oude uitvoer zonder brandmetadata wordt
 eenmalig opnieuw berekend; zie het

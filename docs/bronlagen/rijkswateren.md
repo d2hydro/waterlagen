@@ -30,6 +30,14 @@ waren `globalid`, `nen3610id`, `categorieoppervlaktewater`, `naam`, `bron`,
 `osm_id` en `osm_laag`. Dit beschrijft één bronversie en bewijst geen volledige
 of hydrologisch gevalideerde landelijke dekking. Kunstwerklagen zijn niet vereist.
 
+De optionele laag `duikersifonhevel` kan RWS-duikers, sifons en hevels leveren.
+Een ontbrekende of lege laag is geldig. Indien aanwezig worden CRS en
+`nen3610id` met beheerdercode `80` gecontroleerd. RWS-duikers worden uitsluitend
+uit deze bron gelezen; er is geen terugval op GKW-duikers met code `80`.
+De lokaal gecontroleerde versie van 16 oktober 2026 bevat geen duikerlaag.
+Een later toegevoegde laag geldt als gewijzigde invoer en vereist een nieuwe
+productierun; zie de [productie-instructies](../produceren/afwateringseenheden.md#duikers-sifons-en-hevels).
+
 ## Gebruik in Waterlagen
 
 De bron levert de Rijkswaterstaat-hydroobjecten voor

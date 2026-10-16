@@ -4,9 +4,11 @@ editorial_status: ai
 
 # #67 — Duikers en aansluitstukken
 
-**Status:** bijgewerkt op 16 oktober 2026 op basis van de implementatie van #53
-en de bevestigde grillingbesluiten. Dit document beschrijft gepland gedrag;
-de implementatie en inhoudelijke acceptatie van #67 zijn nog niet uitgevoerd.
+**Status:** geïmplementeerd op 16 oktober 2026 op branch
+`67_duikers_krijgen_geen_catchments`. De technische verificatie en lokale
+bronvergelijking zijn vastgelegd in het [uitvoeringsverslag](issue-67-duikers-uitvoering.md).
+Menselijke inhoudelijke acceptatie blijft open. Onderstaand plan bewaart de
+afgesproken scope en acceptatiecriteria.
 
 Issue: [#67 Duikers hebben geen eigen afwateringseenheid](https://github.com/d2hydro/waterlagen/issues/67).
 Uitvoering: derde afzonderlijke branch en PR uit het

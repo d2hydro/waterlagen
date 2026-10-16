@@ -37,7 +37,7 @@ def cli() -> None:
     parser.add_argument(
         "--eigen-hydamo",
         type=Path,
-        help="GeoPackage ter vervanging van hydroobject, gemaal en stuw van het gekozen waterschap",
+        help="GeoPackage ter vervanging van hydroobject, gemaal, stuw en duikersifonhevel van het gekozen waterschap",
     )
     parser.add_argument(
         "--rijkswateren-url",
@@ -48,6 +48,18 @@ def cli() -> None:
         "--brandlagen-config",
         type=Path,
         help="TOML met optionele brandlagen, laagdefaults en globale defaults",
+    )
+    parser.add_argument(
+        "--duiker-tolerance",
+        type=float,
+        default=0.5,
+        help="Maximale koppelafstand per duikeruiteinde in meters (0.5)",
+    )
+    parser.add_argument(
+        "--max-aansluitlengte",
+        type=float,
+        default=None,
+        help="Maximale lengte van directe aansluitstukken zonder afwateringsdoel",
     )
     run_cli(parser, main, transform=_config)
 

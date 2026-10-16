@@ -397,7 +397,13 @@ def test_afwatering_example_connects_steps_and_passes_settings(
         monkeypatch,
         module,
         "read_watersysteem_sources",
-        WatersysteemSources(hydro.iloc[:1], hydro.iloc[1:], hydro.iloc[:1], points),
+        WatersysteemSources(
+            hydro.iloc[:1],
+            hydro.iloc[1:],
+            hydro.iloc[:1],
+            points,
+            culverts=hydro.iloc[:1].copy(),
+        ),
     )
     prepare = _mock_api(
         monkeypatch, module, "prepare_watersysteem", WatersysteemResult(hydro, points)
@@ -418,6 +424,11 @@ def test_afwatering_example_connects_steps_and_passes_settings(
         ("TILE_SIZE_M = 1000", "TILE_SIZE_M = 2000"),
         ("TILE_BUFFER_M = 2000", "TILE_BUFFER_M = 1500"),
         ("BURN_DEPTH_M = 100.0", "BURN_DEPTH_M = 80.0"),
+        ("DUIKER_TOLERANCE_M = 0.5", "DUIKER_TOLERANCE_M = 0.3"),
+        (
+            "MAX_AANSLUITLENGTE_M: float | None = None",
+            "MAX_AANSLUITLENGTE_M: float | None = 25.0",
+        ),
     ]
     if with_brandlagen:
         hydro.to_file(tmp_path / "brandlagen.gpkg", layer="waterlopen", driver="GPKG")
@@ -437,6 +448,17 @@ def test_afwatering_example_connects_steps_and_passes_settings(
     assert prepare.call_args.args[0].bron_id.tolist() == ["p"]
     assert write.call_args.kwargs["hydroobject_secundair"].bron_id.tolist() == ["s"]
     assert prepare.call_args.kwargs["tolerance"] == 3.0
+    assert prepare.call_args.kwargs["duiker_tolerance"] == 0.3
+    assert prepare.call_args.kwargs["max_aansluitlengte"] == 25.0
+    assert (
+        prepare.call_args.kwargs["duikersifonhevel"]
+        is read_sources.return_value.culverts
+    )
+    assert (
+        prepare.call_args.kwargs["hydroobject_primair"]
+        is read_sources.return_value.primary
+    )
+    assert write.call_args.kwargs["controle_path"].name == "controle.gpkg"
     assert write.call_args.kwargs["watersysteem"] is prepare.return_value
     assert write.call_args.kwargs["secondary_connection_tolerance"] == 3.0
     calculate.assert_called_once()

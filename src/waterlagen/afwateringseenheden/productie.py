@@ -43,6 +43,8 @@ from waterlagen.logger import get_logger
 from waterlagen.rijkswateren.download import RIJKSWATEREN_URL, download_rijkswateren
 from waterlagen.settings import settings
 
+from .duikers import CULVERT_POLICY, _validate_culvert_options
+
 logger = get_logger(__name__)
 
 
@@ -61,6 +63,8 @@ def main(
     overige_waterschappen: bool = False,
     eigen_hydamo: Path | None = None,
     rijkswateren_url: str = RIJKSWATEREN_URL,
+    duiker_tolerance: float = 0.5,
+    max_aansluitlengte: float | None = None,
 ) -> Path:
     """Produce full tiles with separate drainage targets and surrounding burn context.
 
@@ -88,11 +92,16 @@ def main(
         Include surrounding water authorities as targets, default False. Requires
         an authority area. RWS remains burn context when an authority is chosen.
     eigen_hydamo : pathlib.Path, optional
-        Complete hydroobject/gemaal/stuw replacement for the selected authority.
+        Complete hydroobject/gemaal/stuw/duikersifonhevel replacement for the selected authority.
         Validated before AHN preparation. Requires an authority area.
     rijkswateren_url : str, optional
         Published RWS source location. Local sources are reused unless refresh
         is requested. Without an authority code, RWS also supplies targets.
+    duiker_tolerance : float, optional
+        Inclusive maximum endpoint distance to primary lines, default 0.5 m.
+    max_aansluitlengte : float, optional
+        Maximum direct adjoining length excluded from targets, default None.
+        Does not change primary burning. Finite, non-negative; zero is valid.
 
     Returns
     -------
@@ -102,6 +111,7 @@ def main(
     name = area_name(area)
     code = name.removeprefix("waterschap_") if name.startswith("waterschap_") else None
     validate_authority_options(code, overige_waterschappen, eigen_hydamo)
+    _validate_culvert_options(duiker_tolerance, max_aansluitlengte)
     require_pcraster()
     store = data_store or DataStore()
     validate_run_target(
@@ -144,9 +154,17 @@ def main(
         "rijkswateren_url": rijkswateren_url,
         "source_policy": SOURCE_POLICY,
         "source_layers": {
-            "gkw": ["hydroobject", "gemaal", "stuw"],
+            "gkw": ["hydroobject", "gemaal", "stuw", "duikersifonhevel"],
             "rws": ["hydroobject"],
+            "rws_optional": ["duikersifonhevel"],
+            "own": ["hydroobject", "gemaal", "stuw", "duikersifonhevel"]
+            if eigen_hydamo is not None
+            else [],
         },
+        "duiker_policy": CULVERT_POLICY,
+        "duiker_gkw_excluded_codes": ["80"],
+        "duiker_tolerance": duiker_tolerance,
+        "max_aansluitlengte": max_aansluitlengte,
         "secondary_connection_policy": CONNECTION_POLICY,
         "secondary_connection_tolerance_m": 2.0,
         "max_segment_length_m": 500.0,
@@ -220,6 +238,7 @@ def main(
             overige_waterschappen=overige_waterschappen,
             eigen_hydamo=eigen_hydamo,
         )
+        run.metadata["rws_duikersifonhevel_present"] = sources.rws_culverts_present
         ahn = prepare_ahn(store, context, run.path / "input" / "ahn.vrt", preparation)
         inputs = {
             **source_paths,
@@ -240,7 +259,14 @@ def main(
                 }
             )
         run.record_inputs(inputs)
-        network = prepare_watersysteem(sources.targets, sources.points)
+        network = prepare_watersysteem(
+            sources.targets,
+            sources.points,
+            hydroobject_primair=sources.primary,
+            duikersifonhevel=sources.culverts,
+            duiker_tolerance=duiker_tolerance,
+            max_aansluitlengte=max_aansluitlengte,
+        )
         network_path = write_watersysteem(
             hydroobject_primair=sources.primary,
             hydroobject_secundair=sources.secondary,

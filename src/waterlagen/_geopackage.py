@@ -1,7 +1,9 @@
 """Generic GeoPackage writing helpers."""
 
 import os
+from contextlib import closing
 import tempfile
+import sqlite3
 from pathlib import Path
 from typing import Literal
 
@@ -50,11 +52,14 @@ def write_geopackage_layer_atomically(
     geopackage_path: Path,
     *,
     layer_name: str,
+    preserve_other_layers: bool = False,
 ) -> None:
-    """Write, validate, and atomically replace a single-layer GeoPackage.
+    """Write, validate, and atomically replace a GeoPackage layer.
 
     The output is first written beside its destination. Its GeoPackage structure
     and CRS are verified before it replaces an existing product.
+    With ``preserve_other_layers=True``, copy the existing database (including
+    committed WAL changes) first and replace only the requested layer.
     """
     if features.crs is None:
         raise ValueError("GeoPackage output features have no CRS")
@@ -70,6 +75,10 @@ def write_geopackage_layer_atomically(
     temporary_path = Path(temporary_name)
     temporary_path.unlink(missing_ok=True)
     try:
+        if preserve_other_layers and geopackage_path.exists():
+            with closing(sqlite3.connect(geopackage_path)) as source:
+                with closing(sqlite3.connect(temporary_path)) as destination:
+                    source.backup(destination)
         write_geopackage_layer(
             features,
             temporary_path,

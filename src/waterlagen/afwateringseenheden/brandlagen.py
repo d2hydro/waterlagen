@@ -346,6 +346,7 @@ def _burn_signature(
         {
             "policy": BRAND_POLICY,
             "watersysteem": _file_identity(watersysteem_path),
+            "watersysteem_wal": _file_identity(Path(str(watersysteem_path) + "-wal")),
             "burn_depth_m": burn_depth_m,
             "optional": prepared.signature if prepared is not None else None,
         }

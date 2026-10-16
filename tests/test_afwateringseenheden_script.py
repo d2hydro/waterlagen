@@ -40,6 +40,9 @@ def test_one_area_product_with_full_tiles_and_selected_authorities(
     )
     for layer in ("gemaal", "stuw"):
         points.to_file(hydamo, layer=layer)
+    gpd.GeoDataFrame({"nen3610id": []}, geometry=[], crs=28992).to_file(
+        hydamo, layer="duikersifonhevel"
+    )
     rws = hydro.iloc[:1].copy()
     rws["nen3610id"] = "NL.WBHCODE.80.rws"
     rws.to_file(store.hydamo_dir / "rws_hydamo.gpkg", layer="hydroobject")
@@ -83,6 +86,10 @@ def test_one_area_product_with_full_tiles_and_selected_authorities(
     if optional_burn:
         assert (result.parent / "tiles" / "brandlagen.gpkg").exists()
     expected = {"38"} if name == "waterschap_38" else {"38", "80"}
+    assert (result.parent / "controle.gpkg").is_file()
+    assert prepare.call_args.kwargs["duikersifonhevel"].empty
+    assert prepare.call_args.kwargs["duiker_tolerance"] == 0.5
+    assert prepare.call_args.kwargs["max_aansluitlengte"] is None
     assert set(prepare.call_args.args[0].waterbeheercode) == expected
     context = prepare_ahn.call_args.args[1]
     assert context.covers(box(150000, 400000, 160000, 410000))
@@ -143,6 +150,13 @@ def test_bad_brandlagen_stop_before_heavy_sources(tmp_path, monkeypatch):
             run_id="bad",
             brandlagen=BrandlagenConfig((Brandlaag(source, "objects"),)),
         )
+
+
+@pytest.mark.parametrize("option", ["duiker_tolerance", "max_aansluitlengte"])
+def test_invalid_culvert_options_stop_before_heavy_sources(monkeypatch, option):
+    monkeypatch.setattr(production, "require_pcraster", lambda: pytest.fail("Too late"))
+    with pytest.raises(ValueError, match="finite and non-negative"):
+        production.main(**{option: float("nan")})
 
 
 @pytest.mark.parametrize(
