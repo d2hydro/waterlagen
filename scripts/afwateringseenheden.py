@@ -11,7 +11,9 @@ from waterlagen.rijkswateren.download import RIJKSWATEREN_URL
 
 def _config(arguments: dict) -> dict:
     area = arguments["area"]
-    code = area.removeprefix("waterschap_") if area.startswith("waterschap_") else None
+    code = None
+    if isinstance(area, str) and area.startswith("waterschap_"):
+        code = area.removeprefix("waterschap_")
     validate_authority_options(
         code, arguments["overige_waterschappen"], arguments["eigen_hydamo"]
     )
