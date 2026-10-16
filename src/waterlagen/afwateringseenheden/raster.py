@@ -1,5 +1,6 @@
 """Raster preparation for afwateringseenheden calculations."""
 
+import json
 import os
 import tempfile
 from dataclasses import dataclass
@@ -22,12 +23,13 @@ from waterlagen._crs import same_crs
 from waterlagen.datastore import DataStore
 from waterlagen.logger import get_logger
 from waterlagen.raster.grid import RasterGrid
+from waterlagen.raster.config import RasterOutputConfig
 from waterlagen.settings import settings
 
 from ._coverage import _coverage_mask, _landsgrens_version
 from .brandlagen import (
     _burn_signature,
-    _optional_burn_values,
+    _optional_burn_raster,
     _prepare_brandlagen,
     _PreparedBrandlagen,
 )
@@ -37,6 +39,7 @@ logger = get_logger(__name__)
 
 DEM_FILENAME = "dem_2m.tif"
 HYDROOBJECT_SEGMENT_FILENAME = "hydroobject_segment.tif"
+BRANDBRON_FILENAME = "brandbron.tif"
 COVERAGE_VERSION = "source_extents_v2"
 
 
@@ -46,6 +49,65 @@ class WatersysteemRasters:
 
     dem_path: Path
     hydroobject_segment_path: Path
+
+    @property
+    def brandbron_path(self) -> Path:
+        """Winning burn sources, including HYDAMO, on the buffered DEM grid."""
+        return self.dem_path.with_name(BRANDBRON_FILENAME)
+
+
+def _write_brandbron(
+    path: Path,
+    sources: np.ndarray,
+    grid: RasterGrid,
+    legend: dict[int, str],
+    signature: str,
+) -> None:
+    """Write a categorical source raster; -1 is outside valid DEM coverage."""
+    output = RasterOutputConfig()
+    with rasterio.open(
+        path,
+        "w",
+        driver="GTiff",
+        count=1,
+        dtype="int32",
+        nodata=-1,
+        width=grid.width,
+        height=grid.height,
+        transform=grid.transform,
+        crs=grid.crs,
+        tiled=True,
+        blockxsize=output.block_size,
+        blockysize=output.block_size,
+        compress="deflate",
+    ) as target:
+        target.write(sources, 1)
+        target.set_band_description(1, "Winnende brandbron")
+        target.update_tags(
+            waterlagen_burn=signature, broncodes=json.dumps(legend, ensure_ascii=False)
+        )
+        factors = [
+            factor
+            for factor in output.overview_factors
+            if min(grid.width, grid.height) // factor >= 1
+        ]
+        if factors:
+            target.build_overviews(factors, Resampling.nearest)
+
+
+def _validate_brandbron(path: Path, grid: RasterGrid, signature: str) -> None:
+    with rasterio.open(path) as source:
+        if (
+            source.shape != (grid.height, grid.width)
+            or source.transform != grid.transform
+            or not same_crs(source.crs, grid.crs)
+            or source.dtypes != ("int32",)
+            or source.nodata != -1
+            or source.tags().get("waterlagen_burn") != signature
+        ):
+            raise ValueError(f"Invalid brandbron raster: {path}")
+        if not source.tags().get("broncodes"):
+            raise ValueError(f"Missing brandbron legend: {path}")
 
 
 def _temporary_raster_path(target_path: Path) -> Path:
@@ -360,6 +422,8 @@ def _segment_raster(
     grid: RasterGrid,
 ) -> np.ndarray:
     """Rasterize hydroobject segment FIDs, reserving zero for cells without a segment."""
+    if "doelgeschikt" in segments:
+        segments = segments.loc[segments.doelgeschikt.eq(True)]
     shapes = [
         (geometry, int(fid))
         for fid, geometry in zip(segments.index, segments.geometry)
@@ -441,7 +505,7 @@ def prepare_watersysteem_rasters(
     overwrite: bool = False,
     brandlagen: BrandlagenConfig | None = None,
 ) -> WatersysteemRasters:
-    """Create aligned DEM and hydroobject-segment rasters for one spatial square.
+    """Create aligned DEM, segment and winning-source rasters for one square.
 
     The AHN ``dtm_05`` VRT is resampled to a 2 by 2 metre grid by default.
     Missing elevation cells inside cached full source raster extents are filled
@@ -472,6 +536,9 @@ def prepare_watersysteem_rasters(
         GeoPackage containing ``hydroobject_primair``,
         ``hydroobject_secundair``, and ``hydroobject_segment``. Defaults to
         ``datastore.afwateringseenheden_path / 'watersysteem.gpkg'``.
+        With culvert preparation, ``hydroobject_primair`` already excludes
+        culvert routes; the full source layer is never burned. Only segments
+        with ``doelgeschikt=True`` supply targets, retaining their stored FIDs.
     landsgrens_path : Path, optional
         Bestuurlijke gebieden GeoPackage with the Dutch ``landgebied`` layer.
         Reprojected to the target CRS; pixel centres determine inclusion.
@@ -541,10 +608,16 @@ def _prepare_rasters(
     dem_path = output_dir / DEM_FILENAME
     segment_path = output_dir / HYDROOBJECT_SEGMENT_FILENAME
     result = WatersysteemRasters(dem_path, segment_path)
+    source_path = result.brandbron_path
     landsgrens_version = _landsgrens_version(landsgrens_path)
     burn_signature = _burn_signature(watersysteem_path, burn_depth_m, prepared)
 
-    if dem_path.exists() and segment_path.exists() and not overwrite:
+    if (
+        dem_path.exists()
+        and segment_path.exists()
+        and source_path.exists()
+        and not overwrite
+    ):
         with rasterio.open(dem_path) as existing:
             version = existing.tags().get("waterlagen_dem_coverage")
             boundary_version = existing.tags().get("waterlagen_dem_landsgrens", "none")
@@ -557,6 +630,7 @@ def _prepare_rasters(
             with rasterio.open(ahn_vrt_path) as source:
                 coverage = _coverage_mask(source, grid, landsgrens_path)
             _validate_rasters(dem_path, segment_path, grid=grid, coverage_mask=coverage)
+            _validate_brandbron(source_path, grid, burn_signature)
             logger.info("Reusing validated watersysteem rasters in %s", output_dir)
             return result
         logger.info(
@@ -574,6 +648,7 @@ def _prepare_rasters(
     output_dir.mkdir(parents=True, exist_ok=True)
     temporary_dem_path = _temporary_raster_path(dem_path)
     temporary_segment_path = _temporary_raster_path(segment_path)
+    temporary_source_path = _temporary_raster_path(source_path)
     try:
         logger.info("Reading AHN VRT %s for square %s", ahn_vrt_path, grid.bounds)
         with rasterio.open(ahn_vrt_path) as source:
@@ -596,14 +671,28 @@ def _prepare_rasters(
             primary_mask = _rasterize_mask(primary, grid)
             secondary_mask = _rasterize_mask(secondary, grid)
             burn_depth = _burn_depth_in_stored_units(burn_depth_m, scale=scale)
-            optional_values = 0.0
-            if prepared is not None:
-                optional_values = _optional_burn_values(prepared, grid) / scale
+            optional = _optional_burn_raster(prepared, grid)
+            optional_values = optional.values / scale
             burn_values = np.where(
                 primary_mask,
                 -2 * burn_depth,
                 np.where(secondary_mask, -burn_depth, optional_values),
             )
+            source_codes = optional.sources
+            source_codes[secondary_mask] = 2
+            source_codes[primary_mask] = 1
+            source_codes[~np.isfinite(dem_data)] = -1
+            legend = {
+                0: "Geen inbranding",
+                1: "HYDAMO primair",
+                2: "HYDAMO secundair",
+                **optional.legend,
+            }
+            logger.info("Writing winning burn sources to %s", source_path)
+            _write_brandbron(
+                temporary_source_path, source_codes, grid, legend, burn_signature
+            )
+            del optional, optional_values, source_codes
             with np.errstate(over="ignore", invalid="ignore"):
                 burned_values = dem_data + burn_values
             if np.any(np.isfinite(dem_data) & ~np.isfinite(burned_values)):
@@ -644,11 +733,14 @@ def _prepare_rasters(
             grid=grid,
             coverage_mask=coverage,
         )
+        _validate_brandbron(temporary_source_path, grid, burn_signature)
+        temporary_source_path.replace(source_path)
         temporary_dem_path.replace(dem_path)
         temporary_segment_path.replace(segment_path)
     except Exception:
         temporary_dem_path.unlink(missing_ok=True)
         temporary_segment_path.unlink(missing_ok=True)
+        temporary_source_path.unlink(missing_ok=True)
         raise
 
     logger.info("Prepared watersysteem rasters in %s", output_dir)

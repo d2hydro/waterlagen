@@ -4,6 +4,7 @@ import geopandas as gpd
 import numpy as np
 import pytest
 import rasterio
+import pyogrio
 from shapely.geometry import LineString, Point, box
 
 from waterlagen import _geopandas as wgpd
@@ -18,6 +19,165 @@ from waterlagen.afwateringseenheden import (
 from waterlagen.afwateringseenheden.raster import prepare_watersysteem_rasters
 
 
+def write_culverts(path, codes, geometries=None):
+    gpd.GeoDataFrame(
+        {
+            "nen3610id": [f"NL.WBHCODE.{code}.{i}" for i, code in enumerate(codes)],
+            "globalid": [str(i) for i in range(len(codes))],
+        },
+        geometry=geometries
+        if geometries is not None
+        else [LineString([(2, 0), (8, 0)])] * len(codes),
+        crs=28992,
+    ).to_file(path, layer="duikersifonhevel")
+
+
+@pytest.mark.parametrize("others", [False, True])
+@pytest.mark.parametrize("rws_layer", [False, True])
+def test_culvert_sources_independent_of_targets_and_own_replacement(
+    tmp_path, sources, others, rws_layer
+):
+    write_culverts(sources[0], ["30", "38", "80"])
+    if rws_layer:
+        write_culverts(sources[1], ["80"])
+    selected = read_watersysteem_sources(
+        *sources,
+        spatial_selection=box(-1, -1, 100, 100),
+        waterbeheercode="30",
+        overige_waterschappen=others,
+    )
+    assert selected.rws_culverts_present is rws_layer
+    assert selected.culverts.waterbeheercode.tolist() == (
+        ["30", "38", "80"] if rws_layer else ["30", "38"]
+    )
+    assert selected.culverts.bron_id.is_unique
+    assert selected.culverts.bron_fid.tolist() == ([1, 2, 1] if rws_layer else [1, 2])
+    own = write_source(
+        tmp_path / "own.gpkg", ["30"], ["primair"], [LineString([(0, 0), (10, 0)])]
+    )
+    replaced = read_watersysteem_sources(
+        *sources,
+        spatial_selection=box(-1, -1, 100, 100),
+        waterbeheercode="30",
+        overige_waterschappen=others,
+        eigen_hydamo=own,
+    )
+    assert not replaced.culverts.waterbeheercode.eq("30").any()
+    write_culverts(own, ["30"])
+    replaced = read_watersysteem_sources(
+        *sources,
+        spatial_selection=box(-1, -1, 100, 100),
+        waterbeheercode="30",
+        overige_waterschappen=others,
+        eigen_hydamo=own,
+    )
+    assert replaced.culverts.loc[
+        replaced.culverts.waterbeheercode.eq("30")
+    ].bronbestand.tolist() == [str(own)]
+
+
+def test_required_culvert_layers_and_invalid_identifiers_outside_selection(
+    tmp_path, sources
+):
+    own = write_source(
+        tmp_path / "own.gpkg", ["30"], ["primair"], [LineString([(0, 0), (10, 0)])]
+    )
+    write_culverts(own, ["38"], [LineString([(1000, 1000), (1010, 1000)])])
+    with pytest.raises(ValueError, match="nen3610id"):
+        read_watersysteem_sources(
+            *sources,
+            spatial_selection=box(-1, -1, 100, 100),
+            waterbeheercode="30",
+            eigen_hydamo=own,
+        )
+    from osgeo import ogr
+
+    dataset = ogr.Open(str(own), 1)
+    dataset.DeleteLayer("duikersifonhevel")
+    dataset = None
+    with pytest.raises(ValueError, match="duikersifonhevel"):
+        read_watersysteem_sources(
+            *sources,
+            spatial_selection=box(-1, -1, 100, 100),
+            waterbeheercode="30",
+            eigen_hydamo=own,
+        )
+    dataset = ogr.Open(str(sources[0]), 1)
+    dataset.DeleteLayer("duikersifonhevel")
+    dataset = None
+    with pytest.raises(pyogrio.errors.DataLayerError, match="duikersifonhevel"):
+        read_watersysteem_sources(*sources, spatial_selection=box(-1, -1, 100, 100))
+
+
+def test_optional_rws_culverts_validated_and_presence_changes_signature(sources):
+    selection = box(-1, -1, 100, 100)
+    before = read_watersysteem_sources(*sources, spatial_selection=selection)
+    write_culverts(sources[1], [])
+    after = read_watersysteem_sources(*sources, spatial_selection=selection)
+    assert before.culverts.empty and after.culverts.empty
+    first = prepare_watersysteem(
+        before.targets,
+        before.points,
+        hydroobject_primair=before.primary,
+        duikersifonhevel=before.culverts,
+    )
+    second = prepare_watersysteem(
+        after.targets,
+        after.points,
+        hydroobject_primair=after.primary,
+        duikersifonhevel=after.culverts,
+    )
+    assert first.duiker_signature != second.duiker_signature
+    write_culverts(sources[1], ["38"], [LineString([(1000, 1000), (1010, 1000)])])
+    with pytest.raises(ValueError, match="nen3610id"):
+        read_watersysteem_sources(*sources, spatial_selection=selection)
+
+
+def test_culvert_spatial_selection_in_source_crs_preserves_full_geometry(sources):
+    write_culverts(
+        sources[0],
+        ["30", "38"],
+        [LineString([(0, 0), (100, 0)]), LineString([(200, 0), (300, 0)])],
+    )
+    source = wgpd.read_file(sources[0], layer="duikersifonhevel")
+    source.to_crs(4326).to_file(sources[0], layer="duikersifonhevel")
+    selected = read_watersysteem_sources(
+        *sources, spatial_selection=box(-1, -1, 10, 10)
+    )
+    assert selected.culverts.bron_fid.tolist() == [1]
+    assert selected.culverts.length.iloc[0] == pytest.approx(100, abs=0.01)
+
+
+def test_culvert_source_wal_changes_preparation_identity(sources):
+    from contextlib import closing
+    import sqlite3
+
+    write_culverts(sources[0], ["30"])
+    with closing(sqlite3.connect(sources[0])) as connection:
+        # Attribute-only update: satisfy the GeoPackage spatial-index trigger
+        # guard without changing any geometry or its index bounds.
+        connection.create_function("ST_IsEmpty", 1, lambda value: 0)
+        connection.create_function("ST_MinX", 1, lambda value: 2)
+        connection.create_function("ST_MaxX", 1, lambda value: 8)
+        connection.create_function("ST_MinY", 1, lambda value: 0)
+        connection.create_function("ST_MaxY", 1, lambda value: 0)
+        connection.execute("PRAGMA journal_mode=WAL")
+        connection.execute("PRAGMA wal_autocheckpoint=0")
+        before = read_watersysteem_sources(
+            *sources, spatial_selection=box(-1, -1, 100, 100)
+        )
+        connection.execute("UPDATE duikersifonhevel SET globalid='changed-in-wal'")
+        connection.commit()
+        after = read_watersysteem_sources(
+            *sources, spatial_selection=box(-1, -1, 100, 100)
+        )
+        assert (
+            before.culverts.attrs["source_identity"]
+            != after.culverts.attrs["source_identity"]
+        )
+        assert before.culverts.globalid.tolist() != after.culverts.globalid.tolist()
+
+
 def write_source(path, codes, categories, geometries, *, points=True, alias=False):
     category = "categorieoppervlaktewater" if alias else "categorieoppwaterlichaam"
     gpd.GeoDataFrame(
@@ -30,6 +190,9 @@ def write_source(path, codes, categories, geometries, *, points=True, alias=Fals
         crs=28992,
     ).to_file(path, layer="hydroobject")
     if points:
+        gpd.GeoDataFrame({"nen3610id": []}, geometry=[], crs=28992).to_file(
+            path, layer="duikersifonhevel"
+        )
         for layer in ("gemaal", "stuw"):
             gpd.GeoDataFrame(
                 {

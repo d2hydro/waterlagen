@@ -1,7 +1,11 @@
 """Prepare and persist the first vector-only watersysteem step."""
 
 import os
+from contextlib import closing
 import tempfile
+import hashlib
+import json
+import sqlite3
 from pathlib import Path
 
 import geopandas as gpd
@@ -9,16 +13,27 @@ import geopandas as gpd
 from waterlagen import datastore
 from waterlagen._crs import read_layer_crs_info, same_crs
 from waterlagen._downloads import validate_geopackage
-from waterlagen._geopackage import write_geopackage_layer
+from waterlagen._geopackage import (
+    write_geopackage_layer,
+    write_geopackage_layer_atomically,
+)
 from waterlagen.datastore import DataStore
 from waterlagen.logger import get_logger
 from waterlagen.settings import settings
 
 from .lines import (
+    _prepare_hydroobjecten,
+    _ensure_bron_id,
     WatersysteemResult,
     create_hydroobject_verbindingen,
     split_hydroobjecten_at_points,
     split_hydroobjecten_by_length,
+)
+from .duikers import (
+    _prepare_culverts,
+    _classify_adjacent,
+    _frame_identity,
+    _validate_culvert_options,
 )
 
 logger = get_logger(__name__)
@@ -40,14 +55,19 @@ def prepare_watersysteem(
     tolerance: float = 2.0,
     max_length: float = 500.0,
     hydroobject_secundair: gpd.GeoDataFrame | None = None,
+    duikersifonhevel: gpd.GeoDataFrame | None = None,
+    hydroobject_primair: gpd.GeoDataFrame | None = None,
+    duiker_tolerance: float = 0.5,
+    max_aansluitlengte: float | None = None,
 ) -> WatersysteemResult:
     """Prepare primary hydroobjecten and final segment connections.
 
     This function only performs geometric and topological preparation. It does
     not read a GeoPackage, download source data, or write output. Input CRS
     values are required and are explicitly transformed to ``settings.crs`` by
-    the underlying geometry helpers. Hydroobjecten are split first at nearby
-    pointobjects and then into segments no longer than ``max_length``.
+    the underlying geometry helpers. Optional culvert routes are matched against
+    the full primary context. Culvert and nearby point-object boundaries precede
+    the split into segments no longer than ``max_length``.
 
     Parameters
     ----------
@@ -68,6 +88,20 @@ def prepare_watersysteem(
         Retained for backwards compatibility. Secondary objects are classified
         from their full geometry while writing and are not included in primary
         segment connections.
+    duikersifonhevel : geopandas.GeoDataFrame, optional
+        Culverts from all selected authorities. None preserves the legacy
+        workflow. Supplied culverts always exclude matched routes from primary
+        burning and drainage targets; unsuccessful matches become controls.
+    hydroobject_primair : geopandas.GeoDataFrame, optional
+        Full primary context for culvert matching, independent of target mode.
+        Defaults to ``hydroobjecten``. Target selection uses ``bron_id``.
+    duiker_tolerance : float, optional
+        Inclusive endpoint matching distance, default 0.5 metres. Independent
+        of the general network tolerance; finite and non-negative.
+    max_aansluitlengte : float, optional
+        Exclude direct adjoining physical pieces at or below this length from
+        targets only, before maximum-length splitting. None retains them all;
+        zero is valid. Must be finite and non-negative.
 
     Returns
     -------
@@ -82,13 +116,49 @@ def prepare_watersysteem(
     if max_length <= 0:
         raise ValueError("max_length must be greater than zero")
 
+    _validate_culvert_options(duiker_tolerance, max_aansluitlengte)
+    culverts = None
+    lines = hydroobjecten
+    if duikersifonhevel is not None:
+        culverts = _prepare_culverts(
+            hydroobjecten if hydroobject_primair is None else hydroobject_primair,
+            duikersifonhevel,
+            tolerance=duiker_tolerance,
+        )
+        lines = culverts.pieces
     result_at_points = split_hydroobjecten_at_points(
-        hydroobjecten,
+        lines,
         puntobjecten,
         tolerance=tolerance,
     )
+    physical_pieces = result_at_points.hydroobject_segmenten
+    if culverts is not None:
+        # Only pre-existing source endpoints and physical point cuts may join
+        # distinct sources. A coincident culvert cut must not remove those joins.
+        original_pieces = split_hydroobjecten_at_points(
+            culverts.primary,
+            puntobjecten,
+            tolerance=tolerance,
+        ).hydroobject_segmenten
+        physical_endpoints = {
+            (row.bron_id, tuple(coordinate))
+            for row in original_pieces.itertuples()
+            for coordinate in (row.geometry.coords[0], row.geometry.coords[-1])
+        }
+        for column, endpoint in (("duiker_knip_start", 0), ("duiker_knip_eind", -1)):
+            physical_pieces[column] = [
+                bool(row[column])
+                and (row.bron_id, tuple(row.geometry.coords[endpoint]))
+                not in physical_endpoints
+                for _, row in physical_pieces.iterrows()
+            ]
+        physical_pieces = _classify_adjacent(physical_pieces, max_aansluitlengte)
+        targets = set(_ensure_bron_id(hydroobjecten).bron_id)
+        physical_pieces = physical_pieces.loc[
+            physical_pieces.bron_id.isin(targets)
+        ].copy()
     segmenten = split_hydroobjecten_by_length(
-        result_at_points.hydroobject_segmenten,
+        physical_pieces,
         max_length=max_length,
     )
     verbindingen = create_hydroobject_verbindingen(
@@ -105,6 +175,24 @@ def prepare_watersysteem(
     return WatersysteemResult(
         hydroobject_segmenten=segmenten,
         hydroobject_verbinding=verbindingen,
+        hydroobject_primair_bron=culverts.primary if culverts is not None else None,
+        hydroobject_primair_delen=culverts.pieces if culverts is not None else None,
+        duiker_controle=culverts.controls if culverts is not None else None,
+        duiker_signature=hashlib.sha256(
+            json.dumps(
+                {
+                    "culverts": culverts.signature,
+                    "targets": _frame_identity(hydroobjecten),
+                    "points": _frame_identity(puntobjecten),
+                    "tolerance": tolerance,
+                    "max_length": max_length,
+                    "max_aansluitlengte": max_aansluitlengte,
+                },
+                sort_keys=True,
+            ).encode()
+        ).hexdigest()
+        if culverts is not None
+        else None,
     )
 
 
@@ -391,6 +479,7 @@ def write_watersysteem(
     overwrite: bool = False,
     secondary_connection_tolerance: float = 2.0,
     hydroobject_zonder_categorie: gpd.GeoDataFrame | None = None,
+    controle_path: Path | None = None,
 ) -> Path:
     """Atomically write the prepared watersysteem layers to a GeoPackage.
 
@@ -403,7 +492,9 @@ def write_watersysteem(
     ----------
     hydroobject_primair : geopandas.GeoDataFrame
         All selected primary burn-context lines, including non-target authorities.
-        Written without topology changes and used for the joint secondary test.
+        Used unchanged for the joint secondary test. With culvert preparation,
+        retained in ``hydroobject_primair_bron`` while ``hydroobject_primair``
+        contains only eligible burn pieces.
     hydroobject_secundair : geopandas.GeoDataFrame
         Selected secondary source hydroobjecten. They are divided into connected
         and unconnected output layers using their complete line geometry.
@@ -418,7 +509,9 @@ def write_watersysteem(
     overwrite : bool, optional
         Whether to replace an existing valid GeoPackage. With ``False``, a
         valid target is reused; an invalid target is replaced only after a new
-        temporary GeoPackage has been validated.
+        temporary GeoPackage has been validated. With culverts, source contents,
+        selection and settings must also match the stored preparation identity;
+        otherwise the snapshot is regenerated, including control-only changes.
     secondary_connection_tolerance : float, optional
         Maximum distance in metres between complete primary and secondary
         hydroobject geometries when classifying connected secondary objects, by
@@ -426,6 +519,11 @@ def write_watersysteem(
     hydroobject_zonder_categorie : geopandas.GeoDataFrame, optional
         Excluded GKW lines without a category. Written unchanged to a separate
         inspection layer, never included in burning or secondary connectivity.
+    controle_path : pathlib.Path, optional
+        Culvert inspection GeoPackage, default ``output_path.parent/controle.gpkg``.
+        Its ``duikersifonhevel`` layer is refreshed, including when empty or
+        resuming; other inspection layers are preserved. Only used with culvert
+        input. Culvert snapshots are reused only with matching input metadata.
 
     Returns
     -------
@@ -441,9 +539,74 @@ def write_watersysteem(
         if hydroobject_zonder_categorie is not None
         else ()
     )
+    signature = None
+    if watersysteem.duiker_signature is not None:
+        if (
+            watersysteem.hydroobject_primair_bron is None
+            or watersysteem.hydroobject_primair_delen is None
+            or watersysteem.duiker_controle is None
+        ):
+            raise ValueError("Incomplete prepared culvert snapshot")
+        if _frame_identity(
+            _prepare_hydroobjecten(hydroobject_primair)
+        ) != _frame_identity(watersysteem.hydroobject_primair_bron):
+            raise ValueError("Primary input differs from the prepared culvert context")
+        extra_layers = (
+            *extra_layers,
+            "hydroobject_primair_bron",
+            "hydroobject_primair_delen",
+            "duikersifonhevel_controle",
+        )
+        signature = hashlib.sha256(
+            json.dumps(
+                {
+                    "prepared": watersysteem.duiker_signature,
+                    "primary": _frame_identity(hydroobject_primair),
+                    "secondary": _frame_identity(hydroobject_secundair),
+                    "segments": _frame_identity(watersysteem.hydroobject_segmenten),
+                    "primary_pieces": _frame_identity(
+                        watersysteem.hydroobject_primair_delen
+                    ),
+                    "controls": _frame_identity(watersysteem.duiker_controle),
+                    "connections": _frame_identity(watersysteem.hydroobject_verbinding),
+                    "secondary_tolerance": secondary_connection_tolerance,
+                    "missing_category": _frame_identity(hydroobject_zonder_categorie)
+                    if hydroobject_zonder_categorie is not None
+                    else None,
+                },
+                sort_keys=True,
+            ).encode()
+        ).hexdigest()
+        controle_path = Path(controle_path or output_path.parent / "controle.gpkg")
+        write_geopackage_layer_atomically(
+            watersysteem.duiker_controle,
+            controle_path,
+            layer_name="duikersifonhevel",
+            preserve_other_layers=True,
+        )
+        if not watersysteem.duiker_controle.empty:
+            logger.warning(
+                "%s duikers require inspection in %s (duikersifonhevel)",
+                len(watersysteem.duiker_controle),
+                controle_path,
+            )
     if output_path.exists() and not overwrite:
         try:
             _validate_watersysteem_output(output_path, extra_layers=extra_layers)
+            if signature is not None:
+                with closing(sqlite3.connect(output_path)) as connection:
+                    previous = connection.execute(
+                        "SELECT signature FROM waterlagen_duikers"
+                    ).fetchone()
+                if previous != (signature,):
+                    raise ValueError("Culvert input or settings changed")
+            else:
+                with closing(sqlite3.connect(output_path)) as connection:
+                    previous = connection.execute(
+                        "SELECT name FROM sqlite_master WHERE name='waterlagen_duikers'"
+                    ).fetchone()
+                if previous is not None:
+                    raise ValueError("Culvert processing was removed from the input")
         except Exception as exc:
             logger.warning(
                 "Existing watersysteem output %s is invalid and will be replaced: %s",
@@ -464,12 +627,26 @@ def write_watersysteem(
         )
     )
     layers = (
-        ("hydroobject_primair", hydroobject_primair),
+        (
+            "hydroobject_primair",
+            hydroobject_primair
+            if signature is None
+            else watersysteem.hydroobject_primair_delen.loc[
+                watersysteem.hydroobject_primair_delen.brandgeschikt
+            ].copy(),
+        ),
         ("hydroobject_secundair", secundair_verbonden),
         ("hydroobject_secundair_niet_verbonden", secundair_niet_verbonden),
         ("hydroobject_segment", watersysteem.hydroobject_segmenten),
         ("hydroobject_verbinding", watersysteem.hydroobject_verbinding),
     )
+    if signature is not None:
+        layers = (
+            *layers,
+            ("hydroobject_primair_bron", watersysteem.hydroobject_primair_bron),
+            ("hydroobject_primair_delen", watersysteem.hydroobject_primair_delen),
+            ("duikersifonhevel_controle", watersysteem.duiker_controle),
+        )
     if hydroobject_zonder_categorie is not None:
         layers = (
             *layers,
@@ -495,6 +672,14 @@ def write_watersysteem(
             )
         logger.info("Validating temporary watersysteem GeoPackage %s", temporary_path)
         _validate_watersysteem_output(temporary_path, extra_layers=extra_layers)
+        if signature is not None:
+            with closing(sqlite3.connect(temporary_path)) as connection, connection:
+                connection.execute(
+                    "CREATE TABLE waterlagen_duikers (signature TEXT NOT NULL)"
+                )
+                connection.execute(
+                    "INSERT INTO waterlagen_duikers VALUES (?)", (signature,)
+                )
         temporary_path.replace(output_path)
     except Exception:
         temporary_path.unlink(missing_ok=True)

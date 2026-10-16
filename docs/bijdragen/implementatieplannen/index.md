@@ -19,7 +19,7 @@ repository beschikbaar en zijn uitgesloten van de gepubliceerde MkDocs-site.
 | --- | --- | --- | --- |
 | 1 | [#65 Brandlaag](https://github.com/d2hydro/waterlagen/issues/65) | [Geïmplementeerd; PR #79 ter review](issue-65-brandlagen.md) | `issue/65_brandlagen` |
 | 2 | [#53 Rijkswateren en omringende brandcontext](https://github.com/d2hydro/waterlagen/issues/53) | [Technisch geïmplementeerd; inhoudelijke acceptatie open](issue-53-rijkswateren.md) | `issue/53_opname_rijkswateren` |
-| 3 | [#67 Duikers zonder eigen afwateringseenheid](https://github.com/d2hydro/waterlagen/issues/67) | [Conceptplan voor eindcontrole](issue-67-duikers.md) | `feature/67-duikers-afwateringsdoelen` |
+| 3 | [#67 Duikers zonder eigen afwateringseenheid](https://github.com/d2hydro/waterlagen/issues/67) | [Bijgewerkt na #53 en grilling op 16 oktober 2026](issue-67-duikers.md) | `feature/67-duikers-afwateringsdoelen` |
 
 Ieder issue krijgt een eigen implementatiebranch en PR. Rond de voorgaande PR af
 voordat de volgende implementatiebranch vanaf de bijgewerkte hoofdbranch wordt
@@ -80,15 +80,19 @@ van bovenstaande PR-volgorde en introduceert geen gebruikstestframework.
 | Rijkswateren uit #53, waterschap gekozen | Primaire categorie, gekoppeld aan branddiepte | Geen nieuw doel | Gezamenlijke secundaire verbindingstoets; gewone optionele lagen blijven ondergeschikt |
 | Rijkswateren uit #53, geen waterschap gekozen | Primaire categorie, gekoppeld aan branddiepte | Primaire RWS-segmenten | Dezelfde categorievolgorde en verbindingstoets |
 
+Doelstatus in deze tabel veronderstelt deelname van de beheerder volgens #53.
+De duiker- en aansluitstukregels van #67 gelden ook voor de RWS-rijen.
+
 Behoud de volledige primaire bron voor de bestaande classificatie van verbonden
 secundaire lijnen. Gebruik aparte selecties voor primaire brandwerking en doelen.
 Filter het doelraster zonder opgeslagen segment-FIDs te hernummeren. #53 breidt
 de voorbereiding uit met categoriegestuurde brandcontext, terwijl gewone
 optionele lagen hun #65-contract behouden.
 
-De #67-tekst gaat nog uit van het oude #53-ontwerp: Rijkswateren als gewone
-optionele laag zonder doelen. Verzoen die aanname vóór implementatie van #67
-met de nieuwe primaire brandcategorie en de doelmodi. Herstel uitgesloten
+Het [#67-plan](issue-67-duikers.md) is afgestemd op de primaire RWS-brandcategorie
+en de drie doelmodi van #53. De duikerverwerking gebruikt de volledige primaire
+context, onafhankelijk van deelname als doel. Het plan legt de bronregels voor
+GKW, eigen leveringen en toekomstige RWS-duikers vast. Herstel uitgesloten
 primaire duikertrajecten niet via een tweede, ongefilterde brandcontext.
 
 ## Uitvoering en documentatie

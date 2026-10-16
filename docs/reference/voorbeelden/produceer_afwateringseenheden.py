@@ -34,6 +34,9 @@ TILE_BUFFER_M = 2000
 RESOLUTION_M = 2.0
 TOLERANCE_M = 2.0
 MAX_SEGMENT_LENGTH_M = 500.0
+DUIKER_TOLERANCE_M = 0.5
+# Bijvoorbeeld 50.0; alleen directe aansluitdoelen.
+MAX_AANSLUITLENGTE_M: float | None = None
 BURN_DEPTH_M = 100.0
 MAX_FILL_DEPTH_M = 50.0
 WORKERS = 1
@@ -113,6 +116,10 @@ if __name__ == "__main__":
             bronnen.points,
             tolerance=TOLERANCE_M,
             max_length=MAX_SEGMENT_LENGTH_M,
+            hydroobject_primair=bronnen.primary,
+            duikersifonhevel=bronnen.culverts,
+            duiker_tolerance=DUIKER_TOLERANCE_M,
+            max_aansluitlengte=MAX_AANSLUITLENGTE_M,
         )
         watersysteem = write_watersysteem(
             hydroobject_primair=bronnen.primary,
@@ -122,6 +129,7 @@ if __name__ == "__main__":
             output_path=output_dir / "watersysteem.gpkg",
             secondary_connection_tolerance=TOLERANCE_M,
             overwrite=False,
+            controle_path=output_dir / "controle.gpkg",
         )
 
         # 3. Bereken de tegels en voeg ze samen. Pas parameters bovenaan aan.
@@ -146,4 +154,5 @@ if __name__ == "__main__":
             brandlagen=brandlagen,
         )
         print(resultaat.merged_path)
+        print("Controleer duikers in QGIS:", output_dir / "controle.gpkg")
         print("Tegels met randproblemen:", resultaat.boundary_issue_tile_ids)

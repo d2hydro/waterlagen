@@ -34,10 +34,30 @@ class WatersysteemResult:
     is the deterministic main route. Connection geometries are always
     two-dimensional Points at a shared segment endpoint or at the puntobject
     that connects endpoints of distinct source hydroobjects.
+
+    Attributes
+    ----------
+    hydroobject_segmenten, hydroobject_verbinding : geopandas.GeoDataFrame
+        Complete prepared target-context segments and their connections.
+    hydroobject_primair_bron : geopandas.GeoDataFrame, optional
+        Full primary source context when culverts were supplied, retained for
+        secondary connectivity independently of primary burn eligibility.
+    hydroobject_primair_delen : geopandas.GeoDataFrame, optional
+        All primary pieces, including excluded culvert routes of non-target
+        authorities. ``brandgeschikt`` selects the primary burn geometry.
+    duiker_controle : geopandas.GeoDataFrame, optional
+        Unmatched or ambiguous culverts with provenance, reason and distances.
+    duiker_signature : str, optional
+        Input/settings identity used for snapshot reuse. None denotes the
+        legacy preparation without culverts.
     """
 
     hydroobject_segmenten: gpd.GeoDataFrame
     hydroobject_verbinding: gpd.GeoDataFrame
+    hydroobject_primair_bron: gpd.GeoDataFrame | None = None
+    hydroobject_primair_delen: gpd.GeoDataFrame | None = None
+    duiker_controle: gpd.GeoDataFrame | None = None
+    duiker_signature: str | None = None
 
 
 @dataclass(frozen=True)
@@ -279,6 +299,15 @@ def split_hydroobjecten_at_points(
             parts = [line]
         for part in parts:
             record = row.drop(labels="geometry").to_dict()
+            for column, endpoint in (
+                ("duiker_knip_start", 0),
+                ("duiker_knip_eind", -1),
+            ):
+                if column in record:
+                    record[column] = (
+                        bool(record[column])
+                        and part.coords[endpoint] == line.coords[endpoint]
+                    )
             record["geometry"] = part
             records.append(record)
 
@@ -445,6 +474,14 @@ def create_hydroobject_verbindingen(
                     "segment_id": str(segment["segment_id"]),
                     "bron_id": str(segment["bron_id"]),
                     "direction": direction,
+                    "duikergrens": bool(
+                        segment.get(
+                            "duiker_knip_start"
+                            if direction == "outgoing"
+                            else "duiker_knip_eind",
+                            False,
+                        )
+                    ),
                     "geometry": Point(coordinate),
                 }
             )
@@ -528,6 +565,7 @@ def create_hydroobject_verbindingen(
                 position
                 for position in candidate_positions
                 if point.distance(endpoints.geometry.iloc[position]) <= tolerance
+                and not endpoints.iloc[position]["duikergrens"]
             ]
             source_ids = {
                 str(endpoints.iloc[position]["bron_id"])
@@ -562,7 +600,24 @@ def create_hydroobject_verbindingen(
             if point_index is not None
             else None
         )
-        add_node_connections(positions, connection_point, puntobject)
+        original_positions = [
+            position
+            for position in positions
+            if not endpoints.iloc[position]["duikergrens"]
+        ]
+        add_node_connections(original_positions, connection_point, puntobject)
+        cut_sources = {
+            endpoints.iloc[position]["bron_id"]
+            for position in positions
+            if endpoints.iloc[position]["duikergrens"]
+        }
+        for source in cut_sources:
+            same_source = [
+                position
+                for position in positions
+                if endpoints.iloc[position]["bron_id"] == source
+            ]
+            add_node_connections(same_source, connection_point, None)
 
     for positions, puntobject in point_nodes:
         add_node_connections(positions, puntobject.geometry, puntobject)
@@ -617,6 +672,14 @@ def split_hydroobjecten_by_length(
                 continue
             segment_numbers[source_id] += 1
             record = row.drop(labels="geometry").to_dict()
+            if "duiker_knip_start" in record:
+                record["duiker_knip_start"] = (
+                    bool(record["duiker_knip_start"]) and segment_index == 0
+                )
+                record["duiker_knip_eind"] = (
+                    bool(record["duiker_knip_eind"])
+                    and segment_index == segment_count - 1
+                )
             record["segment_id"] = f"{source_id}:{segment_numbers[source_id]:04d}"
             record["geometry"] = segment
             records.append(record)

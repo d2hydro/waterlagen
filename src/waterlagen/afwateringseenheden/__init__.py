@@ -8,6 +8,7 @@ from .lines import (
     split_hydroobjecten_by_length,
 )
 from .objects import (
+    read_duikersifonhevel,
     read_hydroobjecten,
     read_puntobjecten,
     waterbeheercode_from_nen3610id,
@@ -42,6 +43,7 @@ __all__ = [
     "read_brandlagen",
     "read_brandlagen_config",
     "read_hydroobjecten",
+    "read_duikersifonhevel",
     "read_puntobjecten",
     "read_watersysteem_sources",
     "require_pcraster",

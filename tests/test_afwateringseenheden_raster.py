@@ -1,3 +1,4 @@
+import json
 from hashlib import sha256
 from pathlib import Path
 
@@ -452,7 +453,6 @@ def test_old_outputs_without_coverage_policy_are_regenerated(
 def test_optional_burn_priority_zero_defaults_and_cache(
     source_paths, tmp_path, reverse
 ):
-
     vrt, watersysteem = source_paths
     path = tmp_path / "optional.gpkg"
     features = gpd.GeoDataFrame(
@@ -538,11 +538,76 @@ def test_optional_burn_retains_exterior_nodata_and_rejects_overflow(
     )
     with rasterio.open(result.dem_path) as dem:
         assert dem.read(1, masked=True).count() == 16
+    with rasterio.open(result.brandbron_path) as sources:
+        assert sources.read(1, masked=True).count() == 16
     before = result.dem_path.read_bytes()
     huge = BrandlagenConfig(config.lagen, brandwaarde=1000, prioriteit=0)
     with pytest.raises(ValueError, match="do not fit"):
         prepare_watersysteem_rasters(box(-2, -2, 10, 10), brandlagen=huge, **options)
     assert result.dem_path.read_bytes() == before
+
+
+@pytest.mark.parametrize("reverse", [False, True])
+def test_water_sources_show_priority_fallback_zero_and_hydamo(
+    source_paths, tmp_path, reverse
+):
+    vrt, watersysteem = source_paths
+    path = tmp_path / "water.gpkg"
+    for name, geometry in (
+        ("bgt_waterdeel", box(0, 0, 4, 8)),
+        ("top10nl_waterdeel_vlak", box(0, 0, 6, 8)),
+        ("correcties", box(2, 6, 4, 8)),
+    ):
+        gpd.GeoDataFrame(geometry=[geometry], crs=CRS).to_file(path, layer=name)
+    layers = [
+        Brandlaag(path, "bgt_waterdeel", prioriteit=2),
+        Brandlaag(path, "top10nl_waterdeel_vlak", prioriteit=1),
+        Brandlaag(path, "correcties", brandwaarde=0, prioriteit=3),
+    ]
+    if reverse:
+        layers.reverse()
+    codes = {layer.layer: index for index, layer in enumerate(layers, start=3)}
+    options = dict(
+        burn_depth_m=100,
+        ahn_vrt_path=vrt,
+        watersysteem_path=watersysteem,
+        output_dir=tmp_path / "output",
+        brandlagen=BrandlagenConfig(tuple(layers), brandwaarde=-100),
+    )
+    result = prepare_watersysteem_rasters(box(0, 0, 8, 8), **options)
+    bgt, top, own = (
+        codes[name]
+        for name in ("bgt_waterdeel", "top10nl_waterdeel_vlak", "correcties")
+    )
+    with (
+        rasterio.open(result.brandbron_path) as source,
+        rasterio.open(result.dem_path) as dem,
+    ):
+        np.testing.assert_array_equal(
+            source.read(1),
+            [[1, own, top, 0], [1, bgt, top, 0], [1, bgt, top, 0], [1, 2, 2, 2]],
+        )
+        np.testing.assert_array_equal(
+            dem.read(1),
+            [
+                [-19000, 1000, -9000, 1000],
+                [-19000, -9000, -9000, 1000],
+                [-19000, -9000, -9000, 1000],
+                [-19000, -9000, -9000, -9000],
+            ],
+        )
+        assert source.transform == dem.transform
+        assert source.crs == dem.crs
+        legend = json.loads(source.tags()["broncodes"])
+        assert legend["1"] == "HYDAMO primair"
+        assert legend[str(bgt)].endswith(" / bgt_waterdeel")
+    snapshot = gpd.read_file(tmp_path / "output" / "brandlagen.gpkg")
+    assert dict(zip(snapshot.bronlaag, snapshot.broncode)) == codes
+    assert set(snapshot.prioriteit) == {1, 2, 3}
+    # Missing diagnostic output is restored instead of silently reusing the DEM pair.
+    result.brandbron_path.unlink()
+    prepare_watersysteem_rasters(box(0, 0, 8, 8), **options)
+    assert result.brandbron_path.is_file()
 
 
 @pytest.mark.parametrize("brandwaarde", [-10009.0, -10008.99999, 1e39])

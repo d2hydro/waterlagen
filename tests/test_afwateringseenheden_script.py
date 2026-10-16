@@ -7,17 +7,20 @@ from shapely.geometry import LineString, Point, box
 
 from waterlagen.afwateringseenheden import Brandlaag, BrandlagenConfig
 from waterlagen.afwateringseenheden import productie as production
-from waterlagen.areas import ProductionArea
+from waterlagen.areas import ProductionArea, area_from_bounds
 from waterlagen.datastore import DataStore
 
 
-@pytest.mark.parametrize("name", ["nederland", "alkmaar", "waterschap_38"])
+@pytest.mark.parametrize("name", ["nederland", "alkmaar", "waterschap_38", "bounds"])
 @pytest.mark.parametrize("optional_burn", [False, True])
 def test_one_area_product_with_full_tiles_and_selected_authorities(
     tmp_path, monkeypatch, name, optional_burn
 ):
     store = DataStore(data_dir=tmp_path, _env_file=None)
     area = ProductionArea(name, box(150100, 400100, 151000, 401000), "EPSG:28992")
+    if name == "bounds":
+        area = area_from_bounds(area.geometry.bounds)
+        name = area.value
     hydamo = store.hydamo_dir / "hydamo.gpkg"
     boundary = tmp_path / "boundary.gpkg"
     ahn = tmp_path / "ahn.vrt"
@@ -40,6 +43,9 @@ def test_one_area_product_with_full_tiles_and_selected_authorities(
     )
     for layer in ("gemaal", "stuw"):
         points.to_file(hydamo, layer=layer)
+    gpd.GeoDataFrame({"nen3610id": []}, geometry=[], crs=28992).to_file(
+        hydamo, layer="duikersifonhevel"
+    )
     rws = hydro.iloc[:1].copy()
     rws["nen3610id"] = "NL.WBHCODE.80.rws"
     rws.to_file(store.hydamo_dir / "rws_hydamo.gpkg", layer="hydroobject")
@@ -83,9 +89,14 @@ def test_one_area_product_with_full_tiles_and_selected_authorities(
     if optional_burn:
         assert (result.parent / "tiles" / "brandlagen.gpkg").exists()
     expected = {"38"} if name == "waterschap_38" else {"38", "80"}
+    assert (result.parent / "controle.gpkg").is_file()
+    assert prepare.call_args.kwargs["duikersifonhevel"].empty
+    assert prepare.call_args.kwargs["duiker_tolerance"] == 0.5
+    assert prepare.call_args.kwargs["max_aansluitlengte"] is None
     assert set(prepare.call_args.args[0].waterbeheercode) == expected
     context = prepare_ahn.call_args.args[1]
     assert context.covers(box(150000, 400000, 160000, 410000))
+    assert context.bounds == (148000, 398000, 162000, 412000)
     for mode in ("resume", "overwrite"):
         production.main(
             store,
@@ -143,6 +154,13 @@ def test_bad_brandlagen_stop_before_heavy_sources(tmp_path, monkeypatch):
             run_id="bad",
             brandlagen=BrandlagenConfig((Brandlaag(source, "objects"),)),
         )
+
+
+@pytest.mark.parametrize("option", ["duiker_tolerance", "max_aansluitlengte"])
+def test_invalid_culvert_options_stop_before_heavy_sources(monkeypatch, option):
+    monkeypatch.setattr(production, "require_pcraster", lambda: pytest.fail("Too late"))
+    with pytest.raises(ValueError, match="finite and non-negative"):
+        production.main(**{option: float("nan")})
 
 
 @pytest.mark.parametrize(

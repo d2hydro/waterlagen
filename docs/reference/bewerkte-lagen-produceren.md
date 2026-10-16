@@ -43,7 +43,15 @@ instellen. Standaard is dit `None`. Het voorbeeld leest de samengestelde
 brandobjecten met de publieke inleesfunctie en geeft de configuratie door aan
 de tegelberekening. Zie het [schema en de brandregels](../produceren/afwateringseenheden.md#optionele-brandlagen).
 
-Uitvoer: `watersysteem.gpkg`, tegelbestanden en `afwateringseenheden.gpkg`.
+Met `DUIKER_TOLERANCE_M` en `MAX_AANSLUITLENGTE_M` stelt u de duikerkoppeling
+en extra uitsluiting van aansluitdoelen in. De volledige primaire context en
+duikers worden vóór de tegelberekening voorbereid. Ook zonder extra
+aansluituitsluiting (`None`) verdwijnen gekoppelde duikertrajecten uit de
+primaire brandgeometrie en de doelen.
+
+Uitvoer: `watersysteem.gpkg`, `controle.gpkg`, tegelbestanden en `afwateringseenheden.gpkg`.
+Beoordeel de laag `duikersifonhevel` in het controlebestand, ook na een
+succesvolle run; zie [controle in QGIS](../produceren/afwateringseenheden.md#controle-in-qgis).
 Bekijk ook de gemelde randproblemen en resterende gaten in het resultaat.
 
 [Betekenis van de laag](../bewerkte-lagen/afwateringseenheden.md) ·
