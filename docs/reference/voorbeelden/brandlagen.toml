@@ -2,23 +2,33 @@
 # of pas de paden aan. De bronbestanden moeten al aanwezig zijn.
 # Relatieve paden zijn relatief aan dit TOML-bestand.
 # Hoogste prioriteitsgetal wint. De volgorde hieronder bepaalt geen voorrang.
-# HYDAMO primair (-200 m) en secundair (-100 m) gaan altijd voor.
+# Gezamenlijke water-/duikerverwerking op het bestaande 2m-raster.
+waternet = true
+geisoleerde_branddiepte_m = 10.0
+
+# Fallback voor gewone brandlagen; water en duikers krijgen hun diepte
+# uit de HYDAMO-verbinding; aanvullende lagen behouden hun ingestelde verlaging.
 [defaults]
-brandwaarde = -40.0
+brandwaarde = -10.0
 
 [[lagen]]
 path = "source_data/bgt/bgt.gpkg"
 layer = "bgt_waterdeel"
+rol = "water"
 prioriteit = 2
 
 [[lagen]]
 path = "source_data/top10nl/top10nl_Compleet.gpkg"
 layer = "top10nl_waterdeel_vlak"
+brandwaarde = -5.0
+rol = "water"
 prioriteit = 1
 
 [[lagen]]
 path = "source_data/top10nl/top10nl_Compleet.gpkg"
 layer = "top10nl_waterdeel_lijn"
+brandwaarde = -5.0
+rol = "water"
 prioriteit = 1
 
 # Duikerselecties voor deze voorbeeldtegel inclusief buffer.
@@ -27,14 +37,16 @@ prioriteit = 1
 [[lagen]]
 path = "processed_data/brandlagen/178000_388000_192000_402000/bgt_duikers.gpkg"
 layer = "bgt_duiker"
-brandwaarde = -40.0
+rol = "duiker"
+bron = "bgt"
 prioriteit = 2
 
-# OSM: alleen tunnel=culvert, met de laagste prioriteit.
+# OSM: alleen tunnel=culvert; bronvoorkeur HYDAMO, BGT, OSM.
 [[lagen]]
 path = "processed_data/brandlagen/178000_388000_192000_402000/osm_duikers.gpkg"
 layer = "osm_culvert"
-brandwaarde = -40.0
+rol = "duiker"
+bron = "osm"
 prioriteit = 0
 
 # Optioneel: eigen waterloopcorrecties gaan voor BGT en TOP10NL.

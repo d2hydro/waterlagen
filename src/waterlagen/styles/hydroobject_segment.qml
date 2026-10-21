@@ -556,7 +556,7 @@
         </config>
       </editWidget>
     </field>
-    <field name="segment_id" configurationFlags="NoFlag">
+    <field name="segment_key" configurationFlags="NoFlag">
       <editWidget type="TextEdit">
         <config>
           <Option/>
@@ -575,7 +575,7 @@
     <alias field="statusobject" name="" index="7"/>
     <alias field="waterbeheercode" name="" index="8"/>
     <alias field="bron_id" name="" index="9"/>
-    <alias field="segment_id" name="" index="10"/>
+    <alias field="segment_key" name="" index="10"/>
   </aliases>
   <splitPolicies>
     <policy field="fid" policy="Duplicate"/>
@@ -588,7 +588,7 @@
     <policy field="statusobject" policy="Duplicate"/>
     <policy field="waterbeheercode" policy="Duplicate"/>
     <policy field="bron_id" policy="Duplicate"/>
-    <policy field="segment_id" policy="Duplicate"/>
+    <policy field="segment_key" policy="Duplicate"/>
   </splitPolicies>
   <duplicatePolicies>
     <policy field="fid" policy="Duplicate"/>
@@ -601,7 +601,7 @@
     <policy field="statusobject" policy="Duplicate"/>
     <policy field="waterbeheercode" policy="Duplicate"/>
     <policy field="bron_id" policy="Duplicate"/>
-    <policy field="segment_id" policy="Duplicate"/>
+    <policy field="segment_key" policy="Duplicate"/>
   </duplicatePolicies>
   <defaults>
     <default field="fid" expression="" applyOnUpdate="0"/>
@@ -614,7 +614,7 @@
     <default field="statusobject" expression="" applyOnUpdate="0"/>
     <default field="waterbeheercode" expression="" applyOnUpdate="0"/>
     <default field="bron_id" expression="" applyOnUpdate="0"/>
-    <default field="segment_id" expression="" applyOnUpdate="0"/>
+    <default field="segment_key" expression="" applyOnUpdate="0"/>
   </defaults>
   <constraints>
     <constraint field="fid" notnull_strength="1" constraints="3" unique_strength="1" exp_strength="0"/>
@@ -627,7 +627,7 @@
     <constraint field="statusobject" notnull_strength="0" constraints="0" unique_strength="0" exp_strength="0"/>
     <constraint field="waterbeheercode" notnull_strength="0" constraints="0" unique_strength="0" exp_strength="0"/>
     <constraint field="bron_id" notnull_strength="0" constraints="0" unique_strength="0" exp_strength="0"/>
-    <constraint field="segment_id" notnull_strength="0" constraints="0" unique_strength="0" exp_strength="0"/>
+    <constraint field="segment_key" notnull_strength="0" constraints="0" unique_strength="0" exp_strength="0"/>
   </constraints>
   <constraintExpressions>
     <constraint field="fid" desc="" exp=""/>
@@ -640,7 +640,7 @@
     <constraint field="statusobject" desc="" exp=""/>
     <constraint field="waterbeheercode" desc="" exp=""/>
     <constraint field="bron_id" desc="" exp=""/>
-    <constraint field="segment_id" desc="" exp=""/>
+    <constraint field="segment_key" desc="" exp=""/>
   </constraintExpressions>
   <expressionfields/>
   <attributeactions>
@@ -648,6 +648,7 @@
   </attributeactions>
   <attributetableconfig sortExpression="" sortOrder="0" actionWidgetStyle="dropDown">
     <columns>
+      <column type="field" name="segment_id" width="-1" hidden="0"/>
       <column type="field" name="fid" width="-1" hidden="0"/>
       <column type="field" name="categorieoppwaterlichaam" width="-1" hidden="0"/>
       <column type="field" name="code" width="-1" hidden="0"/>
@@ -657,8 +658,8 @@
       <column type="field" name="statusleggerwatersysteem" width="-1" hidden="0"/>
       <column type="field" name="statusobject" width="-1" hidden="0"/>
       <column type="field" name="waterbeheercode" width="-1" hidden="0"/>
-      <column type="field" name="bron_id" width="-1" hidden="0"/>
-      <column type="field" name="segment_id" width="-1" hidden="0"/>
+      <column type="field" name="bron_id" width="-1" hidden="1"/>
+      <column type="field" name="segment_key" width="-1" hidden="1"/>
       <column type="actions" width="-1" hidden="1"/>
     </columns>
   </attributetableconfig>
@@ -698,7 +699,7 @@ def my_form_open(dialog, layer, feature):
     <field name="globalid" editable="1"/>
     <field name="naam" editable="1"/>
     <field name="nen3610id" editable="1"/>
-    <field name="segment_id" editable="1"/>
+    <field name="segment_key" editable="1"/>
     <field name="statusleggerwatersysteem" editable="1"/>
     <field name="statusobject" editable="1"/>
     <field name="waterbeheercode" editable="1"/>
@@ -711,7 +712,7 @@ def my_form_open(dialog, layer, feature):
     <field labelOnTop="0" name="globalid"/>
     <field labelOnTop="0" name="naam"/>
     <field labelOnTop="0" name="nen3610id"/>
-    <field labelOnTop="0" name="segment_id"/>
+    <field labelOnTop="0" name="segment_key"/>
     <field labelOnTop="0" name="statusleggerwatersysteem"/>
     <field labelOnTop="0" name="statusobject"/>
     <field labelOnTop="0" name="waterbeheercode"/>
@@ -724,14 +725,14 @@ def my_form_open(dialog, layer, feature):
     <field reuseLastValue="0" name="globalid"/>
     <field reuseLastValue="0" name="naam"/>
     <field reuseLastValue="0" name="nen3610id"/>
-    <field reuseLastValue="0" name="segment_id"/>
+    <field reuseLastValue="0" name="segment_key"/>
     <field reuseLastValue="0" name="statusleggerwatersysteem"/>
     <field reuseLastValue="0" name="statusobject"/>
     <field reuseLastValue="0" name="waterbeheercode"/>
   </reuseLastValue>
   <dataDefinedFieldProperties/>
   <widgets/>
-  <previewExpression>"categorieoppwaterlichaam"</previewExpression>
+  <previewExpression>"segment_id"</previewExpression>
   <mapTip enabled="1"></mapTip>
   <layerGeometryType>1</layerGeometryType>
 </qgis>

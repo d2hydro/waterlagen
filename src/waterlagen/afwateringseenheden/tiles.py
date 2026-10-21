@@ -283,8 +283,8 @@ def _empty_like_subcatchments(
         return subcatchments.iloc[0:0].copy()
     return gpd.GeoDataFrame(
         {
-            "segment_fid": pd.Series(dtype="int64"),
-            "segment_id": pd.Series(dtype="object"),
+            "segment_id": pd.Series(dtype="int64"),
+            "segment_key": pd.Series(dtype="object"),
         },
         geometry=gpd.GeoSeries([], crs=None),
     )
@@ -404,8 +404,8 @@ def _merge_subcatchments(
     if not frames:
         return gpd.GeoDataFrame(
             {
-                "segment_fid": pd.Series(dtype="int64"),
-                "segment_id": pd.Series(dtype="object"),
+                "segment_id": pd.Series(dtype="int64"),
+                "segment_key": pd.Series(dtype="object"),
             },
             geometry=gpd.GeoSeries([], crs=None),
         )
@@ -415,16 +415,16 @@ def _merge_subcatchments(
         geometry="geometry",
         crs=frames[0].crs,
     )
-    if combined.groupby("segment_id").segment_fid.nunique().gt(1).any():
-        raise ValueError("A segment_id has different segment_fid values across tiles")
+    if combined.groupby("segment_key").segment_id.nunique().gt(1).any():
+        raise ValueError("A segment_key has different segment_id values across tiles")
     merged = combined.dissolve(
-        by="segment_id",
+        by="segment_key",
         as_index=False,
-        aggfunc={"segment_fid": "first"},
+        aggfunc={"segment_id": "first"},
     )
     merged = gpd.clip(merged, gebied)
     merged = _clean_polygon_geometries(merged)
-    return merged[["segment_fid", "segment_id", "geometry"]].reset_index(drop=True)
+    return merged[["segment_id", "segment_key", "geometry"]].reset_index(drop=True)
 
 
 def _gap_donor(
@@ -594,8 +594,8 @@ def _fill_gaps_from_neighbours(
     else:
         added = gpd.GeoDataFrame(
             columns=[
-                "segment_fid",
                 "segment_id",
+                "segment_key",
                 "bron_tegel",
                 "keuzevolgorde",
                 "doel_tegel",
@@ -1026,6 +1026,14 @@ def calculate_afwateringseenheden_tiles(
         watersysteem_path or data_store.afwateringseenheden_path / "watersysteem.gpkg"
     )
     output_dir = Path(output_dir or data_store.afwateringseenheden_path / "tiles")
+    if (
+        brandlagen is not None
+        and brandlagen.waternet
+        and not (watersysteem_path.parent / "waternet" / "manifest.json").exists()
+    ):
+        raise ValueError(
+            "waternet requires joint preparation through the production workflow"
+        )
     output_dir.mkdir(parents=True, exist_ok=True)
 
     tiles = (
@@ -1156,8 +1164,8 @@ def calculate_afwateringseenheden_tiles(
             ]
             if provenance:
                 merged_subcatchments = merged_subcatchments.merge(
-                    segments[["segment_id", *provenance]],
-                    on="segment_id",
+                    segments[["segment_key", *provenance]],
+                    on="segment_key",
                     how="left",
                     validate="many_to_one",
                 )

@@ -68,6 +68,8 @@ def _brand_identity(config: BrandlagenConfig | None) -> dict:
         "crs": format_crs(settings.crs),
         "brandwaarde": config.brandwaarde,
         "prioriteit": config.prioriteit,
+        "waternet": config.waternet,
+        "geisoleerde_branddiepte_m": config.geisoleerde_branddiepte_m,
         "lagen": [
             {
                 "source": _file_identity(layer.path),
@@ -75,6 +77,8 @@ def _brand_identity(config: BrandlagenConfig | None) -> dict:
                 "layer": layer.layer,
                 "brandwaarde": layer.brandwaarde,
                 "prioriteit": layer.prioriteit,
+                "rol": layer.rol,
+                "bron": layer.bron,
             }
             for layer in config.lagen
         ],
@@ -171,6 +175,8 @@ def _read_brandlagen(
                         "bronbestand": str(source.path),
                         "bronlaag": source.layer,
                         "bron_fid": int(fid),
+                        "rol": source.rol,
+                        "bron": source.bron,
                         "geometry": force_2d(geometry),
                     }
                 )
@@ -370,6 +376,8 @@ def _optional_burn_raster(
     if prepared is None:
         return empty
     features = wgpd.read_file(prepared.path, layer=BRAND_LAYER, bbox=grid.bounds)
+    if "rol" in features:
+        features = features.loc[features.rol != "duiker"].copy()
     if features.empty:
         return empty
     del empty
@@ -405,5 +413,8 @@ def _burn_signature(
             "watersysteem_wal": _file_identity(Path(str(watersysteem_path) + "-wal")),
             "burn_depth_m": burn_depth_m,
             "optional": prepared.signature if prepared is not None else None,
+            "waternet": _file_identity(
+                watersysteem_path.parent / "waternet" / "manifest.json"
+            ),
         }
     )

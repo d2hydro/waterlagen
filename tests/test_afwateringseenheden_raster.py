@@ -129,7 +129,7 @@ def _write_watersysteem(path: Path) -> Path:
         crs=CRS,
     )
     segments = gpd.GeoDataFrame(
-        {"segment_id": ["primair:0001", "primair:0002"]},
+        {"segment_key": ["primair:0001", "primair:0002"]},
         geometry=[
             LineString([(1, 0), (1, 8)]),
             LineString([(3, 0), (3, 8)]),
@@ -196,6 +196,49 @@ def test_fill_dem_nodata_fills_internal_gaps() -> None:
     result = raster_module._fill_dem_nodata(data)
 
     assert np.isfinite(result).all()
+
+
+def test_waternet_exclusion_updates_dem_targets_and_provenance(source_paths, tmp_path):
+    from waterlagen.afwateringseenheden.sources import WatersysteemSources
+    from waterlagen.afwateringseenheden.waternet import prepare_waternet
+    from waterlagen.raster.grid import RasterGrid
+
+    ahn_path, network_path = source_paths
+    primary = gpd.GeoDataFrame(geometry=[LineString([(1, 0), (1, 8)])], crs=CRS)
+    empty = primary.iloc[:0].copy()
+    culverts = gpd.GeoDataFrame(
+        {
+            "bronbestand": ["hydamo.gpkg"],
+            "bronlaag": ["duikersifonhevel"],
+            "bron_fid": [1],
+            "bron_id": ["culvert-1"],
+        },
+        geometry=[LineString([(1, 3), (1, 5)])],
+        crs=CRS,
+    )
+    data = WatersysteemSources(primary, empty, primary, empty, culverts=culverts)
+    extra = empty.copy()
+    extra["broncode"] = []
+    grid = RasterGrid.from_bounds((0, 0, 8, 8), resolution=2, crs=CRS)
+    config = BrandlagenConfig(waternet=True)
+    prepare_waternet(data, extra, [grid], network_path, config)
+    result = prepare_watersysteem_rasters(
+        box(0, 0, 8, 8),
+        burn_depth_m=100,
+        ahn_vrt_path=ahn_path,
+        watersysteem_path=network_path,
+        output_dir=tmp_path / "net_output",
+    )
+    with (
+        rasterio.open(result.dem_path) as dem,
+        rasterio.open(result.hydroobject_segment_path) as targets,
+        rasterio.open(result.brandbron_path) as provenance,
+    ):
+        assert dem.read(1)[1, 0] == 1000  # Original +10 m, not a burned trench.
+        assert targets.read(1)[1, 0] == 0
+        assert provenance.read(1)[1, 0] == 0
+        assert dem.read(1)[0, 0] == -19000
+        assert targets.read(1)[0, 0] == 1
 
 
 def test_fill_dem_nodata_searches_the_full_raster(

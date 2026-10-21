@@ -26,7 +26,7 @@ def test_culvert_snapshot_parallel_border_and_cache_invalidation(
 
     dem, network_path = sources
     primary = wgpd.read_file(network_path, layer="hydroobject_primair")
-    primary["bron_id"] = primary.segment_id
+    primary["bron_id"] = primary.segment_key
     empty = primary.iloc[:0].copy()
     culverts = gpd.GeoDataFrame(
         {"bron_id": ["border", "unmatched"]},
@@ -100,7 +100,7 @@ def test_all_targets_excluded_preserves_both_control_locations(sources, tmp_path
 
     dem, network_path = sources
     primary = wgpd.read_file(network_path, layer="hydroobject_primair")
-    primary["bron_id"] = primary.segment_id
+    primary["bron_id"] = primary.segment_key
     empty = primary.iloc[:0].copy()
     network = prepare_watersysteem(primary, empty, duikersifonhevel=primary)
     write_watersysteem(
@@ -147,7 +147,7 @@ def sources(tmp_path: Path) -> tuple[Path, Path]:
         dataset.write(dem, 1)
     watersysteem_path = tmp_path / "watersysteem.gpkg"
     primary = gpd.GeoDataFrame(
-        {"segment_id": ["first", "second", "third"]},
+        {"segment_key": ["first", "second", "third"]},
         geometry=[LineString([(x, 0), (x, 48)]) for x in (10, 26, 42)],
         crs=settings.crs,
     )

@@ -107,7 +107,7 @@ def prepare_watersysteem(
     -------
     WatersysteemResult
         ``hydroobject_segmenten`` contains stable ``bron_id`` and
-        ``segment_id`` values. ``hydroobject_verbinding`` contains deterministic
+        ``segment_key`` values. ``hydroobject_verbinding`` contains deterministic
         directed relations between final segment IDs, their source ``bron_id``
         values, and relevant point attributes.
     """
@@ -469,6 +469,47 @@ def split_connected_secondary_hydroobjecten(
     return connected, unconnected
 
 
+def _connection_segment_ids(
+    connections: gpd.GeoDataFrame, path: Path
+) -> gpd.GeoDataFrame:
+    """Link connection IDs to the actual segment FIDs written to this package."""
+    with closing(sqlite3.connect(path)) as connection:
+        rows = connection.execute(
+            "SELECT segment_key, fid FROM hydroobject_segment"
+        ).fetchall()
+    identifiers = dict(rows)
+    if len(identifiers) != len(rows):
+        raise ValueError("Duplicate segment_key in hydroobject_segment")
+    result = connections.copy()
+    for direction in ("van", "naar"):
+        values = result[f"{direction}_segment_key"].map(identifiers)
+        if values.isna().any():
+            raise ValueError(f"Unknown {direction}_segment in hydroobject_verbinding")
+        result[f"{direction}_segment"] = values.astype("int64")
+    return result
+
+
+def _validate_segment_numbers(path: Path) -> None:
+    """Check numeric links against the actual stored segment keys and FIDs."""
+    with closing(sqlite3.connect(path)) as connection:
+        invalid = connection.execute(
+            "SELECT COUNT(*) FROM hydroobject_segment "
+            "WHERE segment_id IS NULL OR typeof(segment_id) != 'integer' OR segment_id != fid"
+        ).fetchone()[0]
+        if invalid:
+            raise ValueError("segment_id must equal the stored integer segment FID")
+        for direction in ("van", "naar"):
+            invalid = connection.execute(
+                f"SELECT COUNT(*) FROM hydroobject_verbinding AS v "
+                f"LEFT JOIN hydroobject_segment AS s ON s.segment_id = v.{direction}_segment "
+                f"WHERE s.fid IS NULL OR v.{direction}_segment_key IS NULL "
+                f"OR s.segment_key != v.{direction}_segment_key "
+                f"OR typeof(v.{direction}_segment) != 'integer'"
+            ).fetchone()[0]
+            if invalid:
+                raise ValueError(f"Invalid numeric {direction}_segment link")
+
+
 def write_watersysteem(
     *,
     hydroobject_primair: gpd.GeoDataFrame,
@@ -487,6 +528,9 @@ def write_watersysteem(
     layer, and CRS validation. A failed write or validation removes its
     temporary file and leaves an existing target untouched. Layers with a
     bundled QML style register that style in the GeoPackage automatically.
+    Connections include integer ``van_segment`` and ``naar_segment`` referencing
+    the actual GeoPackage segment FIDs, also used by catchment ``segment_id``.
+    These numbers are local to this output, unlike the source-based segment IDs.
 
     Parameters
     ----------
@@ -593,6 +637,7 @@ def write_watersysteem(
     if output_path.exists() and not overwrite:
         try:
             _validate_watersysteem_output(output_path, extra_layers=extra_layers)
+            _validate_segment_numbers(output_path)
             if signature is not None:
                 with closing(sqlite3.connect(output_path)) as connection:
                     previous = connection.execute(
@@ -659,6 +704,11 @@ def write_watersysteem(
     temporary_path = _temporary_output_path(output_path)
     try:
         for index, (layer_name, features) in enumerate(normalized_layers):
+            if layer_name == "hydroobject_segment":
+                features = features.copy()
+                features["segment_id"] = range(1, len(features) + 1)
+            if layer_name == "hydroobject_verbinding":
+                features = _connection_segment_ids(features, temporary_path)
             logger.info(
                 "Writing watersysteem layer %s with %s features",
                 layer_name,
@@ -672,6 +722,7 @@ def write_watersysteem(
             )
         logger.info("Validating temporary watersysteem GeoPackage %s", temporary_path)
         _validate_watersysteem_output(temporary_path, extra_layers=extra_layers)
+        _validate_segment_numbers(temporary_path)
         if signature is not None:
             with closing(sqlite3.connect(temporary_path)) as connection, connection:
                 connection.execute(

@@ -32,18 +32,28 @@ class Brandlaag:
         Signed height change in metres for missing object values.
     prioriteit : int, optional
         Priority for missing object values; higher numbers win.
+    rol : str, optional
+        ``overig`` (ordinary burn), ``water`` or ``duiker`` for water-network processing.
+    bron : str, optional
+        Culvert source: ``hydamo``, ``bgt`` or ``osm``. Required for culvert layers.
     """
 
     path: Path
     layer: str
     brandwaarde: float | None = None
     prioriteit: int | None = None
+    rol: str = "overig"
+    bron: str | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "path", Path(self.path).resolve())
         if not isinstance(self.layer, str) or not self.layer.strip():
             raise ValueError("Brandlaag.layer must be a non-empty name")
         _validate_defaults(self.brandwaarde, self.prioriteit)
+        if self.rol not in {"overig", "water", "duiker"}:
+            raise ValueError("rol must be overig, water or duiker")
+        if self.rol == "duiker" and self.bron not in {"hydamo", "bgt", "osm"}:
+            raise ValueError("A duiker layer requires bron=hydamo, bgt or osm")
         if self.brandwaarde is not None:
             object.__setattr__(self, "brandwaarde", float(self.brandwaarde))
         if self.prioriteit is not None:
@@ -62,17 +72,31 @@ class BrandlagenConfig:
         Global signed height change in metres, after object and layer values.
     prioriteit : int, optional
         Global priority, after object and layer values. Zero is an explicit value.
+    waternet : bool, optional
+        Classify water and culverts jointly on the raster before burning.
+    geisoleerde_branddiepte_m : float, optional
+        Positive lowering depth for isolated HYDAMO components and tertiary
+        waterlines, default 10 metres. Additional sources use their configured
+        signed ``brandwaarde`` outside the protected deep HYDAMO network.
     """
 
     lagen: tuple[Brandlaag, ...] = ()
     brandwaarde: float | None = None
     prioriteit: int | None = None
+    waternet: bool = False
+    geisoleerde_branddiepte_m: float = 10.0
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "lagen", tuple(self.lagen))
         if not all(isinstance(layer, Brandlaag) for layer in self.lagen):
             raise TypeError("lagen must contain Brandlaag objects")
         _validate_defaults(self.brandwaarde, self.prioriteit)
+        if not isinstance(self.waternet, bool):
+            raise TypeError("waternet must be a boolean")
+        if _brand_number(self.geisoleerde_branddiepte_m) < 0:
+            raise ValueError("geisoleerde_branddiepte_m must be nonnegative")
+        if not self.waternet and any(layer.rol != "overig" for layer in self.lagen):
+            raise ValueError("water/duiker roles require waternet=true")
         if self.brandwaarde is not None:
             object.__setattr__(self, "brandwaarde", float(self.brandwaarde))
         if self.prioriteit is not None:
@@ -102,7 +126,9 @@ def read_brandlagen_config(path: Path) -> BrandlagenConfig:
     path : pathlib.Path
         TOML file with optional ``[defaults]`` (``brandwaarde``, ``prioriteit``)
         and ``[[lagen]]`` entries (``path``, ``layer`` and optional defaults
-        ``brandwaarde`` and ``prioriteit`` directly on each entry).
+        ``brandwaarde`` and ``prioriteit`` directly on each entry). Root keys
+        ``waternet`` and ``geisoleerde_branddiepte_m`` enable joint connectivity.
+        Layer keys ``rol`` and ``bron`` identify water and culvert inputs.
 
     Returns
     -------
@@ -121,7 +147,11 @@ def read_brandlagen_config(path: Path) -> BrandlagenConfig:
     path = Path(path).resolve()
     with path.open("rb") as stream:
         values = tomllib.load(stream)
-    _check_keys(values, {"defaults", "lagen"}, "configuration")
+    _check_keys(
+        values,
+        {"defaults", "lagen", "waternet", "geisoleerde_branddiepte_m"},
+        "configuration",
+    )
     defaults = values.get("defaults", {})
     if not isinstance(defaults, dict):
         raise TypeError("defaults must be a TOML table")
@@ -133,7 +163,9 @@ def read_brandlagen_config(path: Path) -> BrandlagenConfig:
     for entry in entries:
         if not isinstance(entry, dict):
             raise TypeError("Each lagen entry must be a TOML table")
-        _check_keys(entry, {"path", "layer", "brandwaarde", "prioriteit"}, "laag")
+        _check_keys(
+            entry, {"path", "layer", "brandwaarde", "prioriteit", "rol", "bron"}, "laag"
+        )
         if not isinstance(entry.get("path"), str) or not entry["path"].strip():
             raise ValueError("Each laag requires a non-empty path")
         if "layer" not in entry:
@@ -144,6 +176,13 @@ def read_brandlagen_config(path: Path) -> BrandlagenConfig:
                 layer=entry["layer"],
                 brandwaarde=entry.get("brandwaarde"),
                 prioriteit=entry.get("prioriteit"),
+                rol=entry.get("rol", "overig"),
+                bron=entry.get("bron"),
             )
         )
-    return BrandlagenConfig(tuple(layers), **defaults)
+    return BrandlagenConfig(
+        tuple(layers),
+        **defaults,
+        waternet=values.get("waternet", False),
+        geisoleerde_branddiepte_m=values.get("geisoleerde_branddiepte_m", 10.0),
+    )

@@ -61,7 +61,7 @@ def _write_cached_tile(
     tile_dir = output_dir / "100000_400000_100016_400016"
     tile_dir.mkdir(parents=True)
     subcatchments = gpd.GeoDataFrame(
-        {"segment_fid": [1], "segment_id": ["segment-a"]},
+        {"segment_id": [1], "segment_key": ["segment-a"]},
         geometry=[box(100000, 400000, 100016, 400016)],
         crs=crs,
     )
@@ -320,13 +320,13 @@ def test_calculate_tiles_uses_buffered_tile_geometry_and_writes_merged_output(
         tile_id = rasters.dem_path.parent.name
         if tile_id.startswith("000000"):
             subcatchments = gpd.GeoDataFrame(
-                {"segment_fid": [1], "segment_id": ["segment-a"]},
+                {"segment_id": [1], "segment_key": ["segment-a"]},
                 geometry=[box(100, 100, 500, 500)],
                 crs=settings.crs,
             )
         else:
             subcatchments = gpd.GeoDataFrame(
-                {"segment_fid": [2], "segment_id": ["segment-b"]},
+                {"segment_id": [2], "segment_key": ["segment-b"]},
                 geometry=[box(2100, 100, 2500, 500)],
                 crs=settings.crs,
             )
@@ -360,7 +360,7 @@ def test_calculate_tiles_uses_buffered_tile_geometry_and_writes_merged_output(
     assert len(result.merged_subcatchments) == 2
     assert result.merged_path == tmp_path / "afwateringseenheden.gpkg"
     assert result.merged_path.exists()
-    assert set(result.merged_subcatchments["segment_id"]) == {
+    assert set(result.merged_subcatchments["segment_key"]) == {
         "segment-a",
         "segment-b",
     }
@@ -445,7 +445,7 @@ def test_calculate_tiles_reports_boundary_issues_without_recalculation(
         nonlocal calculation_count
         calculation_count += 1
         subcatchments = gpd.GeoDataFrame(
-            {"segment_fid": [1], "segment_id": ["segment-a"]},
+            {"segment_id": [1], "segment_key": ["segment-a"]},
             geometry=[box(50, 50, 1099, 200)],
             crs=settings.crs,
         )

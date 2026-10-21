@@ -187,19 +187,20 @@ def _validate_output_grid(
             raise ValueError(f"{path} does not match the DEM CRS")
 
 
-def _segment_ids_by_fid(watersysteem_path: Path) -> dict[int, str]:
+def _segment_keys_by_fid(watersysteem_path: Path) -> dict[int, str]:
     """Read the hydroobject-segment GeoPackage FID to segment-ID relation."""
     segments = wgpd.read_file(
         watersysteem_path,
         layer="hydroobject_segment",
         fid_as_index=True,
     )
-    if "segment_id" not in segments.columns:
-        raise ValueError("hydroobject_segment has no segment_id column")
-    if segments["segment_id"].isna().any():
-        raise ValueError("hydroobject_segment has missing segment_id values")
+    if "segment_key" not in segments.columns:
+        raise ValueError("hydroobject_segment has no segment_key column")
+    if segments["segment_key"].isna().any():
+        raise ValueError("hydroobject_segment has missing segment_key values")
     return {
-        int(fid): str(segment_id) for fid, segment_id in segments["segment_id"].items()
+        int(fid): str(segment_key)
+        for fid, segment_key in segments["segment_key"].items()
     }
 
 
@@ -208,28 +209,28 @@ def _polygonize_subcatchments(
     *,
     transform,
     crs,
-    segment_ids_by_fid: dict[int, str],
+    segment_keys_by_fid: dict[int, str],
 ) -> gpd.GeoDataFrame:
     """Polygonize valid segment FIDs and resolve each to its segment ID."""
-    valid_fids = np.fromiter(segment_ids_by_fid, dtype=np.int32)
+    valid_fids = np.fromiter(segment_keys_by_fid, dtype=np.int32)
     values = set(np.unique(data)) - {SUBCATCHMENTS_NODATA, 0}
     unknown_fids = values - set(valid_fids)
     if unknown_fids:
         unknown = min(unknown_fids)
         raise ValueError(
             "Subcatchment raster contains a hydroobject_segment FID "
-            f"without a matching segment_id: {unknown}"
+            f"without a matching segment_key: {unknown}"
         )
 
     mask = np.isin(data, valid_fids)
     polygons: list[dict[str, int | str]] = []
     geometries = []
     for geometry, value in shapes(data, mask=mask, transform=transform):
-        segment_fid = int(value)
+        segment_id = int(value)
         polygons.append(
             {
-                "segment_fid": segment_fid,
-                "segment_id": segment_ids_by_fid[segment_fid],
+                "segment_id": segment_id,
+                "segment_key": segment_keys_by_fid[segment_id],
             }
         )
         geometries.append(shape(geometry))
@@ -344,7 +345,7 @@ def calculate_subcatchments(
                 subcatchment_data,
                 transform=dem.transform,
                 crs=dem.crs,
-                segment_ids_by_fid=_segment_ids_by_fid(watersysteem_path),
+                segment_keys_by_fid=_segment_keys_by_fid(watersysteem_path),
             )
 
         _write_subcatchment_geopackage(afwateringseenheden_path, subcatchments)

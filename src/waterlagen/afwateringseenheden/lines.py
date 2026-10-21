@@ -27,9 +27,9 @@ class WatersysteemResult:
     ``hydroobject_segmenten`` contains primary source lines split at internal
     point locations and subsequently, by the workflow, at the requested maximum
     length. ``hydroobject_verbinding`` contains a directed, minimal connection
-    tree between final ``segment_id`` values at each hydrological node. A
-    segment ending at a node is ``van_segment`` and a segment starting there
-    is ``naar_segment``. At a node with multiple incoming and
+    tree between final ``segment_key`` values at each hydrological node. A
+    segment ending at a node is ``van_segment_key`` and a segment starting there
+    is ``naar_segment_key``. At a node with multiple incoming and
     outgoing segments, the lexicographically first segment of each direction
     is the deterministic main route. Connection geometries are always
     two-dimensional Points at a shared segment endpoint or at the puntobject
@@ -64,7 +64,7 @@ class WatersysteemResult:
 class _Endpoint:
     """Represent one directed segment endpoint at a hydrological node."""
 
-    segment_id: str
+    segment_key: str
     bron_id: str
     direction: str
     geometry: Point
@@ -176,8 +176,8 @@ def _empty_verbindingen() -> gpd.GeoDataFrame:
     """Return an empty connection layer with its stable public schema."""
     return gpd.GeoDataFrame(
         {
-            "van_segment": pd.Series(dtype="object"),
-            "naar_segment": pd.Series(dtype="object"),
+            "van_segment_key": pd.Series(dtype="object"),
+            "naar_segment_key": pd.Series(dtype="object"),
             "van_bron_id": pd.Series(dtype="object"),
             "naar_bron_id": pd.Series(dtype="object"),
             "objecttype": pd.Series(dtype="object"),
@@ -225,7 +225,7 @@ def split_hydroobjecten_at_points(
     ``tolerance``. Internal, unique projected positions split the source line.
     Endpoint positions are intentionally not split. Connections are derived
     after the final length segmentation, because only then every connection can
-    refer to final ``segment_id`` values.
+    refer to final ``segment_key`` values.
 
     Parameters
     ----------
@@ -391,11 +391,11 @@ def _directed_connection_pairs(
     for endpoint in sorted(
         endpoints,
         key=lambda endpoint: (
-            endpoint.segment_id,
+            endpoint.segment_key,
             direction_order[endpoint.direction],
         ),
     ):
-        by_segment.setdefault(endpoint.segment_id, endpoint)
+        by_segment.setdefault(endpoint.segment_key, endpoint)
 
     incoming = sorted(
         (
@@ -403,7 +403,7 @@ def _directed_connection_pairs(
             for endpoint in by_segment.values()
             if endpoint.direction == "incoming"
         ),
-        key=lambda endpoint: endpoint.segment_id,
+        key=lambda endpoint: endpoint.segment_key,
     )
     outgoing = sorted(
         (
@@ -411,7 +411,7 @@ def _directed_connection_pairs(
             for endpoint in by_segment.values()
             if endpoint.direction == "outgoing"
         ),
-        key=lambda endpoint: endpoint.segment_id,
+        key=lambda endpoint: endpoint.segment_key,
     )
     if incoming and outgoing:
         main_incoming = incoming[0]
@@ -436,8 +436,8 @@ def create_hydroobject_verbindingen(
 ) -> gpd.GeoDataFrame:
     """Create directed Point connections between final hydroobject segments.
 
-    A segment ending at a node becomes ``van_segment``; a segment starting at
-    that node becomes ``naar_segment``. Each hydrological node with
+    A segment ending at a node becomes ``van_segment_key``; a segment starting at
+    that node becomes ``naar_segment_key``. Each hydrological node with
     ``n`` participating segments receives exactly ``n - 1`` connection records.
     A node with multiple incoming and multiple outgoing segments is
     hydrologically ambiguous. Its lexicographically first incoming and outgoing
@@ -456,8 +456,8 @@ def create_hydroobject_verbindingen(
     """
     _validate_tolerance(tolerance)
     segmenten = _prepare_hydroobjecten(hydroobject_segmenten)
-    if "segment_id" not in segmenten.columns:
-        raise ValueError("hydroobject_segmenten has no segment_id column")
+    if "segment_key" not in segmenten.columns:
+        raise ValueError("hydroobject_segmenten has no segment_key column")
     punten = _prepare_puntobjecten(puntobjecten)
     if segmenten.empty:
         return _empty_verbindingen()
@@ -471,7 +471,7 @@ def create_hydroobject_verbindingen(
         ):
             endpoint_records.append(
                 {
-                    "segment_id": str(segment["segment_id"]),
+                    "segment_key": str(segment["segment_key"]),
                     "bron_id": str(segment["bron_id"]),
                     "direction": direction,
                     "duikergrens": bool(
@@ -505,8 +505,8 @@ def create_hydroobject_verbindingen(
         connection_point: Point,
         puntobject: pd.Series | None,
     ) -> None:
-        first_segment = first_endpoint.segment_id
-        second_segment = second_endpoint.segment_id
+        first_segment = first_endpoint.segment_key
+        second_segment = second_endpoint.segment_key
         if first_segment == second_segment:
             return
         connection_key = (
@@ -518,8 +518,8 @@ def create_hydroobject_verbindingen(
             return
         connection_keys.add(connection_key)
         record = {
-            "van_segment": first_segment,
-            "naar_segment": second_segment,
+            "van_segment_key": first_segment,
+            "naar_segment_key": second_segment,
             "van_bron_id": first_endpoint.bron_id,
             "naar_bron_id": second_endpoint.bron_id,
             "geometry": connection_point,
@@ -534,7 +534,7 @@ def create_hydroobject_verbindingen(
     ) -> None:
         node_endpoints = [
             _Endpoint(
-                segment_id=str(endpoints.iloc[position]["segment_id"]),
+                segment_key=str(endpoints.iloc[position]["segment_key"]),
                 bron_id=str(endpoints.iloc[position]["bron_id"]),
                 direction=str(endpoints.iloc[position]["direction"]),
                 geometry=endpoints.geometry.iloc[position],
@@ -584,10 +584,10 @@ def create_hydroobject_verbindingen(
     for positions in endpoint_groups.values():
         if point_node_positions.intersection(positions):
             continue
-        segment_ids = {
-            str(endpoints.iloc[position]["segment_id"]) for position in positions
+        segment_keys = {
+            str(endpoints.iloc[position]["segment_key"]) for position in positions
         }
-        if len(segment_ids) < 2:
+        if len(segment_keys) < 2:
             continue
         connection_point = endpoints.geometry.iloc[positions[0]]
         puntobject = (
@@ -643,14 +643,14 @@ def split_hydroobjecten_by_length(
     The number of segments is the smallest integer that keeps each segment at
     or below ``max_length``. The source line length is then divided equally
     over those segments. Source fields and ``bron_id`` are retained.
-    ``segment_id`` is based on the source identifier and a deterministic,
+    ``segment_key`` is based on the source identifier and a deterministic,
     one-based sequence number.
     """
     if max_length <= 0:
         raise ValueError("max_length must be greater than zero")
     lines = _prepare_hydroobjecten(hydroobjecten)
     if lines.empty:
-        lines["segment_id"] = pd.Series(dtype="object")
+        lines["segment_key"] = pd.Series(dtype="object")
         return lines
 
     records: list[dict[str, object]] = []
@@ -680,13 +680,13 @@ def split_hydroobjecten_by_length(
                     bool(record["duiker_knip_eind"])
                     and segment_index == segment_count - 1
                 )
-            record["segment_id"] = f"{source_id}:{segment_numbers[source_id]:04d}"
+            record["segment_key"] = f"{source_id}:{segment_numbers[source_id]:04d}"
             record["geometry"] = segment
             records.append(record)
 
     if not records:
         result = lines.iloc[0:0].copy()
-        result["segment_id"] = pd.Series(dtype="object")
+        result["segment_key"] = pd.Series(dtype="object")
         return result
     result = gpd.GeoDataFrame(records, geometry="geometry", crs=settings.crs)
     if (result.geometry.length > max_length + POSITION_TOLERANCE).any():

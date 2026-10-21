@@ -300,7 +300,7 @@ def test_burn_target_fids_secondary_and_subcatchments(tmp_path, optional):
     assert ids[15, 6] == 0
     assert ids[15, 15] == 3
     subcatchments = calculate_subcatchments(rasters, watersysteem_path=path)
-    assert set(subcatchments.subcatchments.segment_id) <= {"line0:0001", "line0:0003"}
+    assert set(subcatchments.subcatchments.segment_key) <= {"line0:0001", "line0:0003"}
 
 
 def test_target_modes_and_adjacent_length_keep_burning(tmp_path):

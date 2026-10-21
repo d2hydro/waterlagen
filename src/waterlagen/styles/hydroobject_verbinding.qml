@@ -406,13 +406,15 @@
   </attributeactions>
   <attributetableconfig sortExpression="" sortOrder="0" actionWidgetStyle="dropDown">
     <columns>
+      <column type="field" name="van_segment_key" width="-1" hidden="1"/>
+      <column type="field" name="naar_segment_key" width="-1" hidden="1"/>
       <column type="field" name="fid" width="-1" hidden="0"/>
       <column type="field" name="van_segment" width="-1" hidden="0"/>
       <column type="field" name="naar_segment" width="-1" hidden="0"/>
-      <column type="field" name="van_bron_id" width="-1" hidden="0"/>
-      <column type="field" name="naar_bron_id" width="-1" hidden="0"/>
+      <column type="field" name="van_bron_id" width="-1" hidden="1"/>
+      <column type="field" name="naar_bron_id" width="-1" hidden="1"/>
       <column type="field" name="objecttype" width="-1" hidden="0"/>
-      <column type="field" name="punt_bron_id" width="-1" hidden="0"/>
+      <column type="field" name="punt_bron_id" width="-1" hidden="1"/>
       <column type="field" name="punt_code" width="-1" hidden="0"/>
       <column type="field" name="punt_naam" width="-1" hidden="0"/>
       <column type="field" name="waterbeheercode" width="-1" hidden="0"/>

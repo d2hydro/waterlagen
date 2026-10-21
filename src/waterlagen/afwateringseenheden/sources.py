@@ -22,7 +22,7 @@ from .objects import (
 )
 
 logger = get_logger(__name__)
-SOURCE_POLICY = "replace_authority_exclude_gkw80_required_culverts_v3"
+SOURCE_POLICY = "replace_authority_exclude_gkw80_compact_ids_v4"
 CONNECTION_POLICY = "all_selected_full_lines_components_v1"
 
 
@@ -47,6 +47,8 @@ class WatersysteemSources:
         GKW code 80 is excluded; only the optional RWS layer supplies RWS culverts.
     rws_culverts_present : bool
         Whether the RWS source includes the optional culvert layer, even if empty.
+    tertiary : geopandas.GeoDataFrame, optional
+        Selected tertiary lines, used only by the joint raster water network.
     """
 
     primary: gpd.GeoDataFrame
@@ -56,6 +58,7 @@ class WatersysteemSources:
     missing_category: gpd.GeoDataFrame | None = None
     culverts: gpd.GeoDataFrame | None = None
     rws_culverts_present: bool = False
+    tertiary: gpd.GeoDataFrame | None = None
 
 
 def validate_authority_options(
@@ -144,15 +147,33 @@ def _normalize_categories(
 
 
 def _source_ids(features: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+    """Identify objects by layer and NEN ID, independently of path and FID."""
     result = features.copy()
     if result.empty:
         return result
     result["oorspronkelijk_bron_id"] = result["bron_id"]
-    # Include the path, layer and original FID, even when globalids are reused.
-    result["bron_id"] = [
-        f"{row.bronbestand}|{row.bronlaag}|{row.bron_fid}|{row.bron_id}"
-        for row in result.itertuples()
-    ]
+    identifiers = []
+    for row in result.itertuples():
+        nen_id = str(row.nen3610id).removeprefix("NL.WBHCODE.")
+        identifier = f"{row.bronlaag}:{nen_id}"
+        # Exploded MultiLineStrings already carry a part suffix on the source ID.
+        original_id = str(row.bron_fid)
+        for column in ("globalid", "code"):
+            value = getattr(row, column, None)
+            if value is not None and not pd.isna(value) and str(value).strip():
+                original_id = str(value)
+                break
+        part = re.fullmatch(re.escape(original_id) + r":([0-9]{4,})", str(row.bron_id))
+        if part is not None:
+            identifier = f"{identifier}:deel{part.group(1)}"
+        identifiers.append(identifier)
+    result["bron_id"] = identifiers
+    duplicate = result.bron_id.duplicated(keep=False)
+    if duplicate.any():
+        raise ValueError(
+            "Duplicate source identifiers (layer/NEN ID/part): "
+            f"{result.loc[duplicate, 'bron_id'].unique().tolist()}"
+        )
     return result
 
 
@@ -294,4 +315,5 @@ def read_watersysteem_sources(
         missing_category,
         culverts,
         rws_culverts_present,
+        hydro.loc[hydro[CATEGORIE_OPPERVLAKTEWATER_COLUMN].eq("tertiair")].copy(),
     )

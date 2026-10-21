@@ -16,14 +16,14 @@ from waterlagen.afwateringseenheden.brandlagen import (
     _prepare_brandlagen,
 )
 from waterlagen.afwateringseenheden.config import BrandlagenConfig
+from waterlagen.afwateringseenheden.pcraster import require_pcraster
+from waterlagen.afwateringseenheden.raster import _grid_for_square
 from waterlagen.afwateringseenheden.sources import (
     CONNECTION_POLICY,
     SOURCE_POLICY,
     read_watersysteem_sources,
     validate_authority_options,
 )
-from waterlagen.afwateringseenheden.pcraster import require_pcraster
-from waterlagen.afwateringseenheden.raster import _grid_for_square
 from waterlagen.afwateringseenheden.tiles import (
     _calculation_geometry,
     _tiles_for_gebied,
@@ -43,7 +43,9 @@ from waterlagen.logger import get_logger
 from waterlagen.rijkswateren.download import RIJKSWATEREN_URL, download_rijkswateren
 from waterlagen.settings import settings
 
+from .brandlagen import _empty_brandlagen
 from .duikers import CULVERT_POLICY, _validate_culvert_options
+from .waternet import WATERNET_POLICY, prepare_waternet
 
 logger = get_logger(__name__)
 
@@ -139,6 +141,7 @@ def main(
         [_calculation_geometry(tile, tile_buffer_m=tile_buffer) for tile in tiles]
     )
     parameters = {
+        "output_schema": "numeric_segment_id_v2",
         "area": selected.identity,
         "crs": settings.crs,
         "tile_size_m": tile_size,
@@ -174,6 +177,8 @@ def main(
     }
     if brandlagen is not None:
         parameters["brandlagen"] = _brand_identity(brandlagen)
+        if brandlagen.waternet:
+            parameters["waternet_policy"] = WATERNET_POLICY
     with production_run(
         store.processed_data_dir,
         "afwateringseenheden",
@@ -191,7 +196,7 @@ def main(
                 )
                 for tile in tiles
             ]
-            _prepare_brandlagen(
+            prepared_brandlagen = _prepare_brandlagen(
                 brandlagen, grids, run.path / "tiles" / "brandlagen.gpkg"
             )
         boundary = ensure_land_boundary(store, preparation)
@@ -275,6 +280,22 @@ def main(
             output_path=run.path / "watersysteem.gpkg",
             overwrite=overwrite,
         )
+        if brandlagen is not None and brandlagen.waternet:
+            from waterlagen._geopandas import read_file
+
+            optional = (
+                read_file(prepared_brandlagen.path, layer="brandlagen")
+                if prepared_brandlagen is not None
+                else _empty_brandlagen()
+            )
+            prepare_waternet(
+                sources,
+                optional,
+                grids,
+                network_path,
+                brandlagen,
+                primary_culvert_pieces=network.hydroobject_primair_delen,
+            )
         result = calculate_afwateringseenheden_tiles(
             selected.geometry,
             burn_depth_m=100,

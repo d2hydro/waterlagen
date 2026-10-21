@@ -72,7 +72,8 @@ betekenissen. `duiker_ids` identificeert overlappende duikers;
 `aansluit_duiker_ids` identificeert directe aansluitingen. Lengteclassificatie
 vindt vóór `max_length` plaats en wordt doorgegeven aan de deelsegmenten.
 Filtering van het doelraster behoudt de opgeslagen FIDs voor de terugkoppeling
-naar `segment_id`; gaten worden niet opgevuld.
+naar de numerieke `segment_id`, met `segment_key` als technische sleutel;
+gaten worden niet opgevuld.
 
 Voorbereiding en schrijven controleren inhoudelijke invoeridentiteiten,
 inclusief controleobjecten, doelmodus en instellingen. Bronlezers voegen ook

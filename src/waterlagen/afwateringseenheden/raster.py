@@ -22,8 +22,8 @@ from waterlagen import datastore as default_datastore
 from waterlagen._crs import same_crs
 from waterlagen.datastore import DataStore
 from waterlagen.logger import get_logger
-from waterlagen.raster.grid import RasterGrid
 from waterlagen.raster.config import RasterOutputConfig
+from waterlagen.raster.grid import RasterGrid
 from waterlagen.settings import settings
 
 from ._coverage import _coverage_mask, _landsgrens_version
@@ -34,6 +34,7 @@ from .brandlagen import (
     _PreparedBrandlagen,
 )
 from .config import BrandlagenConfig
+from .waternet import read_waternet
 
 logger = get_logger(__name__)
 
@@ -580,6 +581,14 @@ def prepare_watersysteem_rasters(
         watersysteem_path or data_store.afwateringseenheden_path / "watersysteem.gpkg"
     )
     output_dir = Path(output_dir or data_store.afwateringseenheden_path / "rasters")
+    if (
+        brandlagen is not None
+        and brandlagen.waternet
+        and not (watersysteem_path.parent / "waternet" / "manifest.json").exists()
+    ):
+        raise ValueError(
+            "waternet requires joint preparation through the production workflow"
+        )
     prepared = _prepare_brandlagen(brandlagen, [grid], output_dir / "brandlagen.gpkg")
     return _prepare_rasters(
         grid=grid,
@@ -681,12 +690,27 @@ def _prepare_rasters(
             source_codes = optional.sources
             source_codes[secondary_mask] = 2
             source_codes[primary_mask] = 1
+            waternet = read_waternet(watersysteem_path, grid)
+            excluded_targets = None
+            waternet_legend = {}
+            if waternet is not None:
+                treatment, network_codes, excluded_targets, waternet_legend, shallow = (
+                    waternet
+                )
+                active = treatment != 0
+                network_depths = np.array([0, -2 * burn_depth_m, -burn_depth_m, 0, 0])
+                burn_values[active] = network_depths[treatment[active]] / scale
+                shallow_cells = treatment == 3
+                burn_values[shallow_cells] = -shallow[shallow_cells] / scale
+                source_codes[active] = network_codes[active]
+                del treatment, network_codes, waternet
             source_codes[~np.isfinite(dem_data)] = -1
             legend = {
                 0: "Geen inbranding",
                 1: "HYDAMO primair",
                 2: "HYDAMO secundair",
                 **optional.legend,
+                **waternet_legend,
             }
             logger.info("Writing winning burn sources to %s", source_path)
             _write_brandbron(
@@ -721,9 +745,12 @@ def _prepare_rasters(
             grid=grid,
             fid_as_index=True,
         )
+        segment_data = _segment_raster(segments, grid)
+        if excluded_targets is not None:
+            segment_data[excluded_targets] = 0
         _write_segment_raster(
             temporary_segment_path,
-            data=_segment_raster(segments, grid),
+            data=segment_data,
             grid=grid,
         )
         logger.info("Validating watersysteem rasters for square %s", grid.bounds)

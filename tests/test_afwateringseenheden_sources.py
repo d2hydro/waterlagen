@@ -17,6 +17,75 @@ from waterlagen.afwateringseenheden import (
     calculate_subcatchments,
 )
 from waterlagen.afwateringseenheden.raster import prepare_watersysteem_rasters
+from waterlagen.afwateringseenheden.sources import _source_ids
+
+
+def test_compact_ids_survive_relocation_reindexing_and_selection(sources):
+    from shutil import copyfile
+
+    selected = read_watersysteem_sources(
+        *sources, spatial_selection=box(-5, -5, 100, 100)
+    )
+    relocated_paths = []
+    for path in sources:
+        relocated = path.with_name(f"relocated_{path.name}")
+        copyfile(path, relocated)
+        relocated_paths.append(relocated)
+    relocated = read_watersysteem_sources(
+        *relocated_paths, spatial_selection=box(-5, -5, 100, 100)
+    )
+    assert selected.primary.bron_id.tolist() == relocated.primary.bron_id.tolist()
+    assert selected.points.bron_id.is_unique
+    before = prepare_watersysteem(selected.targets, selected.points)
+    after = prepare_watersysteem(relocated.targets, relocated.points)
+    assert before.hydroobject_segmenten.segment_key.tolist() == (
+        after.hydroobject_segmenten.segment_key.tolist()
+    )
+    original = selected.primary.copy()
+    original["bron_id"] = original.oorspronkelijk_bron_id
+    original["bron_fid"] += 1000
+    assert _source_ids(original).bron_id.tolist() == selected.primary.bron_id.tolist()
+    assert (
+        _source_ids(original.iloc[:1]).bron_id.iloc[0]
+        == selected.primary.bron_id.iloc[0]
+    )
+
+
+def test_compact_ids_distinguish_parts_and_preserve_original_identity():
+    features = gpd.GeoDataFrame(
+        {
+            "nen3610id": ["NL.WBHCODE.38.Hydroobject.6984"] * 2,
+            "bronlaag": ["hydroobject"] * 2,
+            "bron_fid": [7, 7],
+            "globalid": ["shared", "shared"],
+            "bron_id": ["shared:0001", "shared:0002"],
+        },
+        geometry=[LineString([(0, 0), (1, 0)]), LineString([(1, 0), (2, 0)])],
+        crs=28992,
+    )
+    result = _source_ids(features)
+    assert result.bron_id.is_unique
+    assert result.oorspronkelijk_bron_id.tolist() == features.bron_id.tolist()
+    assert result.bron_id.iloc[0] == "hydroobject:38.Hydroobject.6984:deel0001"
+    duplicate = features.copy()
+    duplicate["bron_id"] = "shared"
+    with pytest.raises(ValueError, match="Duplicate source identifiers"):
+        _source_ids(duplicate)
+
+
+def test_compact_ids_do_not_misinterpret_original_id_as_part():
+    features = gpd.GeoDataFrame(
+        {
+            "nen3610id": ["NL.WBHCODE.38.Hydroobject.6984"],
+            "bronlaag": ["hydroobject"],
+            "bron_fid": [7],
+            "globalid": ["original:1234"],
+            "bron_id": ["original:1234"],
+        },
+        geometry=[LineString([(0, 0), (1, 0)])],
+        crs=28992,
+    )
+    assert _source_ids(features).bron_id.iloc[0] == "hydroobject:38.Hydroobject.6984"
 
 
 def write_culverts(path, codes, geometries=None):
@@ -270,7 +339,7 @@ def test_modes_joint_secondary_and_provenance(
     assert len(wgpd.read_file(path, layer="hydroobject_secundair_niet_verbonden")) == 1
     segments = wgpd.read_file(path, layer="hydroobject_segment")
     assert set(segments.waterbeheercode) == expected
-    assert segments.segment_id.is_unique
+    assert segments.segment_key.is_unique
 
 
 @pytest.mark.parametrize("code", ["30", "38"])
@@ -514,8 +583,8 @@ def test_real_pcraster_assigns_only_participating_authorities(
     )
     result = calculate_subcatchments(rasters, watersysteem_path=path)
     units = result.subcatchments.merge(
-        network.hydroobject_segmenten[["segment_id", "waterbeheercode"]],
-        on="segment_id",
+        network.hydroobject_segmenten[["segment_key", "waterbeheercode"]],
+        on="segment_key",
     )
     assert set(units.waterbeheercode) == expected
 
