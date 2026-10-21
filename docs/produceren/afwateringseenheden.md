@@ -204,7 +204,8 @@ zonder primaire match kan legitiem bij een secundaire watergang horen.
 
 Mislukte koppelingen veranderen het netwerk niet gedeeltelijk. Andere duikers
 worden wel verwerkt. Technische lees- en schrijffouten blijven fouten. Controleer
-ook de uitgesloten trajecten in `hydroobject_primair_delen` en de kolommen
+ook de uitgesloten trajecten in `intern/watersysteem.gpkg`, laag
+`hydroobject_primair_delen`, en de kolommen
 `brandgeschikt`, `doelgeschikt`, `duiker_ids` en `aansluit_duiker_ids` in
 `hydroobject_segment`. De IDs in de duikerkolommen zijn JSON-lijsten.
 
@@ -412,9 +413,11 @@ Elke run staat onder `processed_data/afwateringseenheden/<gebied>/<run-id>/`.
 
 | Bestand | Inhoud |
 | --- | --- |
-| `afwateringseenheden.gpkg` | Samengestelde afwateringseenheden. |
-| `watersysteem.gpkg` | Voorbereid watersysteem voor alle geselecteerde tegels. |
-| `controle.gpkg` | Laag `duikersifonhevel` met mislukte of onduidelijke koppelingen, ook geldig als deze leeg is. |
+| `afwateringseenheden.gpkg` | Eén laag: `afvoergebiedaanvoergebied`. |
+| `watersysteem.gpkg` | Vijf lagen: primaire, secundaire en niet-verbonden secundaire waterlopen, segmenten en verbindingen. |
+| `controle.gpkg` | Niet-toegewezen gebieden, aanvullingen uit buurtegels, duikercontroles en bronobjecten zonder categorie. |
+| `intern/watersysteem.gpkg` | Technische tussenlagen: volledige primaire bron en geknipte primaire delen. |
+| `intern/watersysteem.gpkg.json` | Technische controle voor veilig hergebruik van het watersysteem. |
 | `input/ahn.vrt` | Gebiedsspecifieke verwijzingen naar gedeelde AHN-tegels. |
 | `tiles/tiles.gpkg` | Geselecteerde tegelkernen. |
 | `tiles/brandlagen.gpkg` en `tiles/brandlagen.json` | Gevalideerde optionele brandobjecten en bron-/grididentiteit, indien gebruikt. |
@@ -428,20 +431,24 @@ primaire brandlijnen, verbonden secundaire lijnen en de controlelaag
 `hydroobject_secundair_niet_verbonden`; alleen deelnemende primaire lijnen
 staan in `hydroobject_segment`.
 Bij duikervoorbereiding bevat `hydroobject_primair` uitsluitend de geschikte
-brandgeometrie. `hydroobject_primair_bron` bewaart de volledige bron voor de
+brandgeometrie. In `intern/watersysteem.gpkg` bewaart `hydroobject_primair_bron` de volledige bron voor de
 secundaire toets; `hydroobject_primair_delen` bewaart ook de uitgesloten
 duikertrajecten van alle beheerders. De segmentlaag bevat ook ongeschikte
 doelsegmenten; het doelraster gebruikt uitsluitend `doelgeschikt = true`.
-De aanvullende controlelaag `hydroobject_zonder_categorie` bevat uitgesloten
+In `controle.gpkg` bevat `hydroobject_zonder_categorie` uitgesloten
 GKW-lijnen zonder categorie, met `uitsluitreden`.
 
-Het eindbestand bevat ook `niet_toegewezen` en `aanvulling_buurtegels`.
+Ook `niet_toegewezen` en `aanvulling_buurtegels` staan in `controle.gpkg`.
 De tweede laag bewaart donor- en doeltegel en de keuzevolgorde. Bij uitsluitend
-lege tegelresultaten staan deze controles in `tiles/controle.gpkg` en meldt
+lege tegelresultaten blijven deze controles beschikbaar en meldt
 de productie dat geen afwateringseenheden zijn gemaakt. Niet-toegewezen gebied
 is niet automatisch correcte externe afwatering: brongaten, tegelranden en
 rekenproblemen kunnen eveneens een oorzaak zijn. Toekenning aan het gekozen
 waterschap wordt niet geforceerd.
+
+Lever voor normaal gebruik de afwateringseenheden en het watersysteem.
+Geef `controle.gpkg` apart mee voor beoordeling. De map `intern/` is bedoeld
+voor technisch onderzoek. Bestaande runs worden niet automatisch verplaatst.
 
 ```console
 pixi run --locked afwateringseenheden --area alkmaar --run-id proef

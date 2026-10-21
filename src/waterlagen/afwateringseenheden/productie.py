@@ -141,7 +141,7 @@ def main(
         [_calculation_geometry(tile, tile_buffer_m=tile_buffer) for tile in tiles]
     )
     parameters = {
-        "output_schema": "compact_connections_kunstwerk_v4",
+        "output_schema": "internal_snapshot_metadata_v6",
         "area": selected.identity,
         "crs": settings.crs,
         "tile_size_m": tile_size,

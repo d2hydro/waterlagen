@@ -61,11 +61,13 @@ meer dan 128 kandidaattrajecten of 10.000 zoekstappen als ambigu gemeld.
 
 `WatersysteemResult` bevat de volledige primaire bron, de geknipte primaire
 delen, de volledige doelsegmentlaag en `duiker_controle`. De schrijver bewaart
-de volledige bron in `hydroobject_primair_bron`, alle geknipte context in
-`hydroobject_primair_delen` en de geschikte branddelen in `hydroobject_primair`.
+de volledige bron en geknipte context in `intern/watersysteem.gpkg`, lagen
+`hydroobject_primair_bron` en `hydroobject_primair_delen`. De geschikte
+branddelen blijven in `watersysteem.gpkg`, laag `hydroobject_primair`.
 De secundaire toets blijft de volledige bron gebruiken.
-De controles staan zowel in het snapshot (`duikersifonhevel_controle`) als in
-`controle_path` (standaard naast het snapshot, laag `duikersifonhevel`).
+De duikercontrole staat alleen in `controle_path` (standaard `controle.gpkg`
+naast het snapshot, laag `duikersifonhevel`). Dit bestand bevat ook eventuele
+bronobjecten zonder categorie. Het watersysteem bevat vijf gebruikslagen.
 
 De segmentkolommen `brandgeschikt` en `doelgeschikt` hebben afzonderlijke
 betekenissen. `duiker_ids` identificeert overlappende duikers;
@@ -82,6 +84,10 @@ ook met `overwrite=False` vernieuwd; een gewijzigd snapshot maakt via de
 bestaande brandidentiteit zowel rasters als tegelresultaten ongeldig. Ontbrekende
 controle-uitvoer wordt bij schrijven hersteld. Het uitschakelen van duikerinvoer
 maakt een eerder met duikers voorbereid snapshot eveneens ongeldig.
+De technische controle staat in `intern/watersysteem.gpkg.json`, gekoppeld aan
+de checksum van de uitvoer. Bij ontbrekende of afwijkende metadata wordt het
+watersysteem opnieuw geschreven. `watersysteem.gpkg` bevat geen tabel
+`waterlagen_duikers` meer.
 
 Zie het [uitvoerbare voorbeeld](bewerkte-lagen-produceren.md#afwateringseenheden)
 en de [controle-instructies](../produceren/afwateringseenheden.md#controle-in-qgis).

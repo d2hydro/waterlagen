@@ -124,7 +124,8 @@ def test_all_targets_excluded_preserves_both_control_locations(sources, tmp_path
     assert result.merged_path is None
     assert wgpd.read_file(tmp_path / "controle.gpkg", layer="duikersifonhevel").empty
     for layer in ("niet_toegewezen", "aanvulling_buurtegels"):
-        wgpd.read_file(tmp_path / "tiles" / "controle.gpkg", layer=layer)
+        wgpd.read_file(tmp_path / "controle.gpkg", layer=layer)
+    assert not (tmp_path / "result.gpkg").exists()
 
 
 @pytest.fixture

@@ -460,16 +460,20 @@ def test_gkw_missing_category_is_visible_but_never_burned(
         watersysteem=network,
         output_path=tmp_path / "network.gpkg",
     )
-    # Older snapshots lacking the newly requested inspection layer cannot be reused.
+    # Inspection output is refreshed independently of the reusable watersysteem.
     write_watersysteem(**options)
     path = write_watersysteem(
         **options, hydroobject_zonder_categorie=selected.missing_category
     )
-    control = wgpd.read_file(path, layer="hydroobject_zonder_categorie")
+    assert "hydroobject_zonder_categorie" not in set(gpd.list_layers(path)["name"])
+    control_path = tmp_path / "controle.gpkg"
+    control = wgpd.read_file(control_path, layer="hydroobject_zonder_categorie")
     assert control.bronbestand.tolist() == [str(sources[0])]
     assert control.bron_fid.tolist() == [6]
     assert control.uitsluitreden.tolist() == ["categorie ontbreekt"]
     assert control.categorieoppwaterlichaam.isna().all()
+    write_watersysteem(**options)
+    assert wgpd.read_file(control_path, layer="hydroobject_zonder_categorie").empty
 
 
 def test_conflicting_categories_rejected(sources):

@@ -128,8 +128,12 @@ def test_gap_filling_uses_safe_neighbour_and_preserves_existing_assignment(
     assert merged.area.sum() == merged.geometry.union_all().area
     assert merged.loc["safe"].waterbeheercode == "38"
     assert merged.loc["existing"].bron_fid == 3
-    additions = gpd.read_file(result.merged_path, layer="aanvulling_buurtegels")
-    remaining = gpd.read_file(result.merged_path, layer="niet_toegewezen")
+    assert set(
+        gpd.list_layers(result.merged_path).query("geometry_type.notna()")["name"]
+    ) == {"afvoergebiedaanvoergebied"}
+    control_path = tmp_path / "controle.gpkg"
+    additions = gpd.read_file(control_path, layer="aanvulling_buurtegels")
+    remaining = gpd.read_file(control_path, layer="niet_toegewezen")
     assert additions.bron_tegel.tolist() == ["west"]
     assert remaining.area.sum() == pytest.approx(result.remaining_gaps.area.sum())
 

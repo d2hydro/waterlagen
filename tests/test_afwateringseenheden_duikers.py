@@ -1,6 +1,8 @@
 """Culvert route, classification, persistence and raster regression tests."""
 
 from contextlib import closing
+import hashlib
+import json
 import sqlite3
 
 import geopandas as gpd
@@ -229,9 +231,20 @@ def test_snapshot_reuse_controls_recovery_and_stale_replacement(tmp_path, caplog
     assert str(control_path) in caplog.text
     assert len(wgpd.read_file(control_path, layer="duikersifonhevel")) == 1
     control_path.unlink()
+    internal_path = tmp_path / "intern" / "watersysteem.gpkg"
+    assert set(gpd.list_layers(internal_path)["name"]) == {
+        "hydroobject_primair_bron",
+        "hydroobject_primair_delen",
+    }
+    internal_path.unlink()
     write(tmp_path, primary, result)
     assert control_path.exists()
+    assert internal_path.exists()
     assert path.stat().st_mtime_ns == original_time
+    # Old products containing technical layers must not be reused.
+    primary.to_file(path, layer="hydroobject_primair_bron")
+    write(tmp_path, primary, result)
+    assert "hydroobject_primair_bron" not in set(gpd.list_layers(path)["name"])
     lines([Point(0, 0)]).to_file(control_path, layer="other_control")
     corrected = prepare(primary, lines([LineString([(5, 5), (15, 5)])]))
     write(tmp_path, primary, corrected)
@@ -239,10 +252,56 @@ def test_snapshot_reuse_controls_recovery_and_stale_replacement(tmp_path, caplog
     assert wgpd.read_file(control_path, layer="duikersifonhevel").empty
     assert len(wgpd.read_file(control_path, layer="other_control")) == 1
     with closing(sqlite3.connect(path)) as connection, connection:
-        connection.execute("DROP TABLE waterlagen_duikers")
+        connection.execute("CREATE TABLE waterlagen_duikers (signature TEXT NOT NULL)")
     write(tmp_path, primary, corrected)
     with closing(sqlite3.connect(path)) as connection:
-        assert connection.execute("SELECT signature FROM waterlagen_duikers").fetchone()
+        assert (
+            connection.execute(
+                "SELECT name FROM sqlite_master WHERE name='waterlagen_duikers'"
+            ).fetchone()
+            is None
+        )
+    metadata_path = tmp_path / "intern" / "watersysteem.gpkg.json"
+    assert json.loads(metadata_path.read_text())["signature"] is not None
+    no_culverts = prepare_watersysteem(primary, empty())
+    write(tmp_path, primary, no_culverts)
+    assert json.loads(metadata_path.read_text())["signature"] is None
+    assert wgpd.read_file(control_path, layer="duikersifonhevel").empty
+    assert wgpd.read_file(internal_path, layer="hydroobject_primair_bron").empty
+    assert len(wgpd.read_file(control_path, layer="other_control")) == 1
+
+
+@pytest.mark.parametrize("change", ["missing", "invalid", "signature", "checksum"])
+def test_snapshot_rebuilt_when_internal_metadata_is_unusable(tmp_path, change, caplog):
+    primary = straight()
+    result = prepare(primary, lines([LineString([(5, 5), (15, 5)])]))
+    path = write(tmp_path, primary, result)
+    metadata_path = tmp_path / "intern" / "watersysteem.gpkg.json"
+    original_time = path.stat().st_mtime_ns
+    if change == "missing":
+        metadata_path.unlink()
+    elif change == "invalid":
+        metadata_path.write_text("incomplete JSON", encoding="utf-8")
+    else:
+        metadata = json.loads(metadata_path.read_text())
+        key = "signature" if change == "signature" else "output_sha256"
+        metadata[key] = "outdated"
+        metadata_path.write_text(json.dumps(metadata), encoding="utf-8")
+
+    write(tmp_path, primary, result)
+
+    assert path.stat().st_mtime_ns != original_time
+    assert "invalid and will be replaced" in caplog.text
+    metadata = json.loads(metadata_path.read_text())
+    assert metadata["signature"] != "outdated"
+    assert metadata["output_sha256"] == hashlib.sha256(path.read_bytes()).hexdigest()
+    with closing(sqlite3.connect(path)) as connection:
+        assert (
+            connection.execute(
+                "SELECT name FROM sqlite_master WHERE name='waterlagen_duikers'"
+            ).fetchone()
+            is None
+        )
 
 
 def ahn(tmp_path):
@@ -268,7 +327,19 @@ def test_burn_target_fids_secondary_and_subcatchments(tmp_path, optional):
     secondary = lines([LineString([(10, 5), (10, 10)])], ["secondary"])
     result = prepare(primary, lines([LineString([(5, 5), (15, 5)])]))
     path = write(tmp_path, primary, result, secondary)
-    assert wgpd.read_file(path, layer="hydroobject_primair_bron").length.sum() == 20
+    assert (
+        wgpd.read_file(
+            tmp_path / "intern" / "watersysteem.gpkg", layer="hydroobject_primair_bron"
+        ).length.sum()
+        == 20
+    )
+    assert set(gpd.list_layers(path).query("geometry_type.notna()")["name"]) == {
+        "hydroobject_primair",
+        "hydroobject_secundair",
+        "hydroobject_secundair_niet_verbonden",
+        "hydroobject_segment",
+        "hydroobject_verbinding",
+    }
     assert wgpd.read_file(path, layer="hydroobject_primair").length.sum() == 10
     assert len(wgpd.read_file(path, layer="hydroobject_secundair")) == 1
     config = None

@@ -22,7 +22,10 @@ from waterlagen import datastore as default_datastore
 from waterlagen._crs import format_crs, same_crs
 from waterlagen._downloads import _temporary_path
 from waterlagen._filesystem import replace_file
-from waterlagen._geopackage import write_geopackage_layer
+from waterlagen._geopackage import (
+    write_geopackage_layer,
+    write_geopackage_layer_atomically,
+)
 from waterlagen._run_logging import executor_logging
 from waterlagen.datastore import DataStore
 from waterlagen.logger import get_logger, tile_logging
@@ -625,9 +628,6 @@ def _fill_gaps_from_neighbours(
 def _write_merged_subcatchments(
     output_path: Path,
     subcatchments: gpd.GeoDataFrame,
-    *,
-    gap_additions: gpd.GeoDataFrame | None = None,
-    remaining_gaps: gpd.GeoDataFrame | None = None,
 ) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     temporary_path = _temporary_path(output_path, suffix=".gpkg")
@@ -645,14 +645,6 @@ def _write_merged_subcatchments(
             raise ValueError(
                 f"Non-polygon geometry in written layer {SUBCATCHMENTS_LAYER}"
             )
-        for layer, features in (
-            ("aanvulling_buurtegels", gap_additions),
-            ("niet_toegewezen", remaining_gaps),
-        ):
-            if features is not None:
-                write_geopackage_layer(
-                    features, temporary_path, layer_name=layer, mode="a"
-                )
         temporary_path.replace(output_path)
     except Exception:
         temporary_path.unlink(missing_ok=True)
@@ -948,6 +940,9 @@ def calculate_afwateringseenheden_tiles(
         merged GeoPackage is written. An existing merged file is replaced
         after success, independently of ``overwrite``; choose a new path
         to retain previous merged results. Worker failures prevent merging.
+        Contains only the merged subcatchment layer. Gap additions and
+        unassigned areas are written to ``controle.gpkg`` beside this file,
+        including when all tiles are empty. Other inspection layers are retained.
     tiles_path : Path, optional
         Existing tile-index GeoPackage. When omitted, a tile grid is generated
         directly from ``gebied`` using ``tile_size_m`` and the configured origin.
@@ -1135,15 +1130,21 @@ def calculate_afwateringseenheden_tiles(
         if abs(merged_subcatchments.area.sum() - expected_area) > _AREA_TOLERANCE:
             raise ValueError("Merging gap additions changed existing coverage")
     merged_path = None
+    if merged_output_path is not None:
+        control_path = Path(merged_output_path).parent / "controle.gpkg"
+        for layer, features in (
+            ("aanvulling_buurtegels", gap_fill.additions),
+            ("niet_toegewezen", gap_fill.remaining),
+        ):
+            write_geopackage_layer_atomically(
+                features.set_crs(settings.crs),
+                control_path,
+                layer_name=layer,
+                preserve_other_layers=True,
+            )
     if merged_output_path is not None and merged_subcatchments.empty:
         logger.warning(
             "No merged afwateringseenheden written because all selected tiles are empty"
-        )
-        _write_merged_subcatchments(
-            output_dir / "controle.gpkg",
-            merged_subcatchments.set_crs(settings.crs),
-            gap_additions=gap_fill.additions,
-            remaining_gaps=gap_fill.remaining,
         )
     elif merged_output_path is not None:
         merged_path = Path(merged_output_path)
@@ -1172,8 +1173,6 @@ def calculate_afwateringseenheden_tiles(
         _write_merged_subcatchments(
             merged_path,
             merged_subcatchments,
-            gap_additions=gap_fill.additions,
-            remaining_gaps=gap_fill.remaining,
         )
         logger.info(
             "Wrote merged afwateringseenheden with %s feature(s) to %s",

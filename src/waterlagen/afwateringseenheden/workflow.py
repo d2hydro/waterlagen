@@ -1,11 +1,11 @@
 """Prepare and persist the first vector-only watersysteem step."""
 
-import os
-from contextlib import closing
-import tempfile
 import hashlib
 import json
+import os
 import sqlite3
+import tempfile
+from contextlib import closing
 from pathlib import Path
 
 import geopandas as gpd
@@ -13,27 +13,29 @@ import geopandas as gpd
 from waterlagen import datastore
 from waterlagen._crs import read_layer_crs_info, same_crs
 from waterlagen._downloads import validate_geopackage
+from waterlagen._filesystem import replace_file
 from waterlagen._geopackage import (
     write_geopackage_layer,
     write_geopackage_layer_atomically,
 )
+from waterlagen._geopandas import read_file
 from waterlagen.datastore import DataStore
 from waterlagen.logger import get_logger
 from waterlagen.settings import settings
 
+from .duikers import (
+    _classify_adjacent,
+    _frame_identity,
+    _prepare_culverts,
+    _validate_culvert_options,
+)
 from .lines import (
-    _prepare_hydroobjecten,
-    _ensure_bron_id,
     WatersysteemResult,
+    _ensure_bron_id,
+    _prepare_hydroobjecten,
     create_hydroobject_verbindingen,
     split_hydroobjecten_at_points,
     split_hydroobjecten_by_length,
-)
-from .duikers import (
-    _prepare_culverts,
-    _classify_adjacent,
-    _frame_identity,
-    _validate_culvert_options,
 )
 
 logger = get_logger(__name__)
@@ -224,18 +226,33 @@ def _temporary_output_path(output_path: Path) -> Path:
     return temporary_path
 
 
-def _validate_watersysteem_output(
-    path: Path, *, extra_layers: tuple[str, ...] = ()
-) -> None:
+def _validate_watersysteem_output(path: Path) -> None:
     """Validate the required layers and their project CRS before replacement."""
     validate_geopackage(path)
+    with closing(sqlite3.connect(path)) as connection:
+        legacy_metadata = connection.execute(
+            "SELECT name FROM sqlite_master WHERE name='waterlagen_duikers'"
+        ).fetchone()
+    if legacy_metadata is not None:
+        raise ValueError(
+            "Technical culvert metadata belongs in intern/, not this GeoPackage"
+        )
     layers = {info.layer: info for info in read_layer_crs_info(path)}
-    required_layers = (*OUTPUT_LAYERS, *extra_layers)
+    required_layers = OUTPUT_LAYERS
     missing_layers = set(required_layers) - set(layers)
     if missing_layers:
         raise ValueError(
             "Watersysteem output is missing layers: "
             f"{', '.join(sorted(missing_layers))}"
+        )
+    extra_layers = {
+        name
+        for name, info in layers.items()
+        if info.is_spatial and name not in required_layers
+    }
+    if extra_layers:
+        raise ValueError(
+            f"Watersysteem contains inspection layers: {sorted(extra_layers)}"
         )
     for layer_name in required_layers:
         layer_info = layers[layer_name]
@@ -245,6 +262,34 @@ def _validate_watersysteem_output(
             raise ValueError(
                 f"Watersysteem layer '{layer_name}' does not use {settings.crs}"
             )
+
+
+def _watersysteem_metadata(path: Path, signature: str | None) -> dict[str, str | None]:
+    """Bind the preparation identity to the actual published GeoPackage."""
+    with path.open("rb") as source:
+        checksum = hashlib.file_digest(source, "sha256").hexdigest()
+    return {"signature": signature, "output_sha256": checksum}
+
+
+def _write_watersysteem_metadata(path: Path, metadata: dict[str, str | None]) -> None:
+    """Publish metadata only after the matching GeoPackage was replaced."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary_path = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            dir=path.parent,
+            prefix=f".{path.name}.",
+            suffix=".json",
+            delete=False,
+        ) as destination:
+            temporary_path = Path(destination.name)
+            json.dump(metadata, destination, indent=2)
+        replace_file(temporary_path, path)
+    finally:
+        if temporary_path is not None:
+            temporary_path.unlink(missing_ok=True)
 
 
 def _bron_ids(features: gpd.GeoDataFrame, *, layer_name: str) -> set[str]:
@@ -545,6 +590,22 @@ def _validate_segment_numbers(path: Path) -> None:
                 raise ValueError(f"Invalid numeric {direction}_segment link")
 
 
+def _write_inspection_layer(
+    features: gpd.GeoDataFrame | None, path: Path, layer: str
+) -> None:
+    """Refresh one inspection layer, clearing stale rows when input is removed."""
+    if features is None:
+        if not path.exists() or layer not in set(gpd.list_layers(path)["name"]):
+            return
+        features = read_file(path, layer=layer).iloc[:0].copy()
+    logger.info(
+        "Writing inspection layer %s with %s features to %s", layer, len(features), path
+    )
+    write_geopackage_layer_atomically(
+        features, path, layer_name=layer, preserve_other_layers=True
+    )
+
+
 def write_watersysteem(
     *,
     hydroobject_primair: gpd.GeoDataFrame,
@@ -575,7 +636,7 @@ def write_watersysteem(
     hydroobject_primair : geopandas.GeoDataFrame
         All selected primary burn-context lines, including non-target authorities.
         Used unchanged for the joint secondary test. With culvert preparation,
-        retained in ``hydroobject_primair_bron`` while ``hydroobject_primair``
+        retained in ``intern/watersysteem.gpkg`` while ``hydroobject_primair``
         contains only eligible burn pieces.
     hydroobject_secundair : geopandas.GeoDataFrame
         Selected secondary source hydroobjecten. They are divided into connected
@@ -599,28 +660,31 @@ def write_watersysteem(
         hydroobject geometries when classifying connected secondary objects, by
         default 2.
     hydroobject_zonder_categorie : geopandas.GeoDataFrame, optional
-        Excluded GKW lines without a category. Written unchanged to a separate
-        inspection layer, never included in burning or secondary connectivity.
+        Excluded GKW lines without a category. Written to ``controle_path``,
+        never included in burning or secondary connectivity.
     controle_path : pathlib.Path, optional
-        Culvert inspection GeoPackage, default ``output_path.parent/controle.gpkg``.
+        Inspection GeoPackage, default ``output_path.parent/controle.gpkg``.
         Its ``duikersifonhevel`` layer is refreshed, including when empty or
-        resuming; other inspection layers are preserved. Only used with culvert
-        input. Culvert snapshots are reused only with matching input metadata.
+        resuming; other inspection layers are preserved. Also stores source
+        lines without a category. Removed inputs clear old inspection rows. Technical primary
+        source and split layers are kept in ``intern/watersysteem.gpkg`` beside
+        the output. Missing inspection files are rebuilt even on reuse.
+        Culvert snapshots are reused only with matching input metadata.
+        Preparation metadata is stored in ``intern/<output filename>.json``,
+        tied to the output checksum. Missing or mismatching metadata causes
+        regeneration rather than reuse.
 
     Returns
     -------
     Path
-        Validated GeoPackage with the required layers and optional inspection layer.
+        Validated GeoPackage with exactly five spatial watersysteem layers.
     """
     data_store = data_store or datastore
     output_path = Path(
         output_path or data_store.afwateringseenheden_path / DEFAULT_OUTPUT_FILENAME
     )
-    extra_layers = (
-        ("hydroobject_zonder_categorie",)
-        if hydroobject_zonder_categorie is not None
-        else ()
-    )
+    controle_path = Path(controle_path or output_path.parent / "controle.gpkg")
+    metadata_path = output_path.parent / "intern" / f"{output_path.name}.json"
     signature = None
     if watersysteem.duiker_signature is not None:
         if (
@@ -633,12 +697,6 @@ def write_watersysteem(
             _prepare_hydroobjecten(hydroobject_primair)
         ) != _frame_identity(watersysteem.hydroobject_primair_bron):
             raise ValueError("Primary input differs from the prepared culvert context")
-        extra_layers = (
-            *extra_layers,
-            "hydroobject_primair_bron",
-            "hydroobject_primair_delen",
-            "duikersifonhevel_controle",
-        )
         signature = hashlib.sha256(
             json.dumps(
                 {
@@ -659,37 +717,35 @@ def write_watersysteem(
                 sort_keys=True,
             ).encode()
         ).hexdigest()
-        controle_path = Path(controle_path or output_path.parent / "controle.gpkg")
-        write_geopackage_layer_atomically(
-            watersysteem.duiker_controle,
-            controle_path,
-            layer_name="duikersifonhevel",
-            preserve_other_layers=True,
-        )
         if not watersysteem.duiker_controle.empty:
             logger.warning(
                 "%s duikers require inspection in %s (duikersifonhevel)",
                 len(watersysteem.duiker_controle),
                 controle_path,
             )
+    internal_path = output_path.parent / "intern" / "watersysteem.gpkg"
+    for features, path, layer in (
+        (watersysteem.duiker_controle, controle_path, "duikersifonhevel"),
+        (hydroobject_zonder_categorie, controle_path, "hydroobject_zonder_categorie"),
+        (
+            watersysteem.hydroobject_primair_bron,
+            internal_path,
+            "hydroobject_primair_bron",
+        ),
+        (
+            watersysteem.hydroobject_primair_delen,
+            internal_path,
+            "hydroobject_primair_delen",
+        ),
+    ):
+        _write_inspection_layer(features, path, layer)
     if output_path.exists() and not overwrite:
         try:
-            _validate_watersysteem_output(output_path, extra_layers=extra_layers)
+            _validate_watersysteem_output(output_path)
             _validate_segment_numbers(output_path)
-            if signature is not None:
-                with closing(sqlite3.connect(output_path)) as connection:
-                    previous = connection.execute(
-                        "SELECT signature FROM waterlagen_duikers"
-                    ).fetchone()
-                if previous != (signature,):
-                    raise ValueError("Culvert input or settings changed")
-            else:
-                with closing(sqlite3.connect(output_path)) as connection:
-                    previous = connection.execute(
-                        "SELECT name FROM sqlite_master WHERE name='waterlagen_duikers'"
-                    ).fetchone()
-                if previous is not None:
-                    raise ValueError("Culvert processing was removed from the input")
+            previous = json.loads(metadata_path.read_text(encoding="utf-8"))
+            if previous != _watersysteem_metadata(output_path, signature):
+                raise ValueError("Culvert input, settings or output changed")
         except Exception as exc:
             logger.warning(
                 "Existing watersysteem output %s is invalid and will be replaced: %s",
@@ -723,18 +779,6 @@ def write_watersysteem(
         ("hydroobject_segment", watersysteem.hydroobject_segmenten),
         ("hydroobject_verbinding", watersysteem.hydroobject_verbinding),
     )
-    if signature is not None:
-        layers = (
-            *layers,
-            ("hydroobject_primair_bron", watersysteem.hydroobject_primair_bron),
-            ("hydroobject_primair_delen", watersysteem.hydroobject_primair_delen),
-            ("duikersifonhevel_controle", watersysteem.duiker_controle),
-        )
-    if hydroobject_zonder_categorie is not None:
-        layers = (
-            *layers,
-            ("hydroobject_zonder_categorie", hydroobject_zonder_categorie),
-        )
     normalized_layers = [
         (_layer_name, _to_project_crs(features, layer_name=_layer_name))
         for _layer_name, features in layers
@@ -759,23 +803,18 @@ def write_watersysteem(
                 layer_name=layer_name,
             )
         logger.info("Validating temporary watersysteem GeoPackage %s", temporary_path)
-        _validate_watersysteem_output(temporary_path, extra_layers=extra_layers)
+        _validate_watersysteem_output(temporary_path)
         _validate_segment_numbers(temporary_path)
-        if signature is not None:
-            with closing(sqlite3.connect(temporary_path)) as connection, connection:
-                connection.execute(
-                    "CREATE TABLE waterlagen_duikers (signature TEXT NOT NULL)"
-                )
-                connection.execute(
-                    "INSERT INTO waterlagen_duikers VALUES (?)", (signature,)
-                )
         temporary_path.replace(output_path)
+        _write_watersysteem_metadata(
+            metadata_path, _watersysteem_metadata(output_path, signature)
+        )
     except Exception:
         temporary_path.unlink(missing_ok=True)
         raise
     logger.info(
         "Wrote watersysteem layers %s to %s",
-        (*OUTPUT_LAYERS, *extra_layers),
+        OUTPUT_LAYERS,
         output_path,
     )
     return output_path
