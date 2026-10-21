@@ -17,6 +17,9 @@ werken.
 - Werk functionele documentatie, broninformatie en productie-instructies bij
   wanneer publiek gedrag verandert.
 
+De minimale testdekking is 90%. Dit geldt voor lokale coverage-runs en de totale
+dekking en wijzigingsdekking in Codecov.
+
 De volledige operationele instructies voor coding agents staan in [AGENTS.md](https://github.com/d2hydro/waterlagen/blob/main/AGENTS.md).
 
 ## Python-voorbeelden en API-documentatie

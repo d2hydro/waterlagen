@@ -56,3 +56,6 @@ source = ["src/waterlagen"]
 concurrency = ["multiprocessing", "thread"]
 parallel = true
 
+[tool.coverage.report]
+fail_under = 90
+

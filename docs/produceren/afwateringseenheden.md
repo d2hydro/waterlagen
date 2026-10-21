@@ -373,9 +373,12 @@ Gebruik beide bestanden uit dezelfde run. Koppel `segment_id` uit
 - Een segment kan meerdere uitgaande verbindingen hebben, of geen.
 - De richting volgt de bronlijnen; deze is niet uit de LDD afgeleid.
 
-Deze nummers gelden binnen één run. De tekstvelden `segment_key`, `van_segment_key`
-en `naar_segment_key` blijven beschikbaar als technische sleutels. De QGIS-stijlen
-tonen de nummers en verbergen deze sleutels in de attributentabel.
+Deze nummers gelden binnen één run. Broninformatie en `segment_key` staan in
+`hydroobject_segment`. De verbindingslaag bevat alleen de numerieke verwijzingen.
+
+Gegevens van een gekoppelde stuw of gemaal staan in `objecttype`, `kunstwerk_bron_id`,
+`kunstwerk_code`, `kunstwerk_naam` en `kunstwerk_waterbeheercode`. Zonder gekoppeld kunstwerk
+zijn deze velden leeg. Het QGIS-formulier toont dan alleen de segmentkoppeling.
 In oudere uitvoer heette het nummer `segment_fid` en bevatte `segment_id` tekst.
 
 ### Brandlagen controleren in QGIS

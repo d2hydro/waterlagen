@@ -486,12 +486,48 @@ def _connection_segment_ids(
         if values.isna().any():
             raise ValueError(f"Unknown {direction}_segment in hydroobject_verbinding")
         result[f"{direction}_segment"] = values.astype("int64")
-    return result
+    result = result.rename(
+        columns={
+            "punt_bron_id": "kunstwerk_bron_id",
+            "punt_code": "kunstwerk_code",
+            "punt_naam": "kunstwerk_naam",
+            "waterbeheercode": "kunstwerk_waterbeheercode",
+        }
+    )
+    return result[
+        [
+            "van_segment",
+            "naar_segment",
+            "objecttype",
+            "kunstwerk_bron_id",
+            "kunstwerk_code",
+            "kunstwerk_naam",
+            "kunstwerk_waterbeheercode",
+            "geometry",
+        ]
+    ]
 
 
 def _validate_segment_numbers(path: Path) -> None:
-    """Check numeric links against the actual stored segment keys and FIDs."""
+    """Require compact connections with valid numeric segment references."""
     with closing(sqlite3.connect(path)) as connection:
+        columns = {
+            row[1]
+            for row in connection.execute("PRAGMA table_info(hydroobject_verbinding)")
+        }
+        obsolete = {
+            "van_segment_key",
+            "naar_segment_key",
+            "van_bron_id",
+            "naar_bron_id",
+            "waterbeheercode",
+            "punt_bron_id",
+            "punt_code",
+            "punt_naam",
+            "punt_waterbeheercode",
+        }
+        if obsolete.intersection(columns) or "kunstwerk_waterbeheercode" not in columns:
+            raise ValueError("Outdated hydroobject_verbinding schema")
         invalid = connection.execute(
             "SELECT COUNT(*) FROM hydroobject_segment "
             "WHERE segment_id IS NULL OR typeof(segment_id) != 'integer' OR segment_id != fid"
@@ -502,8 +538,7 @@ def _validate_segment_numbers(path: Path) -> None:
             invalid = connection.execute(
                 f"SELECT COUNT(*) FROM hydroobject_verbinding AS v "
                 f"LEFT JOIN hydroobject_segment AS s ON s.segment_id = v.{direction}_segment "
-                f"WHERE s.fid IS NULL OR v.{direction}_segment_key IS NULL "
-                f"OR s.segment_key != v.{direction}_segment_key "
+                f"WHERE s.fid IS NULL "
                 f"OR typeof(v.{direction}_segment) != 'integer'"
             ).fetchone()[0]
             if invalid:
@@ -531,6 +566,9 @@ def write_watersysteem(
     Connections include integer ``van_segment`` and ``naar_segment`` referencing
     the actual GeoPackage segment FIDs, also used by catchment ``segment_id``.
     These numbers are local to this output, unlike the source-based segment IDs.
+    Source keys remain in the segment layer; connections omit duplicated keys.
+    Optional structure attributes include ``kunstwerk_waterbeheercode``. Connections
+    without a linked point object have null point attributes.
 
     Parameters
     ----------

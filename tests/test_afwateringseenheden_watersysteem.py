@@ -1,3 +1,6 @@
+import sqlite3
+import xml.etree.ElementTree as ET
+from contextlib import closing
 from pathlib import Path
 
 import geopandas as gpd
@@ -11,10 +14,10 @@ from waterlagen.afwateringseenheden import (
     split_connected_secondary_hydroobjecten,
     split_hydroobjecten_at_points,
     split_hydroobjecten_by_length,
+    workflow,
     write_watersysteem,
 )
 from waterlagen.afwateringseenheden.lines import create_hydroobject_verbindingen
-from waterlagen.afwateringseenheden import workflow
 from waterlagen.settings import settings
 
 CRS = settings.crs
@@ -687,9 +690,88 @@ def test_write_watersysteem_writes_exact_required_layers(hydamo_path, tmp_path):
     connections = gpd.read_file(result, layer="hydroobject_verbinding")
     assert not connections.empty
     assert segments.segment_id.tolist() == segments.index.tolist()
+    assert connections.columns.tolist() == [
+        "van_segment",
+        "naar_segment",
+        "objecttype",
+        "kunstwerk_bron_id",
+        "kunstwerk_code",
+        "kunstwerk_naam",
+        "kunstwerk_waterbeheercode",
+        "geometry",
+    ]
     for direction in ("van", "naar"):
         linked = segments.loc[connections[f"{direction}_segment"], "segment_key"]
-        assert linked.tolist() == connections[f"{direction}_segment_key"].tolist()
+        assert (
+            linked.tolist()
+            == watersysteem.hydroobject_verbinding[f"{direction}_segment_key"].tolist()
+        )
+    assert connections.kunstwerk_waterbeheercode.tolist() == (
+        watersysteem.hydroobject_verbinding.waterbeheercode.tolist()
+    )
+    assert connections.objecttype.notna().any()
+    assert connections.objecttype.isna().any()
+    assert (
+        connections.loc[
+            connections.objecttype.isna(),
+            [
+                "kunstwerk_bron_id",
+                "kunstwerk_code",
+                "kunstwerk_naam",
+                "kunstwerk_waterbeheercode",
+            ],
+        ]
+        .isna()
+        .all()
+        .all()
+    )
+
+    with closing(sqlite3.connect(result)) as connection:
+        qml = connection.execute(
+            "SELECT styleQML FROM layer_styles WHERE f_table_name='hydroobject_verbinding'"
+        ).fetchone()[0]
+        stored_fields = [
+            row[1]
+            for row in connection.execute("PRAGMA table_info(hydroobject_verbinding)")
+            if row[1] != "geom"
+        ]
+    style = ET.fromstring(qml)
+    for field in style.findall(".//attributeEditorField"):
+        assert stored_fields[int(field.attrib["index"])] == field.attrib["name"]
+    group = style.find(".//attributeEditorContainer")
+    assert group.attrib["visibilityExpressionEnabled"] == "1"
+
+    # An older output schema must be replaced, even with overwrite=False.
+    with closing(sqlite3.connect(result)) as connection, connection:
+        connection.execute(
+            "ALTER TABLE hydroobject_verbinding ADD COLUMN van_bron_id TEXT"
+        )
+    write_watersysteem(
+        hydroobject_primair=primair,
+        hydroobject_secundair=secundair,
+        watersysteem=watersysteem,
+        output_path=output_path,
+    )
+    refreshed = gpd.read_file(result, layer="hydroobject_verbinding")
+    assert refreshed.columns.tolist() == connections.columns.tolist()
+    assert refreshed.van_segment.tolist() == connections.van_segment.tolist()
+
+
+@pytest.mark.parametrize("invalid_id", [None, 99999])
+def test_connection_validation_rejects_missing_segment(tmp_path, invalid_id):
+    path = tmp_path / "invalid.gpkg"
+    with closing(sqlite3.connect(path)) as connection, connection:
+        connection.executescript(
+            "CREATE TABLE hydroobject_segment (fid INTEGER, segment_id INTEGER);"
+            "INSERT INTO hydroobject_segment VALUES (1, 1);"
+            "CREATE TABLE hydroobject_verbinding "
+            "(van_segment INTEGER, naar_segment INTEGER, kunstwerk_waterbeheercode TEXT);"
+        )
+        connection.execute(
+            "INSERT INTO hydroobject_verbinding VALUES (?, 1, NULL)", (invalid_id,)
+        )
+    with pytest.raises(ValueError, match="Invalid numeric van_segment link"):
+        workflow._validate_segment_numbers(path)
 
 
 def test_write_watersysteem_places_connected_secondary_in_connected_layer(tmp_path):
