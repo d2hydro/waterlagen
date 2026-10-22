@@ -291,6 +291,7 @@ Zie [productiemappen](configuratie.md#productiemappen) voor de compatibiliteitsv
 
 Gebruik na wijzigingen aan bronnen of instellingen een nieuwe run-ID.
 `--resume` is alleen bedoeld voor dezelfde invoer en instellingen.
+Bewerk invoer niet tijdens een berekening.
 
 Gebruik voor eigen code de [Python-ingang](../reference/gebruik.md) of de
 [lagere API](../reference/afwateringseenheden.md#dekking-en-hergebruik).
