@@ -30,6 +30,7 @@ class Call:
     module: str
     function: str
     result_kind: str = "path"
+    count: int = 1
 
 
 DOWNLOADS = {
@@ -56,7 +57,11 @@ DOWNLOADS = {
     "hydamo": [Call("waterlagen.hydamo", "download_hydamo", "gpkg")],
     "rijkswateren": [Call("waterlagen.rijkswateren", "download_rijkswateren", "path")],
     "liwo": [Call("waterlagen.liwo", "download_raster")],
-    "osm_canals": [Call("waterlagen.osm_waterlopen", "download_osm_canals", "path")],
+    "osm_canals": [
+        Call("waterlagen.osm_waterlopen", "download_osm_canals", "path"),
+        Call("waterlagen.osm_waterlopen", "download_osm_culverts", "path"),
+        Call("waterlagen.osm_waterlopen", "download_osm_waterlopen", "path", count=3),
+    ],
     "osm_drinkwater": [
         Call(
             "waterlagen.functioneel_landgebruik.osm_drinkwater",
@@ -132,35 +137,35 @@ def test_download_example_runs_with_current_api(name, tmp_path, monkeypatch, cap
             function, return_value=_result(call.result_kind, output)
         )
         monkeypatch.setattr(module, call.function, mocked)
-        calls.append((signature, mocked))
+        calls.append((signature, mocked, call.count))
 
     path = EXAMPLES / f"download_{name}.py"
     runpy.run_path(str(path))
-    for _, mocked in calls:
+    for _, mocked, _ in calls:
         mocked.assert_not_called()
 
     # Execute exactly the file offered for download, including its __main__ guard.
     runpy.run_path(str(path), run_name="__main__")
     assert str(output) in capsys.readouterr().out
-    for signature, mocked in calls:
-        mocked.assert_called_once()
-        arguments = signature.bind(
-            *mocked.call_args.args, **mocked.call_args.kwargs
-        ).arguments
-        assert (
-            arguments.get("overwrite") is False or arguments.get("missing_only") is True
-        )
-        if "poly_mask" in arguments:
-            assert arguments["poly_mask"].equals(NAMED_AREAS["alkmaar_centrum"])
-        if "data_store" in arguments:
-            _assert_store(arguments["data_store"], tmp_path / "data")
-        for key in ("download_dir", "ahn_dir", "target_path"):
-            if key in arguments:
-                assert (
-                    arguments[key]
-                    .resolve()
-                    .is_relative_to(tmp_path / "data" / "source_data")
-                )
+    for signature, mocked, count in calls:
+        assert mocked.call_count == count
+        for invocation in mocked.call_args_list:
+            arguments = signature.bind(*invocation.args, **invocation.kwargs).arguments
+            assert (
+                arguments.get("overwrite") is False
+                or arguments.get("missing_only") is True
+            )
+            if "poly_mask" in arguments:
+                assert arguments["poly_mask"].equals(NAMED_AREAS["alkmaar_centrum"])
+            if "data_store" in arguments:
+                _assert_store(arguments["data_store"], tmp_path / "data")
+            for key in ("download_dir", "ahn_dir", "target_path"):
+                if key in arguments:
+                    assert (
+                        arguments[key]
+                        .resolve()
+                        .is_relative_to(tmp_path / "data" / "source_data")
+                    )
 
 
 def _mock_api(monkeypatch, module_name, function_name, result):

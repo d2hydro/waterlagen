@@ -24,41 +24,26 @@ bronvernieuwing, offline gebruik en hervatten.
 
 ### Eigen gebied met brandlagen
 
-[Download het PowerShell-voorbeeld](voorbeelden/afwateringseenheden_issue63.ps1).
-Het selecteert 1 × 1 km rond RD-punt `(184785, 392554)` uit issue 63.
-Gebruik hiervoor `settings.crs = EPSG:28992`. Zie de
-[gedeelde gebiedsuitleg](cli.md#eigen-rechthoekig-gebied).
-
-1. Maak de brandlagen in QGIS en sla ze op in een GeoPackage.
-2. Wijs de bestanden en lagen aan in de [brandlagen-TOML](#toml-configuratie).
-3. Start vanuit de repositoryroot:
+1. Zet de gewenste bestanden en lagen in de [brandlagen-TOML](#toml-configuratie).
+2. Start het [PowerShell-voorbeeld](voorbeelden/afwateringseenheden_issue63.ps1):
 
    ```powershell
    .\docs\produceren\voorbeelden\afwateringseenheden_issue63.ps1 -BrandlagenConfig '.\invoer\brandlagen.toml'
    ```
 
-4. Open de gelogde resultaatmap en laad de uitvoer in QGIS.
-5. Pas zo nodig de brandlagen aan, sla ze op en start opnieuw.
+3. Open `afwateringseenheden.gpkg` uit de resultaatmap in QGIS.
 
-De vier grenzen en het configuratiepad zijn parameters bovenaan het script.
-Een relatief configuratiepad geldt vanaf de werkdirectory waarin u het script
-start. GeoPackage-paden in de TOML blijven relatief aan het TOML-bestand.
-Het script voert de productie vanuit de repositoryroot uit en geeft fouten door.
-
-Iedere uitvoering krijgt een nieuwe UTC-runmap. Na wijzigingen aan brandlagen
-is een nieuwe run nodig, ook bij `--overwrite`. Gebruik `--resume` alleen voor
-een onderbroken run met dezelfde invoer. Bewerk invoer niet tijdens een run.
-Ook zonder optionele brandlagen blijft de vaste HYDAMO-inbranding actief.
+Het voorbeeld selecteert 1 x 1 km rond RD-punt `(184785, 392554)`.
+Geef voor een ander gebied `-Xmin`, `-Ymin`, `-Xmax` en `-Ymax` mee.
+Zie [gebiedsselectie](cli.md#eigen-rechthoekig-gebied).
 
 ### Verwerking
 
 1. Het gebied selecteert volledige tegelkernen van 10 x 10 km.
-2. GKW HYDAMO en de gepubliceerde Rijkswaterenbron worden opgehaald of lokaal
-   hergebruikt. Een eventuele eigen levering en de geselecteerde bronobjecten
-   worden gecontroleerd vóór de AHN-voorbereiding.
-3. Bronnen worden geselecteerd voor volledige tegelkernen en rechthoekige
-   buffers. Hun geometrie blijft volledig behouden. De AHN-selectie dekt
-   dezelfde rekencontext. Doelen en brandcontext worden afzonderlijk gekozen.
+2. HYDAMO en Rijkswateren worden opgehaald of hergebruikt. De invoer wordt
+   gecontroleerd voordat het AHN wordt voorbereid.
+3. Waterlopen en AHN worden geselecteerd voor de tegels en hun buffers.
+   Geselecteerde waterlopen worden niet op de gebiedsgrens afgeknipt.
 4. De productie berekent de tegels en voegt de bruikbare resultaten samen.
    De gebiedsgrens knipt het resultaat niet af.
 
@@ -71,355 +56,195 @@ De betekenis en beperkingen staan bij
 
 ## Doelmodi en bronnen
 
-| Selectie | Primaire afwateringsdoelen | Alleen brandcontext |
-| --- | --- | --- |
-| Waterschapscode, standaard | Eigen waterschap | Overige waterschappen en RWS |
-| Waterschapscode met `--overige-waterschappen` | Eigen en overige waterschappen | RWS |
-| Geen waterschapscode | Alle geselecteerde waterschappen en RWS | Geen afzonderlijke beheerdergroep |
+Een afwateringsdoel is een primair waterloopsegment waaraan een gebied wordt toegewezen.
+Andere waterlopen helpen de afstroming te bepalen.
 
-De nieuwe standaard bij een waterschapscode verschilt van de eerdere productie,
-die alle ruimtelijk geselecteerde GKW-beheerders als doelen gebruikte.
-Zonder waterschapscode leveren Rijkswateren ook in een uitsnede zoals
-`--area alkmaar` doelen. De vlag verandert de brandselectie en het gebrande DEM
-niet, maar wel de segmenten en mogelijke doeltoekenning. Secundaire lijnen
-leveren nooit zelf doelen. Alleen kunstwerken van deelnemende beheerders
-worden gebruikt bij de bestaande segmentvoorbereiding.
+| Gebiedsselectie | Afwateringsdoelen |
+| --- | --- |
+| Waterschapscode | Alleen het gekozen waterschap |
+| Waterschapscode met `--overige-waterschappen` | Alle geselecteerde waterschappen |
+| Zonder waterschapscode | Alle geselecteerde waterschappen en RWS |
 
-De [Rijkswaterenbron](../bronlagen/rijkswateren.md) levert alle RWS-lijnen.
-GKW-hydroobjecten met code `80` worden uitgesloten, ook uit de brandcontext.
-GKW-gemalen en -stuwen van code `80` blijven beschikbaar wanneer RWS doelen
-levert. Ontbrekende RWS-lijnen worden niet uit GKW aangevuld.
-`--rijkswateren-url` stelt een andere publieke share of directe GeoPackage-URL in.
-Publicatie blijft handmatig; lokale opslag is `source_data/hydamo/rws_hydamo.gpkg`.
+Waterlopen van omliggende beheerders blijven meedoen bij de inbranding.
+Secundaire waterlopen zijn geen afwateringsdoelen.
+
+RWS-waterlopen komen uit de [Rijkswaterenbron](../bronlagen/rijkswateren.md).
+GKW-waterlopen met code `80` worden niet gebruikt.
+Met `--rijkswateren-url` kunt u een andere bronlocatie instellen.
 
 ```console
-pixi run --environment afwateringseenheden afwateringseenheden --waterbeheercode 38 --run-id aa-maas-eigen
-pixi run --environment afwateringseenheden afwateringseenheden --waterbeheercode 38 --overige-waterschappen --run-id aa-maas-samen
-pixi run --environment afwateringseenheden afwateringseenheden --waterbeheercode 38 --eigen-hydamo eigen.gpkg --run-id eigen-bron
+pixi run --environment afwateringseenheden afwateringseenheden --waterbeheercode 38 --overige-waterschappen
+pixi run --environment afwateringseenheden afwateringseenheden --waterbeheercode 38 --eigen-hydamo eigen.gpkg
 ```
 
 ### Eigen levering
 
-`--eigen-hydamo` vervangt alle GKW-objecten van de gekozen beheerder, ook in
-de brandcontext. De lagen `hydroobject`, `gemaal`, `stuw` en `duikersifonhevel` zijn verplicht;
-kunstwerklagen mogen leeg zijn. Alle objecten moeten een geldige `nen3610id`
-van de gekozen beheerder hebben (`NL.WBHCODE.<code>.<rest>`). Ook identifiers
-buiten de ruimtelijke selectie worden gecontroleerd. Selecteer een levering
-met meerdere beheerders vooraf. Er is geen fallback naar GKW bij brongaten.
-GKW blijft nodig voor de omgeving. Beide beheerderopties vereisen een
-waterschapscode; in Python heten ze `eigen_hydamo` en `overige_waterschappen`.
-Ook een lege eigen duikerlaag vervangt alle GKW-duikers van die beheerder;
-er wordt niets uit GKW aangevuld. Leveringen zonder deze vierde laag geven
-vóór AHN-voorbereiding een fout.
+`--eigen-hydamo` vervangt de GKW-gegevens van het gekozen waterschap.
+GKW blijft beschikbaar voor de omgeving.
 
-Beide categorievelden `categorieoppwaterlichaam` en `categorieoppervlaktewater`
-worden herkend. Bekende waarden zijn `primair`, `secundair`, `tertiair` en
-`overig`. Tertiaire lijnen worden ondiep ingebrand. Overige lijnen worden niet gebruikt. GKW-lijnen zonder
-categorie blijven buiten branden en doelen en worden met een waarschuwing in
-`hydroobject_zonder_categorie` bewaard, inclusief oorspronkelijke identificaties,
-bronbestand, laag en FID. Er wordt geen categorie geraden. Onbekende ingevulde
-waarden, ontbrekende categorieën in een eigen levering of RWS-bron,
-tegenstrijdige kolommen en ontbrekende CRS-definities geven een fout.
-Een bekend afwijkend CRS wordt expliciet naar het project-CRS getransformeerd.
+- Verplicht: `hydroobject`, `gemaal`, `stuw` en `duikersifonhevel`.
+- Kunstwerklagen mogen leeg zijn. Ontbrekende gegevens worden niet uit GKW aangevuld.
+- Elk object moet een geldig `nen3610id` van het gekozen waterschap hebben.
+- Het coördinatenstelsel (CRS) en de waterloopcategorie moeten bekend zijn.
+
+De categorie staat in `categorieoppwaterlichaam` of `categorieoppervlaktewater`.
+`primair`, `secundair` en `tertiair` doen mee; `overig` niet.
+GKW-waterlopen zonder categorie komen in `controle.gpkg`.
 
 ### Gezamenlijke secundaire verbindingstoets
 
-De geometrische toets hieronder bepaalt de indeling van de secundaire
-vectorlagen. Het [gezamenlijke waternet](#gezamenlijk-waternet) bepaalt de
-uiteindelijke inbranding op basis van rasterverbindingen.
+Secundaire waterlopen worden gegroepeerd als ze binnen 2 m van elkaar liggen.
+Een groep is verbonden als een waterloop binnen 2 m van primair ligt.
+Dat mag ook een waterloop van een andere beheerder zijn.
 
-Alle geselecteerde secundaire lijnen worden gezamenlijk gegroepeerd met een
-tolerantie van 2 m. Een groep geldt als verbonden zodra één lid binnen 2 m van een
-geselecteerde primaire lijn ligt. Een keten over beheerdergrenzen of een
-aansluiting uitsluitend op RWS kan dus voldoende zijn. De volledige
-lijngeometrie telt, niet alleen eindpunten. Niet-verbonden groepen blijven
-beschikbaar voor controle. Verbindingen via niet-geselecteerde objecten kunnen
-ontbreken. Deze geometrische toets bewijst geen hydraulische verbinding.
-
-De verlagingen uit het gezamenlijke waternet sturen de LDD; het zijn geen
-bodemhoogtes. De keuze van afwateringsdoelen verandert de inbranding niet.
+Dit bepaalt de indeling van de vectorlagen. Voor de inbranding worden
+[waterlopen en duikers samen beoordeeld](#waterlopen-en-duikers).
 
 ## Duikers, sifons en hevels
 
-Dit beschrijft de vectorvoorbereiding. Daarna volgt altijd de
-[gezamenlijke rasterbehandeling](#gezamenlijk-waternet), ook voor
-BGT- en OSM-duikers. Die bepaalt de uiteindelijke inbranding en sluit
-aanvullende duikercellen uit van het doelraster.
+- HYDAMO-duikers worden gelezen uit `duikersifonhevel`.
+- RWS-duikers komen alleen uit de optionele duikerlaag in de Rijkswaterenbron.
+- BGT- en OSM-duikers worden toegevoegd via de [TOML](#toml-configuratie).
 
-De productie leest `duikersifonhevel` voor de volledige tegelcontext, inclusief
-buffers en beheerders die uitsluitend brandcontext leveren. In GKW is deze
-laag verplicht; een lege laag is geldig. GKW-duikers met beheerdercode `80`
-worden altijd uitgesloten. RWS-duikers worden uitsluitend uit de optionele
-laag `duikersifonhevel` in `rws_hydamo.gpkg` gelezen. Een ontbrekende of lege
-RWS-laag is geldig; een aanwezige laag moet leesbaar zijn en geldige identifiers
-met code `80` hebben. De aanwezigheid wordt vastgelegd in `run.json`.
+Bij de koppeling aan primaire waterlopen is de koppelafstand standaard **0,5 m**
+per uiteinde. Aanpassen kan met `--duiker-tolerance`.
+Zie de [koppelregels](../reference/afwateringseenheden.md#duikervoorbereiding).
 
-Beide uiteinden worden met maximaal **0,5 m** afstand aan een eenduidig primair
-traject gekoppeld. De grenswaarde telt mee. Koppeling over bron- en
-beheerdergrenzen is toegestaan; een duikergrens maakt geen nieuwe verbinding
-met een nabije watergang. De technische
-[koppelregels en beperkingen](../reference/afwateringseenheden.md#duikervoorbereiding)
-staan bij de API.
+Met `--max-aansluitlengte 50` worden ook direct aansluitende stukken van maximaal
+50 m uitgesloten als afwateringsdoel. Ze blijven wel ingebrand.
+Zonder deze optie blijven aansluitstukken afwateringsdoelen.
 
-```console
-pixi run --environment afwateringseenheden afwateringseenheden --waterbeheercode 38 --duiker-tolerance 0.5 --max-aansluitlengte 50 --run-id duikers-50m
-```
-
-`--duiker-tolerance` stelt de koppelafstand per uiteinde in. De algemene
-netwerktolerantie blijft 2 m. `--max-aansluitlengte` sluit directe aansluitstukken
-tot en met de opgegeven lengte uit als afwateringsdoel. Zonder deze optie
-(`None` in Python) behouden alle aansluitstukken hun doelstatus. Nul is geldig;
-negatieve of niet-eindige waarden zijn ongeldig. De lengte wordt gemeten na
-duikerknippen en fysieke objectgrenzen, vóór de maximumlengtesplitsing. De
-selectie loopt niet verder door een keten van korte stukken.
-
-Het gekoppelde duikertraject wordt altijd uitgesloten van primaire brandwerking
-en doelen. Aansluitstukken blijven primair branden, ook wanneer ze geen doel
-meer zijn. Optionele brandgeometrie en verbonden secundaire lijnen kunnen
-nog steeds dezelfde rastercellen beïnvloeden. Er wordt geen ondergrondse
-stromingsverbinding toegevoegd. Een andere aansluitlengte verandert het
-gebrande DEM niet; de afwateringstoekenning kan wel veranderen.
+Daarna worden [waterlopen en duikers samen beoordeeld](#waterlopen-en-duikers).
+Dit bepaalt welke duikers worden ingebrand.
 
 ### Controle in QGIS
 
-Voor HYDAMO bestaat `bron_id` uit de bronnaam van de laag en het NEN3610-ID zonder
-`NL.WBHCODE.`. Bijvoorbeeld: `hydroobject:38.Hydroobject.6984`.
-`segment_key` voegt het deelnummer toe, bijvoorbeeld `:0003`.
-`segment_id` is een gewoon geheel getal, gelijk aan de `fid` van het segment
-in deze run. Afwateringseenheden en verbindingen gebruiken hetzelfde nummer.
-Gesplitste multilijnen krijgen ook een deelnummer (`:deel0001`).
-De IDs blijven gelijk als bronbestanden worden verplaatst of hernoemd.
-De oorspronkelijke ID staat in `oorspronkelijk_bron_id` in `watersysteem.gpkg`;
-bestand, laag en FID blijven afzonderlijk beschikbaar.
-Dit geldt voor nieuwe runs. Bestaande uitvoer wordt niet aangepast.
+Open `controle.gpkg` naast `watersysteem.gpkg`.
 
-Een voltooide run kan controleobjecten bevatten. Open `<run>/controle.gpkg`,
-laag `duikersifonhevel`, samen met `watersysteem.gpkg`. Beoordeel `reden`,
-`afstand_begin`, `afstand_eind`, de geometrie en de oorspronkelijke
-bronidentificaties (`bronbestand`, `bronlaag`, `bron_fid` en `bron_id`). Er zijn
-afzonderlijke meldingen voor geen match, één gekoppeld uiteinde, ambiguïteit,
-een ontbrekend aaneengesloten traject en onbruikbare geometrie. Een duiker
-zonder primaire match kan legitiem bij een secundaire watergang horen.
+| Controlelaag | Wat controleren? |
+| --- | --- |
+| `duikersifonhevel` | Koppeling aan primaire waterlopen; zie `reden`, `afstand_begin` en `afstand_eind`. |
+| `duikers_waternet` | Behandeling op het raster; zie `behandeling` en `reden`. |
 
-Mislukte koppelingen veranderen het netwerk niet gedeeltelijk. Andere duikers
-worden wel verwerkt. Technische lees- en schrijffouten blijven fouten. Controleer
-ook de uitgesloten trajecten in `intern/watersysteem.gpkg`, laag
-`hydroobject_primair_delen`, en de kolommen
-`brandgeschikt`, `doelgeschikt`, `duiker_ids` en `aansluit_duiker_ids` in
-`hydroobject_segment`. De IDs in de duikerkolommen zijn JSON-lijsten.
+Een duiker zonder primaire koppeling kan wel bij een secundaire waterloop horen.
+Gebruik `bronbestand`, `bronlaag` en `bron_fid` om het oorspronkelijke object terug te vinden.
 
-De controlelaag wordt ook leeg geschreven en bij hervatten hersteld. Na
-correctie en een nieuwe verwerking verdwijnen oude meldingen; andere lagen
-in hetzelfde controlebestand blijven behouden. De controle is er ook als geen
-afwateringseenheden kunnen worden geproduceerd.
+Bij segmenten betekent `brandgeschikt` dat ze mogen worden ingebrand.
+`doelgeschikt` betekent dat er een afwateringseenheid aan mag worden toegewezen.
+
+### Afwateringseenheid aan een segment koppelen
+
+Gebruik `segment_id` uit de afwateringseenheid om hetzelfde segment in
+`hydroobject_segment` te vinden. `van_segment` en `naar_segment` in
+`hydroobject_verbinding` gebruiken deze nummers ook.
+
+De nummers gelden binnen dezelfde run. Broninformatie staat in
+`hydroobject_segment`. Velden met `kunstwerk_` beschrijven een gekoppelde
+stuw of gemaal en zijn anders leeg.
 
 ## Optionele brandlagen
 
-U kunt eigen GeoPackage-lagen met lijnen en polygonen gebruiken om het reken-DEM
-te verhogen of te verlagen. Bereid de geometrie en attributen in QGIS voor.
-Er worden geen bronnen voor deze lagen gedownload of watergangen automatisch
-uit afgeleid. De lagen voegen geen afwateringsdoelen toe.
+Met lijnen en vlakken uit GeoPackages kunt u het reken-DEM verhogen of verlagen.
+Deze lagen sturen de afstroming, maar voegen geen afwateringsdoelen toe.
 
-| QGIS-kolom | Waarde |
+| Instelling | Betekenis |
 | --- | --- |
-| `brandwaarde` | Relatieve wijziging in meters: negatief verlaagt, positief verhoogt. |
-| `prioriteit` | Geheel getal; hoger heeft voorrang binnen de optionele lagen. |
+| `brandwaarde` | Hoogtewijziging in meters: negatief verlaagt, positief verhoogt. |
+| `prioriteit` | Hoger getal heeft voorrang bij overlap tussen aanvullende lagen. |
 
-De ingevulde objectwaarde gaat voor de laagdefault, die voor de globale default
-gaat. Ontbrekende kolommen en `NULL` gebruiken de defaults. Zonder beschikbare
-waarde volgt een fout. Het getal **0** is een expliciete waarde: geen
-hoogtewijziging, maar bij hogere prioriteit wel blokkering van een lagere
-optionele bewerking. Ongeldige ingevulde waarden worden niet door defaults vervangen.
+- Een waarde bij het object gaat voor de TOML-instelling van de laag, daarna geldt `[defaults]`.
+- Bij gelijke prioriteit wint de grootste wijziging. Verhoging en verlaging op dezelfde cel geven dan een fout.
+- Wijzigingen worden niet opgeteld. Waarde `0` verandert de hoogte niet, maar kan wel een lagere prioriteit tegenhouden.
+- Lijnen krijgen geen extra breedte. Gebruik daarvoor een vlak.
+- Bij vlakken doen alle geraakte rastercellen mee. NoData buiten het DEM blijft NoData.
 
-De vaste rangorde is **primair > secundair > optioneel**, ongeacht de optionele
-prioriteitsgetallen. Bij gelijke optionele prioriteit wint de grootste absolute
-brandwaarde. Positief en negatief bij dezelfde prioriteit op dezelfde rastercel
-is een fout, ook als een hogere prioriteit of vaste waterloop die cel overstemt.
-Brandwaarden worden niet opgeteld. De gekozen wijziging wordt eenmaal toegepast.
+### Waterlopen en duikers
 
-Lijnen krijgen geen automatische breedtebuffer. Lever voor een fysieke breedte
-een polygoon aan. Polygonen branden alle geraakte cellen in (`all_touched=True`);
-lijnen gebruiken de bestaande lijnrasterisatie. Ook geometrieën die elkaar niet kruisen kunnen in één cel
-terechtkomen. Branden verandert geen NoData buiten de geldige DEM-dekking.
+Waterlopen en duikers worden samen beoordeeld op het 2m-raster.
+Ook diagonaal aangrenzende cellen tellen mee.
+De verlagingen sturen de afstroming; het zijn geen werkelijke bodemhoogtes.
 
-### Gezamenlijk waternet
+| Situatie | Verlaging |
+| --- | ---: |
+| Primaire waterloop buiten duikers | 200 m |
+| Secundaire HYDAMO-waterloop met verbinding naar primair | 100 m |
+| HYDAMO-duiker secundair-primair of secundair-secundair, met route naar primair | 100 m |
+| Secundaire HYDAMO-waterloop zonder route naar primair; tertiaire HYDAMO-waterloop | Standaard 10 m |
+| Aangesloten HYDAMO-duiker die niet onder de regels hierboven valt | Standaard 10 m |
+| Duiker die alleen primair met primair verbindt | Geen |
+| Duiker zonder twee aansluitingen | Geen; naar controle |
 
-Waterlopen en duikers worden altijd gezamenlijk beoordeeld op het rekenraster,
-ook zonder aanvullende brandlagen. Hiervoor is geen schakelaar nodig.
-Met `geisoleerde_branddiepte_m = 10.0` worden geïsoleerde HYDAMO-stelsels en
-tertiaire waterlopen 10 m verlaagd. Aanvullende bronnen behouden hun
-ingestelde `brandwaarde` buiten de beschermde HYDAMO-cellen.
-Gebruik per laag `rol = "water"`, `rol = "duiker"` of `rol = "overig"` (standaard).
-Een duikerlaag vereist ook `bron = "hydamo"`, `"bgt"` of `"osm"`.
+Voor de verlaging van 100 m tellen alleen verbindingen via primaire en secundaire
+HYDAMO-waterlopen en geschikte HYDAMO-duikers. BGT, OSM en TOP10NL maken een
+losliggend HYDAMO-stelsel niet alsnog diep.
 
-| Situatie | Inbranding |
-| --- | --- |
-| Primaire waterloop buiten duikers | −200 m |
-| Verbonden secundaire HYDAMO-waterloop | −100 m |
-| HYDAMO-duiker secundair–primair of secundair–secundair, met route naar primair | −100 m |
-| Geïsoleerd HYDAMO-stelsel, overige aanvoerduikers en tertiaire waterloop | −10 m |
-| BGT-water en BGT/OSM-aanvoerduikers in het voorbeeld | −10 m |
-| TOP10NL-waterdelen in het voorbeeld | −5 m |
-| Uitsluitend primair–primair-duiker | Geen; ook aanvullende brandlagen worden onderdrukt |
-| Duiker zonder twee vastgestelde aansluitingen | Geen afzonderlijke duikerinbranding; naar controle |
+- Duikerlijnen sluiten aan via hun uiteinden. Een secundair of tertiair eindpunt op de duiker telt ook mee.
+- Bij duikervlakken worden aansluitingen langs de rand gezocht. Alleen kruisen is niet genoeg.
+- Bij dubbele duikers gaat HYDAMO voor BGT, daarna OSM.
+- Aanvullende lagen overschrijven de HYDAMO-inbranding niet.
+- Duikers zijn geen afwateringsdoelen.
 
-- De acht buren op het bestaande 2m-raster bepalen de waterverbindingen.
-- Duikerlijnen worden via hun uiteinden gekoppeld. Een eindpunt van een
-  secundaire/tertiaire waterloop op het duikertraject telt ook als aansluiting.
-- BGT-vlakken blijven vlakken; afzonderlijke contactzones aan de rand gelden
-  als aansluitingen. Een lijnkruising zonder aansluitende uiteinden volstaat niet.
-- Registraties met wederzijds dekkende rastergeometrie binnen één buurcel
-  worden als bronduplicaat behandeld: HYDAMO gaat voor BGT, BGT voor OSM.
-  Meerdere mogelijke voorkeursregistraties gaan naar controle.
-- Verbonden delen worden over overlappende tegelbuffers samengevoegd. Een
-  verbinding buiten de beschikbare bronselectie kan niet worden vastgesteld.
-- Alleen primaire en secundaire HYDAMO-waterlopen en daarvoor geschikte
-  HYDAMO-duikers bepalen de bereikbaarheid voor 100 m inbranding.
-  Een aanvullende waterlaag of ondiepe duiker maakt een geïsoleerde
-  HYDAMO-waterloop dus niet alsnog diep.
-- Aanvullende bronnen overschrijven geen primaire of secundaire HYDAMO-cellen
-  en geen HYDAMO-duiker met 100 m verlaging.
-- Alleen de geknipte primaire delen met `brandgeschikt = true` krijgen 200 m
-  verlaging. De volledige primaire bronlijn wordt niet opnieuw ingebrand.
-- Duiker en gekoppelde primaire duikerstukken worden afzonderlijk verrasterd.
-  Hun rastercellen worden samengevoegd, zonder de lijnen geometrisch samen te voegen.
-- Kruisende toegestane primaire en secundaire waterlopen behouden hun behandeling.
-  Een cel kan maar één LDD-richting hebben; ongelijkvloerse routes blijven daardoor
-  niet automatisch gescheiden.
-- Bereikbaarheid van primaire **brandcontext** bepaalt diep/ondiep voor HYDAMO. RWS blijft
-  primaire brandcontext; de bestaande beheerderselectie en LDD-toewijzing via
-  RWS veranderen niet. Er is geen nieuwe RWS-stopregel.
-- Duikers worden geen afwateringsdoelen. Het doelraster is bepalend; de
-  vectorsegmenten behouden hun oorspronkelijke identifiers.
+Met `geisoleerde_branddiepte_m` past u de ondiepe HYDAMO-verlaging aan.
+De standaard is 10 m. Aanvullende bronnen gebruiken hun eigen `brandwaarde`.
 
-Deze rastertoets is een rekenaanname, geen bewijs van een fysieke aansluiting.
-Ingebrande aanvoerduikers kunnen ook maaiveldwater langs hun traject aantrekken.
-De ondiepe verlaging garandeert geen uitstroom uit iedere natuurlijke laagte.
-
-De voorbereiding staat in `waternet/*.tif`: band 1 bevat de behandeling
-(0 buiten het waternet, 1 primair, 2 diep HYDAMO, 3 ondiep, 4 uitgesloten),
-band 2 de broncode, band 3 de duikercellen zonder afwateringsdoel en
-band 4 de ondiepe verlaging in meters.
-`controle.gpkg`, laag `duikers_waternet`, bevat alle duikerregistraties met
-`behandeling`, `reden`, `diep_geschikt` en eventueel `voorkeur_id`.
-`diep_geschikt` geeft aan of de duiker een HYDAMO-verbinding secundair–primair
-of secundair–secundair heeft. Zonder verdere route naar primair blijft hij ondiep.
-De oudere laag
-`duikersifonhevel` beschrijft uitsluitend de voorafgaande primaire vectorkoppeling.
+Een rastercel heeft maar een stroomrichting. Kruisingen op verschillende
+hoogtes blijven daardoor niet automatisch gescheiden.
 
 ### TOML-configuratie
 
-[Download het configuratievoorbeeld](../reference/voorbeelden/brandlagen.toml).
-Het voorbeeld gebruikt bestaande BGT- en TOP10NL-GeoPackages. Plaats de TOML
-naast `source_data` of pas de paden aan. Eigen correcties kunt u toevoegen.
+[Download de voorbeeld-TOML](../reference/voorbeelden/brandlagen.toml).
+Plaats deze naast `source_data` of pas de paden aan.
 
-De duikerlagen in het voorbeeld zijn vooraf geselecteerd voor de voorbeeldtegel
-inclusief buffer. BGT bevat alleen `bgt_kunstwerkdeel` met `plus-type = duiker`;
-OSM bevat lijnen met `tunnel=culvert`. Maak voor een ander gebied nieuwe selecties.
-De TOML haalt deze gegevens niet zelf op.
+| Onderdeel | Invullen |
+| --- | --- |
+| `path`, `layer` | Bestand en laagnaam. Relatieve paden gelden vanaf de TOML. |
+| `brandwaarde`, `prioriteit` | Waarden voor de laag; mogen ook per object zijn ingevuld. |
+| `rol` | `water`, `duiker` of `overig` (bijvoorbeeld wegen). |
+| `bron` | Bij duikers verplicht: `hydamo`, `bgt` of `osm`. |
+| `[defaults]` | Standaardwaarden voor alle lagen. |
 
-Het voorbeeld bevat ook een uitgeschakeld blok voor
-[OSM-kanalen](../bronlagen/osm-waterlopen.md). Gebruik het
-[downloadvoorbeeld](../reference/bronlagen-downloaden.md#osm-kanalen) om
-`source_data/osm/osm_canals.gpkg` voor het rekengebied inclusief buffers te maken.
-Verwijder daarna de commentaartekens bij dat blok. De voorbeeldinstelling
-verlaagt deze waterlijnen 5 m, met lagere prioriteit dan BGT, TOP10NL en OSM-duikers.
+De bronnen moeten vooraf beschikbaar zijn:
 
-Ook [BGT-wegdelen](../bronlagen/bgt.md) staan als uitgeschakeld voorbeeldblok
-in de TOML. De proefinstelling verhoogt wegdelen 0,10 m. Pas deze waarde aan
-vóór het inschakelen. Alle objecten uit `bgt_wegdeel` doen dan mee;
-`bgt_ondersteunendwegdeel` is niet opgenomen. Cellen van het gezamenlijke
-waternet behouden hun behandeling bij overlap met wegen.
+- BGT en TOP10NL: bestaande GeoPackages.
+- BGT-duikers: selectie van `bgt_kunstwerkdeel` met `plus-type = duiker`.
+- OSM: het [downloadscript](../reference/bronlagen-downloaden.md#osm-kanalen) maakt vijf bestanden onder `source_data/osm/`.
 
-| Laag | Brandwaarde | Voorrang |
-| --- | ---: | --- |
-| HYDAMO primair | −200 m | Vast, hoogste |
-| HYDAMO secundair | −100 m verbonden, −10 m geïsoleerd | Waternet |
-| HYDAMO tertiair | −10 m | Waternet |
-| Eigen waterloopcorrecties (optioneel) | −10 m | Prioriteit 3 |
-| `bgt_waterdeel` | −10 m | Prioriteit 2 |
-| BGT-duikers (`bgt_duiker`) | −10 m bij een geldige aansluiting | Na HYDAMO |
-| `top10nl_waterdeel_vlak` en `top10nl_waterdeel_lijn` | −5 m | Prioriteit 1 |
-| OSM-duikers (`osm_culvert`) | −10 m bij een geldige aansluiting | Na HYDAMO en BGT |
-| OSM-kanalen (`osm_canals`, optioneel) | −5 m | Prioriteit −1, laagste |
+Neem bij gebiedsselecties ook de tegelbuffers mee. De TOML downloadt niets.
 
-De verlaging stuurt de LDD en stelt geen echte waterbodemhoogte voor.
-Het voorbeeld gebruikt −10 m als standaard en −5 m voor beide TOP10NL-lagen.
-De HYDAMO-behandeling gaat bij overlap voor deze aanvullende brandwaarden.
-TOP10NL-lijnen worden zonder breedtebuffer ingebrand.
-TOP10NL vult cellen aan waar BGT ontbreekt. Verlagingen worden niet opgeteld.
-De TOML-volgorde bepaalt geen voorrang. Attributen op objecten blijven voorgaan
-op de defaults. Alle objecten uit de gekozen lagen binnen het rekengebied doen
-mee, zonder filter op status, type water of hoogteligging.
+In het voorbeeld geldt deze volgorde, met de hoogste prioriteit bovenaan:
+
+| Aanvullende laag | Hoogtewijziging | Prioriteit |
+| --- | ---: | ---: |
+| BGT-water en BGT-duikers | -10 m | 2 |
+| OSM-duikers | -10 m | 1 |
+| OSM-kanalen, sloten, afvoerwatergangen en beken | -5 m | 1 |
+| TOP10NL-waterdelen en waterlijnen | -5 m | 0 |
+
+Duikers moeten wel voldoen aan de [aansluitregels](#waterlopen-en-duikers).
+BGT-wegen staan uitgecommentarieerd: de proefwaarde is **+2 m**.
+De waterlopen en duikers houden bij overlap met wegen hun behandeling.
 
 ```toml
 --8<-- "docs/reference/voorbeelden/brandlagen.toml"
 ```
 
-`[defaults]` is optioneel en bevat globale defaults. Elke `[[lagen]]` heeft
-verplicht `path` en `layer`, met optioneel `brandwaarde` en `prioriteit` als
-laagdefaults. Relatieve paden worden ten opzichte van het TOML-bestand opgelost,
-niet ten opzichte van de werkdirectory. Kolomnamen in QGIS staan vast;
-onbekende configuratiesleutels worden afgewezen. Defaults zijn niet verplicht
-als alle geselecteerde objecten zelf geldige waarden hebben.
-
 ```console
-pixi run --locked afwateringseenheden --area alkmaar --brandlagen-config brandlagen.toml
+pixi run --environment afwateringseenheden afwateringseenheden --bounds 184285 392054 185285 393054 --brandlagen-config brandlagen.toml --workers 32
 ```
-
-De gewone productie controleert brandinvoer vóór de AHN-voorbereiding. Invoer-
-en tekenconflicten worden gezamenlijk gemeld met bestand, laag en FID. De
-conflictcontrole geldt op de gekozen rekenrasters, inclusief tegelbuffers,
-onafhankelijk van de AHN-dekking. De controletijd hangt af van het aantal
-geometrieën en hun overlap.
-
-Een gevalideerde selectie wordt lokaal opgeslagen; workers lezen daaruit hun
-eigen rekengebied. Bij ongewijzigde bronnen en instellingen wordt ook deze
-voorbereiding hergebruikt. Bewerk bronbestanden niet tijdens een berekening.
-
-### Afwateringseenheid aan een verbindingspunt koppelen
-
-Gebruik beide bestanden uit dezelfde run. Koppel `segment_id` uit
-`afwateringseenheden.gpkg` aan `van_segment` in de laag
-`hydroobject_verbinding` van `watersysteem.gpkg`.
-
-- De `fid` van de verbinding is het puntnummer.
-- `naar_segment` is het nummer van het volgende segment.
-- Een segment kan meerdere uitgaande verbindingen hebben, of geen.
-- De richting volgt de bronlijnen; deze is niet uit de LDD afgeleid.
-
-Deze nummers gelden binnen één run. Broninformatie en `segment_key` staan in
-`hydroobject_segment`. De verbindingslaag bevat alleen de numerieke verwijzingen.
-
-Gegevens van een gekoppelde stuw of gemaal staan in `objecttype`, `kunstwerk_bron_id`,
-`kunstwerk_code`, `kunstwerk_naam` en `kunstwerk_waterbeheercode`. Zonder gekoppeld kunstwerk
-zijn deze velden leeg. Het QGIS-formulier toont dan alleen de segmentkoppeling.
-In oudere uitvoer heette het nummer `segment_fid` en bevatte `segment_id` tekst.
 
 ### Brandlagen controleren in QGIS
 
-| Uitvoer binnen de runmap | Inhoud |
+| Bestand | Wat ziet u? |
 | --- | --- |
-| `tiles/brandlagen.gpkg`, laag `brandlagen` | Optionele invoerobjecten, inclusief buffergebied. Met invoerwaarde, prioriteit, rol en bronherkomst. Het waternet kan de brandwaarde vervangen. |
-| `tiles/<tegel>/brandbron.tif` | Winnende bron per cel, op hetzelfde rooster als het reken-DEM inclusief buffer. |
+| `brandlagen.gpkg` | Alle geselecteerde invoer, per bron in een aparte laag. |
+| `berekening/tegels/<tegel>/brandbron.tif` | De gebruikte bron per rastercel. |
 
-Broncode **1** is primair HYDAMO, **2** secundair HYDAMO. Vanaf **3** volgt
-iedere opgegeven TOML-laag een eigen code, in configuratievolgorde. Deze codes
-zijn labels, geen prioriteiten. De bronverwijzingen staan ook in de GeoTIFF-metadata
-onder `broncodes`. **0** betekent geen inbranding; NoData ligt buiten de geldige
-DEM-dekking. Een winnend gewoon brandobject met brandwaarde 0 houdt zijn eigen broncode.
-Met het waternet volgen na de TOML-codes extra codes voor HYDAMO-duikers en
-tertiaire waterlopen; de metadata bevat de bijbehorende legenda.
+Niet elk object uit `brandlagen.gpkg` wordt ingebrand: overlap en duikerregels
+bepalen wat wordt gebruikt. Bekijk daarvoor `brandbron.tif` en controleer
+daarna de stroomrichtingen (LDD) en afwateringsvlakken.
 
-Open het bronraster en de brandobjecten in QGIS om overlap en aansluitingen te
-controleren. Controleer daarna de LDD en afwateringsvlakken. Aanvullende
-brandlagen maken geen nieuwe waterloopsegmenten of afwateringsdoelen.
-
-Voor Python gebruikt u `Brandlaag`, `BrandlagenConfig`, `read_brandlagen_config`
-en `read_brandlagen`; zie het
-[uitvoerbare voorbeeld](../reference/bewerkte-lagen-produceren.md#afwateringseenheden).
-Dat voorbeeld toont de losse bouwstenen; de normale productie-ingang voert
-de volledige controle al vóór de zware bronvoorbereiding uit.
+Broncodes zijn labels, geen prioriteiten. `0` betekent geen inbranding.
+De legenda staat bij `broncodes` in de rastermetadata.
 
 ## Uitvoer en hervatten
 
@@ -427,42 +252,33 @@ Elke run staat onder `processed_data/afwateringseenheden/<gebied>/<run-id>/`.
 
 | Bestand | Inhoud |
 | --- | --- |
-| `afwateringseenheden.gpkg` | Eén laag: `afvoergebiedaanvoergebied`. |
+| `afwateringseenheden.gpkg` | Het eindresultaat, met één laag: `afvoergebiedaanvoergebied`. |
+| `brandlagen.gpkg` | Alle geselecteerde brandinvoer, met afzonderlijke lagen per bron. |
 | `watersysteem.gpkg` | Vijf lagen: primaire, secundaire en niet-verbonden secundaire waterlopen, segmenten en verbindingen. |
 | `controle.gpkg` | Niet-toegewezen gebieden, aanvullingen uit buurtegels, duikercontroles en bronobjecten zonder categorie. |
-| `intern/watersysteem.gpkg` | Technische tussenlagen: volledige primaire bron en geknipte primaire delen. |
-| `intern/watersysteem.gpkg.json` | Technische controle voor veilig hergebruik van het watersysteem. |
-| `input/ahn.vrt` | Gebiedsspecifieke verwijzingen naar gedeelde AHN-tegels. |
-| `tiles/tiles.gpkg` | Geselecteerde tegelkernen. |
-| `tiles/brandlagen.gpkg` en `tiles/brandlagen.json` | Gevalideerde optionele brandobjecten en bron-/grididentiteit, indien gebruikt. |
-| `tiles/<tegel-id>/` | Rasters, polygonen en status per rekentegel. |
+| `berekening/` | Tussenbestanden voor de berekening en het hervatten. |
 | `productie.log` | Hoofdlog, inclusief de werkprocessen. |
 | `run.json` | Instellingen, bronidentiteit, pakketversie en runstatus. |
 
-Afwateringseenheden behouden de beheerder, oorspronkelijke identifiers en
-bronbestand/laag/FID van hun doelsegment. `watersysteem.gpkg` bevat alle
-primaire brandlijnen, verbonden secundaire lijnen en de controlelaag
-`hydroobject_secundair_niet_verbonden`; alleen deelnemende primaire lijnen
-staan in `hydroobject_segment`.
-Bij duikervoorbereiding bevat `hydroobject_primair` uitsluitend de geschikte
-brandgeometrie. In `intern/watersysteem.gpkg` bewaart `hydroobject_primair_bron` de volledige bron voor de
-secundaire toets; `hydroobject_primair_delen` bewaart ook de uitgesloten
-duikertrajecten van alle beheerders. De segmentlaag bevat ook ongeschikte
-doelsegmenten; het doelraster gebruikt uitsluitend `doelgeschikt = true`.
-In `controle.gpkg` bevat `hydroobject_zonder_categorie` uitgesloten
-GKW-lijnen zonder categorie, met `uitsluitreden`.
+Lever voor normaal gebruik `afwateringseenheden.gpkg` en `watersysteem.gpkg`.
+Geef `controle.gpkg` apart mee voor beoordeling.
+`brandlagen.gpkg` helpt bij het bekijken van de gebruikte invoer.
 
-Ook `niet_toegewezen` en `aanvulling_buurtegels` staan in `controle.gpkg`.
-De tweede laag bewaart donor- en doeltegel en de keuzevolgorde. Bij uitsluitend
-lege tegelresultaten blijven deze controles beschikbaar en meldt
-de productie dat geen afwateringseenheden zijn gemaakt. Niet-toegewezen gebied
-is niet automatisch correcte externe afwatering: brongaten, tegelranden en
-rekenproblemen kunnen eveneens een oorzaak zijn. Toekenning aan het gekozen
-waterschap wordt niet geforceerd.
+Onder `berekening/` staan:
 
-Lever voor normaal gebruik de afwateringseenheden en het watersysteem.
-Geef `controle.gpkg` apart mee voor beoordeling. De map `intern/` is bedoeld
-voor technisch onderzoek. Bestaande runs worden niet automatisch verplaatst.
+- `ahn/`: verwijzingen naar de gebruikte AHN-tegels.
+- `watersysteem/`: tussenlagen van de primaire waterlopen.
+- `waterlopen_duikers/`: rasters met de gekozen behandeling van waterlopen en duikers.
+- `tegels/`: resultaten per tegel en de tegelindeling in `tiles.gpkg`.
+  `brandlagen_voorbereid.gpkg` bevat hier de aanvullende brandlagen voor het rekenen.
+
+Gebruik voor het bekijken van de invoer **`brandlagen.gpkg` in de hoofdmap**.
+Bewaar `berekening/` als u de run wilt hervatten.
+De nieuwe indeling geldt voor nieuwe runs. Begin voor uitvoer met de oude
+mapindeling een nieuwe run; bestaande bestanden worden niet verplaatst.
+
+Niet-toegewezen gebieden staan in `controle.gpkg`, laag `niet_toegewezen`.
+Controleer daar op ontbrekende bronnen, tegelranden en rekenproblemen.
 
 ```console
 pixi run --locked afwateringseenheden --area alkmaar --run-id proef
@@ -473,16 +289,8 @@ Fouten in afzonderlijke tegels verhinderen het samenvoegen, terwijl overige
 onafhankelijke tegels worden afgewerkt. Hervatten hergebruikt geldige resultaten.
 Zie [productiemappen](configuratie.md#productiemappen) voor de compatibiliteitsvoorwaarden.
 
-De brandconfiguratie en bronidentiteiten worden vastgelegd in `run.json`.
-Gewijzigde bronnen of instellingen vereisen bij de productie een nieuwe run-ID.
-Dit geldt ook voor gewijzigde duikergeometrie, koppelafstand, aansluitlengte,
-een gewijzigde eigen levering en een later toegevoegde RWS-duikerlaag. Zowel
-bronbestanden als SQLite-WAL-wijzigingen worden gevolgd. Oude snapshots zonder
-duikermetadata zijn bij duikervoorbereiding niet herbruikbaar.
-Lagere Python-functies vernieuwen raster- en tegeluitvoer met gewijzigde
-brandinvoer ook bij `overwrite=False`. Oude uitvoer zonder brandmetadata wordt
-eenmalig opnieuw berekend; zie het
-[API-hergebruikcontract](../reference/afwateringseenheden.md#dekking-en-hergebruik).
+Gebruik na wijzigingen aan bronnen of instellingen een nieuwe run-ID.
+`--resume` is alleen bedoeld voor dezelfde invoer en instellingen.
 
 Gebruik voor eigen code de [Python-ingang](../reference/gebruik.md) of de
 [lagere API](../reference/afwateringseenheden.md#dekking-en-hergebruik).

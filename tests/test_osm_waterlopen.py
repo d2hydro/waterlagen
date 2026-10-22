@@ -8,7 +8,11 @@ import pytest
 
 from waterlagen import _overpass
 from waterlagen.datastore import DataStore
-from waterlagen.osm_waterlopen import download_osm_canals
+from waterlagen.osm_waterlopen import (
+    download_osm_canals,
+    download_osm_culverts,
+    download_osm_waterlopen,
+)
 
 BOUNDS = (100000, 400000, 180000, 500000)
 
@@ -104,3 +108,76 @@ def test_full_geometry_retained_and_outside_way_removed(download):
     lines = gpd.read_file(path, layer="osm_canals")
     assert lines.osm_id.tolist() == [1]
     assert lines.total_bounds[2] > BOUNDS[2]
+
+
+@pytest.mark.parametrize(
+    ("waterway", "layer"),
+    [("ditch", "osm_ditches"), ("drain", "osm_drains"), ("stream", "osm_streams")],
+)
+def test_download_smaller_waterways(download, waterway, layer):
+    store, payload, request = download
+    for element in payload["elements"]:
+        element["tags"]["waterway"] = waterway
+    path = download_osm_waterlopen(BOUNDS, waterway=waterway, data_store=store)
+    assert path == store.source_data_dir / "osm" / f"{layer}.gpkg"
+    lines = gpd.read_file(path, layer=layer)
+    assert lines.osm_id.tolist() == [1]
+    assert lines.waterway.tolist() == [waterway]
+    assert lines.crs.to_epsg() == 28992
+    assert f'way["waterway"="{waterway}"]' in request.call_args.kwargs["data"]["data"]
+    request.reset_mock()
+    assert download_osm_waterlopen(BOUNDS, waterway=waterway, data_store=store) == path
+    request.assert_not_called()
+
+
+def test_unknown_waterway_rejected_before_download(download):
+    store, _, request = download
+    with pytest.raises(ValueError, match="waterway moet"):
+        download_osm_waterlopen(BOUNDS, waterway="river", data_store=store)
+    request.assert_not_called()
+
+
+def test_mismatched_waterway_preserves_existing_download(download):
+    store, _, _ = download
+    path = download_osm_canals(BOUNDS, data_store=store)
+    before = path.read_bytes()
+    with pytest.raises(ValueError, match="OSM-waterloop"):
+        download_osm_waterlopen(
+            BOUNDS, path, waterway="ditch", data_store=store, overwrite=True
+        )
+    assert path.read_bytes() == before
+
+
+@pytest.mark.parametrize("waterway", ["ditch", "stream", None])
+def test_culverts_keep_underground_sections_and_actual_waterway(download, waterway):
+    store, payload, request = download
+    payload["elements"] = [
+        way(
+            7,
+            waterway=waterway,
+            tunnel="culvert",
+            covered="yes",
+            location="underground",
+        )
+    ]
+    path = download_osm_culverts(BOUNDS, data_store=store)
+    assert path.name == "osm_culverts.gpkg"
+    lines = gpd.read_file(path, layer="osm_culvert")
+    assert lines.osm_id.tolist() == [7]
+    assert lines.waterway.iloc[0] == waterway
+    assert 'way["tunnel"="culvert"]' in request.call_args.kwargs["data"]["data"]
+    request.reset_mock()
+    assert download_osm_culverts(BOUNDS, data_store=store) == path
+    request.assert_not_called()
+    payload["elements"][0]["tags"]["tunnel"] = "yes"
+    before = path.read_bytes()
+    with pytest.raises(ValueError, match="OSM-waterloop"):
+        download_osm_culverts(BOUNDS, data_store=store, overwrite=True)
+    assert path.read_bytes() == before
+
+
+def test_empty_culvert_selection(download):
+    store, payload, _ = download
+    payload["elements"] = []
+    path = download_osm_culverts(BOUNDS, data_store=store)
+    assert gpd.read_file(path, layer="osm_culvert").empty

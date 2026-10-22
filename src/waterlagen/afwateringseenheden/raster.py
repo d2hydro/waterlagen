@@ -561,7 +561,7 @@ def prepare_watersysteem_rasters(
         Local optional burn layers, checked for attribute and pixel conflicts
         before reading AHN elevations. Primary and secondary masks always win.
         Source or default changes invalidate the cached raster pair. A validated
-        local snapshot is stored in ``output_dir/brandlagen.gpkg``.
+        local snapshot is stored in ``output_dir/brandlagen_voorbereid.gpkg``.
 
     Returns
     -------
@@ -584,12 +584,19 @@ def prepare_watersysteem_rasters(
     if (
         brandlagen is not None
         and any(layer.rol in {"water", "duiker"} for layer in brandlagen.lagen)
-        and not (watersysteem_path.parent / "waternet" / "manifest.json").exists()
+        and not (
+            watersysteem_path.parent
+            / "berekening"
+            / "waterlopen_duikers"
+            / "manifest.json"
+        ).exists()
     ):
         raise ValueError(
             "waternet requires joint preparation through the production workflow"
         )
-    prepared = _prepare_brandlagen(brandlagen, [grid], output_dir / "brandlagen.gpkg")
+    prepared = _prepare_brandlagen(
+        brandlagen, [grid], output_dir / "brandlagen_voorbereid.gpkg"
+    )
     return _prepare_rasters(
         grid=grid,
         burn_depth_m=burn_depth_m,

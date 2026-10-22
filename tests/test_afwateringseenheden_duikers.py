@@ -231,7 +231,7 @@ def test_snapshot_reuse_controls_recovery_and_stale_replacement(tmp_path, caplog
     assert str(control_path) in caplog.text
     assert len(wgpd.read_file(control_path, layer="duikersifonhevel")) == 1
     control_path.unlink()
-    internal_path = tmp_path / "intern" / "watersysteem.gpkg"
+    internal_path = tmp_path / "berekening" / "watersysteem" / "watersysteem.gpkg"
     assert set(gpd.list_layers(internal_path)["name"]) == {
         "hydroobject_primair_bron",
         "hydroobject_primair_delen",
@@ -261,7 +261,7 @@ def test_snapshot_reuse_controls_recovery_and_stale_replacement(tmp_path, caplog
             ).fetchone()
             is None
         )
-    metadata_path = tmp_path / "intern" / "watersysteem.gpkg.json"
+    metadata_path = tmp_path / "berekening" / "watersysteem" / "watersysteem.gpkg.json"
     assert json.loads(metadata_path.read_text())["signature"] is not None
     no_culverts = prepare_watersysteem(primary, empty())
     write(tmp_path, primary, no_culverts)
@@ -276,7 +276,7 @@ def test_snapshot_rebuilt_when_internal_metadata_is_unusable(tmp_path, change, c
     primary = straight()
     result = prepare(primary, lines([LineString([(5, 5), (15, 5)])]))
     path = write(tmp_path, primary, result)
-    metadata_path = tmp_path / "intern" / "watersysteem.gpkg.json"
+    metadata_path = tmp_path / "berekening" / "watersysteem" / "watersysteem.gpkg.json"
     original_time = path.stat().st_mtime_ns
     if change == "missing":
         metadata_path.unlink()
@@ -329,7 +329,8 @@ def test_burn_target_fids_secondary_and_subcatchments(tmp_path, optional):
     path = write(tmp_path, primary, result, secondary)
     assert (
         wgpd.read_file(
-            tmp_path / "intern" / "watersysteem.gpkg", layer="hydroobject_primair_bron"
+            tmp_path / "berekening" / "watersysteem" / "watersysteem.gpkg",
+            layer="hydroobject_primair_bron",
         ).length.sum()
         == 20
     )

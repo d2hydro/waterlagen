@@ -85,9 +85,26 @@ def test_one_area_product_with_full_tiles_and_selected_authorities(
     assert calculate.call_args.args[0].equals(area.geometry)
     assert calculate.call_args.kwargs["clip_to_area"] is False
     assert calculate.call_args.kwargs["workers"] == 2
-    assert calculate.call_args.kwargs["brandlagen"] == config
+    assert calculate.call_args.kwargs["brandlagen"] == (config or BrandlagenConfig())
+    assert calculate.call_args.kwargs["output_dir"] == (
+        result.parent / "berekening" / "tegels"
+    )
+    assert prepare_ahn.call_args.args[2] == (
+        result.parent / "berekening" / "ahn" / "ahn.vrt"
+    )
+    assert (result.parent / "brandlagen.gpkg").is_file()
+    assert (
+        result.parent / "berekening" / "watersysteem" / "watersysteem.gpkg"
+    ).is_file()
+    assert (
+        result.parent / "berekening" / "waterlopen_duikers" / "manifest.json"
+    ).is_file()
+    for old_directory in ("input", "intern", "waternet", "tiles"):
+        assert not (result.parent / old_directory).exists()
     if optional_burn:
-        assert (result.parent / "tiles" / "brandlagen.gpkg").exists()
+        assert (
+            result.parent / "berekening" / "tegels" / "brandlagen_voorbereid.gpkg"
+        ).exists()
     expected = {"38"} if name == "waterschap_38" else {"38", "80"}
     assert (result.parent / "controle.gpkg").is_file()
     assert prepare.call_args.kwargs["duikersifonhevel"].empty

@@ -235,7 +235,7 @@ def _validate_watersysteem_output(path: Path) -> None:
         ).fetchone()
     if legacy_metadata is not None:
         raise ValueError(
-            "Technical culvert metadata belongs in intern/, not this GeoPackage"
+            "Technical culvert metadata belongs in berekening/watersysteem/, not this GeoPackage"
         )
     layers = {info.layer: info for info in read_layer_crs_info(path)}
     required_layers = OUTPUT_LAYERS
@@ -636,7 +636,7 @@ def write_watersysteem(
     hydroobject_primair : geopandas.GeoDataFrame
         All selected primary burn-context lines, including non-target authorities.
         Used unchanged for the joint secondary test. With culvert preparation,
-        retained in ``intern/watersysteem.gpkg`` while ``hydroobject_primair``
+        retained in ``berekening/watersysteem/watersysteem.gpkg`` while ``hydroobject_primair``
         contains only eligible burn pieces.
     hydroobject_secundair : geopandas.GeoDataFrame
         Selected secondary source hydroobjecten. They are divided into connected
@@ -667,10 +667,10 @@ def write_watersysteem(
         Its ``duikersifonhevel`` layer is refreshed, including when empty or
         resuming; other inspection layers are preserved. Also stores source
         lines without a category. Removed inputs clear old inspection rows. Technical primary
-        source and split layers are kept in ``intern/watersysteem.gpkg`` beside
+        source and split layers are kept in ``berekening/watersysteem/watersysteem.gpkg`` beside
         the output. Missing inspection files are rebuilt even on reuse.
         Culvert snapshots are reused only with matching input metadata.
-        Preparation metadata is stored in ``intern/<output filename>.json``,
+        Preparation metadata is stored in ``berekening/watersysteem/<output filename>.json``,
         tied to the output checksum. Missing or mismatching metadata causes
         regeneration rather than reuse.
 
@@ -684,7 +684,9 @@ def write_watersysteem(
         output_path or data_store.afwateringseenheden_path / DEFAULT_OUTPUT_FILENAME
     )
     controle_path = Path(controle_path or output_path.parent / "controle.gpkg")
-    metadata_path = output_path.parent / "intern" / f"{output_path.name}.json"
+    metadata_path = (
+        output_path.parent / "berekening" / "watersysteem" / f"{output_path.name}.json"
+    )
     signature = None
     if watersysteem.duiker_signature is not None:
         if (
@@ -723,7 +725,9 @@ def write_watersysteem(
                 len(watersysteem.duiker_controle),
                 controle_path,
             )
-    internal_path = output_path.parent / "intern" / "watersysteem.gpkg"
+    internal_path = (
+        output_path.parent / "berekening" / "watersysteem" / "watersysteem.gpkg"
+    )
     for features, path, layer in (
         (watersysteem.duiker_controle, controle_path, "duikersifonhevel"),
         (hydroobject_zonder_categorie, controle_path, "hydroobject_zonder_categorie"),

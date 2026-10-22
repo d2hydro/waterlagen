@@ -12,6 +12,9 @@ kunnen de volgende selecties worden aangeleverd:
 | Selectie | OSM-kenmerk | Voorbeeldlaag |
 | --- | --- | --- |
 | Kanalen | `waterway=canal` | `osm_canals` |
+| Sloten en greppels | `waterway=ditch` | `osm_ditches` |
+| Afvoerwatergangen | `waterway=drain` | `osm_drains` |
+| Beken | `waterway=stream` | `osm_streams` |
 | Duikers | `tunnel=culvert` | `osm_culvert` |
 
 ## Leverancier
@@ -20,17 +23,19 @@ OpenStreetMap-bijdragers.
 
 ## Dataset of service
 
-De kanaaldownload gebruikt de Overpass API en schrijft
-`source_data/osm/osm_canals.gpkg`, laag `osm_canals`, in het project-CRS.
+De download gebruikt de Overpass API. Elk waterwaytype krijgt een eigen
+GeoPackage onder `source_data/osm/`, met de laagnaam uit de tabel als bestandsnaam.
+Duikers staan in `osm_culverts.gpkg`, laag `osm_culvert`.
+De geometrie staat in het project-CRS.
 Per lijn worden OSM-ID, naam, tags, OSM-peildatum en bronvermelding bewaard.
 Een JSON-bestand naast het GeoPackage bewaart de selectie en downloadquery.
 
 De opgegeven grenzen bepalen de selectie. Kruisende lijnen blijven heel.
-De download slaat trajecten met `tunnel` of `covered` anders dan `no` en
+De download van open waterlopen slaat trajecten met `tunnel` of `covered` anders dan `no` en
 `location=underground` over. Ontbrekende tags gelden als open trajecten.
-Duikers worden via deze functie niet gedownload.
+Duikers worden apart geselecteerd met `tunnel=culvert`, ongeacht het waterwaytype.
+Hetzelfde downloadscript haalt beide selecties op.
 
-De kanaalselectie omvat geen andere OSM-waterwaytypen, zoals sloten en beken.
 De registratie geeft geen garantie dat lijnen hydraulisch verbonden zijn.
 
 ## Gebruik in Waterlagen

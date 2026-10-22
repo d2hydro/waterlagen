@@ -45,6 +45,7 @@ from waterlagen.rijkswateren.download import RIJKSWATEREN_URL, download_rijkswat
 from waterlagen.settings import settings
 
 from .brandlagen import _empty_brandlagen
+from .brandlagen_overzicht import _write_brandlagen_overzicht
 from .duikers import CULVERT_POLICY, _validate_culvert_options
 from .waternet import WATERNET_POLICY, prepare_waternet
 
@@ -152,7 +153,7 @@ def main(
     ]
     brandlagen = brandlagen or BrandlagenConfig()
     parameters = {
-        "output_schema": "internal_snapshot_metadata_v6",
+        "output_schema": "calculation_directory_v7",
         "area": selected.identity,
         "crs": settings.crs,
         "tile_size_m": tile_size,
@@ -198,7 +199,9 @@ def main(
         parameters=parameters,
     ) as run:
         prepared_brandlagen = _prepare_brandlagen(
-            brandlagen, grids, run.path / "tiles" / "brandlagen.gpkg"
+            brandlagen,
+            grids,
+            run.path / "berekening" / "tegels" / "brandlagen_voorbereid.gpkg",
         )
         boundary = ensure_land_boundary(store, preparation)
         hydamo = store.source_data_dir / "hydamo" / "hydamo.gpkg"
@@ -245,7 +248,9 @@ def main(
             eigen_hydamo=eigen_hydamo,
         )
         run.metadata["rws_duikersifonhevel_present"] = sources.rws_culverts_present
-        ahn = prepare_ahn(store, context, run.path / "input" / "ahn.vrt", preparation)
+        ahn = prepare_ahn(
+            store, context, run.path / "berekening" / "ahn" / "ahn.vrt", preparation
+        )
         inputs = {
             **source_paths,
             "ahn": ahn,
@@ -282,6 +287,7 @@ def main(
             if prepared_brandlagen is not None
             else _empty_brandlagen()
         )
+        _write_brandlagen_overzicht(sources, optional, run.path / "brandlagen.gpkg")
         prepare_waternet(
             sources,
             optional,
@@ -298,7 +304,7 @@ def main(
             ahn_vrt_path=ahn,
             landsgrens_path=boundary,
             watersysteem_path=network_path,
-            output_dir=run.path / "tiles",
+            output_dir=run.path / "berekening" / "tegels",
             merged_output_path=run.path / "afwateringseenheden.gpkg",
             tile_size_m=tile_size,
             tile_buffer_m=tile_buffer,

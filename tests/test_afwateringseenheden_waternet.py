@@ -484,6 +484,12 @@ def test_production_always_prepares_waternet(tmp_path, monkeypatch, additional_s
 
     def calculate(gebied, **kwargs):
         network_path = kwargs["watersysteem_path"]
+        overview = network_path.parent / "brandlagen.gpkg"
+        assert len(gpd.read_file(overview, layer="hydamo_secundair")) == 2
+        assert len(gpd.read_file(overview, layer="hydamo_tertiair")) == 1
+        if additional_sources:
+            water = gpd.read_file(overview, layer="water")
+            assert water.brandwaarde.tolist() == [-10.0]
         treatment, _, _, _, _ = read_waternet(network_path, grid())
         assert treatment[cell(grid(), 5, 25)] == 2  # connected secondary
         assert treatment[cell(grid(), 35, 3)] == 3  # isolated secondary

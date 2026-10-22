@@ -413,7 +413,10 @@ def _burn_signature(
             "burn_depth_m": burn_depth_m,
             "optional": prepared.signature if prepared is not None else None,
             "waternet": _file_identity(
-                watersysteem_path.parent / "waternet" / "manifest.json"
+                watersysteem_path.parent
+                / "berekening"
+                / "waterlopen_duikers"
+                / "manifest.json"
             ),
         }
     )

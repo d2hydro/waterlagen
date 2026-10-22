@@ -919,7 +919,7 @@ def calculate_afwateringseenheden_tiles(
         Burn depth passed to :func:`prepare_watersysteem_rasters`.
     brandlagen : BrandlagenConfig, optional
         Optional layers, validated once on the selected buffered calculation
-        grids. Workers read local selections from ``output_dir/brandlagen.gpkg``.
+        grids. Workers read local selections from ``output_dir/brandlagen_voorbereid.gpkg``.
         Changed sources, defaults or burn depth invalidate raster and tile reuse.
     ahn_vrt_path : Path, optional
         AHN VRT used for every tile. Defaults to the datastore AHN DTM VRT.
@@ -1024,7 +1024,12 @@ def calculate_afwateringseenheden_tiles(
     if (
         brandlagen is not None
         and any(layer.rol in {"water", "duiker"} for layer in brandlagen.lagen)
-        and not (watersysteem_path.parent / "waternet" / "manifest.json").exists()
+        and not (
+            watersysteem_path.parent
+            / "berekening"
+            / "waterlopen_duikers"
+            / "manifest.json"
+        ).exists()
     ):
         raise ValueError(
             "waternet requires joint preparation through the production workflow"
@@ -1059,7 +1064,9 @@ def calculate_afwateringseenheden_tiles(
         )
         for tile in selected_tiles
     ]
-    prepared = _prepare_brandlagen(brandlagen, grids, output_dir / "brandlagen.gpkg")
+    prepared = _prepare_brandlagen(
+        brandlagen, grids, output_dir / "brandlagen_voorbereid.gpkg"
+    )
 
     jobs = [
         _TileJob(

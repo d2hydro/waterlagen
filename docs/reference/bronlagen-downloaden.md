@@ -152,8 +152,10 @@ Haal de geometrieën van de beoordeelde drinkwaterlocaties uit OSM op en schrijf
 
 ## OSM-kanalen
 
-Download open kanalen voor het ingestelde gebied. Het voorbeeld gebruikt
-Aa en Maas inclusief tegelbuffers en schrijft `source_data/osm/osm_canals.gpkg`.
+Download open kanalen, sloten, afvoerwatergangen, beken en duikers voor het ingestelde gebied.
+Het voorbeeld gebruikt Aa en Maas inclusief tegelbuffers. Onder `source_data/osm/`
+komen vijf bestanden: `osm_canals.gpkg`, `osm_ditches.gpkg`, `osm_drains.gpkg`,
+`osm_streams.gpkg` en `osm_culverts.gpkg`.
 Pas `DATA_DIR` en `BOUNDS` aan voor een ander gebied. Een bestaande download
 wordt alleen hergebruikt bij dezelfde selectie; kies anders een ander uitvoerpad
 of zet `OVERWRITE = True`.

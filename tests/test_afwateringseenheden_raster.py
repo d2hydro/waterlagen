@@ -644,7 +644,7 @@ def test_water_sources_show_priority_fallback_zero_and_hydamo(
         legend = json.loads(source.tags()["broncodes"])
         assert legend["1"] == "HYDAMO primair"
         assert legend[str(bgt)].endswith(" / bgt_waterdeel")
-    snapshot = gpd.read_file(tmp_path / "output" / "brandlagen.gpkg")
+    snapshot = gpd.read_file(tmp_path / "output" / "brandlagen_voorbereid.gpkg")
     assert dict(zip(snapshot.bronlaag, snapshot.broncode)) == codes
     assert set(snapshot.prioriteit) == {1, 2, 3}
     # Missing diagnostic output is restored instead of silently reusing the DEM pair.

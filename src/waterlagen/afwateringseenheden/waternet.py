@@ -265,7 +265,7 @@ def _classify_culverts(
 
 def waternet_path(watersysteem: Path, grid: RasterGrid) -> Path:
     key = _digest((tuple(float(v) for v in grid.bounds), float(grid.resolution)))[:20]
-    return watersysteem.parent / "waternet" / f"{key}.tif"
+    return watersysteem.parent / "berekening" / "waterlopen_duikers" / f"{key}.tif"
 
 
 def _write_grid(
@@ -408,8 +408,8 @@ def prepare_waternet(
     assigned. Primary RWS remains a deep burn seed, without becoming a target.
     Culvert diagnostics preserve all registrations, including duplicates.
     """
-    directory = watersysteem.parent / "waternet"
-    directory.mkdir(exist_ok=True)
+    directory = watersysteem.parent / "berekening" / "waterlopen_duikers"
+    directory.mkdir(parents=True, exist_ok=True)
     manifest = directory / "manifest.json"
     signature = _digest(
         {
@@ -592,7 +592,9 @@ def read_waternet(
     grid: RasterGrid,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, dict[int, str], np.ndarray] | None:
     """Read the prepared treatment, provenance and target-exclusion masks."""
-    manifest = watersysteem.parent / "waternet" / "manifest.json"
+    manifest = (
+        watersysteem.parent / "berekening" / "waterlopen_duikers" / "manifest.json"
+    )
     if not manifest.exists():
         return None
     metadata = json.loads(manifest.read_text(encoding="utf-8"))

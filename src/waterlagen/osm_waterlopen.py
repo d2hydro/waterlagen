@@ -1,4 +1,4 @@
-"""Download open OSM canal lines for optional drainage burn layers."""
+"""Download OSM waterways and culverts for drainage burn layers."""
 
 import json
 from math import isfinite
@@ -23,10 +23,18 @@ from waterlagen.settings import settings
 
 logger = get_logger(__name__)
 CANALS_LAYER = "osm_canals"
+WATERWAY_LAYERS = {
+    "canal": CANALS_LAYER,
+    "ditch": "osm_ditches",
+    "drain": "osm_drains",
+    "stream": "osm_streams",
+}
 
 
-def _canal_lines(payload: dict, bounds: tuple[float, ...]) -> gpd.GeoDataFrame:
-    """Reject incomplete ways and retain open canals intersecting the selection."""
+def _waterway_lines(
+    payload: dict, bounds: tuple[float, ...], waterway: str | None
+) -> gpd.GeoDataFrame:
+    """Validate ways and select open waterways or culverts intersecting the bounds."""
     timestamp = payload.get("osm3s", {}).get("timestamp_osm_base")
     if not isinstance(timestamp, str) or not timestamp:
         raise ValueError("Overpass-antwoord mist de OSM-peildatum")
@@ -35,16 +43,21 @@ def _canal_lines(payload: dict, bounds: tuple[float, ...]) -> gpd.GeoDataFrame:
     for element in payload["elements"]:
         tags = element.get("tags", {})
         identifier = element.get("id")
+        matches = (
+            tags.get("tunnel") == "culvert"
+            if waterway is None
+            else tags.get("waterway") == waterway
+        )
         if (
             element.get("type") != "way"
-            or tags.get("waterway") != "canal"
+            or not matches
             or not isinstance(identifier, int)
             or isinstance(identifier, bool)
             or identifier in seen
         ):
-            raise ValueError(f"Ongeldig of dubbel OSM-kanaal: {identifier}")
+            raise ValueError(f"Ongeldig of dubbel OSM-waterloop: {identifier}")
         seen.add(identifier)
-        if (
+        if waterway is not None and (
             tags.get("tunnel", "no") != "no"
             or tags.get("covered", "no") != "no"
             or tags.get("location") == "underground"
@@ -62,15 +75,15 @@ def _canal_lines(payload: dict, bounds: tuple[float, ...]) -> gpd.GeoDataFrame:
             geometry = LineString(coordinates)
         except (KeyError, TypeError, ValueError) as error:
             raise ValueError(
-                f"Onvolledige geometrie voor OSM-kanaal {identifier}"
+                f"Onvolledige geometrie voor OSM-waterloop {identifier}"
             ) from error
         if geometry.is_empty or not geometry.is_valid or geometry.length == 0:
-            raise ValueError(f"Ongeldige geometrie voor OSM-kanaal {identifier}")
+            raise ValueError(f"Ongeldige geometrie voor OSM-waterloop {identifier}")
         rows.append(
             {
                 "osm_id": identifier,
                 "naam": tags.get("name"),
-                "waterway": "canal",
+                "waterway": tags.get("waterway"),
                 "osm_tags": json.dumps(tags, ensure_ascii=False, sort_keys=True),
                 "osm_peildatum_utc": timestamp,
                 "bron": "OpenStreetMap contributors",
@@ -104,16 +117,21 @@ def _canal_lines(payload: dict, bounds: tuple[float, ...]) -> gpd.GeoDataFrame:
     )
 
 
-def download_osm_canals(
+def download_osm_waterlopen(
     bounds: tuple[float, float, float, float],
     target_path: Path | None = None,
     *,
+    waterway: str,
     data_store: DataStore | None = None,
     overwrite: bool = False,
     endpoint: str = OVERPASS_ENDPOINT,
     timeout: float = 180,
 ) -> Path:
-    """Download open canal ways to source_data/osm/osm_canals.gpkg.
+    """Download one open OSM waterway type to source_data/osm.
+
+    Each type has its own GeoPackage and layer: ``osm_canals``,
+    ``osm_ditches``, ``osm_drains`` or ``osm_streams``. Underground,
+    covered and culvert sections are excluded.
 
     Parameters
     ----------
@@ -122,6 +140,8 @@ def download_osm_canals(
         Intersecting ways are retained whole, not clipped to the bounds.
     target_path : pathlib.Path, optional
         Override the default GeoPackage path.
+    waterway : str
+        OSM waterway type: ``canal``, ``ditch``, ``drain`` or ``stream``.
     data_store : DataStore, optional
         Configured source-data location.
     overwrite : bool, optional
@@ -136,7 +156,7 @@ def download_osm_canals(
     Returns
     -------
     pathlib.Path
-        GeoPackage with layer ``osm_canals`` in the project CRS. Empty selections
+        GeoPackage with the selected waterway layer in the project CRS. Empty selections
         produce a valid empty layer. A JSON sidecar records selection and source.
 
     Raises
@@ -146,12 +166,44 @@ def download_osm_canals(
     RuntimeError
         Overpass request failed.
     """
+    if waterway not in WATERWAY_LAYERS:
+        raise ValueError("waterway moet canal, ditch, drain of stream zijn")
+    return _download_osm_lines(
+        bounds,
+        target_path,
+        waterway=waterway,
+        data_store=data_store,
+        overwrite=overwrite,
+        endpoint=endpoint,
+        timeout=timeout,
+    )
+
+
+def _download_osm_lines(
+    bounds: tuple[float, float, float, float],
+    target_path: Path | None,
+    *,
+    waterway: str | None,
+    data_store: DataStore | None,
+    overwrite: bool,
+    endpoint: str,
+    timeout: float,
+) -> Path:
+    """Share validation and atomic output; waterway=None selects tunnel=culvert."""
+    layer = "osm_culvert" if waterway is None else WATERWAY_LAYERS[waterway]
+    filename = "osm_culverts" if waterway is None else layer
+    tag_filter = (
+        '["tunnel"="culvert"]' if waterway is None else f'["waterway"="{waterway}"]'
+    )
+    policy = (
+        "culverts_v1" if waterway is None else f"open_{layer.removeprefix('osm_')}_v1"
+    )
     selection = area_from_bounds(bounds)
     bounds = selection.geometry.bounds
     if isinstance(timeout, bool) or not isfinite(timeout) or timeout <= 0:
         raise ValueError("timeout moet positief en eindig zijn")
     store = data_store or DataStore()
-    target = Path(target_path or store.source_data_dir / "osm" / "osm_canals.gpkg")
+    target = Path(target_path or store.source_data_dir / "osm" / f"{filename}.gpkg")
     west, south, east, north = Transformer.from_crs(
         settings.crs, "EPSG:4326", always_xy=True
     ).transform_bounds(*bounds, densify_pts=21)
@@ -159,18 +211,18 @@ def download_osm_canals(
         raise ValueError("Gebiedsgrenzen kunnen niet naar WGS84 worden getransformeerd")
     query = (
         f"[out:json][timeout:{max(1, int(timeout) - 10)}];"
-        f'way["waterway"="canal"]({south},{west},{north},{east});out geom;'
+        f"way{tag_filter}({south},{west},{north},{east});out geom;"
     )
     identity = {
         "bounds": list(bounds),
         "crs": format_crs(settings.crs),
         "endpoint": endpoint,
-        "policy": "open_canals_v1",
+        "policy": policy,
     }
     manifest = target.with_suffix(".json")
     if target.is_file() and not overwrite:
         validate_geopackage(target)
-        info = pyogrio.read_info(target, layer=CANALS_LAYER)
+        info = pyogrio.read_info(target, layer=layer)
         metadata = (
             json.loads(manifest.read_text(encoding="utf-8"))
             if manifest.exists()
@@ -183,21 +235,21 @@ def download_osm_canals(
             or not same_crs(info["crs"], settings.crs)
         ):
             raise ValueError(
-                "Bestaande OSM-kanalen hebben andere invoer; kies een ander pad of overwrite=True"
+                "Bestaande OSM-waterlopen hebben andere invoer; kies een ander pad of overwrite=True"
             )
-        logger.info("OSM-kanalen hergebruiken: %s", target)
+        logger.info("OSM-waterlopen hergebruiken: %s", target)
         return target
     payload = _read_overpass(
         query,
-        "kanalen",
+        layer,
         endpoint=endpoint,
         cache_dir=None,
         offline=False,
         timeout=timeout,
     )
-    lines = _canal_lines(payload, bounds)
-    logger.info("OSM-kanalen schrijven: %s (%s lijnen)", target, len(lines))
-    write_geopackage_layer_atomically(lines, target, layer_name=CANALS_LAYER)
+    lines = _waterway_lines(payload, bounds, waterway)
+    logger.info("OSM-waterlopen schrijven: %s (%s lijnen)", target, len(lines))
+    write_geopackage_layer_atomically(lines, target, layer_name=layer)
     metadata = {
         "selection": identity,
         "query": query,
@@ -214,3 +266,97 @@ def download_osm_canals(
     finally:
         temporary.unlink(missing_ok=True)
     return target
+
+
+def download_osm_canals(
+    bounds: tuple[float, float, float, float],
+    target_path: Path | None = None,
+    *,
+    data_store: DataStore | None = None,
+    overwrite: bool = False,
+    endpoint: str = OVERPASS_ENDPOINT,
+    timeout: float = 180,
+) -> Path:
+    """Download open canals with the same options as ``download_osm_waterlopen``.
+
+    Parameters
+    ----------
+    bounds : tuple of float
+        xmin, ymin, xmax, ymax in ``settings.crs``, including buffers.
+    target_path : pathlib.Path, optional
+        Output path; defaults to source_data/osm/osm_canals.gpkg.
+    data_store : DataStore, optional
+        Configured source-data location.
+    overwrite : bool, optional
+        Replace an existing download. Otherwise reuse only matching selections.
+    endpoint : str, optional
+        Overpass interpreter URL.
+    timeout : float, optional
+        Positive HTTP timeout in seconds, default 180.
+
+    Returns
+    -------
+    pathlib.Path
+        GeoPackage with layer ``osm_canals`` and a JSON metadata sidecar.
+    """
+    return download_osm_waterlopen(
+        bounds,
+        target_path,
+        waterway="canal",
+        data_store=data_store,
+        overwrite=overwrite,
+        endpoint=endpoint,
+        timeout=timeout,
+    )
+
+
+def download_osm_culverts(
+    bounds: tuple[float, float, float, float],
+    target_path: Path | None = None,
+    *,
+    data_store: DataStore | None = None,
+    overwrite: bool = False,
+    endpoint: str = OVERPASS_ENDPOINT,
+    timeout: float = 180,
+) -> Path:
+    """Download OSM ways tagged tunnel=culvert, regardless of waterway type.
+
+    Parameters
+    ----------
+    bounds : tuple of float
+        xmin, ymin, xmax, ymax in ``settings.crs``, including buffers.
+        Intersecting ways are retained whole.
+    target_path : pathlib.Path, optional
+        Output path; defaults to source_data/osm/osm_culverts.gpkg.
+    data_store : DataStore, optional
+        Configured source-data location.
+    overwrite : bool, optional
+        Replace an existing download. Otherwise reuse only when selection,
+        endpoint, CRS and recorded output identity match.
+    endpoint : str, optional
+        Overpass interpreter URL.
+    timeout : float, optional
+        Positive HTTP timeout in seconds, default 180.
+
+    Returns
+    -------
+    pathlib.Path
+        GeoPackage with layer ``osm_culvert`` and a JSON metadata sidecar.
+        Empty selections produce a valid empty layer.
+
+    Raises
+    ------
+    ValueError
+        Invalid bounds, incomplete OSM data or incompatible existing download.
+    RuntimeError
+        Overpass request failed.
+    """
+    return _download_osm_lines(
+        bounds,
+        target_path,
+        waterway=None,
+        data_store=data_store,
+        overwrite=overwrite,
+        endpoint=endpoint,
+        timeout=timeout,
+    )
