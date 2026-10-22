@@ -4,6 +4,10 @@ editorial_status: ai
 
 # Afwateringseenheden
 
+De productie bereidt altijd het gezamenlijke waternet voor, ook zonder
+aanvullende brandlagen. `BrandlagenConfig` en de TOML bevatten geen
+`waternet`-schakelaar. Verwijder deze sleutel uit bestaande TOML-bestanden.
+
 De functionele uitleg staat bij [Afwateringseenheden](../bewerkte-lagen/afwateringseenheden.md).
 Zie [Afwateringseenheden produceren](../produceren/afwateringseenheden.md) voor
 de uitvoering, parallel rekenen en logbestanden.

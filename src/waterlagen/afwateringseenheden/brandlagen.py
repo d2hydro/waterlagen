@@ -68,7 +68,6 @@ def _brand_identity(config: BrandlagenConfig | None) -> dict:
         "crs": format_crs(settings.crs),
         "brandwaarde": config.brandwaarde,
         "prioriteit": config.prioriteit,
-        "waternet": config.waternet,
         "geisoleerde_branddiepte_m": config.geisoleerde_branddiepte_m,
         "lagen": [
             {

@@ -114,7 +114,7 @@ vóór AHN-voorbereiding een fout.
 
 Beide categorievelden `categorieoppwaterlichaam` en `categorieoppervlaktewater`
 worden herkend. Bekende waarden zijn `primair`, `secundair`, `tertiair` en
-`overig`; tertiaire lijnen doen alleen mee met `waternet = true`. Overige lijnen worden niet gebruikt. GKW-lijnen zonder
+`overig`. Tertiaire lijnen worden ondiep ingebrand. Overige lijnen worden niet gebruikt. GKW-lijnen zonder
 categorie blijven buiten branden en doelen en worden met een waarschuwing in
 `hydroobject_zonder_categorie` bewaard, inclusief oorspronkelijke identificaties,
 bronbestand, laag en FID. Er wordt geen categorie geraden. Onbekende ingevulde
@@ -124,26 +124,25 @@ Een bekend afwijkend CRS wordt expliciet naar het project-CRS getransformeerd.
 
 ### Gezamenlijke secundaire verbindingstoets
 
-Onderstaande geometrische toets geldt zonder `waternet = true`. Het
-[gezamenlijke waternet](#gezamenlijk-waternet) gebruikt rasterverbindingen.
+De geometrische toets hieronder bepaalt de indeling van de secundaire
+vectorlagen. Het [gezamenlijke waternet](#gezamenlijk-waternet) bepaalt de
+uiteindelijke inbranding op basis van rasterverbindingen.
 
 Alle geselecteerde secundaire lijnen worden gezamenlijk gegroepeerd met een
-tolerantie van 2 m. Een groep wordt gebrand zodra één lid binnen 2 m van een
+tolerantie van 2 m. Een groep geldt als verbonden zodra één lid binnen 2 m van een
 geselecteerde primaire lijn ligt. Een keten over beheerdergrenzen of een
 aansluiting uitsluitend op RWS kan dus voldoende zijn. De volledige
 lijngeometrie telt, niet alleen eindpunten. Niet-verbonden groepen blijven
 beschikbaar voor controle. Verbindingen via niet-geselecteerde objecten kunnen
 ontbreken. Deze geometrische toets bewijst geen hydraulische verbinding.
 
-De vaste categorievolgorde geldt over alle beheerders: **primair > verbonden
-secundair > optioneel**. Primaire lijnen krijgen `-2 * burn_depth_m`, secundaire
-lijnen `-burn_depth_m`: standaard -200 en -100 m. Dit zijn rekenkundige
-verlagingen, geen bodemhoogtes. De keuze van doelen verandert deze regels niet.
+De verlagingen uit het gezamenlijke waternet sturen de LDD; het zijn geen
+bodemhoogtes. De keuze van afwateringsdoelen verandert de inbranding niet.
 
 ## Duikers, sifons en hevels
 
-Dit beschrijft de bestaande vectorvoorbereiding. Met `waternet = true` volgt
-daarna de [gezamenlijke rasterbehandeling](#gezamenlijk-waternet), ook voor
+Dit beschrijft de vectorvoorbereiding. Daarna volgt altijd de
+[gezamenlijke rasterbehandeling](#gezamenlijk-waternet), ook voor
 BGT- en OSM-duikers. Die bepaalt de uiteindelijke inbranding en sluit
 aanvullende duikercellen uit van het doelraster.
 
@@ -245,8 +244,9 @@ terechtkomen. Branden verandert geen NoData buiten de geldige DEM-dekking.
 
 ### Gezamenlijk waternet
 
-Zet `waternet = true` bovenaan de TOML. Met
-`geisoleerde_branddiepte_m = 10.0` worden geïsoleerde HYDAMO-stelsels en
+Waterlopen en duikers worden altijd gezamenlijk beoordeeld op het rekenraster,
+ook zonder aanvullende brandlagen. Hiervoor is geen schakelaar nodig.
+Met `geisoleerde_branddiepte_m = 10.0` worden geïsoleerde HYDAMO-stelsels en
 tertiaire waterlopen 10 m verlaagd. Aanvullende bronnen behouden hun
 ingestelde `brandwaarde` buiten de beschermde HYDAMO-cellen.
 Gebruik per laag `rol = "water"`, `rol = "duiker"` of `rol = "overig"` (standaard).
@@ -318,6 +318,19 @@ inclusief buffer. BGT bevat alleen `bgt_kunstwerkdeel` met `plus-type = duiker`;
 OSM bevat lijnen met `tunnel=culvert`. Maak voor een ander gebied nieuwe selecties.
 De TOML haalt deze gegevens niet zelf op.
 
+Het voorbeeld bevat ook een uitgeschakeld blok voor
+[OSM-kanalen](../bronlagen/osm-waterlopen.md). Gebruik het
+[downloadvoorbeeld](../reference/bronlagen-downloaden.md#osm-kanalen) om
+`source_data/osm/osm_canals.gpkg` voor het rekengebied inclusief buffers te maken.
+Verwijder daarna de commentaartekens bij dat blok. De voorbeeldinstelling
+verlaagt deze waterlijnen 5 m, met lagere prioriteit dan BGT, TOP10NL en OSM-duikers.
+
+Ook [BGT-wegdelen](../bronlagen/bgt.md) staan als uitgeschakeld voorbeeldblok
+in de TOML. De proefinstelling verhoogt wegdelen 0,10 m. Pas deze waarde aan
+vóór het inschakelen. Alle objecten uit `bgt_wegdeel` doen dan mee;
+`bgt_ondersteunendwegdeel` is niet opgenomen. Cellen van het gezamenlijke
+waternet behouden hun behandeling bij overlap met wegen.
+
 | Laag | Brandwaarde | Voorrang |
 | --- | ---: | --- |
 | HYDAMO primair | −200 m | Vast, hoogste |
@@ -328,6 +341,7 @@ De TOML haalt deze gegevens niet zelf op.
 | BGT-duikers (`bgt_duiker`) | −10 m bij een geldige aansluiting | Na HYDAMO |
 | `top10nl_waterdeel_vlak` en `top10nl_waterdeel_lijn` | −5 m | Prioriteit 1 |
 | OSM-duikers (`osm_culvert`) | −10 m bij een geldige aansluiting | Na HYDAMO en BGT |
+| OSM-kanalen (`osm_canals`, optioneel) | −5 m | Prioriteit −1, laagste |
 
 De verlaging stuurt de LDD en stelt geen echte waterbodemhoogte voor.
 Het voorbeeld gebruikt −10 m als standaard en −5 m voor beide TOP10NL-lagen.

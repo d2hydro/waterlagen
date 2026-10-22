@@ -3,7 +3,6 @@
 # Relatieve paden zijn relatief aan dit TOML-bestand.
 # Hoogste prioriteitsgetal wint. De volgorde hieronder bepaalt geen voorrang.
 # Gezamenlijke water-/duikerverwerking op het bestaande 2m-raster.
-waternet = true
 geisoleerde_branddiepte_m = 10.0
 
 # Fallback voor gewone brandlagen; water en duikers krijgen hun diepte
@@ -48,6 +47,26 @@ layer = "osm_culvert"
 rol = "duiker"
 bron = "osm"
 prioriteit = 0
+
+# Optioneel: OSM-kanalen als aanvullende waterlijnen, standaard uit.
+# Download eerst met docs/reference/voorbeelden/download_osm_canals.py.
+# Dit selecteert waterway=canal zonder ondergrondse trajecten.
+# Verwijder daarna de # voor de volgende zeven regels om deze laag te gebruiken.
+# [[lagen]]
+# path = "source_data/osm/osm_canals.gpkg"
+# layer = "osm_canals"
+# rol = "water"
+# bron = "osm"
+# brandwaarde = -5.0
+# prioriteit = -1
+
+# Optioneel: BGT-wegdelen verhogen, standaard uit. Pas de proefwaarde aan.
+# [[lagen]]
+# path = "source_data/bgt/bgt.gpkg"
+# layer = "bgt_wegdeel"
+# rol = "overig"
+# brandwaarde = 0.10
+# prioriteit = 3
 
 # Optioneel: eigen waterloopcorrecties gaan voor BGT en TOP10NL.
 # [[lagen]]

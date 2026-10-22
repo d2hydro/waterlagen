@@ -67,13 +67,12 @@ class BrandlagenConfig:
     Parameters
     ----------
     lagen : tuple[Brandlaag, ...]
-        Selected sources. No sources preserves the existing burn behaviour.
+        Additional sources. The production always prepares HYDAMO connectivity,
+        including when no additional sources are configured.
     brandwaarde : float, optional
         Global signed height change in metres, after object and layer values.
     prioriteit : int, optional
         Global priority, after object and layer values. Zero is an explicit value.
-    waternet : bool, optional
-        Classify water and culverts jointly on the raster before burning.
     geisoleerde_branddiepte_m : float, optional
         Positive lowering depth for isolated HYDAMO components and tertiary
         waterlines, default 10 metres. Additional sources use their configured
@@ -83,7 +82,6 @@ class BrandlagenConfig:
     lagen: tuple[Brandlaag, ...] = ()
     brandwaarde: float | None = None
     prioriteit: int | None = None
-    waternet: bool = False
     geisoleerde_branddiepte_m: float = 10.0
 
     def __post_init__(self) -> None:
@@ -91,12 +89,8 @@ class BrandlagenConfig:
         if not all(isinstance(layer, Brandlaag) for layer in self.lagen):
             raise TypeError("lagen must contain Brandlaag objects")
         _validate_defaults(self.brandwaarde, self.prioriteit)
-        if not isinstance(self.waternet, bool):
-            raise TypeError("waternet must be a boolean")
         if _brand_number(self.geisoleerde_branddiepte_m) < 0:
             raise ValueError("geisoleerde_branddiepte_m must be nonnegative")
-        if not self.waternet and any(layer.rol != "overig" for layer in self.lagen):
-            raise ValueError("water/duiker roles require waternet=true")
         if self.brandwaarde is not None:
             object.__setattr__(self, "brandwaarde", float(self.brandwaarde))
         if self.prioriteit is not None:
@@ -126,8 +120,8 @@ def read_brandlagen_config(path: Path) -> BrandlagenConfig:
     path : pathlib.Path
         TOML file with optional ``[defaults]`` (``brandwaarde``, ``prioriteit``)
         and ``[[lagen]]`` entries (``path``, ``layer`` and optional defaults
-        ``brandwaarde`` and ``prioriteit`` directly on each entry). Root keys
-        ``waternet`` and ``geisoleerde_branddiepte_m`` enable joint connectivity.
+        ``brandwaarde`` and ``prioriteit`` directly on each entry). The root key
+        ``geisoleerde_branddiepte_m`` sets the isolated HYDAMO lowering depth.
         Layer keys ``rol`` and ``bron`` identify water and culvert inputs.
 
     Returns
@@ -149,7 +143,7 @@ def read_brandlagen_config(path: Path) -> BrandlagenConfig:
         values = tomllib.load(stream)
     _check_keys(
         values,
-        {"defaults", "lagen", "waternet", "geisoleerde_branddiepte_m"},
+        {"defaults", "lagen", "geisoleerde_branddiepte_m"},
         "configuration",
     )
     defaults = values.get("defaults", {})
@@ -183,6 +177,5 @@ def read_brandlagen_config(path: Path) -> BrandlagenConfig:
     return BrandlagenConfig(
         tuple(layers),
         **defaults,
-        waternet=values.get("waternet", False),
         geisoleerde_branddiepte_m=values.get("geisoleerde_branddiepte_m", 10.0),
     )

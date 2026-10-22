@@ -33,6 +33,7 @@ nav:
       - Rijkswateren: bronlagen/rijkswateren.md
       - LIWO overstromingsgevoelige gebieden: bronlagen/liwo.md
       - OSM-drinkwaterlocaties: bronlagen/osm-drinkwater.md
+      - OSM-waterlopen: bronlagen/osm-waterlopen.md
       - TOP10NL: bronlagen/top10nl.md
       - Waterketen DAMO: bronlagen/waterketen-damo.md
       - Waterschapsgrenzen: bronlagen/waterschapsgrenzen.md
@@ -79,6 +80,7 @@ nav:
           - Rijkswateren: reference/rijkswateren.md
           - LIWO: reference/liwo.md
           - OSM-drinkwaterlocaties: reference/osm_drinkwater.md
+          - OSM-waterlopen: reference/osm_waterlopen.md
           - Waterketen DAMO: reference/waterketen_damo.md
           - DataStore: reference/datastore.md
           - Rasters: reference/raster.md

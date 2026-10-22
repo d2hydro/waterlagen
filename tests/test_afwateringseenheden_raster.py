@@ -220,7 +220,7 @@ def test_waternet_exclusion_updates_dem_targets_and_provenance(source_paths, tmp
     extra = empty.copy()
     extra["broncode"] = []
     grid = RasterGrid.from_bounds((0, 0, 8, 8), resolution=2, crs=CRS)
-    config = BrandlagenConfig(waternet=True)
+    config = BrandlagenConfig()
     prepare_waternet(data, extra, [grid], network_path, config)
     result = prepare_watersysteem_rasters(
         box(0, 0, 8, 8),

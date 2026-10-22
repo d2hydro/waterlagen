@@ -4,6 +4,7 @@ from pathlib import Path
 
 from shapely.ops import unary_union
 
+from waterlagen._geopandas import read_file
 from waterlagen._production import _file_identity, production_run, validate_run_target
 from waterlagen._sources import SourcePreparation, source_options
 from waterlagen.afwateringseenheden import (
@@ -69,6 +70,9 @@ def main(
     max_aansluitlengte: float | None = None,
 ) -> Path:
     """Produce full tiles with separate drainage targets and surrounding burn context.
+
+    Joint water/culvert raster connectivity is always prepared, including
+    without additional burn sources.
 
     Parameters
     ----------
@@ -140,6 +144,13 @@ def main(
     context = unary_union(
         [_calculation_geometry(tile, tile_buffer_m=tile_buffer) for tile in tiles]
     )
+    grids = [
+        _grid_for_square(
+            _calculation_geometry(tile, tile_buffer_m=tile_buffer), resolution_m=2
+        )
+        for tile in tiles
+    ]
+    brandlagen = brandlagen or BrandlagenConfig()
     parameters = {
         "output_schema": "internal_snapshot_metadata_v6",
         "area": selected.identity,
@@ -174,11 +185,9 @@ def main(
         "resolution_m": 2.0,
         "burn_categories": ["optional", "secundair", "primair"],
         "clip_to_area": False,
+        "waternet_policy": WATERNET_POLICY,
+        "brandlagen": _brand_identity(brandlagen),
     }
-    if brandlagen is not None:
-        parameters["brandlagen"] = _brand_identity(brandlagen)
-        if brandlagen.waternet:
-            parameters["waternet_policy"] = WATERNET_POLICY
     with production_run(
         store.processed_data_dir,
         "afwateringseenheden",
@@ -188,17 +197,9 @@ def main(
         overwrite=overwrite,
         parameters=parameters,
     ) as run:
-        if brandlagen is not None:
-            grids = [
-                _grid_for_square(
-                    _calculation_geometry(tile, tile_buffer_m=tile_buffer),
-                    resolution_m=2,
-                )
-                for tile in tiles
-            ]
-            prepared_brandlagen = _prepare_brandlagen(
-                brandlagen, grids, run.path / "tiles" / "brandlagen.gpkg"
-            )
+        prepared_brandlagen = _prepare_brandlagen(
+            brandlagen, grids, run.path / "tiles" / "brandlagen.gpkg"
+        )
         boundary = ensure_land_boundary(store, preparation)
         hydamo = store.source_data_dir / "hydamo" / "hydamo.gpkg"
         preparation.ensure(
@@ -256,13 +257,9 @@ def main(
             raise ValueError(
                 "Watersysteem sources changed during preparation; retry with stable sources"
             )
-        if brandlagen is not None:
-            inputs.update(
-                {
-                    f"brandlaag_{i}": source.path
-                    for i, source in enumerate(brandlagen.lagen)
-                }
-            )
+        inputs.update(
+            {f"brandlaag_{i}": source.path for i, source in enumerate(brandlagen.lagen)}
+        )
         run.record_inputs(inputs)
         network = prepare_watersysteem(
             sources.targets,
@@ -280,22 +277,19 @@ def main(
             output_path=run.path / "watersysteem.gpkg",
             overwrite=overwrite,
         )
-        if brandlagen is not None and brandlagen.waternet:
-            from waterlagen._geopandas import read_file
-
-            optional = (
-                read_file(prepared_brandlagen.path, layer="brandlagen")
-                if prepared_brandlagen is not None
-                else _empty_brandlagen()
-            )
-            prepare_waternet(
-                sources,
-                optional,
-                grids,
-                network_path,
-                brandlagen,
-                primary_culvert_pieces=network.hydroobject_primair_delen,
-            )
+        optional = (
+            read_file(prepared_brandlagen.path, layer="brandlagen")
+            if prepared_brandlagen is not None
+            else _empty_brandlagen()
+        )
+        prepare_waternet(
+            sources,
+            optional,
+            grids,
+            network_path,
+            brandlagen,
+            primary_culvert_pieces=network.hydroobject_primair_delen,
+        )
         result = calculate_afwateringseenheden_tiles(
             selected.geometry,
             burn_depth_m=100,

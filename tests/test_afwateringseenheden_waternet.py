@@ -1,5 +1,7 @@
 """Joint water/culvert policy, tested independently from terrain interpolation."""
 
+import json
+
 import geopandas as gpd
 import numpy as np
 import pytest
@@ -7,6 +9,7 @@ import rasterio
 from shapely.geometry import LineString, box
 
 from waterlagen.afwateringseenheden.config import (
+    Brandlaag,
     BrandlagenConfig,
     read_brandlagen_config,
 )
@@ -68,7 +71,7 @@ def prepare(tmp_path, data, extra=None, grids=None, primary_pieces=None):
         optional() if extra is None else extra,
         grids,
         network,
-        BrandlagenConfig(waternet=True, geisoleerde_branddiepte_m=10),
+        BrandlagenConfig(geisoleerde_branddiepte_m=10),
         primary_culvert_pieces=primary_pieces,
     )
     return network
@@ -423,15 +426,88 @@ def test_culvert_preserves_crossing_allowed_primary_and_secondary(
 def test_waternet_config_roles(tmp_path):
     path = tmp_path / "config.toml"
     path.write_text(
-        "waternet = true\ngeisoleerde_branddiepte_m = 10\n"
+        "geisoleerde_branddiepte_m = 10\n"
         '[[lagen]]\npath="bgt.gpkg"\nlayer="duikers"\nrol="duiker"\nbron="bgt"\n'
     )
     config = read_brandlagen_config(path)
-    assert config.waternet
+    assert config.geisoleerde_branddiepte_m == 10
     assert config.lagen[0].bron == "bgt"
-    path.write_text(path.read_text().replace("waternet = true", "waternet = false"))
-    with pytest.raises(ValueError, match="require waternet"):
+
+
+@pytest.mark.parametrize("value", ["true", "false"])
+def test_waternet_switch_is_no_longer_accepted(tmp_path, value):
+    path = tmp_path / "config.toml"
+    path.write_text(f"waternet = {value}\n")
+    with pytest.raises(ValueError, match="Unknown configuration keys: waternet"):
         read_brandlagen_config(path)
+
+
+@pytest.mark.parametrize("additional_sources", [False, True])
+def test_production_always_prepares_waternet(tmp_path, monkeypatch, additional_sources):
+    from waterlagen.afwateringseenheden import productie
+    from waterlagen.afwateringseenheden.tiles import AfwateringseenhedenTilesResult
+    from waterlagen.areas import area_from_bounds
+    from waterlagen.datastore import DataStore
+
+    store = DataStore(
+        data_dir=tmp_path,
+        source_data_dir=tmp_path / "sources",
+        processed_data_dir=tmp_path / "outputs",
+    )
+    store.hydamo_dir.mkdir(parents=True, exist_ok=True)
+    for name in ("hydamo.gpkg", "rws_hydamo.gpkg"):
+        (store.hydamo_dir / name).write_text("source identity")
+    placeholder = tmp_path / "source-placeholder"
+    placeholder.write_text("local input identity")
+    data = sources(
+        primary=[line((1, 21), (39, 21))],
+        secondary=[line((5, 21), (5, 31)), line((31, 3), (39, 3))],
+        tertiary=[line((1, 37), (9, 37))],
+    )
+    for prefix, features in (
+        ("primary", data.primary),
+        ("secondary", data.secondary),
+        ("primary", data.targets),
+    ):
+        features["bron_id"] = [f"{prefix}-{i}" for i in range(len(features))]
+    monkeypatch.setattr(productie, "read_watersysteem_sources", lambda *a, **kw: data)
+    monkeypatch.setattr(productie, "ensure_land_boundary", lambda *a: placeholder)
+    monkeypatch.setattr(productie, "prepare_ahn", lambda *a: placeholder)
+    monkeypatch.setattr(productie, "_grid_for_square", lambda *a, **kw: grid())
+    config = None
+    if additional_sources:
+        path = tmp_path / "bgt.gpkg"
+        frame([box(15, 1, 19, 5)]).to_file(path, layer="water")
+        config = BrandlagenConfig(
+            (Brandlaag(path, "water", brandwaarde=-10, prioriteit=1, rol="water"),)
+        )
+
+    def calculate(gebied, **kwargs):
+        network_path = kwargs["watersysteem_path"]
+        treatment, _, _, _, _ = read_waternet(network_path, grid())
+        assert treatment[cell(grid(), 5, 25)] == 2  # connected secondary
+        assert treatment[cell(grid(), 35, 3)] == 3  # isolated secondary
+        assert treatment[cell(grid(), 5, 37)] == 3  # tertiary
+        if additional_sources:
+            assert treatment[cell(grid(), 17, 3)] == 3
+        target = kwargs["merged_output_path"]
+        target.write_text("checked prepared network")
+        return AfwateringseenhedenTilesResult(
+            kwargs["output_dir"], (), target, frame(), (), ()
+        )
+
+    monkeypatch.setattr(productie, "calculate_afwateringseenheden_tiles", calculate)
+    result = productie.main(
+        store,
+        area=area_from_bounds((0, 0, 40, 40)),
+        workers=1,
+        run_id="test",
+        offline=True,
+        brandlagen=config,
+    )
+    parameters = json.loads((result.parent / "run.json").read_text())["parameters"]
+    assert parameters["waternet_policy"] == productie.WATERNET_POLICY
+    assert "waternet" not in parameters["brandlagen"]
 
 
 def test_stale_preparation_is_rejected(tmp_path):
@@ -477,7 +553,7 @@ def test_side_connection_reaches_primary_target_through_burned_culvert(tmp_path)
     )
     extra["brandwaarde"] = [-10.0, -5.0]
     extra["prioriteit"] = [2, 1]
-    prepare_waternet(data, extra, [grid()], network, BrandlagenConfig(waternet=True))
+    prepare_waternet(data, extra, [grid()], network, BrandlagenConfig())
     rasters = prepare_watersysteem_rasters(
         box(0, 0, 40, 40),
         burn_depth_m=100,

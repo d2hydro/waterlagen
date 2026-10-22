@@ -56,6 +56,7 @@ DOWNLOADS = {
     "hydamo": [Call("waterlagen.hydamo", "download_hydamo", "gpkg")],
     "rijkswateren": [Call("waterlagen.rijkswateren", "download_rijkswateren", "path")],
     "liwo": [Call("waterlagen.liwo", "download_raster")],
+    "osm_canals": [Call("waterlagen.osm_waterlopen", "download_osm_canals", "path")],
     "osm_drinkwater": [
         Call(
             "waterlagen.functioneel_landgebruik.osm_drinkwater",

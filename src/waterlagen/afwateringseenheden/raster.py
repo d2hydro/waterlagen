@@ -583,7 +583,7 @@ def prepare_watersysteem_rasters(
     output_dir = Path(output_dir or data_store.afwateringseenheden_path / "rasters")
     if (
         brandlagen is not None
-        and brandlagen.waternet
+        and any(layer.rol in {"water", "duiker"} for layer in brandlagen.lagen)
         and not (watersysteem_path.parent / "waternet" / "manifest.json").exists()
     ):
         raise ValueError(

@@ -150,6 +150,22 @@ Haal de geometrieën van de beoordeelde drinkwaterlocaties uit OSM op en schrijf
 --8<-- "docs/reference/voorbeelden/download_osm_drinkwater.py"
 ```
 
+## OSM-kanalen
+
+Download open kanalen voor het ingestelde gebied. Het voorbeeld gebruikt
+Aa en Maas inclusief tegelbuffers en schrijft `source_data/osm/osm_canals.gpkg`.
+Pas `DATA_DIR` en `BOUNDS` aan voor een ander gebied. Een bestaande download
+wordt alleen hergebruikt bij dezelfde selectie; kies anders een ander uitvoerpad
+of zet `OVERWRITE = True`.
+
+[Over deze bron](../bronlagen/osm-waterlopen.md) · [API-referentie](osm_waterlopen.md)
+
+[Download het Python-script](voorbeelden/download_osm_canals.py).
+
+```python
+--8<-- "docs/reference/voorbeelden/download_osm_canals.py"
+```
+
 ## TOP10NL
 
 Download het landelijke TOP10NL-GeoPackage. Dit is een grote download die niet door het voorbeeldgebied wordt begrensd.
