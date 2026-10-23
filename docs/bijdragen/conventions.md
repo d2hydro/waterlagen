@@ -22,21 +22,21 @@ dekking en wijzigingsdekking in Codecov.
 
 De volledige operationele instructies voor coding agents staan in [AGENTS.md](https://github.com/d2hydro/waterlagen/blob/main/AGENTS.md).
 
-## Tijdelijke agent-werkdocumenten voor het samenvoegen
+## Tijdelijke ontwikkelwerkdocumenten voor het samenvoegen
 
-De statuscheck `Temporary agent work documents` controleert bij pull requests naar
+De statuscheck `Temporary dev work documents` controleert bij pull requests naar
 `main` de volledige Git-index. Alle getrackte bestanden onder
 `docs/bijdragen/implementatieplannen/` en `reviewcases/` blokkeren de check, ook
 ongewijzigde bestanden, indexpagina's en Python-reproductiescripts. Er zijn geen
 uitzonderingen voor bestaande bestanden. Niet-getrackte lokale bestanden blijven
 buiten de controle.
 
-De controle staat in `scripts/check_agent_workdocs.py` en werkt zelfstandig met
+De controle staat in `scripts/check_dev_workdocs.py` en werkt zelfstandig met
 Python 3.11 of hoger en Git, zonder extra Python-pakketten of toegang tot andere
 repositories. Voer vanuit de repositoryroot uit:
 
 ```shell
-pixi run python -I scripts/check_agent_workdocs.py --repo .
+pixi run python -I scripts/check_dev_workdocs.py --repo .
 ```
 
 Zonder pixi kan dezelfde opdracht met `python -I` worden uitgevoerd. Exitcode `0`
@@ -46,7 +46,7 @@ kun je ook een Markdown-samenvatting bewaren. De GitHub Action gebruikt hiervoor
 `GITHUB_STEP_SUMMARY`, zodat de status, bestanden en opruiminstructie direct bij
 de workflowresultaten staan.
 
-De workflow `.github/workflows/agent-workdocs.yml` gebruikt uitsluitend de
+De workflow `.github/workflows/dev-workdocs.yml` gebruikt uitsluitend de
 meegeleverde controle en tests. Er zijn geen aanvullende tokens, private
 downloads of configuratievariabelen nodig. De centrale bron wordt intern bij
 D2hydro onderhouden; updates van de zelfstandige kopie worden als gewone
@@ -56,7 +56,7 @@ tests zelf aanpassen en uitvoeren zonder toegang tot de centrale repository.
 Voer de tests met alleen Python uit:
 
 ```shell
-python -B -m unittest discover -s tests -p test_check_agent_workdocs.py -v
+python -B -m unittest discover -s tests -p test_check_dev_workdocs.py -v
 ```
 
 Bewaar voor het samenvoegen relevante uitleg en besluiten in de reguliere
@@ -68,10 +68,12 @@ besluiten bevatten. Haal daarna alleen afgeronde werkdocumenten uit Git:
 schijf verwijderen of in `.gitignore` zetten haalt het niet uit de Git-index.
 Neem de gestagede verwijderingen mee in de PR en voer de controle opnieuw uit.
 
-Een beheerder kan de check `Temporary agent work documents` na een geslaagde
+Een beheerder kan de check `Temporary dev work documents` na een geslaagde
 uitvoering verplicht maken in de branch protection rule of ruleset voor `main`.
 Zonder die instelling geeft de workflow wel een foutstatus, maar blokkeert GitHub
 het samenvoegen niet automatisch. De integratie wijzigt deze instellingen niet.
+Als de check al verplicht was onder de vorige naam, moet een beheerder de
+vereiste statuscheck vervangen door `Temporary dev work documents`.
 
 ## Python-voorbeelden en API-documentatie
 

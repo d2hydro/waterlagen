@@ -1,4 +1,4 @@
-name: Agent work documents
+name: Dev work documents
 
 on:
   pull_request:
@@ -10,8 +10,8 @@ permissions:
   contents: read
 
 jobs:
-  agent-workdocs:
-    name: Temporary agent work documents
+  dev-workdocs:
+    name: Temporary dev work documents
     runs-on: ubuntu-latest
     steps:
       - name: Pull request uitchecken
@@ -25,8 +25,8 @@ jobs:
           python-version: "3.11"
 
       - name: Controle testen
-        run: python -B -m unittest discover -s tests -p test_check_agent_workdocs.py -v
+        run: python -B -m unittest discover -s tests -p test_check_dev_workdocs.py -v
 
-      - name: Tijdelijke agent-werkdocumenten controleren
+      - name: Tijdelijke ontwikkelwerkdocumenten controleren
         shell: bash
-        run: python -I scripts/check_agent_workdocs.py --repo . --summary "$GITHUB_STEP_SUMMARY"
+        run: python -I scripts/check_dev_workdocs.py --repo . --summary "$GITHUB_STEP_SUMMARY"

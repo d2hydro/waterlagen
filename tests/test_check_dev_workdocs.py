@@ -6,12 +6,12 @@ import tempfile
 import unittest
 from pathlib import Path
 
-SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "check_agent_workdocs.py"
+SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "check_dev_workdocs.py"
 
 
 class WorkdocsTests(unittest.TestCase):
     def setUp(self) -> None:
-        self.temporary = tempfile.TemporaryDirectory(prefix="agent-workdocs-")
+        self.temporary = tempfile.TemporaryDirectory(prefix="dev-workdocs-")
         self.addCleanup(self.temporary.cleanup)
         self.repository = Path(self.temporary.name) / "repository with spaces"
         self.repository.mkdir()

@@ -1,6 +1,6 @@
-"""Controleer tijdelijke agent-werkdocumenten in de volledige Git-index.
+"""Controleer tijdelijke ontwikkelwerkdocumenten in de volledige Git-index.
 
-Centrale bron: d2hydro/devtools, scripts/check_agent_workdocs.py.
+Centrale bron: d2hydro/devtools, scripts/check_dev_workdocs.py.
 Zelfstandig te kopieren; vereist Python 3.11+ en Git, geen extra pakketten.
 Exitcodes: 0 = schoon, 1 = tijdelijke bestanden, 2 = controle niet voltooid.
 """
@@ -49,7 +49,7 @@ def _report(message: str, summary: Path | None, exit_code: int) -> int:
     if summary is not None:
         status = {0: "Geslaagd", 1: "Merge geblokkeerd", 2: "Controle niet voltooid"}
         markdown = (
-            "## Tijdelijke agent-werkdocumenten\n\n"
+            "## Tijdelijke ontwikkelwerkdocumenten\n\n"
             f"**{status[exit_code]}**\n\n"
             f"<pre>{html.escape(message)}</pre>\n\n"
         )
@@ -94,13 +94,13 @@ def main(argv: list[str] | None = None) -> int:
 
     if not blocked:
         return _report(
-            "Geslaagd: geen tijdelijke agent-werkdocumenten in de Git-index.",
+            "Geslaagd: geen tijdelijke ontwikkelwerkdocumenten in de Git-index.",
             args.summary,
             0,
         )
 
     lines = [
-        f"Merge geblokkeerd: {len(blocked)} tijdelijke agent-werkdocument(en) in Git."
+        f"Merge geblokkeerd: {len(blocked)} tijdelijke ontwikkelwerkdocument(en) in Git."
     ]
     for path in blocked:
         reason = next(
