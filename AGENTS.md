@@ -114,7 +114,7 @@ Waterlagen documentation serves three distinct audiences:
 2. users who want to produce those datasets themselves;
 3. contributors developing Waterlagen.
 
-Keep these concerns separated.
+Keep these concerns separated. Document only what users or developers need to know or do. Keep documentation concise, clear, and easy for people to read, without unnecessary technical detail.
 
 - User-facing documentation is written in Dutch.
 - Describe processing directly, without referring to Waterlagen in the third person as the actor (for example, use "De hoogte wordt berekend" instead of "Waterlagen berekent de hoogte").
@@ -122,8 +122,8 @@ Keep these concerns separated.
 - Documentation is built with MkDocs from `docs/`.
 - Organize user documentation around concepts and workflows, not around the internal Python module structure.
 - Keep functional documentation separate from Python API reference documentation.
-- Avoid duplication. Define information in its canonical location and link to it elsewhere.
-- When public behavior, processing methods, inputs, outputs, or workflows change, update the corresponding documentation in the same change.
+- Avoid duplication. Define information in its canonical location and link to it elsewhere. Do not repeat information already clear from code or configuration to the intended audience.
+- When public behavior, processing methods, inputs, outputs, or workflows change, update the corresponding documentation in the same change. Prefer simplifying or replacing existing text over adding new text.
 - Do not document intended behavior that is not actually implemented unless it is explicitly identified as planned or conceptual.
 
 ## Agent Implementation Plans
@@ -135,7 +135,7 @@ Keep these concerns separated.
 - Publish or link to these plans from the documentation site only when the user explicitly requests that publication.
 - After changing their publication configuration, build the documentation and verify that excluded plans are absent from both the generated pages and the search index.
 - Treat implementation plans as temporary working documents, not permanent project documentation.
-- After implementation, ensure relevant functionality, technical details, and design decisions are reflected in the authoritative project documentation. Record significant architectural decisions separately when appropriate.
+- After implementation, preserve only information needed for ongoing use or maintenance in the authoritative project documentation. Keep temporary implementation details and change rationale in the PR; record significant architectural decisions separately when appropriate.
 - Remove completed implementation plans and associated grilling outcomes before merging, unless the user explicitly requests their retention or they contain information worth preserving that has not yet been documented elsewhere.
 - Track remaining work, known limitations, and future improvements in GitHub issues rather than retaining completed plans as informal backlogs.
 - Do not retain implementation plans solely for historical reference; Git history provides sufficient traceability when the relevant commits remain accessible.
@@ -340,7 +340,7 @@ The project must be transparent about this while accurately representing human r
 
 ## Documentation Changes
 
-When code changes, explicitly consider whether documentation also needs to change.
+When code changes, assess documentation impact; add documentation only if its absence could cause misunderstanding or incorrect use.
 
 In particular:
 
