@@ -444,6 +444,61 @@ def test_point_outside_tolerance_does_not_split_or_connect():
     assert result.hydroobject_verbinding.empty
 
 
+@pytest.mark.parametrize("source_index", [42, "waterloop-a"])
+def test_empty_culverts_preserve_line_with_index_identifier(source_index):
+    hydroobjecten = gpd.GeoDataFrame(
+        geometry=[LineString([(0, 0), (20, 0)])],
+        index=[source_index],
+        crs=CRS,
+    )
+    empty = gpd.GeoDataFrame(geometry=[], crs=CRS)
+    baseline = prepare_watersysteem(hydroobjecten, empty).hydroobject_segmenten
+
+    result = prepare_watersysteem(
+        hydroobjecten, empty, duikersifonhevel=empty
+    ).hydroobject_segmenten
+
+    assert len(result) == 1
+    assert result.geometry.iloc[0].equals(hydroobjecten.geometry.iloc[0])
+    assert result.geometry.iloc[0].equals(baseline.geometry.iloc[0])
+    assert result.bron_id.tolist() == baseline.bron_id.tolist() == [str(source_index)]
+    assert "bron_id" not in hydroobjecten.columns
+    assert hydroobjecten.index.tolist() == [source_index]
+
+
+@pytest.mark.parametrize("with_culvert", [False, True])
+def test_culvert_target_selection_preserves_index_after_filtering_and_exploding(
+    with_culvert,
+):
+    geometry = MultiLineString([[(0, 0), (10, 0)], [(20, 0), (30, 0)]])
+    primary = gpd.GeoDataFrame(
+        geometry=[None, geometry, LineString([(0, 10), (20, 10)])],
+        index=[4, 42, 75],
+        crs=CRS,
+    )
+    empty = gpd.GeoDataFrame(geometry=[], crs=CRS)
+    culverts = gpd.GeoDataFrame(
+        geometry=[LineString([(2, 0), (8, 0)])] if with_culvert else [],
+        crs=CRS,
+    )
+
+    result = prepare_watersysteem(
+        primary.loc[[42]],
+        empty,
+        hydroobject_primair=primary,
+        duikersifonhevel=culverts,
+    )
+    segments = result.hydroobject_segmenten
+
+    assert segments.geometry.union_all().equals(geometry)
+    assert set(segments.bron_id) == {"42"}
+    assert segments.segment_key.is_unique
+    assert segments.loc[~segments.doelgeschikt].length.sum() == (
+        6 if with_culvert else 0
+    )
+    assert set(result.hydroobject_primair_bron.bron_id) == {"42", "75"}
+
+
 def test_endpoint_and_duplicate_points_do_not_create_empty_segments():
     result = split_hydroobjecten_at_points(
         _hydroobjecten().iloc[[0]],

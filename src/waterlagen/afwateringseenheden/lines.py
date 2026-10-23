@@ -105,7 +105,7 @@ def _to_project_crs(features: gpd.GeoDataFrame, *, name: str) -> gpd.GeoDataFram
 
 
 def _prepare_hydroobjecten(hydroobjecten: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
-    """Transform, validate, and explode line geometry while preserving fields."""
+    """Transform, validate, and explode lines while preserving source identifiers."""
     source = _to_project_crs(hydroobjecten, name="hydroobjecten")
     records: list[dict[str, object]] = []
     for index, row in source.iterrows():
@@ -131,6 +131,7 @@ def _prepare_hydroobjecten(hydroobjecten: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
                 logger.warning("Skipping empty hydroobject line at index %s", index)
                 continue
             record = row.drop(labels="geometry").to_dict()
+            record["bron_id"] = _source_identifier(row, index)
             record["geometry"] = line
             records.append(record)
 
