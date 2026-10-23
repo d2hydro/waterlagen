@@ -30,7 +30,7 @@ def test_fill_gap_removes_linear_remnants_between_donors(
         ("b", box(1, 0, 2, 2)),
     ]:
         subcatchments = gpd.GeoDataFrame(
-            {"segment_fid": [1], "segment_id": ["segment"]},
+            {"segment_id": [1], "segment_key": ["segment"]},
             geometry=[polygon],
             crs=settings.crs,
         )
@@ -56,13 +56,13 @@ def test_gap_filling_uses_safe_neighbour_and_preserves_existing_assignment(
     east = Tile("east", 1, 0, 10, 0, 20, 10)
     existing = box(10, 2, 10.25, 8)
     west_polygons = gpd.GeoDataFrame(
-        {"segment_fid": [1, 2], "segment_id": ["safe", "boundary"]},
+        {"segment_id": [1, 2], "segment_key": ["safe", "boundary"]},
         # Segment 1 is usable; segment 2 touches the west tile's outer edge.
         geometry=[box(8, 2, 12, 8), box(8, 8, 15, 9)],
         crs=settings.crs,
     )
     east_polygons = gpd.GeoDataFrame(
-        {"segment_fid": [3], "segment_id": ["existing"]},
+        {"segment_id": [3], "segment_key": ["existing"]},
         geometry=[existing],
         crs=settings.crs,
     )
@@ -90,6 +90,18 @@ def test_gap_filling_uses_safe_neighbour_and_preserves_existing_assignment(
         )
 
     domain = box(0, 0, 20, 10)
+    network = tmp_path / "network.gpkg"
+    gpd.GeoDataFrame(
+        {
+            "segment_key": ["safe", "boundary", "existing"],
+            "waterbeheercode": ["38", "80", "30"],
+            "bronbestand": ["source.gpkg"] * 3,
+            "bronlaag": ["hydroobject"] * 3,
+            "bron_fid": [1, 2, 3],
+        },
+        geometry=[LineString([(0, 0), (1, 1)])] * 3,
+        crs=settings.crs,
+    ).to_file(network, layer="hydroobject_segment")
     monkeypatch.setattr(
         tiles_module, "_calculate_tile_timed", lambda job: tile_results[job.tile.column]
     )
@@ -98,14 +110,15 @@ def test_gap_filling_uses_safe_neighbour_and_preserves_existing_assignment(
         burn_depth_m=1,
         output_dir=tmp_path / "tiles",
         merged_output_path=tmp_path / "merged.gpkg",
+        watersysteem_path=network,
         tile_size_m=10,
         tile_buffer_m=5,
         resolution_m=1,
     )
-    merged = result.merged_subcatchments.set_index("segment_id")
+    merged = result.merged_subcatchments.set_index("segment_key")
 
     assert result.merged_path.is_file()
-    assert result.gap_additions.segment_id.tolist() == ["safe"]
+    assert result.gap_additions.segment_key.tolist() == ["safe"]
     assert result.gap_additions.bron_tegel.tolist() == ["west"]
     assert result.gap_additions.geometry.union_all().equals(box(10.25, 2, 12, 8))
     assert merged.loc["existing"].geometry.equals(existing)
@@ -113,21 +126,31 @@ def test_gap_filling_uses_safe_neighbour_and_preserves_existing_assignment(
     assert "boundary" not in merged.index
     assert merged.geometry.union_all().intersection(box(10, 8, 12, 9)).area == 0
     assert merged.area.sum() == merged.geometry.union_all().area
+    assert merged.loc["safe"].waterbeheercode == "38"
+    assert merged.loc["existing"].bron_fid == 3
+    assert set(
+        gpd.list_layers(result.merged_path).query("geometry_type.notna()")["name"]
+    ) == {"afvoergebiedaanvoergebied"}
+    control_path = tmp_path / "controle.gpkg"
+    additions = gpd.read_file(control_path, layer="aanvulling_buurtegels")
+    remaining = gpd.read_file(control_path, layer="niet_toegewezen")
+    assert additions.bron_tegel.tolist() == ["west"]
+    assert remaining.area.sum() == pytest.approx(result.remaining_gaps.area.sum())
 
 
-def test_merge_rejects_inconsistent_segment_ids() -> None:
+def test_merge_rejects_inconsistent_segment_keys() -> None:
     polygons = gpd.GeoDataFrame(
-        {"segment_fid": [1, 2], "segment_id": ["same", "same"]},
+        {"segment_id": [1, 2], "segment_key": ["same", "same"]},
         geometry=[box(0, 0, 1, 1), box(1, 0, 2, 1)],
         crs=settings.crs,
     )
-    with pytest.raises(ValueError, match="different segment_fid"):
+    with pytest.raises(ValueError, match="different segment_id"):
         tiles_module._merge_subcatchments([polygons], gebied=box(0, 0, 2, 1))
 
 
 def test_gap_filling_rejects_overlapping_donor_polygons() -> None:
     polygons = gpd.GeoDataFrame(
-        {"segment_fid": [1, 2], "segment_id": ["first", "second"]},
+        {"segment_id": [1, 2], "segment_key": ["first", "second"]},
         geometry=[box(0, 0, 2, 2), box(1, 0, 3, 2)],
         crs=settings.crs,
     )
@@ -140,7 +163,7 @@ def test_invalid_merged_output_preserves_existing_file(tmp_path: Path) -> None:
     target = tmp_path / "merged.gpkg"
     target.write_bytes(b"previous result")
     lines = gpd.GeoDataFrame(
-        {"segment_fid": [1], "segment_id": ["first"]},
+        {"segment_id": [1], "segment_key": ["first"]},
         geometry=[LineString([(0, 0), (1, 1)])],
         crs=settings.crs,
     )

@@ -278,20 +278,6 @@
         </config>
       </editWidget>
     </field>
-    <field name="van_bron_id" configurationFlags="NoFlag">
-      <editWidget type="TextEdit">
-        <config>
-          <Option/>
-        </config>
-      </editWidget>
-    </field>
-    <field name="naar_bron_id" configurationFlags="NoFlag">
-      <editWidget type="TextEdit">
-        <config>
-          <Option/>
-        </config>
-      </editWidget>
-    </field>
     <field name="objecttype" configurationFlags="NoFlag">
       <editWidget type="TextEdit">
         <config>
@@ -299,28 +285,28 @@
         </config>
       </editWidget>
     </field>
-    <field name="punt_bron_id" configurationFlags="NoFlag">
+    <field name="kunstwerk_bron_id" configurationFlags="NoFlag">
       <editWidget type="TextEdit">
         <config>
           <Option/>
         </config>
       </editWidget>
     </field>
-    <field name="punt_code" configurationFlags="NoFlag">
+    <field name="kunstwerk_code" configurationFlags="NoFlag">
       <editWidget type="TextEdit">
         <config>
           <Option/>
         </config>
       </editWidget>
     </field>
-    <field name="punt_naam" configurationFlags="NoFlag">
+    <field name="kunstwerk_naam" configurationFlags="NoFlag">
       <editWidget type="TextEdit">
         <config>
           <Option/>
         </config>
       </editWidget>
     </field>
-    <field name="waterbeheercode" configurationFlags="NoFlag">
+    <field name="kunstwerk_waterbeheercode" configurationFlags="NoFlag">
       <editWidget type="TextEdit">
         <config>
           <Option/>
@@ -332,73 +318,61 @@
     <alias field="fid" name="" index="0"/>
     <alias field="van_segment" name="" index="1"/>
     <alias field="naar_segment" name="" index="2"/>
-    <alias field="van_bron_id" name="" index="3"/>
-    <alias field="naar_bron_id" name="" index="4"/>
-    <alias field="objecttype" name="" index="5"/>
-    <alias field="punt_bron_id" name="" index="6"/>
-    <alias field="punt_code" name="" index="7"/>
-    <alias field="punt_naam" name="" index="8"/>
-    <alias field="waterbeheercode" name="" index="9"/>
+    <alias field="objecttype" name="" index="3"/>
+    <alias field="kunstwerk_bron_id" name="" index="4"/>
+    <alias field="kunstwerk_code" name="" index="5"/>
+    <alias field="kunstwerk_naam" name="" index="6"/>
+    <alias field="kunstwerk_waterbeheercode" name="" index="7"/>
   </aliases>
   <splitPolicies>
     <policy field="fid" policy="Duplicate"/>
     <policy field="van_segment" policy="Duplicate"/>
     <policy field="naar_segment" policy="Duplicate"/>
-    <policy field="van_bron_id" policy="Duplicate"/>
-    <policy field="naar_bron_id" policy="Duplicate"/>
     <policy field="objecttype" policy="Duplicate"/>
-    <policy field="punt_bron_id" policy="Duplicate"/>
-    <policy field="punt_code" policy="Duplicate"/>
-    <policy field="punt_naam" policy="Duplicate"/>
-    <policy field="waterbeheercode" policy="Duplicate"/>
+    <policy field="kunstwerk_bron_id" policy="Duplicate"/>
+    <policy field="kunstwerk_code" policy="Duplicate"/>
+    <policy field="kunstwerk_naam" policy="Duplicate"/>
+    <policy field="kunstwerk_waterbeheercode" policy="Duplicate"/>
   </splitPolicies>
   <duplicatePolicies>
     <policy field="fid" policy="Duplicate"/>
     <policy field="van_segment" policy="Duplicate"/>
     <policy field="naar_segment" policy="Duplicate"/>
-    <policy field="van_bron_id" policy="Duplicate"/>
-    <policy field="naar_bron_id" policy="Duplicate"/>
     <policy field="objecttype" policy="Duplicate"/>
-    <policy field="punt_bron_id" policy="Duplicate"/>
-    <policy field="punt_code" policy="Duplicate"/>
-    <policy field="punt_naam" policy="Duplicate"/>
-    <policy field="waterbeheercode" policy="Duplicate"/>
+    <policy field="kunstwerk_bron_id" policy="Duplicate"/>
+    <policy field="kunstwerk_code" policy="Duplicate"/>
+    <policy field="kunstwerk_naam" policy="Duplicate"/>
+    <policy field="kunstwerk_waterbeheercode" policy="Duplicate"/>
   </duplicatePolicies>
   <defaults>
     <default field="fid" expression="" applyOnUpdate="0"/>
     <default field="van_segment" expression="" applyOnUpdate="0"/>
     <default field="naar_segment" expression="" applyOnUpdate="0"/>
-    <default field="van_bron_id" expression="" applyOnUpdate="0"/>
-    <default field="naar_bron_id" expression="" applyOnUpdate="0"/>
     <default field="objecttype" expression="" applyOnUpdate="0"/>
-    <default field="punt_bron_id" expression="" applyOnUpdate="0"/>
-    <default field="punt_code" expression="" applyOnUpdate="0"/>
-    <default field="punt_naam" expression="" applyOnUpdate="0"/>
-    <default field="waterbeheercode" expression="" applyOnUpdate="0"/>
+    <default field="kunstwerk_bron_id" expression="" applyOnUpdate="0"/>
+    <default field="kunstwerk_code" expression="" applyOnUpdate="0"/>
+    <default field="kunstwerk_naam" expression="" applyOnUpdate="0"/>
+    <default field="kunstwerk_waterbeheercode" expression="" applyOnUpdate="0"/>
   </defaults>
   <constraints>
     <constraint field="fid" notnull_strength="1" constraints="3" unique_strength="1" exp_strength="0"/>
     <constraint field="van_segment" notnull_strength="0" constraints="0" unique_strength="0" exp_strength="0"/>
     <constraint field="naar_segment" notnull_strength="0" constraints="0" unique_strength="0" exp_strength="0"/>
-    <constraint field="van_bron_id" notnull_strength="0" constraints="0" unique_strength="0" exp_strength="0"/>
-    <constraint field="naar_bron_id" notnull_strength="0" constraints="0" unique_strength="0" exp_strength="0"/>
     <constraint field="objecttype" notnull_strength="0" constraints="0" unique_strength="0" exp_strength="0"/>
-    <constraint field="punt_bron_id" notnull_strength="0" constraints="0" unique_strength="0" exp_strength="0"/>
-    <constraint field="punt_code" notnull_strength="0" constraints="0" unique_strength="0" exp_strength="0"/>
-    <constraint field="punt_naam" notnull_strength="0" constraints="0" unique_strength="0" exp_strength="0"/>
-    <constraint field="waterbeheercode" notnull_strength="0" constraints="0" unique_strength="0" exp_strength="0"/>
+    <constraint field="kunstwerk_bron_id" notnull_strength="0" constraints="0" unique_strength="0" exp_strength="0"/>
+    <constraint field="kunstwerk_code" notnull_strength="0" constraints="0" unique_strength="0" exp_strength="0"/>
+    <constraint field="kunstwerk_naam" notnull_strength="0" constraints="0" unique_strength="0" exp_strength="0"/>
+    <constraint field="kunstwerk_waterbeheercode" notnull_strength="0" constraints="0" unique_strength="0" exp_strength="0"/>
   </constraints>
   <constraintExpressions>
     <constraint field="fid" desc="" exp=""/>
     <constraint field="van_segment" desc="" exp=""/>
     <constraint field="naar_segment" desc="" exp=""/>
-    <constraint field="van_bron_id" desc="" exp=""/>
-    <constraint field="naar_bron_id" desc="" exp=""/>
     <constraint field="objecttype" desc="" exp=""/>
-    <constraint field="punt_bron_id" desc="" exp=""/>
-    <constraint field="punt_code" desc="" exp=""/>
-    <constraint field="punt_naam" desc="" exp=""/>
-    <constraint field="waterbeheercode" desc="" exp=""/>
+    <constraint field="kunstwerk_bron_id" desc="" exp=""/>
+    <constraint field="kunstwerk_code" desc="" exp=""/>
+    <constraint field="kunstwerk_naam" desc="" exp=""/>
+    <constraint field="kunstwerk_waterbeheercode" desc="" exp=""/>
   </constraintExpressions>
   <expressionfields/>
   <attributeactions>
@@ -409,13 +383,11 @@
       <column type="field" name="fid" width="-1" hidden="0"/>
       <column type="field" name="van_segment" width="-1" hidden="0"/>
       <column type="field" name="naar_segment" width="-1" hidden="0"/>
-      <column type="field" name="van_bron_id" width="-1" hidden="0"/>
-      <column type="field" name="naar_bron_id" width="-1" hidden="0"/>
       <column type="field" name="objecttype" width="-1" hidden="0"/>
-      <column type="field" name="punt_bron_id" width="-1" hidden="0"/>
-      <column type="field" name="punt_code" width="-1" hidden="0"/>
-      <column type="field" name="punt_naam" width="-1" hidden="0"/>
-      <column type="field" name="waterbeheercode" width="-1" hidden="0"/>
+      <column type="field" name="kunstwerk_bron_id" width="-1" hidden="1"/>
+      <column type="field" name="kunstwerk_code" width="-1" hidden="0"/>
+      <column type="field" name="kunstwerk_naam" width="-1" hidden="0"/>
+      <column type="field" name="kunstwerk_waterbeheercode" width="-1" hidden="0"/>
       <column type="actions" width="-1" hidden="1"/>
     </columns>
   </attributetableconfig>
@@ -446,42 +418,48 @@ def my_form_open(dialog, layer, feature):
     control = dialog.findChild(QWidget, "MyLineEdit")
 ]]></editforminitcode>
   <featformsuppress>0</featformsuppress>
-  <editorlayout>generatedlayout</editorlayout>
+  <editorlayout>tablayout</editorlayout>
+  <attributeEditorForm>
+    <attributeEditorField name="fid" index="0" showLabel="1"/>
+    <attributeEditorField name="van_segment" index="1" showLabel="1"/>
+    <attributeEditorField name="naar_segment" index="2" showLabel="1"/>
+    <attributeEditorContainer name="Gekoppeld kunstwerk" type="GroupBox" groupBox="1" columnCount="1" showLabel="1" visibilityExpressionEnabled="1" visibilityExpression="&quot;objecttype&quot; IS NOT NULL OR &quot;kunstwerk_bron_id&quot; IS NOT NULL">
+      <attributeEditorField name="objecttype" index="3" showLabel="1"/>
+      <attributeEditorField name="kunstwerk_bron_id" index="4" showLabel="1"/>
+      <attributeEditorField name="kunstwerk_code" index="5" showLabel="1"/>
+      <attributeEditorField name="kunstwerk_naam" index="6" showLabel="1"/>
+      <attributeEditorField name="kunstwerk_waterbeheercode" index="7" showLabel="1"/>
+    </attributeEditorContainer>
+  </attributeEditorForm>
   <editable>
     <field name="fid" editable="1"/>
-    <field name="naar_bron_id" editable="1"/>
     <field name="naar_segment" editable="1"/>
     <field name="objecttype" editable="1"/>
-    <field name="punt_bron_id" editable="1"/>
-    <field name="punt_code" editable="1"/>
-    <field name="punt_naam" editable="1"/>
-    <field name="van_bron_id" editable="1"/>
+    <field name="kunstwerk_bron_id" editable="1"/>
+    <field name="kunstwerk_code" editable="1"/>
+    <field name="kunstwerk_naam" editable="1"/>
     <field name="van_segment" editable="1"/>
-    <field name="waterbeheercode" editable="1"/>
+    <field name="kunstwerk_waterbeheercode" editable="1"/>
   </editable>
   <labelOnTop>
     <field labelOnTop="0" name="fid"/>
-    <field labelOnTop="0" name="naar_bron_id"/>
     <field labelOnTop="0" name="naar_segment"/>
     <field labelOnTop="0" name="objecttype"/>
-    <field labelOnTop="0" name="punt_bron_id"/>
-    <field labelOnTop="0" name="punt_code"/>
-    <field labelOnTop="0" name="punt_naam"/>
-    <field labelOnTop="0" name="van_bron_id"/>
+    <field labelOnTop="0" name="kunstwerk_bron_id"/>
+    <field labelOnTop="0" name="kunstwerk_code"/>
+    <field labelOnTop="0" name="kunstwerk_naam"/>
     <field labelOnTop="0" name="van_segment"/>
-    <field labelOnTop="0" name="waterbeheercode"/>
+    <field labelOnTop="0" name="kunstwerk_waterbeheercode"/>
   </labelOnTop>
   <reuseLastValue>
     <field reuseLastValue="0" name="fid"/>
-    <field reuseLastValue="0" name="naar_bron_id"/>
     <field reuseLastValue="0" name="naar_segment"/>
     <field reuseLastValue="0" name="objecttype"/>
-    <field reuseLastValue="0" name="punt_bron_id"/>
-    <field reuseLastValue="0" name="punt_code"/>
-    <field reuseLastValue="0" name="punt_naam"/>
-    <field reuseLastValue="0" name="van_bron_id"/>
+    <field reuseLastValue="0" name="kunstwerk_bron_id"/>
+    <field reuseLastValue="0" name="kunstwerk_code"/>
+    <field reuseLastValue="0" name="kunstwerk_naam"/>
     <field reuseLastValue="0" name="van_segment"/>
-    <field reuseLastValue="0" name="waterbeheercode"/>
+    <field reuseLastValue="0" name="kunstwerk_waterbeheercode"/>
   </reuseLastValue>
   <dataDefinedFieldProperties/>
   <widgets/>

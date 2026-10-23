@@ -285,14 +285,14 @@
         </config>
       </editWidget>
     </field>
-    <field name="segment_fid" configurationFlags="NoFlag">
+    <field name="segment_id" configurationFlags="NoFlag">
       <editWidget type="TextEdit">
         <config>
           <Option/>
         </config>
       </editWidget>
     </field>
-    <field name="segment_id" configurationFlags="NoFlag">
+    <field name="segment_key" configurationFlags="NoFlag">
       <editWidget type="TextEdit">
         <config>
           <Option/>
@@ -302,33 +302,33 @@
   </fieldConfiguration>
   <aliases>
     <alias field="fid" name="" index="0"/>
-    <alias field="segment_fid" name="" index="1"/>
-    <alias field="segment_id" name="" index="2"/>
+    <alias field="segment_id" name="" index="1"/>
+    <alias field="segment_key" name="" index="2"/>
   </aliases>
   <splitPolicies>
     <policy field="fid" policy="Duplicate"/>
-    <policy field="segment_fid" policy="Duplicate"/>
     <policy field="segment_id" policy="Duplicate"/>
+    <policy field="segment_key" policy="Duplicate"/>
   </splitPolicies>
   <duplicatePolicies>
     <policy field="fid" policy="Duplicate"/>
-    <policy field="segment_fid" policy="Duplicate"/>
     <policy field="segment_id" policy="Duplicate"/>
+    <policy field="segment_key" policy="Duplicate"/>
   </duplicatePolicies>
   <defaults>
     <default field="fid" expression="" applyOnUpdate="0"/>
-    <default field="segment_fid" expression="" applyOnUpdate="0"/>
     <default field="segment_id" expression="" applyOnUpdate="0"/>
+    <default field="segment_key" expression="" applyOnUpdate="0"/>
   </defaults>
   <constraints>
     <constraint field="fid" notnull_strength="1" constraints="3" unique_strength="1" exp_strength="0"/>
-    <constraint field="segment_fid" notnull_strength="0" constraints="0" unique_strength="0" exp_strength="0"/>
     <constraint field="segment_id" notnull_strength="0" constraints="0" unique_strength="0" exp_strength="0"/>
+    <constraint field="segment_key" notnull_strength="0" constraints="0" unique_strength="0" exp_strength="0"/>
   </constraints>
   <constraintExpressions>
     <constraint field="fid" desc="" exp=""/>
-    <constraint field="segment_fid" desc="" exp=""/>
     <constraint field="segment_id" desc="" exp=""/>
+    <constraint field="segment_key" desc="" exp=""/>
   </constraintExpressions>
   <expressionfields/>
   <attributeactions>
@@ -336,9 +336,10 @@
   </attributeactions>
   <attributetableconfig sortExpression="" sortOrder="0" actionWidgetStyle="dropDown">
     <columns>
+      <column type="field" name="bron_id" width="-1" hidden="1"/>
       <column type="field" name="fid" width="-1" hidden="0"/>
-      <column type="field" name="segment_fid" width="-1" hidden="0"/>
       <column type="field" name="segment_id" width="-1" hidden="0"/>
+      <column type="field" name="segment_key" width="-1" hidden="1"/>
       <column type="actions" width="-1" hidden="1"/>
     </columns>
   </attributetableconfig>
@@ -372,18 +373,18 @@ def my_form_open(dialog, layer, feature):
   <editorlayout>generatedlayout</editorlayout>
   <editable>
     <field name="fid" editable="1"/>
-    <field name="segment_fid" editable="1"/>
     <field name="segment_id" editable="1"/>
+    <field name="segment_key" editable="1"/>
   </editable>
   <labelOnTop>
     <field labelOnTop="0" name="fid"/>
-    <field labelOnTop="0" name="segment_fid"/>
     <field labelOnTop="0" name="segment_id"/>
+    <field labelOnTop="0" name="segment_key"/>
   </labelOnTop>
   <reuseLastValue>
     <field reuseLastValue="0" name="fid"/>
-    <field reuseLastValue="0" name="segment_fid"/>
     <field reuseLastValue="0" name="segment_id"/>
+    <field reuseLastValue="0" name="segment_key"/>
   </reuseLastValue>
   <dataDefinedFieldProperties/>
   <widgets/>

@@ -13,8 +13,9 @@ from waterlagen.administratieve_gebieden import (
 from waterlagen.afwateringseenheden import (
     calculate_afwateringseenheden_tiles,
     prepare_watersysteem,
-    read_hydroobjecten,
-    read_puntobjecten,
+    read_brandlagen,
+    read_brandlagen_config,
+    read_watersysteem_sources,
     write_watersysteem,
 )
 from waterlagen.ahn import download_ahn
@@ -22,6 +23,7 @@ from waterlagen.areas import NAMED_AREAS, NAMED_AREAS_CRS
 from waterlagen.datastore import DataStore
 from waterlagen.hydamo import download_hydamo
 from waterlagen.logger import production_logging
+from waterlagen.rijkswateren import download_rijkswateren
 from waterlagen.settings import settings
 
 DATA_DIR = Path("data")
@@ -32,9 +34,16 @@ TILE_BUFFER_M = 2000
 RESOLUTION_M = 2.0
 TOLERANCE_M = 2.0
 MAX_SEGMENT_LENGTH_M = 500.0
+DUIKER_TOLERANCE_M = 0.5
+# Bijvoorbeeld 50.0; alleen directe aansluitdoelen.
+MAX_AANSLUITLENGTE_M: float | None = None
 BURN_DEPTH_M = 100.0
 MAX_FILL_DEPTH_M = 50.0
 WORKERS = 1
+BRANDLAGEN_CONFIG: Path | None = None  # Bijvoorbeeld Path("brandlagen.toml").
+WATERBEHEERCODE: str | None = None  # Zonder code levert ook RWS doelen.
+OVERIGE_WATERSCHAPPEN = False
+EIGEN_HYDAMO: Path | None = None
 
 if __name__ == "__main__":
     store = DataStore(
@@ -67,8 +76,24 @@ if __name__ == "__main__":
     context = tile_bounds.buffer(TILE_BUFFER_M).envelope
 
     with production_logging():
+        # Optioneel: lees eigen QGIS-lagen; rastercelconflicten worden bij de
+        # tegelvoorbereiding gecontroleerd op het daadwerkelijke rekenraster.
+        brandlagen = None
+        if BRANDLAGEN_CONFIG is not None:
+            brandlagen = read_brandlagen_config(BRANDLAGEN_CONFIG)
+            brandobjecten = read_brandlagen(brandlagen, spatial_selection=context)
+            print("Optionele brandobjecten in het rekengebied:", len(brandobjecten))
         # 1. Bronnen ophalen. HYDAMO en de landsgrens zijn landelijke bestanden.
         hydamo = download_hydamo(download_dir=store.hydamo_dir, overwrite=False)
+        rijkswateren = download_rijkswateren(store.hydamo_dir, overwrite=False)
+        bronnen = read_watersysteem_sources(
+            hydamo.target_path,
+            rijkswateren,
+            spatial_selection=context,
+            waterbeheercode=WATERBEHEERCODE,
+            overige_waterschappen=OVERIGE_WATERSCHAPPEN,
+            eigen_hydamo=EIGEN_HYDAMO,
+        )
         landsgrens = download_bestuurlijke_gebieden(
             year=DEFAULT_BESTUURLIJKE_GEBIEDEN_YEAR,
             download_dir=store.administratieve_gebieden_dir,
@@ -86,26 +111,25 @@ if __name__ == "__main__":
         )
 
         # 2. Lees het watersysteem inclusief omgeving; pas de selectie hier aan.
-        hydro = read_hydroobjecten(hydamo.target_path, spatial_selection=context)
-        primair = hydro.loc[hydro.categorieoppwaterlichaam.eq("primair")].copy()
-        secundair = hydro.loc[hydro.categorieoppwaterlichaam.eq("secundair")].copy()
-        punten = read_puntobjecten(
-            hydamo.target_path, layers=["gemaal", "stuw"], spatial_selection=context
-        )
         netwerk = prepare_watersysteem(
-            primair,
-            punten,
-            hydroobject_secundair=secundair,
+            bronnen.targets,
+            bronnen.points,
             tolerance=TOLERANCE_M,
             max_length=MAX_SEGMENT_LENGTH_M,
+            hydroobject_primair=bronnen.primary,
+            duikersifonhevel=bronnen.culverts,
+            duiker_tolerance=DUIKER_TOLERANCE_M,
+            max_aansluitlengte=MAX_AANSLUITLENGTE_M,
         )
         watersysteem = write_watersysteem(
-            hydroobject_primair=primair,
-            hydroobject_secundair=secundair,
+            hydroobject_primair=bronnen.primary,
+            hydroobject_secundair=bronnen.secondary,
+            hydroobject_zonder_categorie=bronnen.missing_category,
             watersysteem=netwerk,
             output_path=output_dir / "watersysteem.gpkg",
             secondary_connection_tolerance=TOLERANCE_M,
             overwrite=False,
+            controle_path=output_dir / "controle.gpkg",
         )
 
         # 3. Bereken de tegels en voeg ze samen. Pas parameters bovenaan aan.
@@ -127,6 +151,8 @@ if __name__ == "__main__":
             random_seed=12345,
             clip_to_area=True,
             overwrite=False,
+            brandlagen=brandlagen,
         )
         print(resultaat.merged_path)
+        print("Controleer duikers in QGIS:", output_dir / "controle.gpkg")
         print("Tegels met randproblemen:", resultaat.boundary_issue_tile_ids)

@@ -11,8 +11,8 @@ from unittest.mock import create_autospec
 
 import geopandas as gpd
 import pytest
-from shapely.geometry import Point, LineString, box
 import requests
+from shapely.geometry import LineString, Point, box
 
 from waterlagen._downloads import GeoPackageDownload
 from waterlagen.areas import NAMED_AREAS
@@ -30,6 +30,7 @@ class Call:
     module: str
     function: str
     result_kind: str = "path"
+    count: int = 1
 
 
 DOWNLOADS = {
@@ -54,7 +55,13 @@ DOWNLOADS = {
     ],
     "dijkringen": [Call("waterlagen.dijkringen", "download_dijkringen", "gpkg")],
     "hydamo": [Call("waterlagen.hydamo", "download_hydamo", "gpkg")],
+    "rijkswateren": [Call("waterlagen.rijkswateren", "download_rijkswateren", "path")],
     "liwo": [Call("waterlagen.liwo", "download_raster")],
+    "osm_canals": [
+        Call("waterlagen.osm_waterlopen", "download_osm_canals", "path"),
+        Call("waterlagen.osm_waterlopen", "download_osm_culverts", "path"),
+        Call("waterlagen.osm_waterlopen", "download_osm_waterlopen", "path", count=3),
+    ],
     "osm_drinkwater": [
         Call(
             "waterlagen.functioneel_landgebruik.osm_drinkwater",
@@ -130,35 +137,35 @@ def test_download_example_runs_with_current_api(name, tmp_path, monkeypatch, cap
             function, return_value=_result(call.result_kind, output)
         )
         monkeypatch.setattr(module, call.function, mocked)
-        calls.append((signature, mocked))
+        calls.append((signature, mocked, call.count))
 
     path = EXAMPLES / f"download_{name}.py"
     runpy.run_path(str(path))
-    for _, mocked in calls:
+    for _, mocked, _ in calls:
         mocked.assert_not_called()
 
     # Execute exactly the file offered for download, including its __main__ guard.
     runpy.run_path(str(path), run_name="__main__")
     assert str(output) in capsys.readouterr().out
-    for signature, mocked in calls:
-        mocked.assert_called_once()
-        arguments = signature.bind(
-            *mocked.call_args.args, **mocked.call_args.kwargs
-        ).arguments
-        assert (
-            arguments.get("overwrite") is False or arguments.get("missing_only") is True
-        )
-        if "poly_mask" in arguments:
-            assert arguments["poly_mask"].equals(NAMED_AREAS["alkmaar_centrum"])
-        if "data_store" in arguments:
-            _assert_store(arguments["data_store"], tmp_path / "data")
-        for key in ("download_dir", "ahn_dir", "target_path"):
-            if key in arguments:
-                assert (
-                    arguments[key]
-                    .resolve()
-                    .is_relative_to(tmp_path / "data" / "source_data")
-                )
+    for signature, mocked, count in calls:
+        assert mocked.call_count == count
+        for invocation in mocked.call_args_list:
+            arguments = signature.bind(*invocation.args, **invocation.kwargs).arguments
+            assert (
+                arguments.get("overwrite") is False
+                or arguments.get("missing_only") is True
+            )
+            if "poly_mask" in arguments:
+                assert arguments["poly_mask"].equals(NAMED_AREAS["alkmaar_centrum"])
+            if "data_store" in arguments:
+                _assert_store(arguments["data_store"], tmp_path / "data")
+            for key in ("download_dir", "ahn_dir", "target_path"):
+                if key in arguments:
+                    assert (
+                        arguments[key]
+                        .resolve()
+                        .is_relative_to(tmp_path / "data" / "source_data")
+                    )
 
 
 def _mock_api(monkeypatch, module_name, function_name, result):
@@ -371,10 +378,14 @@ def test_dem_example_requests_full_building_context_and_passes_config(
     assert mask.covers(NAMED_AREAS["alkmaar_centrum"].buffer(125))
 
 
-def test_afwatering_example_connects_steps_and_passes_settings(tmp_path, monkeypatch):
+@pytest.mark.parametrize("with_brandlagen", [False, True])
+def test_afwatering_example_connects_steps_and_passes_settings(
+    tmp_path, monkeypatch, with_brandlagen
+):
     from waterlagen.afwateringseenheden import (
         AfwateringseenhedenTilesResult,
         WatersysteemResult,
+        WatersysteemSources,
     )
 
     downloads = _mock_downloads(monkeypatch, tmp_path)
@@ -388,8 +399,18 @@ def test_afwatering_example_connects_steps_and_passes_settings(tmp_path, monkeyp
     )
     points = gpd.GeoDataFrame(geometry=[Point(111550, 516000)], crs=hydro.crs)
     module = "waterlagen.afwateringseenheden"
-    read_hydro = _mock_api(monkeypatch, module, "read_hydroobjecten", hydro)
-    _mock_api(monkeypatch, module, "read_puntobjecten", points)
+    read_sources = _mock_api(
+        monkeypatch,
+        module,
+        "read_watersysteem_sources",
+        WatersysteemSources(
+            hydro.iloc[:1],
+            hydro.iloc[1:],
+            hydro.iloc[:1],
+            points,
+            culverts=hydro.iloc[:1].copy(),
+        ),
+    )
     prepare = _mock_api(
         monkeypatch, module, "prepare_watersysteem", WatersysteemResult(hydro, points)
     )
@@ -404,20 +425,46 @@ def test_afwatering_example_connects_steps_and_passes_settings(tmp_path, monkeyp
             tmp_path, (), tmp_path / "result.gpkg", points, (), ()
         ),
     )
-    _run_product(
-        "afwateringseenheden",
-        tmp_path,
-        [
-            ("TOLERANCE_M = 2.0", "TOLERANCE_M = 3.0"),
-            ("TILE_SIZE_M = 1000", "TILE_SIZE_M = 2000"),
-            ("TILE_BUFFER_M = 2000", "TILE_BUFFER_M = 1500"),
-            ("BURN_DEPTH_M = 100.0", "BURN_DEPTH_M = 80.0"),
-        ],
-    )
+    replacements = [
+        ("TOLERANCE_M = 2.0", "TOLERANCE_M = 3.0"),
+        ("TILE_SIZE_M = 1000", "TILE_SIZE_M = 2000"),
+        ("TILE_BUFFER_M = 2000", "TILE_BUFFER_M = 1500"),
+        ("BURN_DEPTH_M = 100.0", "BURN_DEPTH_M = 80.0"),
+        ("DUIKER_TOLERANCE_M = 0.5", "DUIKER_TOLERANCE_M = 0.3"),
+        (
+            "MAX_AANSLUITLENGTE_M: float | None = None",
+            "MAX_AANSLUITLENGTE_M: float | None = 25.0",
+        ),
+    ]
+    if with_brandlagen:
+        hydro.to_file(tmp_path / "brandlagen.gpkg", layer="waterlopen", driver="GPKG")
+        (tmp_path / "brandlagen.toml").write_text(
+            "[defaults]\nbrandwaarde = -3.0\nprioriteit = 2\n"
+            '[[lagen]]\npath = "brandlagen.gpkg"\nlayer = "waterlopen"\n',
+            encoding="utf-8",
+        )
+        replacements.append(
+            (
+                "BRANDLAGEN_CONFIG: Path | None = None",
+                'BRANDLAGEN_CONFIG: Path | None = Path("brandlagen.toml")',
+            )
+        )
+    _run_product("afwateringseenheden", tmp_path, replacements)
     prepare.assert_called_once()
     assert prepare.call_args.args[0].bron_id.tolist() == ["p"]
-    assert prepare.call_args.kwargs["hydroobject_secundair"].bron_id.tolist() == ["s"]
+    assert write.call_args.kwargs["hydroobject_secundair"].bron_id.tolist() == ["s"]
     assert prepare.call_args.kwargs["tolerance"] == 3.0
+    assert prepare.call_args.kwargs["duiker_tolerance"] == 0.3
+    assert prepare.call_args.kwargs["max_aansluitlengte"] == 25.0
+    assert (
+        prepare.call_args.kwargs["duikersifonhevel"]
+        is read_sources.return_value.culverts
+    )
+    assert (
+        prepare.call_args.kwargs["hydroobject_primair"]
+        is read_sources.return_value.primary
+    )
+    assert write.call_args.kwargs["controle_path"].name == "controle.gpkg"
     assert write.call_args.kwargs["watersysteem"] is prepare.return_value
     assert write.call_args.kwargs["secondary_connection_tolerance"] == 3.0
     calculate.assert_called_once()
@@ -426,8 +473,13 @@ def test_afwatering_example_connects_steps_and_passes_settings(tmp_path, monkeyp
     assert arguments["burn_depth_m"] == 80.0
     assert arguments["tile_size_m"] == 2000
     assert arguments["tile_buffer_m"] == 1500
+    if with_brandlagen:
+        assert arguments["brandlagen"].brandwaarde == -3.0
+        assert arguments["brandlagen"].lagen[0].path == tmp_path / "brandlagen.gpkg"
+    else:
+        assert arguments["brandlagen"] is None
     mask = downloads["download_ahn"].call_args.kwargs["poly_mask"]
-    assert mask.equals(read_hydro.call_args.kwargs["spatial_selection"])
+    assert mask.equals(read_sources.call_args.kwargs["spatial_selection"])
     x, y = NAMED_AREAS["alkmaar_centrum"].bounds[:2]
     assert mask.covers(box(x, y, x + 2000, y + 2000).buffer(1500))
 

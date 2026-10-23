@@ -6,7 +6,7 @@ import pytest
 from shapely.geometry import box
 
 from waterlagen._production import production_run
-from waterlagen.areas import Area, resolve_workers, select_area_tiles
+from waterlagen.areas import Area, area_from_bounds, resolve_workers, select_area_tiles
 from waterlagen.dem import inputs
 
 
@@ -60,7 +60,9 @@ def test_latest_uses_creation_not_folder_name_and_does_not_hide_running(tmp_path
         inputs.validate_landuse_run(new, Area.nederland, 5)
 
 
-@pytest.mark.parametrize("area", list(Area))
+@pytest.mark.parametrize(
+    "area", [*Area, area_from_bounds((111250, 515750, 112250, 516750))]
+)
 def test_invalid_latest_produces_requested_area_and_pins_it(
     tmp_path, monkeypatch, area
 ):

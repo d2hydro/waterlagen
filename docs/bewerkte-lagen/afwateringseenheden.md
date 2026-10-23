@@ -31,12 +31,25 @@ Vanuit de geleverde (Hy)DAMO-set worden:
 - `Verbindingspunten` vormen een gericht netwerk, waarbij `van_segment` en `naar_segment` de richting vormen. Van opgegeven punten (`stuwen`, `gemalen`, etc.) worden tevens de oorspronkelijke eigenschappen bewaard, zodat deze herkenbaar blijven.
 - `Secundaire hydroobjecten` worden opgesplitst in een set die wél en een set die níet verbonden is met de `primaire hydroobjecten`.
 
+### Optionele brandlagen
+
+Aanvullende lijnen en polygonen uit GeoPackages kunnen het reken-DEM plaatselijk verhogen of verlagen, bijvoorbeeld bij wegen en waterlopen. De brandwaarde bepaalt de hoogteaanpassing in meters: negatief is verlagen, positief is verhogen. Deze aanpassingen beïnvloeden de afstroming, maar zijn zelf geen doel voor afwateringseenheden
+
+Bij overlap met bestanden hydroobjecten gelden de volgende regels:
+- `Rangorde`: hydroobject:primair > hydroobject:secundair > optionele brandlaag.
+- `Optionele lagen`: de hoogste prioriteit wint. Bij gelijke prioriteit geldt de grootste absolute brandwaarde. Dus: een brandwaarde van -4 wint van -1, een waarde van 5 wint van een waarde 3.
+- `Ontbrekende waarden`: eerst wordt de laagdefault gebruikt, daarna de globale default. Ontbreken beide, dan volgt een fout.
+
+Tegengestelde brandwaarden (positief en negatief) met dezelfde prioriteit op dezelfde rastercel gelden als conflict, ook als een andere laag voorrang heeft. Alle conflicten worden samen gerapporteerd, inclusief bronbestand, laag en oorspronkelijke FID.
+
+Zie de [productie-instructies](../produceren/afwateringseenheden.md#optionele-brandlagen) voor invoer en configuratie.
+
 ### Afleiden afwateringseenheden
 
 Op basis van het [AHN-DTM](../bronlagen/ahn.md) en het hierboven genoemde watersysteem worden de volgende stappen uitgevoerd:
 
 - Het DTM (0,5 × 0,5 meter) wordt geschaald ingelezen op 2 × 2 meter (instelbaar) en binnen de brondekking dichtgeïnterpoleerd.
-- Hier worden hydroobjecten ingebrand. Primaire hydroobjecten krijgen tweemaal en secundaire segmenten eenmaal de ingestelde branddiepte; bij overlap heeft primair voorrang.
+- Hier worden hydroobjecten en eventuele optionele brandlagen ingebrand. Primaire hydroobjecten krijgen tweemaal en secundaire segmenten eenmaal de ingestelde branddiepte; bij overlap geldt de hierboven beschreven voorrang.
 - De `hydroobject-segmenten` worden ingebrand op een grid gelijk aan het voorbewerkte DTM. Een cel onder een `hydroobject-segment` krijgt de unieke feature-index (`fid`) van het betreffende segment.
 - Vervolgens wordt de [Local Drainage Direction (LDD)](https://pcraster.geo.uu.nl/pcraster/4.4.2/documentation/pcraster_manual/sphinx/op_lddcreate.html) berekend op basis van het voorbewerkte DTM met gebrande waterlopen. Een LDD bepaalt per cel de lokale afstroomrichting. De routine zal hierbij lokale depressies opvullen tot een maximale diepte. De maximale diepte is ingesteld op 50% van de ingestelde branddiepte. De branddiepte is zo diep ingesteld (bijvoorbeeld 500 meter) dat de LDD de volgende logica volgt:
 

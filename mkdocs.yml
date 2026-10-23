@@ -2,6 +2,9 @@ site_name: Waterlagen
 repo_url: https://github.com/d2hydro/waterlagen
 repo_name: d2hydro/waterlagen
 
+exclude_docs: |
+  /bijdragen/implementatieplannen/
+
 theme:
   name: material
   custom_dir: overrides
@@ -27,8 +30,10 @@ nav:
       - CBS Wijk- en Buurtkaart en Kerncijfers: bronlagen/cbs.md
       - Dijkringen: bronlagen/dijkringen.md
       - GKW HYDAMO: bronlagen/hydamo.md
+      - Rijkswateren: bronlagen/rijkswateren.md
       - LIWO overstromingsgevoelige gebieden: bronlagen/liwo.md
       - OSM-drinkwaterlocaties: bronlagen/osm-drinkwater.md
+      - OSM-waterlopen: bronlagen/osm-waterlopen.md
       - TOP10NL: bronlagen/top10nl.md
       - Waterketen DAMO: bronlagen/waterketen-damo.md
       - Waterschapsgrenzen: bronlagen/waterschapsgrenzen.md
@@ -72,8 +77,10 @@ nav:
           - Inwoners: reference/inwoners.md
           - Woon-VBO's per buurt: reference/vbo_buurt.md
           - HYDAMO: reference/hydamo.md
+          - Rijkswateren: reference/rijkswateren.md
           - LIWO: reference/liwo.md
           - OSM-drinkwaterlocaties: reference/osm_drinkwater.md
+          - OSM-waterlopen: reference/osm_waterlopen.md
           - Waterketen DAMO: reference/waterketen_damo.md
           - DataStore: reference/datastore.md
           - Rasters: reference/raster.md

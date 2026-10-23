@@ -38,8 +38,9 @@ De gebiedsgrens selecteert de invoer. De uitvoer wordt **niet op die grens
 geknipt**: volledige tegelkernen, objecten en noodzakelijke rekencontext blijven
 behouden. Daardoor kan uitvoer buiten het gekozen gebied liggen.
 Inwoners en auto's gebruiken volledige intersecterende CBS-buurten met alle
-bijbehorende woon-VBO's. Afwateringseenheden selecteert objecten ruimtelijk,
-zonder extra filter op de waterbeheerder van een object.
+bijbehorende woon-VBO's. Bij afwateringseenheden bepaalt een waterschapscode
+ook welke beheerder standaard afwateringsdoelen levert; de omringende objecten
+blijven brandcontext. Zie de [doelmodi](afwateringseenheden.md#doelmodi-en-bronnen).
 
 Alkmaar is een vaste Polygon in `waterlagen.areas`, in EPSG:28992 met begrenzing
 `(105000, 510000, 115000, 520000)`. De polygon verandert niet met de tegelgrootte.
@@ -64,9 +65,34 @@ geselecteerd die het voorbeeldgebied raken.
 
 ## Opties
 
+### Eigen rechthoekig gebied
+
+Alle vijf commando's accepteren `--bounds xmin ymin xmax ymax`:
+
+```console
+pixi run dem --bounds 184285 392054 185285 393054
+```
+
+- Coördinaten staan in `settings.crs`, standaard `EPSG:28992` (RD).
+- Geef vier eindige getallen met `xmin < xmax` en `ymin < ymax`.
+- Decimalen en negatieve coördinaten zijn toegestaan. Gebruik een punt als decimaalteken.
+- Kies één gebiedsoptie: `--bounds`, `--area` of `--waterbeheercode`.
+- Zonder gebiedsoptie blijft Nederland de standaard.
+
+De rechthoek selecteert volledige overlappende tegelkernen of CBS-buurten.
+Alleen aanraking aan de grens selecteert geen extra tegel of buurt.
+Rasteroorsprong, resolutie en buffers blijven gelijk. De bounds zijn geen
+uitvoerclip of downloadlimiet.
+
+Bij afwateringseenheden selecteert dit voorbeeld één kern van 10 × 10 km.
+Met de buffer van 2 km blijft de rekenomgeving 14 × 14 km.
+
+### Overige opties
+
 | Optie | Gedrag |
 | --- | --- |
 | `--area GEBIED` | Gedeelde invoerselectie; standaard Nederland. |
+| `--bounds XMIN YMIN XMAX YMAX` | Eigen rechthoek in het project-CRS, met behoud van volledige tegels/objecten. |
 | `--data-dir PAD` | Bronmap en productiemap onder `PAD/source_data` en `PAD/processed_data`. |
 | `--output-root PAD` | Productiemap, ook voor automatisch geproduceerde afhankelijkheden. |
 | `--run-id NAAM` | Eigen runnaam; standaard een UTC-tijdstempel. |

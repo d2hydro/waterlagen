@@ -1,0 +1,32 @@
+name: Dev work documents
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, edited, ready_for_review]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  dev-workdocs:
+    name: Temporary dev work documents
+    runs-on: ubuntu-latest
+    steps:
+      - name: Pull request uitchecken
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Python instellen
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Controle testen
+        run: python -B -m unittest discover -s tests -p test_check_dev_workdocs.py -v
+
+      - name: Tijdelijke ontwikkelwerkdocumenten controleren
+        shell: bash
+        run: python -I scripts/check_dev_workdocs.py --repo . --summary "$GITHUB_STEP_SUMMARY"

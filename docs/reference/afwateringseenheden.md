@@ -8,21 +8,54 @@ De functionele uitleg staat bij [Afwateringseenheden](../bewerkte-lagen/afwateri
 Zie [Afwateringseenheden produceren](../produceren/afwateringseenheden.md) voor
 de uitvoering, parallel rekenen en logbestanden.
 
+## Bronselectie en afwateringsdoelen
+
+`read_watersysteem_sources` leest waterlopen en kunstwerken.
+Primaire waterlopen kunnen afwateringsdoelen zijn. Secundaire waterlopen sturen
+de afstroming naar die doelen.
+
+Zie [bronkeuze](../produceren/afwateringseenheden.md#doelmodi-en-bronnen)
+en het [Python-voorbeeld](bewerkte-lagen-produceren.md#afwateringseenheden).
+
+::: waterlagen.afwateringseenheden.read_watersysteem_sources
+
+::: waterlagen.afwateringseenheden.WatersysteemSources
+
+## Duikervoorbereiding
+
+Duikers worden aan primaire waterlopen gekoppeld:
+
+- Beide uiteinden moeten binnen de koppelafstand liggen: standaard **0,5 m** (`duiker_tolerance`).
+- De waterlopen moeten een aansluitende route langs de duiker vormen. Alleen kruisen is niet genoeg.
+- Van meerdere routes wordt de best passende gekozen.
+- Onduidelijke koppelingen komen in `controle.gpkg`.
+
+Daarna worden [waterlopen en duikers samen beoordeeld](../produceren/afwateringseenheden.md#waterlopen-en-duikers).
+Dit bepaalt welke duikers worden ingebrand. Zie ook de
+[controle-instructies](../produceren/afwateringseenheden.md#controle-in-qgis).
+
+::: waterlagen.afwateringseenheden.read_duikersifonhevel
+
+## Brandlagen
+
+`read_brandlagen` leest de ingestelde lijnen en vlakken, met hun brandwaarde,
+prioriteit en bron. Geef de configuratie mee met `brandlagen=config`.
+
+Zie [brandwaarde, prioriteit en regels bij overlap](../produceren/afwateringseenheden.md#optionele-brandlagen)
+en [uitvoer bekijken](../produceren/afwateringseenheden.md#brandlagen-controleren-in-qgis).
+
 ## Dekking en hergebruik
 
-Bronextents worden in het geheugen gecachet op basis van bestandsversie,
-sidecarversies en doel-CRS en op het gevraagde doelgrid gerasteriseerd.
-Bij `overwrite=False` worden geldige rasterparen met de actuele coverage-tag
-`source_extents_v2` hergebruikt. Ontbrekende of oudere tags leiden tot regeneratie.
+Met `overwrite=False` hergebruiken de Python-functies bestaande resultaten
+als die nog geldig zijn.
 
-Met `landsgrens_path` wordt de grenslaag zo nodig naar het raster-CRS omgezet en
-per worker gecachet. Bij een gewijzigde landsgrensbron (pad, wijzigingstijd of
-bestandsgrootte) worden bestaande rasters en tegelresultaten opnieuw berekend,
-ook bij `overwrite=False`. De functies downloaden de grenslaag zelf niet.
-Zonder `landsgrens_path` geldt de dekking van de volledige bronextents.
-De landsgrenstag bevat ook de maskeringsversie. Uitvoer met de oude maskering,
-die een raaklijn ten onrechte als DEM-dekking kon opnemen, wordt eenmalig
-opnieuw berekend. Uitvoer zonder landsgrensmasker blijft herbruikbaar.
+Hervat een volledige berekening alleen met dezelfde bronnen en instellingen.
+Begin na wijzigingen een nieuwe run. Wijzig geen bronbestanden terwijl
+de berekening draait.
+
+Met `landsgrens_path` geeft u het bestand met de landsgrens op. Deze grens
+bepaalt waar ontbrekende AHN-hoogtes worden aangevuld. Bij een volledige
+berekening wordt deze grens automatisch gebruikt.
 
 Voor hergebruik van tegeluitvoer is ook `subcatchments.tif` nodig: dit bepaalt
 de werkelijke buffer; CRS en resolutie moeten overeenkomen. Het opgegeven
