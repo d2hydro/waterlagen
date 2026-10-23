@@ -134,6 +134,12 @@ Keep these concerns separated.
 - Keep agent plans excluded from the site with `exclude_docs` in `mkdocs.yml`. Removing navigation entries or using `not_in_nav` alone does not prevent publication.
 - Publish or link to these plans from the documentation site only when the user explicitly requests that publication.
 - After changing their publication configuration, build the documentation and verify that excluded plans are absent from both the generated pages and the search index.
+- Treat implementation plans as temporary working documents, not permanent project documentation.
+- After implementation, ensure relevant functionality, technical details, and design decisions are reflected in the authoritative project documentation. Record significant architectural decisions separately when appropriate.
+- Remove completed implementation plans and associated grilling outcomes before merging, unless the user explicitly requests their retention or they contain information worth preserving that has not yet been documented elsewhere.
+- Track remaining work, known limitations, and future improvements in GitHub issues rather than retaining completed plans as informal backlogs.
+- Do not retain implementation plans solely for historical reference; Git history provides sufficient traceability when the relevant commits remain accessible.
+- Never delete plans that are still in use, contain unresolved decisions, or are needed for ongoing work without first confirming their status.
 
 ## Documentation Editorial Status
 
