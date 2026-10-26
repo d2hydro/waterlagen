@@ -47,9 +47,10 @@ Zie [gebiedsselectie](cli.md#eigen-rechthoekig-gebied).
 4. De productie berekent de tegels en voegt de bruikbare resultaten samen.
    De gebiedsgrens knipt het resultaat niet af.
 
-De tegelbuffer is 2000 m, de rasterresolutie 2 m, de inbranddiepte voor
-secundaire waterlopen 100 m en de maximale opvuldiepte 50 m. De vaste seed is
-12345. De landsgrens begrenst de AHN-interpolatie tot Nederland. Dit staat los
+De tegelbuffer is 2000 m, de rasterresolutie 2 m en de maximale opvuldiepte
+50 m. De [inbranddiepte](../bewerkte-lagen/afwateringseenheden.md#waterlopen-en-duikers-inbranden)
+hangt af van de waterloop en de verbindingen. De vaste seed is 12345.
+De landsgrens begrenst de AHN-interpolatie tot Nederland. Dit staat los
 van de gekozen gebiedsgrens als invoerselectie.
 De betekenis en beperkingen staan bij
 [Afwateringseenheden](../bewerkte-lagen/afwateringseenheden.md).
@@ -160,35 +161,11 @@ Deze lagen sturen de afstroming, maar voegen geen afwateringsdoelen toe.
 
 ### Waterlopen en duikers
 
-Waterlopen en duikers worden samen beoordeeld op het 2m-raster.
-Ook diagonaal aangrenzende cellen tellen mee.
-De verlagingen sturen de afstroming; het zijn geen werkelijke bodemhoogtes.
+De [regels voor inbranding en duikers](../bewerkte-lagen/afwateringseenheden.md#waterlopen-en-duikers-inbranden)
+staan in de functionele handleiding.
 
-| Situatie | Verlaging |
-| --- | ---: |
-| Primaire waterloop buiten duikers | 200 m |
-| Secundaire HYDAMO-waterloop met verbinding naar primair | 100 m |
-| HYDAMO-duiker secundair-primair of secundair-secundair, met route naar primair | 100 m |
-| Secundaire HYDAMO-waterloop zonder route naar primair; tertiaire HYDAMO-waterloop | Standaard 10 m |
-| Aangesloten HYDAMO-duiker die niet onder de regels hierboven valt | Standaard 10 m |
-| Duiker die alleen primair met primair verbindt | Geen |
-| Duiker zonder twee aansluitingen | Geen; naar controle |
-
-Voor de verlaging van 100 m tellen alleen verbindingen via primaire en secundaire
-HYDAMO-waterlopen en geschikte HYDAMO-duikers. BGT, OSM en TOP10NL maken een
-losliggend HYDAMO-stelsel niet alsnog diep.
-
-- Duikerlijnen sluiten aan via hun uiteinden. Een secundair of tertiair eindpunt op de duiker telt ook mee.
-- Bij duikervlakken worden aansluitingen langs de rand gezocht. Alleen kruisen is niet genoeg.
-- Bij dubbele duikers gaat HYDAMO voor BGT, daarna OSM.
-- Aanvullende lagen overschrijven de HYDAMO-inbranding niet.
-- Duikers zijn geen afwateringsdoelen.
-
-Met `geisoleerde_branddiepte_m` past u de ondiepe HYDAMO-verlaging aan.
-De standaard is 10 m. Aanvullende bronnen gebruiken hun eigen `brandwaarde`.
-
-Een rastercel heeft maar een stroomrichting. Kruisingen op verschillende
-hoogtes blijven daardoor niet automatisch gescheiden.
+- `geisoleerde_branddiepte_m`: vervangt de standaardverlaging van 10 m voor HYDAMO-waterlopen en -duikers in de [tabel](../bewerkte-lagen/afwateringseenheden.md#waterlopen-en-duikers-inbranden).
+- `brandwaarde`: hoogtewijziging voor een aanvullende laag.
 
 ### TOML-configuratie
 

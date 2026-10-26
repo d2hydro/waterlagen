@@ -13,6 +13,7 @@ Het berekenen van `afvoergebieden` gekoppeld aan `hydroobjecten`.
 | Bron | Gebruik |
 | --- | --- |
 | [GKW HYDAMO](../bronlagen/hydamo.md) | Hydroobjecten en verbindingspunten voor het watersysteem. |
+| [Rijkswateren](../bronlagen/rijkswateren.md) | Waterlopen van Rijkswaterstaat. |
 | [AHN](../bronlagen/ahn.md) | Maaiveldhoogte voor het afleiden van afstroomrichtingen en afwateringseenheden. |
 | [Bestuurlijke gebieden](../bronlagen/bestuurlijke-gebieden.md) | Begrenzing tot Nederland. |
 
@@ -24,47 +25,91 @@ De stappen worden hieronder 1 voor 1 uitgelegd.
 
 ### Voorbewerken watersysteem
 
-Vanuit de geleverde (Hy)DAMO-set worden:
+- Primaire, secundaire en tertiaire waterlopen worden geselecteerd voor de tegels en hun buffers.
+- Primaire waterlopen worden opgeknipt bij verbindingspunten en op maximaal 500 m lengte.
+- Gemalen en stuwen blijven herkenbaar aan hun brongegevens.
+- `van_segment` en `naar_segment` verbinden de segmenten volgens de tekenrichting van de waterlopen.
+- Secundaire waterlopen worden verdeeld in waterlopen met en zonder verbinding met het primaire watersysteem.
 
-- `primaire` en `secundaire` `hydroobjecten` en relevante `verbindingspunten` (bijvoorbeeld `gemalen` en `stuwen`) uitgelezen. De standaardproductie selecteert ruimtelijk met de benodigde tegelcontext en gebruikt geen aanvullend waterbeheerderfilter. Lagere Python-functies ondersteunen zo nodig een expliciet beheerderfilter.
-- `Primaire` hydroobjecten worden bij de relevante `verbindingspunten` en op een maximale lengte (standaard 500 meter) opgesplitst naar `hydroobject-segmenten`.
-- `Verbindingspunten` vormen een gericht netwerk, waarbij `van_segment` en `naar_segment` de richting vormen. Van opgegeven punten (`stuwen`, `gemalen`, etc.) worden tevens de oorspronkelijke eigenschappen bewaard, zodat deze herkenbaar blijven.
-- `Secundaire hydroobjecten` worden opgesplitst in een set die wél en een set die níet verbonden is met de `primaire hydroobjecten`.
+Een **afwateringsdoel** is een primair segment waaraan een afwateringseenheid wordt toegewezen.
+
+| Gebiedsselectie | Beheerders van afwateringsdoelen en verbindingspunten |
+| --- | --- |
+| Eén waterschap | Alleen het gekozen waterschap |
+| Eén waterschap, met overige waterschappen | Alle geselecteerde waterschappen; geen RWS |
+| Geen waterschapselectie | Alle geselecteerde beheerders, inclusief RWS |
+
+Waterlopen van omliggende beheerders blijven beschikbaar om de afstroming te bepalen.
+Secundaire en tertiaire waterlopen zijn zelf geen afwateringsdoelen.
+
+### Waterlopen en duikers inbranden
+
+Standaard worden de geselecteerde waterlopen en duikers uit HYDAMO en Rijkswateren gebruikt.
+Niet elk object wordt ingebrand: daarvoor gelden de regels hieronder.
+
+- **Een duiker die alleen primaire waterlopen met elkaar verbindt, wordt niet ingebrand.**
+- Inbranden past de hoogte in het reken-DEM aan om de afstroming te sturen.
+- Voor waterlopen en duikers wordt de hoogte verlaagd.
+- De verlagingen zijn geen werkelijke waterbodemhoogtes.
+- Verbindingen worden bepaald op een raster met cellen van 2 × 2 m. Ook cellen die elkaar alleen op een hoek raken, gelden als verbonden.
+
+| Waterloop of duiker | Verlaging in de standaardproductie |
+| --- | ---: |
+| Primaire waterloop buiten de gekoppelde duikertrajecten | 200 m |
+| Secundaire HYDAMO-waterloop met een route naar primair | 100 m |
+| HYDAMO-duiker secundair–primair of secundair–secundair, met een route naar primair | 100 m |
+| Secundaire HYDAMO-waterloop zonder route naar primair; tertiaire HYDAMO-waterloop | 10 m |
+| Andere aangesloten HYDAMO-duiker, behalve primair–primair | 10 m |
+| Duiker die alleen primair met primair verbindt | Geen |
+| Duiker met minder dan twee herkende aansluitingen | Geen; naar controle |
+
+- Voor de verlaging van 100 m telt alleen een route via primaire en secundaire HYDAMO-waterlopen en geschikte HYDAMO-duikers.
+- Duikertrajecten zijn geen afwateringsdoel. Een afzonderlijke primaire waterloop die een duiker kruist, kan wel een doel blijven.
+- Een rastercel heeft één stroomrichting. Waterlopen die op verschillende hoogtes kruisen, blijven daardoor niet automatisch gescheiden.
 
 ### Optionele brandlagen
 
-Aanvullende lijnen en polygonen uit GeoPackages kunnen het reken-DEM plaatselijk verhogen of verlagen, bijvoorbeeld bij wegen en waterlopen. De brandwaarde bepaalt de hoogteaanpassing in meters: negatief is verlagen, positief is verhogen. Deze aanpassingen beïnvloeden de afstroming, maar zijn zelf geen doel voor afwateringseenheden
+Naast HYDAMO en Rijkswateren kunt u **optionele brandlagen** toevoegen via de TOML.
+BGT, OSM en TOP10NL doen alleen mee als ze daarin zijn opgenomen.
 
-Bij overlap met bestanden hydroobjecten gelden de volgende regels:
-- `Rangorde`: hydroobject:primair > hydroobject:secundair > optionele brandlaag.
-- `Optionele lagen`: de hoogste prioriteit wint. Bij gelijke prioriteit geldt de grootste absolute brandwaarde. Dus: een brandwaarde van -4 wint van -1, een waarde van 5 wint van een waarde 3.
-- `Ontbrekende waarden`: eerst wordt de laagdefault gebruikt, daarna de globale default. Ontbreken beide, dan volgt een fout.
+| Optionele brandlaag | Gebruik |
+| --- | --- |
+| Waterlopen uit BGT, OSM of TOP10NL | Verlagen met de ingestelde brandwaarde. |
+| Duikers uit BGT of OSM | Verlagen als de duiker voldoet aan de aansluitregels hierboven. |
+| Wegen of eigen correcties | Verhogen of verlagen met de ingestelde brandwaarde. |
 
-Tegengestelde brandwaarden (positief en negatief) met dezelfde prioriteit op dezelfde rastercel gelden als conflict, ook als een andere laag voorrang heeft. Alle conflicten worden samen gerapporteerd, inclusief bronbestand, laag en oorspronkelijke FID.
+- De `brandwaarde` is de hoogteaanpassing in meters: negatief verlaagt, positief verhoogt.
+- Optionele brandlagen voegen geen afwateringsdoelen toe.
+- Ze geven een losliggend HYDAMO-stelsel geen verlaging van 100 m.
 
-Zie de [productie-instructies](../produceren/afwateringseenheden.md#optionele-brandlagen) voor invoer en configuratie.
+Bij overlap:
+
+- HYDAMO-waterlopen en -duikers houden voorrang op optionele brandlagen.
+- Bij dubbele duikers gaat HYDAMO voor BGT, daarna OSM.
+- Tussen optionele brandlagen wint de hoogste prioriteit.
+- Bij gelijke prioriteit wint de grootste hoogteaanpassing: bijvoorbeeld −4 m boven −1 m.
+- Verhogen en verlagen in dezelfde cel bij gelijke prioriteit geeft een fout, ook als een andere laag voorrang heeft.
+
+Zie de [productie-instructies](../produceren/afwateringseenheden.md#optionele-brandlagen) voor de TOML-instellingen.
 
 ### Afleiden afwateringseenheden
 
 Op basis van het [AHN-DTM](../bronlagen/ahn.md) en het hierboven genoemde watersysteem worden de volgende stappen uitgevoerd:
 
 - Het DTM (0,5 × 0,5 meter) wordt geschaald ingelezen op 2 × 2 meter (instelbaar) en binnen de brondekking dichtgeïnterpoleerd.
-- Hier worden hydroobjecten en eventuele optionele brandlagen ingebrand. Primaire hydroobjecten krijgen tweemaal en secundaire segmenten eenmaal de ingestelde branddiepte; bij overlap geldt de hierboven beschreven voorrang.
-- De `hydroobject-segmenten` worden ingebrand op een grid gelijk aan het voorbewerkte DTM. Een cel onder een `hydroobject-segment` krijgt de unieke feature-index (`fid`) van het betreffende segment.
-- Vervolgens wordt de [Local Drainage Direction (LDD)](https://pcraster.geo.uu.nl/pcraster/4.4.2/documentation/pcraster_manual/sphinx/op_lddcreate.html) berekend op basis van het voorbewerkte DTM met gebrande waterlopen. Een LDD bepaalt per cel de lokale afstroomrichting. De routine zal hierbij lokale depressies opvullen tot een maximale diepte. De maximale diepte is ingesteld op 50% van de ingestelde branddiepte. De branddiepte is zo diep ingesteld (bijvoorbeeld 500 meter) dat de LDD de volgende logica volgt:
-
-    - een gebied met maaiveldcellen vindt altijd een richting naar een `secundaire` of `primaire` waterloopcel.
-    - cellen met `secundaire` waterlopen vinden altijd een richting naar een `primaire` waterloopcel.
-
-- Vanuit de LDD en de verrasterde `hydroobject-segmenten` wordt een raster met [`subcatchments`](https://pcraster.geo.uu.nl/pcraster/4.4.2/documentation/pcraster_manual/sphinx/op_subcatchment.html) berekend. Hiermee krijgen alle cellen van het raster de `fid` van het corresponderende `hydroobject-segment`.
-- De berekende `subcatchments` worden als laatste stap omgezet naar `afwateringseenheden`. Elke afwateringseenheid is een polygoon die het afstroomgebied voorstelt van een `hydroobject-segment`. Naast de `fid` is de oorspronkelijke informatie over het segment en het hydroobject toegevoegd.
+- Waterlopen, duikers en optionele brandlagen worden ingebrand volgens de regels hierboven.
+- Geschikte primaire segmenten worden als afwateringsdoelen op hetzelfde raster gezet.
+- De stroomrichting (LDD) wordt per cel berekend. Laagtes worden tot maximaal 50 m opgevuld.
+- Cellen die via de LDD een afwateringsdoel bereiken, krijgen het nummer van dat segment.
+- Het raster wordt omgezet naar vlakken. `segment_id` koppelt elk vlak aan het bijbehorende segment.
+- Zonder route naar een afwateringsdoel blijft een gebied niet toegewezen.
 
 Grote gebieden kunnen in gebufferde tegels worden berekend:
 
-- Het gebied wordt opgedeeld in vierkante kerntiles. De standaardtegelgrootte is 5 × 5 km.
+- De standaardproductie gebruikt kerntegels van 10 × 10 km.
 - Per kerntile wordt de berekening uitgevoerd op de tile inclusief een buffer. De standaardbuffer is 2 km, zodat afstroming van buiten de kerntile kan worden meegenomen.
 - Alleen afwateringseenheden die niet tot aan de buitenste rekenrand van de buffer reiken, worden teruggeknipt naar de kerntile en meegenomen in het resultaat.
-- De bruikbare resultaten worden per `segment_id` samengevoegd en teruggeknipt naar het oorspronkelijke gebied.
+- De bruikbare resultaten worden per `segment_id` samengevoegd. De standaardproductie knipt ze niet af op de gekozen gebiedsgrens.
 - Tegels zonder `hydroobject-segmenten` op geldige DEM-cellen worden overgeslagen. Wanneer een afwateringseenheid vanaf de buffergrens de kerntile bereikt, wordt de tegel gemeld als randprobleem.
 
 ### Samenvoegen
@@ -93,6 +138,8 @@ De standaardproject-CRS is `EPSG:28992`. Elke laag heeft tevens een voorgedefini
 
 ## Aandachtspunten en beperkingen
 Bij het berekenen van afwateringseenheden zijn wij de volgende aandachtspunten en beperkingen tegengekomen:
+
+- **Duikeraansluitingen**: controleer deze; ze worden nog niet in alle situaties goed verwerkt.
 - **Verbinding van secundaire objecten**: een secundair object geldt als verbonden wanneer de volledige geometrie binnen de ingestelde afstand van een primair of secundair object ligt. Deze tolerantie is standaard 2 meter.
 - **Overgeslagen tegels**: tegels worden overgeslagen als geen enkele rastercel met een hydroobjectsegment een geldige DEM-hoogte heeft. Dit gebeurt ook wanneer alle segmenten buiten de brondekking of de landsgrens liggen. De voorbereide rasters blijven beschikbaar voor hergebruik.
 - **Randproblemen**: Waterlagen meldt een randprobleem wanneer een berekend afwateringsgebied zowel de buitenste buffergrens als de kern van de tegel raakt. Deze melding wordt gedaan vóór het aanvullen van gaten vanuit buurtegels en betekent dus niet automatisch dat er in het eindresultaat een gat overblijft.
