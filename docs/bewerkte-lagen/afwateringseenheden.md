@@ -19,9 +19,9 @@ Het berekenen van `afvoergebieden` gekoppeld aan `hydroobjecten`.
 
 ## Werkwijze
 
-Op basis van een geselecteerde gebiedsgrens (waterschap, nederland, of iets anders) worden met overlappende vierkante tegels, bestaande uit een kerntegel + buffer afwateringseenheden afgeleidt. Wanneer alle tegels zijn bewerkt worden de resultaten samengevoegd tot gebiedsdekkende set polygonen. Deze worden niet afgesneden op de gebiedsgrens; een afvoergebied houdt zich immers niet aan, veelal administratieve, grenzen.
-
-De stappen worden hieronder 1 voor 1 uitgelegd.
+- Het gekozen gebied bepaalt welke tegels worden berekend.
+- Elke tegel krijgt een buffer om afstroming vanuit de omgeving mee te nemen.
+- De resultaten worden samengevoegd. Ze worden niet afgeknipt op de gekozen gebiedsgrens.
 
 ### Voorbewerken watersysteem
 
@@ -30,6 +30,18 @@ De stappen worden hieronder 1 voor 1 uitgelegd.
 - Gemalen en stuwen blijven herkenbaar aan hun brongegevens.
 - `van_segment` en `naar_segment` verbinden de segmenten volgens de tekenrichting van de waterlopen.
 - Secundaire waterlopen worden verdeeld in waterlopen met en zonder verbinding met het primaire watersysteem.
+
+RWS-waterlopen komen uit de Rijkswaterenbron. GKW-waterlopen met beheerderscode `80` worden daarom niet gebruikt.
+
+#### Verbinding van secundaire waterlopen
+
+- Secundaire waterlopen worden gegroepeerd als ze binnen 2 m van elkaar liggen.
+- Een groep is verbonden als een waterloop binnen 2 m van een primaire waterloop ligt.
+- Die primaire waterloop mag van een andere beheerder zijn.
+
+Dit bepaalt de indeling van de vectorlagen. Voor de inbranding gelden de rasterregels hieronder.
+
+#### Afwateringsdoelen
 
 Een **afwateringsdoel** is een primair segment waaraan een afwateringseenheid wordt toegewezen.
 
@@ -81,6 +93,8 @@ BGT, OSM en TOP10NL doen alleen mee als ze daarin zijn opgenomen.
 - De `brandwaarde` is de hoogteaanpassing in meters: negatief verlaagt, positief verhoogt.
 - Optionele brandlagen voegen geen afwateringsdoelen toe.
 - Ze geven een losliggend HYDAMO-stelsel geen verlaging van 100 m.
+- Lijnen krijgen geen extra breedte. Bij vlakken doen alle geraakte rastercellen mee.
+- Cellen zonder DEM-hoogte buiten de dekking blijven NoData.
 
 Bij overlap:
 
@@ -89,6 +103,7 @@ Bij overlap:
 - Tussen optionele brandlagen wint de hoogste prioriteit.
 - Bij gelijke prioriteit wint de grootste hoogteaanpassing: bijvoorbeeld −4 m boven −1 m.
 - Verhogen en verlagen in dezelfde cel bij gelijke prioriteit geeft een fout, ook als een andere laag voorrang heeft.
+- Hoogteaanpassingen worden niet opgeteld. Brandwaarde `0` verandert de hoogte niet, maar kan een laag met lagere prioriteit tegenhouden.
 
 Zie de [productie-instructies](../produceren/afwateringseenheden.md#optionele-brandlagen) voor de TOML-instellingen.
 
@@ -96,7 +111,7 @@ Zie de [productie-instructies](../produceren/afwateringseenheden.md#optionele-br
 
 Op basis van het [AHN-DTM](../bronlagen/ahn.md) en het hierboven genoemde watersysteem worden de volgende stappen uitgevoerd:
 
-- Het DTM (0,5 × 0,5 meter) wordt geschaald ingelezen op 2 × 2 meter (instelbaar) en binnen de brondekking dichtgeïnterpoleerd.
+- Het AHN-DTM van 0,5 × 0,5 m wordt omgezet naar cellen van 2 × 2 m. Ontbrekende hoogtes worden binnen de brondekking en landsgrens aangevuld.
 - Waterlopen, duikers en optionele brandlagen worden ingebrand volgens de regels hierboven.
 - Geschikte primaire segmenten worden als afwateringsdoelen op hetzelfde raster gezet.
 - De stroomrichting (LDD) wordt per cel berekend. Laagtes worden tot maximaal 50 m opgevuld.
@@ -120,7 +135,7 @@ Gaten in binnen een kerntegel worden waar mogelijk aangevuld met polygonen uit n
 Alleen ontbrekende delen worden aangevuld; bestaande toewijzingen blijven behouden. Zonder geschikte buurpolygoon blijft een gat open. Door de tegels opnieuw te berekenen met een grotere buffer kunnen meer afwateringseenheden behouden blijven, waardoor minder gaten ontstaan.
 
 ## Uitvoer
-De volledige afleiding van afwateringseenheden bevat een `watersysteem.gpkg` en `afwateringseenheden.pgkg`.
+Het eindresultaat staat in `afwateringseenheden.gpkg`. De bijbehorende waterlopen en segmenten staan in `watersysteem.gpkg`.
 
 `watersysteem.gpkg` bevat de volgende lagen:
 
@@ -134,14 +149,22 @@ De volledige afleiding van afwateringseenheden bevat een `watersysteem.gpkg` en 
 en MultiPolygon-geometrie, elk gekoppeld aan het hydroobject_segment waarnaar
 het oppervlak afwatert.
 
+| Veld | Betekenis |
+| --- | --- |
+| `segment_id` | Nummer waarmee een afwateringseenheid aan een segment wordt gekoppeld. Geldt binnen dezelfde run. |
+| `brandgeschikt` | Het segment mag worden ingebrand. |
+| `doelgeschikt` | Aan het segment mag een afwateringseenheid worden toegewezen. |
+| `kunstwerk_…` | Gegevens van een gekoppelde stuw of gemaal; anders leeg. |
+
+Zie de [productiehandleiding](../produceren/afwateringseenheden.md#uitvoer-en-hervatten) voor bestandslocaties, controlebestanden en hervatten.
+
 De standaardproject-CRS is `EPSG:28992`. Elke laag heeft tevens een voorgedefinieerde stijldefinitie die automatisch wordt herkend door QGIS.
 
 ## Aandachtspunten en beperkingen
 Bij het berekenen van afwateringseenheden zijn wij de volgende aandachtspunten en beperkingen tegengekomen:
 
 - **Duikeraansluitingen**: controleer deze; ze worden nog niet in alle situaties goed verwerkt.
-- **Verbinding van secundaire objecten**: een secundair object geldt als verbonden wanneer de volledige geometrie binnen de ingestelde afstand van een primair of secundair object ligt. Deze tolerantie is standaard 2 meter.
-- **Overgeslagen tegels**: tegels worden overgeslagen als geen enkele rastercel met een hydroobjectsegment een geldige DEM-hoogte heeft. Dit gebeurt ook wanneer alle segmenten buiten de brondekking of de landsgrens liggen. De voorbereide rasters blijven beschikbaar voor hergebruik.
+- **Overgeslagen tegels**: een tegel wordt overgeslagen als geen afwateringsdoel op een cel met geldige DEM-hoogte ligt.
 - **Randproblemen**: Waterlagen meldt een randprobleem wanneer een berekend afwateringsgebied zowel de buitenste buffergrens als de kern van de tegel raakt. Deze melding wordt gedaan vóór het aanvullen van gaten vanuit buurtegels en betekent dus niet automatisch dat er in het eindresultaat een gat overblijft.
 - **Controle na samenvoegen**: controleer het eindresultaat op resterende gaten. Opnieuw berekenen met een grotere buffer kan gaten door randproblemen verminderen, maar gebeurt niet automatisch.
 

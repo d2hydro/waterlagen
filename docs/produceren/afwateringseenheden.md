@@ -37,41 +37,21 @@ Het voorbeeld selecteert 1 x 1 km rond RD-punt `(184785, 392554)`.
 Geef voor een ander gebied `-Xmin`, `-Ymin`, `-Xmax` en `-Ymax` mee.
 Zie [gebiedsselectie](cli.md#eigen-rechthoekig-gebied).
 
-### Verwerking
-
-1. Het gebied selecteert volledige tegelkernen van 10 x 10 km.
-2. HYDAMO en Rijkswateren worden opgehaald of hergebruikt. De invoer wordt
-   gecontroleerd voordat het AHN wordt voorbereid.
-3. Waterlopen en AHN worden geselecteerd voor de tegels en hun buffers.
-   Geselecteerde waterlopen worden niet op de gebiedsgrens afgeknipt.
-4. De productie berekent de tegels en voegt de bruikbare resultaten samen.
-   De gebiedsgrens knipt het resultaat niet af.
-
-De tegelbuffer is 2000 m, de rasterresolutie 2 m en de maximale opvuldiepte
-50 m. De [inbranddiepte](../bewerkte-lagen/afwateringseenheden.md#waterlopen-en-duikers-inbranden)
-hangt af van de waterloop en de verbindingen. De vaste seed is 12345.
-De landsgrens begrenst de AHN-interpolatie tot Nederland. Dit staat los
-van de gekozen gebiedsgrens als invoerselectie.
-De betekenis en beperkingen staan bij
-[Afwateringseenheden](../bewerkte-lagen/afwateringseenheden.md).
+AHN, HYDAMO en Rijkswateren worden automatisch opgehaald of lokaal hergebruikt.
+Zie de [functionele handleiding](../bewerkte-lagen/afwateringseenheden.md#werkwijze)
+voor de tegelindeling, verwerking en beperkingen.
 
 ## Doelmodi en bronnen
 
-Een afwateringsdoel is een primair waterloopsegment waaraan een gebied wordt toegewezen.
-Andere waterlopen helpen de afstroming te bepalen.
-
-| Gebiedsselectie | Afwateringsdoelen |
+| Optie | Gebruik |
 | --- | --- |
-| Waterschapscode | Alleen het gekozen waterschap |
-| Waterschapscode met `--overige-waterschappen` | Alle geselecteerde waterschappen |
-| Zonder waterschapscode | Alle geselecteerde waterschappen en RWS |
+| `--waterbeheercode 38` | Bereken het gebied van Aa en Maas. |
+| `--overige-waterschappen` | Neem bij een waterschapselectie ook afwateringsdoelen van andere waterschappen mee. |
+| `--eigen-hydamo eigen.gpkg` | Gebruik een eigen levering voor het gekozen waterschap. |
+| `--rijkswateren-url` | Stel een andere locatie voor de Rijkswaterenbron in. |
 
-Waterlopen van omliggende beheerders blijven meedoen bij de inbranding.
-Secundaire waterlopen zijn geen afwateringsdoelen.
-
-RWS-waterlopen komen uit de [Rijkswaterenbron](../bronlagen/rijkswateren.md).
-GKW-waterlopen met code `80` worden niet gebruikt.
-Met `--rijkswateren-url` kunt u een andere bronlocatie instellen.
+Zie [afwateringsdoelen](../bewerkte-lagen/afwateringseenheden.md#afwateringsdoelen)
+voor het effect van de gebiedsselectie.
 
 ```console
 pixi run --environment afwateringseenheden afwateringseenheden --waterbeheercode 38 --overige-waterschappen
@@ -92,15 +72,6 @@ De categorie staat in `categorieoppwaterlichaam` of `categorieoppervlaktewater`.
 `primair`, `secundair` en `tertiair` doen mee; `overig` niet.
 GKW-waterlopen zonder categorie komen in `controle.gpkg`.
 
-### Gezamenlijke secundaire verbindingstoets
-
-Secundaire waterlopen worden gegroepeerd als ze binnen 2 m van elkaar liggen.
-Een groep is verbonden als een waterloop binnen 2 m van primair ligt.
-Dat mag ook een waterloop van een andere beheerder zijn.
-
-Dit bepaalt de indeling van de vectorlagen. Voor de inbranding worden
-[waterlopen en duikers samen beoordeeld](#waterlopen-en-duikers).
-
 ## Duikers, sifons en hevels
 
 - HYDAMO-duikers worden gelezen uit `duikersifonhevel`.
@@ -115,8 +86,8 @@ Met `--max-aansluitlengte 50` worden ook direct aansluitende stukken van maximaa
 50 m uitgesloten als afwateringsdoel. Ze blijven wel ingebrand.
 Zonder deze optie blijven aansluitstukken afwateringsdoelen.
 
-Daarna worden [waterlopen en duikers samen beoordeeld](#waterlopen-en-duikers).
-Dit bepaalt welke duikers worden ingebrand.
+Zie [waterlopen en duikers inbranden](../bewerkte-lagen/afwateringseenheden.md#waterlopen-en-duikers-inbranden)
+voor de verwerking.
 
 ### Controle in QGIS
 
@@ -130,8 +101,8 @@ Open `controle.gpkg` naast `watersysteem.gpkg`.
 Een duiker zonder primaire koppeling kan wel bij een secundaire waterloop horen.
 Gebruik `bronbestand`, `bronlaag` en `bron_fid` om het oorspronkelijke object terug te vinden.
 
-Bij segmenten betekent `brandgeschikt` dat ze mogen worden ingebrand.
-`doelgeschikt` betekent dat er een afwateringseenheid aan mag worden toegewezen.
+Zie de [betekenis van de velden](../bewerkte-lagen/afwateringseenheden.md#uitvoer)
+voor `brandgeschikt` en `doelgeschikt`.
 
 ### Afwateringseenheid aan een segment koppelen
 
@@ -139,14 +110,13 @@ Gebruik `segment_id` uit de afwateringseenheid om hetzelfde segment in
 `hydroobject_segment` te vinden. `van_segment` en `naar_segment` in
 `hydroobject_verbinding` gebruiken deze nummers ook.
 
-De nummers gelden binnen dezelfde run. Broninformatie staat in
-`hydroobject_segment`. Velden met `kunstwerk_` beschrijven een gekoppelde
-stuw of gemaal en zijn anders leeg.
+Gebruik bestanden uit dezelfde run. Broninformatie staat in `hydroobject_segment`.
 
 ## Optionele brandlagen
 
-Met lijnen en vlakken uit GeoPackages kunt u het reken-DEM verhogen of verlagen.
-Deze lagen sturen de afstroming, maar voegen geen afwateringsdoelen toe.
+Voeg lijnen en vlakken uit GeoPackages toe via de [TOML](#toml-configuratie).
+De [functionele handleiding](../bewerkte-lagen/afwateringseenheden.md#optionele-brandlagen)
+beschrijft hun werking en de regels bij overlap.
 
 | Instelling | Betekenis |
 | --- | --- |
@@ -154,10 +124,7 @@ Deze lagen sturen de afstroming, maar voegen geen afwateringsdoelen toe.
 | `prioriteit` | Hoger getal heeft voorrang bij overlap tussen aanvullende lagen. |
 
 - Een waarde bij het object gaat voor de TOML-instelling van de laag, daarna geldt `[defaults]`.
-- Bij gelijke prioriteit wint de grootste wijziging. Verhoging en verlaging op dezelfde cel geven dan een fout.
-- Wijzigingen worden niet opgeteld. Waarde `0` verandert de hoogte niet, maar kan wel een lagere prioriteit tegenhouden.
-- Lijnen krijgen geen extra breedte. Gebruik daarvoor een vlak.
-- Bij vlakken doen alle geraakte rastercellen mee. NoData buiten het DEM blijft NoData.
+- Gebruik een vlak als u een lijn met een bepaalde breedte wilt inbranden.
 
 ### Waterlopen en duikers
 
@@ -165,7 +132,6 @@ De [regels voor inbranding en duikers](../bewerkte-lagen/afwateringseenheden.md#
 staan in de functionele handleiding.
 
 - `geisoleerde_branddiepte_m`: vervangt de standaardverlaging van 10 m voor HYDAMO-waterlopen en -duikers in de [tabel](../bewerkte-lagen/afwateringseenheden.md#waterlopen-en-duikers-inbranden).
-- `brandwaarde`: hoogtewijziging voor een aanvullende laag.
 
 ### TOML-configuratie
 
@@ -197,9 +163,7 @@ In het voorbeeld geldt deze volgorde, met de hoogste prioriteit bovenaan:
 | OSM-kanalen, sloten, afvoerwatergangen en beken | -5 m | 1 |
 | TOP10NL-waterdelen en waterlijnen | -5 m | 0 |
 
-Duikers moeten wel voldoen aan de [aansluitregels](#waterlopen-en-duikers).
 BGT-wegen staan uitgecommentarieerd: de proefwaarde is **+2 m**.
-De waterlopen en duikers houden bij overlap met wegen hun behandeling.
 
 ```toml
 --8<-- "docs/reference/voorbeelden/brandlagen.toml"
@@ -251,6 +215,7 @@ Onder `berekening/` staan:
 
 Gebruik voor het bekijken van de invoer **`brandlagen.gpkg` in de hoofdmap**.
 Bewaar `berekening/` als u de run wilt hervatten.
+Ook bij overgeslagen tegels blijven de voorbereide rasters hier beschikbaar.
 De nieuwe indeling geldt voor nieuwe runs. Begin voor uitvoer met de oude
 mapindeling een nieuwe run; bestaande bestanden worden niet verplaatst.
 
