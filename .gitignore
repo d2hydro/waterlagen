@@ -224,3 +224,6 @@ scripts/data/*
 
 # Local Alkmaar DEM launcher
 /run-dem-alkmaar.ps1
+
+# Temporary development work stays local, outside release commits.
+/dev-workdocs/

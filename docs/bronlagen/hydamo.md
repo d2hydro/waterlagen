@@ -7,7 +7,7 @@ editorial_status: ai
 ## Beschrijving
 
 De GKW HYDAMO-download bevat een landelijke GeoPackage met HyDAMO-lagen,
-waaronder hydroobjecten en puntobjecten.
+waaronder hydroobjecten, puntobjecten en duikers, sifons en hevels.
 
 ## Leverancier
 
@@ -28,6 +28,14 @@ Daarvoor worden de puntlaag `gemaal`, `globalid` en `maximalecapaciteit` gebruik
 Volgens het DAMO-objectenhandboek is de capaciteit van een gemaal uitgedrukt
 in m³/minuut. De afzonderlijke laag `pomp` wordt hierbij niet opgeteld.
 Een ontbrekende capaciteit is geen capaciteit van nul; de bron kan onvolledig zijn.
+
+Voor afwateringseenheden is ook de lijnlaag `duikersifonhevel` vereist; een lege
+laag is geldig. De herkomst wordt bewaard via onder meer `nen3610id`, `globalid`,
+`code` en de oorspronkelijke FID. Duikers met waterbeheercode `80` worden niet
+uit GKW gebruikt, ook niet wanneer de [RWS-bron](rijkswateren.md) geen duikers
+bevat. Een eigen levering moet eveneens een duikerlaag bevatten en vervangt
+alle duikers van de gekozen beheerder zonder terugval op GKW. Zie
+[productie en bronvervanging](../produceren/afwateringseenheden.md#eigen-levering).
 
 ## Externe verwijzingen
 

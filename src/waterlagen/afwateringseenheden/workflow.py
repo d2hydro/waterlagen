@@ -1,7 +1,11 @@
 """Prepare and persist the first vector-only watersysteem step."""
 
+import hashlib
+import json
 import os
+import sqlite3
 import tempfile
+from contextlib import closing
 from pathlib import Path
 
 import geopandas as gpd
@@ -9,13 +13,26 @@ import geopandas as gpd
 from waterlagen import datastore
 from waterlagen._crs import read_layer_crs_info, same_crs
 from waterlagen._downloads import validate_geopackage
-from waterlagen._geopackage import write_geopackage_layer
+from waterlagen._filesystem import replace_file
+from waterlagen._geopackage import (
+    write_geopackage_layer,
+    write_geopackage_layer_atomically,
+)
+from waterlagen._geopandas import read_file
 from waterlagen.datastore import DataStore
 from waterlagen.logger import get_logger
 from waterlagen.settings import settings
 
+from .duikers import (
+    _classify_adjacent,
+    _frame_identity,
+    _prepare_culverts,
+    _validate_culvert_options,
+)
 from .lines import (
     WatersysteemResult,
+    _ensure_bron_id,
+    _prepare_hydroobjecten,
     create_hydroobject_verbindingen,
     split_hydroobjecten_at_points,
     split_hydroobjecten_by_length,
@@ -40,14 +57,19 @@ def prepare_watersysteem(
     tolerance: float = 2.0,
     max_length: float = 500.0,
     hydroobject_secundair: gpd.GeoDataFrame | None = None,
+    duikersifonhevel: gpd.GeoDataFrame | None = None,
+    hydroobject_primair: gpd.GeoDataFrame | None = None,
+    duiker_tolerance: float = 0.5,
+    max_aansluitlengte: float | None = None,
 ) -> WatersysteemResult:
     """Prepare primary hydroobjecten and final segment connections.
 
     This function only performs geometric and topological preparation. It does
     not read a GeoPackage, download source data, or write output. Input CRS
     values are required and are explicitly transformed to ``settings.crs`` by
-    the underlying geometry helpers. Hydroobjecten are split first at nearby
-    pointobjects and then into segments no longer than ``max_length``.
+    the underlying geometry helpers. Optional culvert routes are matched against
+    the full primary context. Culvert and nearby point-object boundaries precede
+    the split into segments no longer than ``max_length``.
 
     Parameters
     ----------
@@ -68,12 +90,26 @@ def prepare_watersysteem(
         Retained for backwards compatibility. Secondary objects are classified
         from their full geometry while writing and are not included in primary
         segment connections.
+    duikersifonhevel : geopandas.GeoDataFrame, optional
+        Culverts from all selected authorities. None preserves the legacy
+        workflow. Supplied culverts always exclude matched routes from primary
+        burning and drainage targets; unsuccessful matches become controls.
+    hydroobject_primair : geopandas.GeoDataFrame, optional
+        Full primary context for culvert matching, independent of target mode.
+        Defaults to ``hydroobjecten``. Target selection uses ``bron_id``.
+    duiker_tolerance : float, optional
+        Inclusive endpoint matching distance, default 0.5 metres. Independent
+        of the general network tolerance; finite and non-negative.
+    max_aansluitlengte : float, optional
+        Exclude direct adjoining physical pieces at or below this length from
+        targets only, before maximum-length splitting. None retains them all;
+        zero is valid. Must be finite and non-negative.
 
     Returns
     -------
     WatersysteemResult
         ``hydroobject_segmenten`` contains stable ``bron_id`` and
-        ``segment_id`` values. ``hydroobject_verbinding`` contains deterministic
+        ``segment_key`` values. ``hydroobject_verbinding`` contains deterministic
         directed relations between final segment IDs, their source ``bron_id``
         values, and relevant point attributes.
     """
@@ -82,13 +118,49 @@ def prepare_watersysteem(
     if max_length <= 0:
         raise ValueError("max_length must be greater than zero")
 
+    _validate_culvert_options(duiker_tolerance, max_aansluitlengte)
+    culverts = None
+    lines = hydroobjecten
+    if duikersifonhevel is not None:
+        culverts = _prepare_culverts(
+            hydroobjecten if hydroobject_primair is None else hydroobject_primair,
+            duikersifonhevel,
+            tolerance=duiker_tolerance,
+        )
+        lines = culverts.pieces
     result_at_points = split_hydroobjecten_at_points(
-        hydroobjecten,
+        lines,
         puntobjecten,
         tolerance=tolerance,
     )
+    physical_pieces = result_at_points.hydroobject_segmenten
+    if culverts is not None:
+        # Only pre-existing source endpoints and physical point cuts may join
+        # distinct sources. A coincident culvert cut must not remove those joins.
+        original_pieces = split_hydroobjecten_at_points(
+            culverts.primary,
+            puntobjecten,
+            tolerance=tolerance,
+        ).hydroobject_segmenten
+        physical_endpoints = {
+            (row.bron_id, tuple(coordinate))
+            for row in original_pieces.itertuples()
+            for coordinate in (row.geometry.coords[0], row.geometry.coords[-1])
+        }
+        for column, endpoint in (("duiker_knip_start", 0), ("duiker_knip_eind", -1)):
+            physical_pieces[column] = [
+                bool(row[column])
+                and (row.bron_id, tuple(row.geometry.coords[endpoint]))
+                not in physical_endpoints
+                for _, row in physical_pieces.iterrows()
+            ]
+        physical_pieces = _classify_adjacent(physical_pieces, max_aansluitlengte)
+        targets = set(_ensure_bron_id(hydroobjecten).bron_id)
+        physical_pieces = physical_pieces.loc[
+            physical_pieces.bron_id.isin(targets)
+        ].copy()
     segmenten = split_hydroobjecten_by_length(
-        result_at_points.hydroobject_segmenten,
+        physical_pieces,
         max_length=max_length,
     )
     verbindingen = create_hydroobject_verbindingen(
@@ -105,6 +177,24 @@ def prepare_watersysteem(
     return WatersysteemResult(
         hydroobject_segmenten=segmenten,
         hydroobject_verbinding=verbindingen,
+        hydroobject_primair_bron=culverts.primary if culverts is not None else None,
+        hydroobject_primair_delen=culverts.pieces if culverts is not None else None,
+        duiker_controle=culverts.controls if culverts is not None else None,
+        duiker_signature=hashlib.sha256(
+            json.dumps(
+                {
+                    "culverts": culverts.signature,
+                    "targets": _frame_identity(hydroobjecten),
+                    "points": _frame_identity(puntobjecten),
+                    "tolerance": tolerance,
+                    "max_length": max_length,
+                    "max_aansluitlengte": max_aansluitlengte,
+                },
+                sort_keys=True,
+            ).encode()
+        ).hexdigest()
+        if culverts is not None
+        else None,
     )
 
 
@@ -139,14 +229,32 @@ def _temporary_output_path(output_path: Path) -> Path:
 def _validate_watersysteem_output(path: Path) -> None:
     """Validate the required layers and their project CRS before replacement."""
     validate_geopackage(path)
+    with closing(sqlite3.connect(path)) as connection:
+        legacy_metadata = connection.execute(
+            "SELECT name FROM sqlite_master WHERE name='waterlagen_duikers'"
+        ).fetchone()
+    if legacy_metadata is not None:
+        raise ValueError(
+            "Technical culvert metadata belongs in berekening/watersysteem/, not this GeoPackage"
+        )
     layers = {info.layer: info for info in read_layer_crs_info(path)}
-    missing_layers = set(OUTPUT_LAYERS) - set(layers)
+    required_layers = OUTPUT_LAYERS
+    missing_layers = set(required_layers) - set(layers)
     if missing_layers:
         raise ValueError(
             "Watersysteem output is missing layers: "
             f"{', '.join(sorted(missing_layers))}"
         )
-    for layer_name in OUTPUT_LAYERS:
+    extra_layers = {
+        name
+        for name, info in layers.items()
+        if info.is_spatial and name not in required_layers
+    }
+    if extra_layers:
+        raise ValueError(
+            f"Watersysteem contains inspection layers: {sorted(extra_layers)}"
+        )
+    for layer_name in required_layers:
         layer_info = layers[layer_name]
         if not layer_info.is_spatial:
             raise ValueError(f"Watersysteem layer '{layer_name}' is not spatial")
@@ -154,6 +262,34 @@ def _validate_watersysteem_output(path: Path) -> None:
             raise ValueError(
                 f"Watersysteem layer '{layer_name}' does not use {settings.crs}"
             )
+
+
+def _watersysteem_metadata(path: Path, signature: str | None) -> dict[str, str | None]:
+    """Bind the preparation identity to the actual published GeoPackage."""
+    with path.open("rb") as source:
+        checksum = hashlib.file_digest(source, "sha256").hexdigest()
+    return {"signature": signature, "output_sha256": checksum}
+
+
+def _write_watersysteem_metadata(path: Path, metadata: dict[str, str | None]) -> None:
+    """Publish metadata only after the matching GeoPackage was replaced."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary_path = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            dir=path.parent,
+            prefix=f".{path.name}.",
+            suffix=".json",
+            delete=False,
+        ) as destination:
+            temporary_path = Path(destination.name)
+            json.dump(metadata, destination, indent=2)
+        replace_file(temporary_path, path)
+    finally:
+        if temporary_path is not None:
+            temporary_path.unlink(missing_ok=True)
 
 
 def _bron_ids(features: gpd.GeoDataFrame, *, layer_name: str) -> set[str]:
@@ -378,6 +514,98 @@ def split_connected_secondary_hydroobjecten(
     return connected, unconnected
 
 
+def _connection_segment_ids(
+    connections: gpd.GeoDataFrame, path: Path
+) -> gpd.GeoDataFrame:
+    """Link connection IDs to the actual segment FIDs written to this package."""
+    with closing(sqlite3.connect(path)) as connection:
+        rows = connection.execute(
+            "SELECT segment_key, fid FROM hydroobject_segment"
+        ).fetchall()
+    identifiers = dict(rows)
+    if len(identifiers) != len(rows):
+        raise ValueError("Duplicate segment_key in hydroobject_segment")
+    result = connections.copy()
+    for direction in ("van", "naar"):
+        values = result[f"{direction}_segment_key"].map(identifiers)
+        if values.isna().any():
+            raise ValueError(f"Unknown {direction}_segment in hydroobject_verbinding")
+        result[f"{direction}_segment"] = values.astype("int64")
+    result = result.rename(
+        columns={
+            "punt_bron_id": "kunstwerk_bron_id",
+            "punt_code": "kunstwerk_code",
+            "punt_naam": "kunstwerk_naam",
+            "waterbeheercode": "kunstwerk_waterbeheercode",
+        }
+    )
+    return result[
+        [
+            "van_segment",
+            "naar_segment",
+            "objecttype",
+            "kunstwerk_bron_id",
+            "kunstwerk_code",
+            "kunstwerk_naam",
+            "kunstwerk_waterbeheercode",
+            "geometry",
+        ]
+    ]
+
+
+def _validate_segment_numbers(path: Path) -> None:
+    """Require compact connections with valid numeric segment references."""
+    with closing(sqlite3.connect(path)) as connection:
+        columns = {
+            row[1]
+            for row in connection.execute("PRAGMA table_info(hydroobject_verbinding)")
+        }
+        obsolete = {
+            "van_segment_key",
+            "naar_segment_key",
+            "van_bron_id",
+            "naar_bron_id",
+            "waterbeheercode",
+            "punt_bron_id",
+            "punt_code",
+            "punt_naam",
+            "punt_waterbeheercode",
+        }
+        if obsolete.intersection(columns) or "kunstwerk_waterbeheercode" not in columns:
+            raise ValueError("Outdated hydroobject_verbinding schema")
+        invalid = connection.execute(
+            "SELECT COUNT(*) FROM hydroobject_segment "
+            "WHERE segment_id IS NULL OR typeof(segment_id) != 'integer' OR segment_id != fid"
+        ).fetchone()[0]
+        if invalid:
+            raise ValueError("segment_id must equal the stored integer segment FID")
+        for direction in ("van", "naar"):
+            invalid = connection.execute(
+                f"SELECT COUNT(*) FROM hydroobject_verbinding AS v "
+                f"LEFT JOIN hydroobject_segment AS s ON s.segment_id = v.{direction}_segment "
+                f"WHERE s.fid IS NULL "
+                f"OR typeof(v.{direction}_segment) != 'integer'"
+            ).fetchone()[0]
+            if invalid:
+                raise ValueError(f"Invalid numeric {direction}_segment link")
+
+
+def _write_inspection_layer(
+    features: gpd.GeoDataFrame | None, path: Path, layer: str
+) -> None:
+    """Refresh one inspection layer, clearing stale rows when input is removed."""
+    if features is None:
+        if not path.exists() or layer not in set(gpd.list_layers(path)["name"]):
+            return
+        features = read_file(path, layer=layer).iloc[:0].copy()
+    logger.info(
+        "Writing inspection layer %s with %s features to %s", layer, len(features), path
+    )
+    write_geopackage_layer_atomically(
+        features, path, layer_name=layer, preserve_other_layers=True
+    )
+
+
 def write_watersysteem(
     *,
     hydroobject_primair: gpd.GeoDataFrame,
@@ -387,6 +615,8 @@ def write_watersysteem(
     output_path: Path | None = None,
     overwrite: bool = False,
     secondary_connection_tolerance: float = 2.0,
+    hydroobject_zonder_categorie: gpd.GeoDataFrame | None = None,
+    controle_path: Path | None = None,
 ) -> Path:
     """Atomically write the prepared watersysteem layers to a GeoPackage.
 
@@ -394,16 +624,26 @@ def write_watersysteem(
     layer, and CRS validation. A failed write or validation removes its
     temporary file and leaves an existing target untouched. Layers with a
     bundled QML style register that style in the GeoPackage automatically.
+    Connections include integer ``van_segment`` and ``naar_segment`` referencing
+    the actual GeoPackage segment FIDs, also used by catchment ``segment_id``.
+    These numbers are local to this output, unlike the source-based segment IDs.
+    Source keys remain in the segment layer; connections omit duplicated keys.
+    Optional structure attributes include ``kunstwerk_waterbeheercode``. Connections
+    without a linked point object have null point attributes.
 
     Parameters
     ----------
     hydroobject_primair : geopandas.GeoDataFrame
-        Selected primary source hydroobjecten. Written without topology changes.
+        All selected primary burn-context lines, including non-target authorities.
+        Used unchanged for the joint secondary test. With culvert preparation,
+        retained in ``berekening/watersysteem/watersysteem.gpkg`` while ``hydroobject_primair``
+        contains only eligible burn pieces.
     hydroobject_secundair : geopandas.GeoDataFrame
         Selected secondary source hydroobjecten. They are divided into connected
         and unconnected output layers using their complete line geometry.
     watersysteem : WatersysteemResult
-        Geometrically prepared primary segments and point-induced connections.
+        Geometrically prepared participating primary targets and point-induced
+        connections. These may be a subset of the primary burn context.
     data_store : DataStore, optional
         Supplies the default output directory.
     output_path : Path, optional
@@ -412,24 +652,104 @@ def write_watersysteem(
     overwrite : bool, optional
         Whether to replace an existing valid GeoPackage. With ``False``, a
         valid target is reused; an invalid target is replaced only after a new
-        temporary GeoPackage has been validated.
+        temporary GeoPackage has been validated. With culverts, source contents,
+        selection and settings must also match the stored preparation identity;
+        otherwise the snapshot is regenerated, including control-only changes.
     secondary_connection_tolerance : float, optional
         Maximum distance in metres between complete primary and secondary
         hydroobject geometries when classifying connected secondary objects, by
         default 2.
+    hydroobject_zonder_categorie : geopandas.GeoDataFrame, optional
+        Excluded GKW lines without a category. Written to ``controle_path``,
+        never included in burning or secondary connectivity.
+    controle_path : pathlib.Path, optional
+        Inspection GeoPackage, default ``output_path.parent/controle.gpkg``.
+        Its ``duikersifonhevel`` layer is refreshed, including when empty or
+        resuming; other inspection layers are preserved. Also stores source
+        lines without a category. Removed inputs clear old inspection rows. Technical primary
+        source and split layers are kept in ``berekening/watersysteem/watersysteem.gpkg`` beside
+        the output. Missing inspection files are rebuilt even on reuse.
+        Culvert snapshots are reused only with matching input metadata.
+        Preparation metadata is stored in ``berekening/watersysteem/<output filename>.json``,
+        tied to the output checksum. Missing or mismatching metadata causes
+        regeneration rather than reuse.
 
     Returns
     -------
     Path
-        Validated GeoPackage with exactly the required output layers.
+        Validated GeoPackage with exactly five spatial watersysteem layers.
     """
     data_store = data_store or datastore
     output_path = Path(
         output_path or data_store.afwateringseenheden_path / DEFAULT_OUTPUT_FILENAME
     )
+    controle_path = Path(controle_path or output_path.parent / "controle.gpkg")
+    metadata_path = (
+        output_path.parent / "berekening" / "watersysteem" / f"{output_path.name}.json"
+    )
+    signature = None
+    if watersysteem.duiker_signature is not None:
+        if (
+            watersysteem.hydroobject_primair_bron is None
+            or watersysteem.hydroobject_primair_delen is None
+            or watersysteem.duiker_controle is None
+        ):
+            raise ValueError("Incomplete prepared culvert snapshot")
+        if _frame_identity(
+            _prepare_hydroobjecten(hydroobject_primair)
+        ) != _frame_identity(watersysteem.hydroobject_primair_bron):
+            raise ValueError("Primary input differs from the prepared culvert context")
+        signature = hashlib.sha256(
+            json.dumps(
+                {
+                    "prepared": watersysteem.duiker_signature,
+                    "primary": _frame_identity(hydroobject_primair),
+                    "secondary": _frame_identity(hydroobject_secundair),
+                    "segments": _frame_identity(watersysteem.hydroobject_segmenten),
+                    "primary_pieces": _frame_identity(
+                        watersysteem.hydroobject_primair_delen
+                    ),
+                    "controls": _frame_identity(watersysteem.duiker_controle),
+                    "connections": _frame_identity(watersysteem.hydroobject_verbinding),
+                    "secondary_tolerance": secondary_connection_tolerance,
+                    "missing_category": _frame_identity(hydroobject_zonder_categorie)
+                    if hydroobject_zonder_categorie is not None
+                    else None,
+                },
+                sort_keys=True,
+            ).encode()
+        ).hexdigest()
+        if not watersysteem.duiker_controle.empty:
+            logger.warning(
+                "%s duikers require inspection in %s (duikersifonhevel)",
+                len(watersysteem.duiker_controle),
+                controle_path,
+            )
+    internal_path = (
+        output_path.parent / "berekening" / "watersysteem" / "watersysteem.gpkg"
+    )
+    for features, path, layer in (
+        (watersysteem.duiker_controle, controle_path, "duikersifonhevel"),
+        (hydroobject_zonder_categorie, controle_path, "hydroobject_zonder_categorie"),
+        (
+            watersysteem.hydroobject_primair_bron,
+            internal_path,
+            "hydroobject_primair_bron",
+        ),
+        (
+            watersysteem.hydroobject_primair_delen,
+            internal_path,
+            "hydroobject_primair_delen",
+        ),
+    ):
+        _write_inspection_layer(features, path, layer)
     if output_path.exists() and not overwrite:
         try:
             _validate_watersysteem_output(output_path)
+            _validate_segment_numbers(output_path)
+            previous = json.loads(metadata_path.read_text(encoding="utf-8"))
+            if previous != _watersysteem_metadata(output_path, signature):
+                raise ValueError("Culvert input, settings or output changed")
         except Exception as exc:
             logger.warning(
                 "Existing watersysteem output %s is invalid and will be replaced: %s",
@@ -450,7 +770,14 @@ def write_watersysteem(
         )
     )
     layers = (
-        ("hydroobject_primair", hydroobject_primair),
+        (
+            "hydroobject_primair",
+            hydroobject_primair
+            if signature is None
+            else watersysteem.hydroobject_primair_delen.loc[
+                watersysteem.hydroobject_primair_delen.brandgeschikt
+            ].copy(),
+        ),
         ("hydroobject_secundair", secundair_verbonden),
         ("hydroobject_secundair_niet_verbonden", secundair_niet_verbonden),
         ("hydroobject_segment", watersysteem.hydroobject_segmenten),
@@ -463,6 +790,11 @@ def write_watersysteem(
     temporary_path = _temporary_output_path(output_path)
     try:
         for index, (layer_name, features) in enumerate(normalized_layers):
+            if layer_name == "hydroobject_segment":
+                features = features.copy()
+                features["segment_id"] = range(1, len(features) + 1)
+            if layer_name == "hydroobject_verbinding":
+                features = _connection_segment_ids(features, temporary_path)
             logger.info(
                 "Writing watersysteem layer %s with %s features",
                 layer_name,
@@ -476,9 +808,17 @@ def write_watersysteem(
             )
         logger.info("Validating temporary watersysteem GeoPackage %s", temporary_path)
         _validate_watersysteem_output(temporary_path)
+        _validate_segment_numbers(temporary_path)
         temporary_path.replace(output_path)
+        _write_watersysteem_metadata(
+            metadata_path, _watersysteem_metadata(output_path, signature)
+        )
     except Exception:
         temporary_path.unlink(missing_ok=True)
         raise
-    logger.info("Wrote watersysteem layers %s to %s", OUTPUT_LAYERS, output_path)
+    logger.info(
+        "Wrote watersysteem layers %s to %s",
+        OUTPUT_LAYERS,
+        output_path,
+    )
     return output_path

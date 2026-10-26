@@ -13,10 +13,11 @@ from waterlagen._cli import production_parser, run_cli
 from waterlagen._run_logging import executor_logging, production_logging, run_log
 from waterlagen._sources import SourcePreparation, prepare_cached, source_options
 from waterlagen.areas import (
-    Area,
     NAMED_AREAS,
+    Area,
     ProductionArea,
     area_name,
+    area_from_bounds,
     select_area_tiles,
 )
 from waterlagen.logger import get_logger, tile_logging
@@ -28,6 +29,86 @@ PRODUCTS = [
     "functioneel_landgebruik",
     "dem",
 ]
+
+
+@pytest.mark.parametrize(
+    "options,valid",
+    [
+        (
+            [
+                "--waterbeheercode",
+                "30",
+                "--overige-waterschappen",
+                "--eigen-hydamo",
+                "own.gpkg",
+                "--duiker-tolerance",
+                "0.3",
+                "--max-aansluitlengte",
+                "25",
+            ],
+            True,
+        ),
+        (["--area", "alkmaar", "--overige-waterschappen"], False),
+        (["--eigen-hydamo", "own.gpkg"], False),
+    ],
+)
+def test_authority_cli_options(tmp_path, monkeypatch, options, valid):
+    path = Path(__file__).parents[1] / "scripts" / "afwateringseenheden.py"
+    spec = importlib.util.spec_from_file_location("afwateringseenheden_cli", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    main = Mock(return_value=tmp_path / "result")
+    monkeypatch.setattr(module, "main", main)
+    monkeypatch.setattr("sys.argv", [str(path), "--data-dir", str(tmp_path), *options])
+    if valid:
+        module.cli()
+        assert main.call_args.kwargs["area"] == "waterschap_30"
+        assert main.call_args.kwargs["overige_waterschappen"] is True
+        assert main.call_args.kwargs["eigen_hydamo"] == Path("own.gpkg")
+        assert main.call_args.kwargs["duiker_tolerance"] == 0.3
+        assert main.call_args.kwargs["max_aansluitlengte"] == 25.0
+    else:
+        with pytest.raises(SystemExit) as result:
+            module.cli()
+        assert result.value.code == 2
+        main.assert_not_called()
+
+
+def test_brandlagen_cli_reads_relative_sources_and_defaults(tmp_path, monkeypatch):
+    path = Path(__file__).parents[1] / "scripts" / "afwateringseenheden.py"
+    spec = importlib.util.spec_from_file_location("afwateringseenheden_cli", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    main = Mock(return_value=tmp_path / "result")
+    monkeypatch.setattr(module, "main", main)
+    config = tmp_path / "burn.toml"
+    config.write_text(
+        '[defaults]\nbrandwaarde = -3\nprioriteit = 2\n[[lagen]]\npath = "roads.gpkg"\nlayer = "roads"\n'
+    )
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            str(path),
+            "--data-dir",
+            str(tmp_path),
+            "--brandlagen-config",
+            str(config),
+            "--bounds",
+            "184285",
+            "392054",
+            "185285",
+            "393054",
+        ],
+    )
+    module.cli()
+    value = main.call_args.kwargs["brandlagen"]
+    assert value.lagen[0].path == tmp_path / "roads.gpkg"
+    assert value.lagen[0].layer == "roads"
+    assert value.brandwaarde == -3
+    assert value.prioriteit == 2
+    assert main.call_args.kwargs["area"] == area_from_bounds(
+        (184285, 392054, 185285, 393054)
+    )
 
 
 @pytest.mark.parametrize("product", PRODUCTS)
@@ -48,6 +129,7 @@ def test_help_is_shared_and_does_not_start_production(product, monkeypatch, caps
         option in help_text
         for option in (
             "--area",
+            "--bounds",
             "--waterbeheercode",
             "--data-dir",
             "--output-root",
@@ -60,6 +142,69 @@ def test_help_is_shared_and_does_not_start_production(product, monkeypatch, caps
         )
     )
     main.assert_not_called()
+
+
+@pytest.mark.parametrize("product", PRODUCTS)
+def test_cli_passes_bounds_in_project_crs(product, tmp_path, monkeypatch):
+    from waterlagen.settings import settings
+
+    monkeypatch.setattr(settings, "crs", "EPSG:4326")
+    path = Path(__file__).parents[1] / "scripts" / f"{product}.py"
+    spec = importlib.util.spec_from_file_location(product, path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    main = Mock(return_value=tmp_path / "result")
+    monkeypatch.setattr(module, "main", main)
+    monkeypatch.setattr(
+        "sys.argv",
+        [str(path), "--bounds", "-1.5", "0", "2", "3", "--data-dir", str(tmp_path)],
+    )
+    module.cli()
+    area = main.call_args.kwargs["area"]
+    assert isinstance(area, ProductionArea)
+    assert area.geometry.equals(box(-1.5, 0, 2, 3))
+    assert area.crs == "EPSG:4326"
+    assert area.value == "-1.5_0_2_3"
+    assert "bounds" not in main.call_args.kwargs
+
+
+def test_cli_default_remains_nederland(tmp_path):
+    main = Mock(return_value=tmp_path / "result")
+    run_cli(production_parser("test"), main, ["--data-dir", str(tmp_path)])
+    assert main.call_args.kwargs["area"] == "nederland"
+
+
+@pytest.mark.parametrize(
+    "values",
+    [
+        [],
+        ["0", "1", "2"],
+        ["0", "0", "1", "1", "2"],
+        ["a", "0", "1", "1"],
+        ["nan", "0", "1", "1"],
+        ["0", "0", "inf", "1"],
+        ["1", "0", "0", "1"],
+        ["0", "1", "1", "0"],
+        ["0", "0", "0", "1"],
+        ["0", "0", "1", "0"],
+        ["0", "0", "1", "1", "--area", "alkmaar"],
+        ["0", "0", "1", "1", "--waterbeheercode", "38"],
+    ],
+)
+def test_invalid_bounds_fail_before_io(tmp_path, monkeypatch, values):
+    store = Mock(side_effect=AssertionError("DataStore must not start"))
+    monkeypatch.setattr("waterlagen._cli.DataStore", store)
+    workflow = Mock()
+    with pytest.raises(SystemExit) as result:
+        run_cli(
+            production_parser("test"),
+            workflow,
+            ["--data-dir", str(tmp_path / "new"), "--bounds", *values],
+        )
+    assert result.value.code == 2
+    store.assert_not_called()
+    workflow.assert_not_called()
+    assert not (tmp_path / "new").exists()
 
 
 @pytest.mark.parametrize("product", PRODUCTS)

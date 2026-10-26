@@ -31,6 +31,10 @@ RELEVANT_FIELDS: dict[str, tuple[str, ...]] = {
         "naam",
         "nen3610id",
         CATEGORIE_OPPERVLAKTEWATER_COLUMN,
+        "categorieoppervlaktewater",
+        "bron",
+        "osm_id",
+        "osm_laag",
         "statusleggerwatersysteem",
         "statusobject",
     ),
@@ -56,6 +60,7 @@ RELEVANT_FIELDS: dict[str, tuple[str, ...]] = {
     ),
 }
 DEFAULT_RELEVANT_FIELDS = ("code", "globalid", "naam", WATERBEHEERCODE_COLUMN)
+RELEVANT_FIELDS["duikersifonhevel"] = (*DEFAULT_RELEVANT_FIELDS, "objectid")
 
 
 def _normaliseer_waterbeheercode(value: object) -> str | None:
@@ -194,7 +199,7 @@ def _add_bron_id(features: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
                 identifiers.append(str(value))
                 break
         else:
-            identifiers.append(str(index))
+            identifiers.append(str(row.get("bron_fid", index)))
     result["bron_id"] = identifiers
     return result
 
@@ -254,7 +259,11 @@ def _read_hydamo_layer(
     fields = list(dict.fromkeys(fields))
 
     source_selection = None
-    read_kwargs: dict[str, object] = {"layer": layer, "columns": fields}
+    read_kwargs: dict[str, object] = {
+        "layer": layer,
+        "columns": fields,
+        "fid_as_index": True,
+    }
     if spatial_selection is not None:
         source_selection = _selection_geometry_in_source_crs(
             spatial_selection,
@@ -271,11 +280,21 @@ def _read_hydamo_layer(
         logger.info("Reading all HyDAMO %s features", layer)
 
     features = wgpd.read_file(hydamo_path, **read_kwargs)
+    features["bronbestand"] = str(hydamo_path.resolve())
+    features["bronlaag"] = layer
+    features["bron_fid"] = features.index
     if source_selection is not None:
         features = features[features.geometry.intersects(source_selection)].copy()
     if features.crs is None:
         raise ValueError(f"HyDAMO layer '{layer}' has no CRS")
     if not same_crs(features.crs, settings.crs):
+        logger.info(
+            "Transforming %s / %s from %s to %s",
+            hydamo_path,
+            layer,
+            features.crs,
+            settings.crs,
+        )
         features = features.to_crs(settings.crs)
     features = _to_2d(features)
 
@@ -380,6 +399,42 @@ def read_hydroobjecten(
     else:
         result = gpd.GeoDataFrame(records, geometry="geometry", crs=source.crs)
     return result.reset_index(drop=True)
+
+
+def read_duikersifonhevel(
+    hydamo_path: Path,
+    *,
+    spatial_selection: BaseGeometry | None = None,
+    spatial_selection_crs: str | int = settings.crs,
+) -> gpd.GeoDataFrame:
+    """Read culverts with full geometry and original file/layer/FID provenance.
+
+    Parameters
+    ----------
+    hydamo_path : pathlib.Path
+        GeoPackage with a required ``duikersifonhevel`` layer; empty is valid.
+    spatial_selection : BaseGeometry, optional
+        Calculation context. Selected geometries are not clipped. Objects
+        without any spatial location cannot be selected by a spatial query.
+    spatial_selection_crs : str or int, optional
+        Selection CRS. Output uses ``settings.crs``.
+
+    Returns
+    -------
+    geopandas.GeoDataFrame
+        Source objects, including unusable geometries for subsequent inspection.
+        Read errors and missing CRS are raised, never replaced by empty output.
+    """
+    source = _read_hydamo_layer(
+        hydamo_path,
+        layer="duikersifonhevel",
+        spatial_selection=spatial_selection,
+        spatial_selection_crs=spatial_selection_crs,
+        waterbeheercodes=None,
+        attribute_filters=None,
+    )
+    source["bron_id"] = source["bron_fid"].astype(str)
+    return _add_bron_id(source)
 
 
 def read_puntobjecten(

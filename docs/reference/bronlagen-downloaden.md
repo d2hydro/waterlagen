@@ -17,6 +17,19 @@ een klein voorbeeldgebied maakt die downloads niet kleiner.
 Een volledige productie haalt de benodigde bronnen zelf op; het is niet nodig
 alle onderstaande scripts eerst uit te voeren.
 
+## Rijkswateren
+
+De volledige handmatig gepubliceerde GeoPackage is ook voor kleine gebieden nodig.
+Het voorbeeld hergebruikt een geldige lokale bron zonder netwerkverkeer.
+
+[Over deze bron](../bronlagen/rijkswateren.md) · [API-referentie](rijkswateren.md)
+
+```python
+--8<-- "docs/reference/voorbeelden/download_rijkswateren.py"
+```
+
+[Download het script](voorbeelden/download_rijkswateren.py).
+
 ## AHN
 
 Download de AHN4-DTM-tegels die Alkmaar-centrum raken, met resolutie 0,5 m. Hele AHN-tegels worden opgehaald; de download is groter dan het voorbeeldgebied. Het resultaat is een VRT met bijbehorende GeoTIFFs.
@@ -135,6 +148,24 @@ Haal de geometrieën van de beoordeelde drinkwaterlocaties uit OSM op en schrijf
 
 ```python
 --8<-- "docs/reference/voorbeelden/download_osm_drinkwater.py"
+```
+
+## OSM-kanalen
+
+Download open kanalen, sloten, afvoerwatergangen, beken en duikers voor het ingestelde gebied.
+Het voorbeeld gebruikt Aa en Maas inclusief tegelbuffers. Onder `source_data/osm/`
+komen vijf bestanden: `osm_canals.gpkg`, `osm_ditches.gpkg`, `osm_drains.gpkg`,
+`osm_streams.gpkg` en `osm_culverts.gpkg`.
+Pas `DATA_DIR` en `BOUNDS` aan voor een ander gebied. Een bestaande download
+wordt alleen hergebruikt bij dezelfde selectie; kies anders een ander uitvoerpad
+of zet `OVERWRITE = True`.
+
+[Over deze bron](../bronlagen/osm-waterlopen.md) · [API-referentie](osm_waterlopen.md)
+
+[Download het Python-script](voorbeelden/download_osm_canals.py).
+
+```python
+--8<-- "docs/reference/voorbeelden/download_osm_canals.py"
 ```
 
 ## TOP10NL

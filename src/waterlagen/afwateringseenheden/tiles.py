@@ -21,7 +21,11 @@ from waterlagen import _geopandas as wgpd
 from waterlagen import datastore as default_datastore
 from waterlagen._crs import format_crs, same_crs
 from waterlagen._downloads import _temporary_path
-from waterlagen._geopackage import write_geopackage_layer
+from waterlagen._filesystem import replace_file
+from waterlagen._geopackage import (
+    write_geopackage_layer,
+    write_geopackage_layer_atomically,
+)
 from waterlagen._run_logging import executor_logging
 from waterlagen.datastore import DataStore
 from waterlagen.logger import get_logger, tile_logging
@@ -29,6 +33,8 @@ from waterlagen.raster.tiles import TILES_LAYER, Tile, read_tiles, tile_from_row
 from waterlagen.settings import settings
 
 from ._coverage import _landsgrens_version
+from .brandlagen import _burn_signature, _prepare_brandlagen, _PreparedBrandlagen
+from .config import BrandlagenConfig
 from .pcraster import (
     SUBCATCHMENTS_FILENAME,
     SUBCATCHMENTS_GPKG_FILENAME,
@@ -37,7 +43,13 @@ from .pcraster import (
     calculate_subcatchments,
     require_pcraster,
 )
-from .raster import WatersysteemRasters, prepare_watersysteem_rasters
+from .raster import (
+    BRANDBRON_FILENAME,
+    WatersysteemRasters,
+    _grid_for_square,
+    _prepare_rasters,
+    prepare_watersysteem_rasters,
+)
 
 logger = get_logger(__name__)
 
@@ -118,6 +130,7 @@ class _TileJob:
     crs: str
     random_seed: int | None
     landsgrens_path: Path | None = None
+    brandlagen: _PreparedBrandlagen | None = None
 
 
 def _validate_tile_inputs(
@@ -273,8 +286,8 @@ def _empty_like_subcatchments(
         return subcatchments.iloc[0:0].copy()
     return gpd.GeoDataFrame(
         {
-            "segment_fid": pd.Series(dtype="int64"),
-            "segment_id": pd.Series(dtype="object"),
+            "segment_id": pd.Series(dtype="int64"),
+            "segment_key": pd.Series(dtype="object"),
         },
         geometry=gpd.GeoSeries([], crs=None),
     )
@@ -394,8 +407,8 @@ def _merge_subcatchments(
     if not frames:
         return gpd.GeoDataFrame(
             {
-                "segment_fid": pd.Series(dtype="int64"),
-                "segment_id": pd.Series(dtype="object"),
+                "segment_id": pd.Series(dtype="int64"),
+                "segment_key": pd.Series(dtype="object"),
             },
             geometry=gpd.GeoSeries([], crs=None),
         )
@@ -405,16 +418,16 @@ def _merge_subcatchments(
         geometry="geometry",
         crs=frames[0].crs,
     )
-    if combined.groupby("segment_id").segment_fid.nunique().gt(1).any():
-        raise ValueError("A segment_id has different segment_fid values across tiles")
+    if combined.groupby("segment_key").segment_id.nunique().gt(1).any():
+        raise ValueError("A segment_key has different segment_id values across tiles")
     merged = combined.dissolve(
-        by="segment_id",
+        by="segment_key",
         as_index=False,
-        aggfunc={"segment_fid": "first"},
+        aggfunc={"segment_id": "first"},
     )
     merged = gpd.clip(merged, gebied)
     merged = _clean_polygon_geometries(merged)
-    return merged[["segment_fid", "segment_id", "geometry"]].reset_index(drop=True)
+    return merged[["segment_id", "segment_key", "geometry"]].reset_index(drop=True)
 
 
 def _gap_donor(
@@ -584,8 +597,8 @@ def _fill_gaps_from_neighbours(
     else:
         added = gpd.GeoDataFrame(
             columns=[
-                "segment_fid",
                 "segment_id",
+                "segment_key",
                 "bron_tegel",
                 "keuzevolgorde",
                 "doel_tegel",
@@ -675,7 +688,15 @@ def _calculate_tile(job: _TileJob) -> AfwateringseenhedenTileResult:
     job.output_dir.mkdir(parents=True, exist_ok=True)
     calculation_buffer_m = job.tile_buffer_m
     existing_subcatchments = None
-    if not job.overwrite:
+    burn_signature = _burn_signature(
+        job.watersysteem_path, job.burn_depth_m, job.brandlagen
+    )
+    burn_manifest = job.output_dir / "subcatchments_burn.txt"
+    current_burn = (
+        burn_manifest.is_file()
+        and burn_manifest.read_text(encoding="utf-8") == burn_signature
+    )
+    if not job.overwrite and current_burn:
         existing_subcatchments = _read_existing_subcatchments(
             job.output_dir / SUBCATCHMENTS_GPKG_FILENAME
         )
@@ -694,23 +715,43 @@ def _calculate_tile(job: _TileJob) -> AfwateringseenhedenTileResult:
                 existing_subcatchments = None
         if existing_subcatchments is not None:
             calculation_buffer_m = _cached_buffer_m(job)
+            if not (job.output_dir / BRANDBRON_FILENAME).is_file():
+                logger.info(
+                    "Recalculating tile %s with missing burn-source raster",
+                    tile.tile_id,
+                )
+                existing_subcatchments = None
 
     if existing_subcatchments is None:
+        burn_manifest.unlink(missing_ok=True)
         logger.info(
             "Calculating afwateringseenheden tile %s with a %s m buffer",
             tile.tile_id,
             calculation_buffer_m,
         )
-        rasters = prepare_watersysteem_rasters(
-            _calculation_geometry(tile, tile_buffer_m=calculation_buffer_m),
-            burn_depth_m=job.burn_depth_m,
-            ahn_vrt_path=job.ahn_vrt_path,
-            landsgrens_path=job.landsgrens_path,
-            watersysteem_path=job.watersysteem_path,
-            output_dir=job.output_dir,
-            resolution_m=job.resolution_m,
-            overwrite=job.overwrite,
+        calculation_geometry = _calculation_geometry(
+            tile, tile_buffer_m=calculation_buffer_m
         )
+        raster_options = {
+            "burn_depth_m": job.burn_depth_m,
+            "ahn_vrt_path": job.ahn_vrt_path,
+            "landsgrens_path": job.landsgrens_path,
+            "watersysteem_path": job.watersysteem_path,
+            "output_dir": job.output_dir,
+            "overwrite": job.overwrite,
+        }
+        if job.brandlagen is None:
+            rasters = prepare_watersysteem_rasters(
+                calculation_geometry, resolution_m=job.resolution_m, **raster_options
+            )
+        else:
+            rasters = _prepare_rasters(
+                grid=_grid_for_square(
+                    calculation_geometry, resolution_m=job.resolution_m
+                ),
+                prepared=job.brandlagen,
+                **raster_options,
+            )
         if not _has_segment_cells(rasters):
             logger.info(
                 "Skipping afwateringseenheden tile %s without hydroobject segments "
@@ -735,6 +776,9 @@ def _calculate_tile(job: _TileJob) -> AfwateringseenhedenTileResult:
             engine=job.engine,
         )
         subcatchments = subcatchment_result.subcatchments
+        temporary_manifest = burn_manifest.with_suffix(".tmp")
+        temporary_manifest.write_text(burn_signature, encoding="utf-8")
+        replace_file(temporary_manifest, burn_manifest)
     else:
         rasters = WatersysteemRasters(
             dem_path=job.output_dir / "dem_2m.tif",
@@ -860,6 +904,7 @@ def calculate_afwateringseenheden_tiles(
     workers: int = 1,
     clip_to_area: bool = True,
     random_seed: int | None = None,
+    brandlagen: BrandlagenConfig | None = None,
 ) -> AfwateringseenhedenTilesResult:
     """Calculate afwateringseenheden for every tile intersecting an area.
 
@@ -872,6 +917,10 @@ def calculate_afwateringseenheden_tiles(
         Production workflows set False to retain complete tile cores.
     burn_depth_m : float
         Burn depth passed to :func:`prepare_watersysteem_rasters`.
+    brandlagen : BrandlagenConfig, optional
+        Optional layers, validated once on the selected buffered calculation
+        grids. Workers read local selections from ``output_dir/brandlagen_voorbereid.gpkg``.
+        Changed sources, defaults or burn depth invalidate raster and tile reuse.
     ahn_vrt_path : Path, optional
         AHN VRT used for every tile. Defaults to the datastore AHN DTM VRT.
     landsgrens_path : Path, optional
@@ -891,6 +940,9 @@ def calculate_afwateringseenheden_tiles(
         merged GeoPackage is written. An existing merged file is replaced
         after success, independently of ``overwrite``; choose a new path
         to retain previous merged results. Worker failures prevent merging.
+        Contains only the merged subcatchment layer. Gap additions and
+        unassigned areas are written to ``controle.gpkg`` beside this file,
+        including when all tiles are empty. Other inspection layers are retained.
     tiles_path : Path, optional
         Existing tile-index GeoPackage. When omitted, a tile grid is generated
         directly from ``gebied`` using ``tile_size_m`` and the configured origin.
@@ -969,6 +1021,19 @@ def calculate_afwateringseenheden_tiles(
         watersysteem_path or data_store.afwateringseenheden_path / "watersysteem.gpkg"
     )
     output_dir = Path(output_dir or data_store.afwateringseenheden_path / "tiles")
+    if (
+        brandlagen is not None
+        and any(layer.rol in {"water", "duiker"} for layer in brandlagen.lagen)
+        and not (
+            watersysteem_path.parent
+            / "berekening"
+            / "waterlopen_duikers"
+            / "manifest.json"
+        ).exists()
+    ):
+        raise ValueError(
+            "waternet requires joint preparation through the production workflow"
+        )
     output_dir.mkdir(parents=True, exist_ok=True)
 
     tiles = (
@@ -992,6 +1057,17 @@ def calculate_afwateringseenheden_tiles(
     _write_selected_tiles(output_dir, selected_tiles)
     logger.info("Selected %s afwateringseenheden tile(s)", len(selected_tiles))
 
+    grids = [
+        _grid_for_square(
+            _calculation_geometry(tile, tile_buffer_m=tile_buffer_m),
+            resolution_m=resolution_m,
+        )
+        for tile in selected_tiles
+    ]
+    prepared = _prepare_brandlagen(
+        brandlagen, grids, output_dir / "brandlagen_voorbereid.gpkg"
+    )
+
     jobs = [
         _TileJob(
             tile=tile,
@@ -1007,6 +1083,7 @@ def calculate_afwateringseenheden_tiles(
             engine=engine,
             crs=format_crs(settings.crs),
             random_seed=random_seed,
+            brandlagen=prepared,
         )
         for tile in selected_tiles
     ]
@@ -1060,13 +1137,50 @@ def calculate_afwateringseenheden_tiles(
         if abs(merged_subcatchments.area.sum() - expected_area) > _AREA_TOLERANCE:
             raise ValueError("Merging gap additions changed existing coverage")
     merged_path = None
+    if merged_output_path is not None:
+        control_path = Path(merged_output_path).parent / "controle.gpkg"
+        for layer, features in (
+            ("aanvulling_buurtegels", gap_fill.additions),
+            ("niet_toegewezen", gap_fill.remaining),
+        ):
+            write_geopackage_layer_atomically(
+                features.set_crs(settings.crs),
+                control_path,
+                layer_name=layer,
+                preserve_other_layers=True,
+            )
     if merged_output_path is not None and merged_subcatchments.empty:
         logger.warning(
             "No merged afwateringseenheden written because all selected tiles are empty"
         )
     elif merged_output_path is not None:
         merged_path = Path(merged_output_path)
-        _write_merged_subcatchments(merged_path, merged_subcatchments)
+        if watersysteem_path.is_file():
+            segments = wgpd.read_file(watersysteem_path, layer="hydroobject_segment")
+            provenance = [
+                name
+                for name in (
+                    "bron_id",
+                    "waterbeheercode",
+                    "nen3610id",
+                    "globalid",
+                    "bronbestand",
+                    "bronlaag",
+                    "bron_fid",
+                )
+                if name in segments
+            ]
+            if provenance:
+                merged_subcatchments = merged_subcatchments.merge(
+                    segments[["segment_key", *provenance]],
+                    on="segment_key",
+                    how="left",
+                    validate="many_to_one",
+                )
+        _write_merged_subcatchments(
+            merged_path,
+            merged_subcatchments,
+        )
         logger.info(
             "Wrote merged afwateringseenheden with %s feature(s) to %s",
             len(merged_subcatchments),

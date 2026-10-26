@@ -54,7 +54,7 @@ class _FakePCRaster:
         return data
 
 
-def test_polygonize_subcatchments_resolves_segment_ids_from_fids() -> None:
+def test_polygonize_subcatchments_resolves_segment_keys_from_fids() -> None:
     data = np.array(
         [
             [0, 1, 1, pcraster_module.SUBCATCHMENTS_NODATA],
@@ -67,25 +67,25 @@ def test_polygonize_subcatchments_resolves_segment_ids_from_fids() -> None:
         data,
         transform=from_origin(0, 4, 2, 2),
         crs=CRS,
-        segment_ids_by_fid={1: "primair:0001", 2: "primair:0002"},
+        segment_keys_by_fid={1: "primair:0001", 2: "primair:0002"},
     )
 
-    assert result["segment_fid"].tolist() == [1, 2]
-    assert result["segment_id"].tolist() == ["primair:0001", "primair:0002"]
+    assert result["segment_id"].tolist() == [1, 2]
+    assert result["segment_key"].tolist() == ["primair:0001", "primair:0002"]
     assert result.crs.to_epsg() == 28992
 
 
-def test_polygonize_subcatchments_rejects_unknown_segment_fid() -> None:
-    with pytest.raises(ValueError, match="without a matching segment_id: 3"):
+def test_polygonize_subcatchments_rejects_unknown_segment_id() -> None:
+    with pytest.raises(ValueError, match="without a matching segment_key: 3"):
         pcraster_module._polygonize_subcatchments(
             np.array([[3]], dtype=np.int32),
             transform=from_origin(0, 2, 2, 2),
             crs=CRS,
-            segment_ids_by_fid={1: "primair:0001"},
+            segment_keys_by_fid={1: "primair:0001"},
         )
 
 
-def test_calculate_subcatchments_writes_aligned_rasters_and_segment_ids(
+def test_calculate_subcatchments_writes_aligned_rasters_and_segment_keys(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -124,11 +124,11 @@ def test_calculate_subcatchments_writes_aligned_rasters_and_segment_ids(
         assert np.any(ldd.read(1) != pcraster_module.LDD_NODATA)
         assert np.any(subcatchments.read(1) != pcraster_module.SUBCATCHMENTS_NODATA)
 
-    segment_ids = gpd.read_file(
+    segment_keys = gpd.read_file(
         watersysteem_path,
         layer="hydroobject_segment",
         fid_as_index=True,
-    )["segment_id"]
+    )["segment_key"]
     written = gpd.read_file(
         result.afwateringseenheden_path,
         layer=pcraster_module.SUBCATCHMENTS_LAYER,
@@ -140,7 +140,7 @@ def test_calculate_subcatchments_writes_aligned_rasters_and_segment_ids(
     )
     assert len(written) == len(result.subcatchments)
     for row in written.itertuples():
-        assert row.segment_id == segment_ids.loc[row.segment_fid]
+        assert row.segment_key == segment_keys.loc[row.segment_id]
     assert fake_pcraster.clone_arguments == (4, 4, 2.0, 0.0, 8.0)
     assert fake_pcraster.global_options == ["unittrue", "lddin"]
     assert fake_pcraster.ldd_arguments == (5000.0, 1e31, 1e31, 1e31)

@@ -1,3 +1,6 @@
+import sqlite3
+import xml.etree.ElementTree as ET
+from contextlib import closing
 from pathlib import Path
 
 import geopandas as gpd
@@ -11,10 +14,10 @@ from waterlagen.afwateringseenheden import (
     split_connected_secondary_hydroobjecten,
     split_hydroobjecten_at_points,
     split_hydroobjecten_by_length,
+    workflow,
     write_watersysteem,
 )
 from waterlagen.afwateringseenheden.lines import create_hydroobject_verbindingen
-from waterlagen.afwateringseenheden import workflow
 from waterlagen.settings import settings
 
 CRS = settings.crs
@@ -105,13 +108,13 @@ def _puntobjecten(points: list[Point]) -> gpd.GeoDataFrame:
 
 
 def _segmenten(
-    segment_ids: list[str],
+    segment_keys: list[str],
     geometries: list[LineString],
 ) -> gpd.GeoDataFrame:
     return gpd.GeoDataFrame(
         {
-            "segment_id": segment_ids,
-            "bron_id": [segment_id.split(":")[0] for segment_id in segment_ids],
+            "segment_key": segment_keys,
+            "bron_id": [segment_key.split(":")[0] for segment_key in segment_keys],
         },
         geometry=geometries,
         crs=CRS,
@@ -234,7 +237,7 @@ def test_point_within_tolerance_creates_directed_connection_tree_at_the_node():
     assert len(verbindingen) == 3
     assert {
         tuple(row)
-        for row in verbindingen[["van_segment", "naar_segment"]].itertuples(
+        for row in verbindingen[["van_segment_key", "naar_segment_key"]].itertuples(
             index=False, name=None
         )
     } == {
@@ -279,7 +282,7 @@ def test_prepare_watersysteem_drops_z_and_deduplicates_equal_connections():
     assert not result.hydroobject_verbinding.geometry.has_z.any()
     assert len(result.hydroobject_verbinding) == 11
     assert not result.hydroobject_verbinding.duplicated(
-        ["van_segment", "naar_segment", "geometry"]
+        ["van_segment_key", "naar_segment_key", "geometry"]
     ).any()
 
 
@@ -292,7 +295,7 @@ def test_length_segmentation_creates_connections_between_adjacent_segments():
 
     assert len(result.hydroobject_segmenten) == 4
     assert result.hydroobject_verbinding[
-        ["van_segment", "naar_segment"]
+        ["van_segment_key", "naar_segment_key"]
     ].values.tolist() == [
         ["hydro-a:0001", "hydro-a:0002"],
         ["hydro-a:0002", "hydro-a:0003"],
@@ -319,7 +322,7 @@ def test_one_incoming_and_two_outgoing_segments_create_two_directed_connections(
 
     assert {
         tuple(row)
-        for row in verbindingen[["van_segment", "naar_segment"]].itertuples(
+        for row in verbindingen[["van_segment_key", "naar_segment_key"]].itertuples(
             index=False, name=None
         )
     } == {
@@ -346,7 +349,7 @@ def test_two_incoming_and_one_outgoing_segments_create_two_directed_connections(
 
     assert {
         tuple(row)
-        for row in verbindingen[["van_segment", "naar_segment"]].itertuples(
+        for row in verbindingen[["van_segment_key", "naar_segment_key"]].itertuples(
             index=False, name=None
         )
     } == {
@@ -374,7 +377,7 @@ def test_three_outgoing_segments_create_a_tree_without_duplicate_connections():
     assert len(verbindingen) == 2
     assert {
         tuple(row)
-        for row in verbindingen[["van_segment", "naar_segment"]].itertuples(
+        for row in verbindingen[["van_segment_key", "naar_segment_key"]].itertuples(
             index=False, name=None
         )
     } == {
@@ -382,9 +385,11 @@ def test_three_outgoing_segments_create_a_tree_without_duplicate_connections():
         ("out-a:0001", "out-c:0001"),
     }
     assert not verbindingen.duplicated(
-        ["van_segment", "naar_segment", "geometry"]
+        ["van_segment_key", "naar_segment_key", "geometry"]
     ).any()
-    assert not (verbindingen["van_segment"] == verbindingen["naar_segment"]).any()
+    assert not (
+        verbindingen["van_segment_key"] == verbindingen["naar_segment_key"]
+    ).any()
 
 
 def test_ambiguous_junction_uses_deterministic_main_route_with_n_minus_one_edges():
@@ -407,7 +412,7 @@ def test_ambiguous_junction_uses_deterministic_main_route_with_n_minus_one_edges
     assert len(verbindingen) == 3
     assert {
         tuple(row)
-        for row in verbindingen[["van_segment", "naar_segment"]].itertuples(
+        for row in verbindingen[["van_segment_key", "naar_segment_key"]].itertuples(
             index=False, name=None
         )
     } == {
@@ -439,6 +444,61 @@ def test_point_outside_tolerance_does_not_split_or_connect():
     assert result.hydroobject_verbinding.empty
 
 
+@pytest.mark.parametrize("source_index", [42, "waterloop-a"])
+def test_empty_culverts_preserve_line_with_index_identifier(source_index):
+    hydroobjecten = gpd.GeoDataFrame(
+        geometry=[LineString([(0, 0), (20, 0)])],
+        index=[source_index],
+        crs=CRS,
+    )
+    empty = gpd.GeoDataFrame(geometry=[], crs=CRS)
+    baseline = prepare_watersysteem(hydroobjecten, empty).hydroobject_segmenten
+
+    result = prepare_watersysteem(
+        hydroobjecten, empty, duikersifonhevel=empty
+    ).hydroobject_segmenten
+
+    assert len(result) == 1
+    assert result.geometry.iloc[0].equals(hydroobjecten.geometry.iloc[0])
+    assert result.geometry.iloc[0].equals(baseline.geometry.iloc[0])
+    assert result.bron_id.tolist() == baseline.bron_id.tolist() == [str(source_index)]
+    assert "bron_id" not in hydroobjecten.columns
+    assert hydroobjecten.index.tolist() == [source_index]
+
+
+@pytest.mark.parametrize("with_culvert", [False, True])
+def test_culvert_target_selection_preserves_index_after_filtering_and_exploding(
+    with_culvert,
+):
+    geometry = MultiLineString([[(0, 0), (10, 0)], [(20, 0), (30, 0)]])
+    primary = gpd.GeoDataFrame(
+        geometry=[None, geometry, LineString([(0, 10), (20, 10)])],
+        index=[4, 42, 75],
+        crs=CRS,
+    )
+    empty = gpd.GeoDataFrame(geometry=[], crs=CRS)
+    culverts = gpd.GeoDataFrame(
+        geometry=[LineString([(2, 0), (8, 0)])] if with_culvert else [],
+        crs=CRS,
+    )
+
+    result = prepare_watersysteem(
+        primary.loc[[42]],
+        empty,
+        hydroobject_primair=primary,
+        duikersifonhevel=culverts,
+    )
+    segments = result.hydroobject_segmenten
+
+    assert segments.geometry.union_all().equals(geometry)
+    assert set(segments.bron_id) == {"42"}
+    assert segments.segment_key.is_unique
+    assert segments.loc[~segments.doelgeschikt].length.sum() == (
+        6 if with_culvert else 0
+    )
+    assert set(result.hydroobject_primair_bron.bron_id) == {"42", "75"}
+
+
 def test_endpoint_and_duplicate_points_do_not_create_empty_segments():
     result = split_hydroobjecten_at_points(
         _hydroobjecten().iloc[[0]],
@@ -459,7 +519,7 @@ def test_split_hydroobjecten_by_length_keeps_stable_identifiers_and_lengths():
 
     assert result.geometry.length.tolist() == [25.0, 25.0, 25.0, 25.0]
     assert result["bron_id"].tolist() == ["hydro-a"] * 4
-    assert result["segment_id"].tolist() == [
+    assert result["segment_key"].tolist() == [
         "hydro-a:0001",
         "hydro-a:0002",
         "hydro-a:0003",
@@ -638,7 +698,7 @@ def test_prepare_watersysteem_excludes_secondary_from_segment_connections():
         "primair-1",
     ]
     assert watersysteem.hydroobject_verbinding[
-        ["van_segment", "naar_segment", "van_bron_id", "naar_bron_id"]
+        ["van_segment_key", "naar_segment_key", "van_bron_id", "naar_bron_id"]
     ].values.tolist() == [
         ["primair-1:0001", "primair-1:0002", "primair-1", "primair-1"]
     ]
@@ -654,6 +714,10 @@ def test_write_watersysteem_writes_exact_required_layers(hydamo_path, tmp_path):
     ].copy()
     punten = read_puntobjecten(hydamo_path)
     watersysteem = prepare_watersysteem(primair, punten, tolerance=2, max_length=30)
+    # In-memory indices are not GeoPackage FIDs.
+    watersysteem.hydroobject_segmenten.index = range(
+        100, 100 + len(watersysteem.hydroobject_segmenten)
+    )
     output_path = tmp_path / "watersysteem.gpkg"
 
     result = write_watersysteem(
@@ -677,6 +741,92 @@ def test_write_watersysteem_writes_exact_required_layers(hydamo_path, tmp_path):
     assert gpd.read_file(result, layer="hydroobject_secundair_niet_verbonden")[
         "categorieoppwaterlichaam"
     ].tolist() == ["secundair"]
+    segments = gpd.read_file(result, layer="hydroobject_segment", fid_as_index=True)
+    connections = gpd.read_file(result, layer="hydroobject_verbinding")
+    assert not connections.empty
+    assert segments.segment_id.tolist() == segments.index.tolist()
+    assert connections.columns.tolist() == [
+        "van_segment",
+        "naar_segment",
+        "objecttype",
+        "kunstwerk_bron_id",
+        "kunstwerk_code",
+        "kunstwerk_naam",
+        "kunstwerk_waterbeheercode",
+        "geometry",
+    ]
+    for direction in ("van", "naar"):
+        linked = segments.loc[connections[f"{direction}_segment"], "segment_key"]
+        assert (
+            linked.tolist()
+            == watersysteem.hydroobject_verbinding[f"{direction}_segment_key"].tolist()
+        )
+    assert connections.kunstwerk_waterbeheercode.tolist() == (
+        watersysteem.hydroobject_verbinding.waterbeheercode.tolist()
+    )
+    assert connections.objecttype.notna().any()
+    assert connections.objecttype.isna().any()
+    assert (
+        connections.loc[
+            connections.objecttype.isna(),
+            [
+                "kunstwerk_bron_id",
+                "kunstwerk_code",
+                "kunstwerk_naam",
+                "kunstwerk_waterbeheercode",
+            ],
+        ]
+        .isna()
+        .all()
+        .all()
+    )
+
+    with closing(sqlite3.connect(result)) as connection:
+        qml = connection.execute(
+            "SELECT styleQML FROM layer_styles WHERE f_table_name='hydroobject_verbinding'"
+        ).fetchone()[0]
+        stored_fields = [
+            row[1]
+            for row in connection.execute("PRAGMA table_info(hydroobject_verbinding)")
+            if row[1] != "geom"
+        ]
+    style = ET.fromstring(qml)
+    for field in style.findall(".//attributeEditorField"):
+        assert stored_fields[int(field.attrib["index"])] == field.attrib["name"]
+    group = style.find(".//attributeEditorContainer")
+    assert group.attrib["visibilityExpressionEnabled"] == "1"
+
+    # An older output schema must be replaced, even with overwrite=False.
+    with closing(sqlite3.connect(result)) as connection, connection:
+        connection.execute(
+            "ALTER TABLE hydroobject_verbinding ADD COLUMN van_bron_id TEXT"
+        )
+    write_watersysteem(
+        hydroobject_primair=primair,
+        hydroobject_secundair=secundair,
+        watersysteem=watersysteem,
+        output_path=output_path,
+    )
+    refreshed = gpd.read_file(result, layer="hydroobject_verbinding")
+    assert refreshed.columns.tolist() == connections.columns.tolist()
+    assert refreshed.van_segment.tolist() == connections.van_segment.tolist()
+
+
+@pytest.mark.parametrize("invalid_id", [None, 99999])
+def test_connection_validation_rejects_missing_segment(tmp_path, invalid_id):
+    path = tmp_path / "invalid.gpkg"
+    with closing(sqlite3.connect(path)) as connection, connection:
+        connection.executescript(
+            "CREATE TABLE hydroobject_segment (fid INTEGER, segment_id INTEGER);"
+            "INSERT INTO hydroobject_segment VALUES (1, 1);"
+            "CREATE TABLE hydroobject_verbinding "
+            "(van_segment INTEGER, naar_segment INTEGER, kunstwerk_waterbeheercode TEXT);"
+        )
+        connection.execute(
+            "INSERT INTO hydroobject_verbinding VALUES (?, 1, NULL)", (invalid_id,)
+        )
+    with pytest.raises(ValueError, match="Invalid numeric van_segment link"):
+        workflow._validate_segment_numbers(path)
 
 
 def test_write_watersysteem_places_connected_secondary_in_connected_layer(tmp_path):
@@ -787,7 +937,9 @@ def test_failed_write_cleans_temporary_file_and_preserves_existing_output(
     monkeypatch.setattr(
         workflow,
         "_validate_watersysteem_output",
-        lambda path: (_ for _ in ()).throw(ValueError("temporary output is invalid")),
+        lambda path, **kwargs: (_ for _ in ()).throw(
+            ValueError("temporary output is invalid")
+        ),
     )
 
     with pytest.raises(ValueError, match="temporary output is invalid"):
