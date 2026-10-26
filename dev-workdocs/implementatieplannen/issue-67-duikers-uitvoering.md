@@ -131,7 +131,7 @@ Menselijke beoordeling in QGIS en inhoudelijke acceptatie blijven nodig.
 Documentatie-impact: **confirmed**. Productie-instructies, HYDAMO- en
 RWS-bronpagina's, API-reference en het uitvoerbare Python-voorbeeld zijn bijgewerkt.
 
-De beschermde pagina [Afwateringseenheden](../../bewerkte-lagen/afwateringseenheden.md)
+De beschermde pagina [Afwateringseenheden](../../docs/bewerkte-lagen/afwateringseenheden.md)
 vereist menselijke aanvullingen, maar is niet aangepast:
 
 - Bij de vectorvoorbereiding ontbreken duikerknippen, controleobjecten en de

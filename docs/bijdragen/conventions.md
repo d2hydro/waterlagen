@@ -25,8 +25,11 @@ De volledige operationele instructies voor coding agents staan in [AGENTS.md](ht
 ## Tijdelijke ontwikkelwerkdocumenten voor het samenvoegen
 
 De statuscheck `Temporary dev work documents` controleert bij pull requests naar
-`main` de volledige Git-index. Alle getrackte bestanden onder
-`docs/bijdragen/implementatieplannen/` en `reviewcases/` blokkeren de check, ook
+`main` de volledige Git-index. Bewaar reviewrapporten en reproductiescripts in
+`dev-workdocs/reviews/` en implementatieplannen en grilling outcomes in
+`dev-workdocs/implementatieplannen/`. Reguliere projectdocumentatie blijft onder
+`docs/`; tijdelijke werkdocumenten staan daarbuiten en worden niet gepubliceerd.
+Alle getrackte bestanden onder `dev-workdocs/` blokkeren de check, ook
 ongewijzigde bestanden, indexpagina's en Python-reproductiescripts. Er zijn geen
 uitzonderingen voor bestaande bestanden. Niet-getrackte lokale bestanden blijven
 buiten de controle.
@@ -48,10 +51,8 @@ de workflowresultaten staan.
 
 De workflow `.github/workflows/dev-workdocs.yml` gebruikt uitsluitend de
 meegeleverde controle en tests. Er zijn geen aanvullende tokens, private
-downloads of configuratievariabelen nodig. De centrale bron wordt intern bij
-D2hydro onderhouden; updates van de zelfstandige kopie worden als gewone
-codewijziging in Waterlagen beoordeeld. Contributors kunnen de lokale kopie en
-tests zelf aanpassen en uitvoeren zonder toegang tot de centrale repository.
+downloads of configuratievariabelen nodig. De workflow start uitsluitend bij
+pull requests naar `main`.
 
 Voer de tests met alleen Python uit:
 

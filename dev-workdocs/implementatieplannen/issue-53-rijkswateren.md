@@ -347,11 +347,11 @@ standaard bij waterschapsselectie en Rijkswaterdoelen zonder waterbeheercode.
 Documenteer Python-interfaces in docstrings en API-reference; plaats uitvoerbare
 voorbeelden op de bestaande canonieke locatie.
 
-De beschermde pagina [Afwateringseenheden](../../bewerkte-lagen/afwateringseenheden.md)
+De beschermde pagina [Afwateringseenheden](../../docs/bewerkte-lagen/afwateringseenheden.md)
 beschrijft nu een productie zonder aanvullend beheerderfilter. Zij moet bij
 implementatie ook de categorievolgorde over alle beheerders, gezamenlijke
 secundaire classificatie, doelmodi en controle-uitvoer verklaren. De beschermde
-[bronlagenindex](../../bronlagen/index.md) mist dan de nieuwe Rijkswaterenbron.
+[bronlagenindex](../../docs/bronlagen/index.md) mist dan de nieuwe Rijkswaterenbron.
 Rapporteer deze bevindingen afzonderlijk; dit plan verleent geen toestemming om
 de beschermde pagina's te wijzigen.
 

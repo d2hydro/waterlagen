@@ -97,7 +97,7 @@ primaire duikertrajecten niet via een tweede, ongefilterde brandcontext.
 
 ## Uitvoering en documentatie
 
-Volg [de contributorconventies](../conventions.md) en de operationele instructies
+Volg [de contributorconventies](../../docs/bijdragen/conventions.md) en de operationele instructies
 in het repositorybestand `AGENTS.md`. Elk definitief plan moet scope, interfaces,
 implementatiestappen, tests, documentatie en acceptatiecriteria bevatten.
 
@@ -105,7 +105,7 @@ Documentatie-impact: **confirmed**. Deze plannen zijn nieuwe interne
 werkdocumenten. De toekomstige implementaties veranderen bovendien het
 gedrag dat in de functionele documentatie wordt beschreven.
 
-De pagina [Afwateringseenheden](../../bewerkte-lagen/afwateringseenheden.md)
+De pagina [Afwateringseenheden](../../docs/bewerkte-lagen/afwateringseenheden.md)
 heeft `editorial_status: human`. De plannen verlenen geen toestemming om die
 pagina te wijzigen. Rapporteer noodzakelijke inhoudelijke aanvullingen afzonderlijk;
 werk bewerkbare productie- en API-documentatie bij binnen de betreffende PR.

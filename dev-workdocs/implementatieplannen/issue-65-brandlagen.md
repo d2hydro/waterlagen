@@ -30,7 +30,7 @@ Uitvoering: eerste afzonderlijke branch en PR uit het
   zijn bijgewerkt. Er zijn geen externe productiedatasets gedownload.
 
 Documentatiebevinding: de beschermde functionele pagina
-[Afwateringseenheden](../../bewerkte-lagen/afwateringseenheden.md) beschrijft
+[Afwateringseenheden](../../docs/bewerkte-lagen/afwateringseenheden.md) beschrijft
 alleen de vaste brandbewerking. Uitleg over optionele relatieve wijzigingen,
 voorrang, tekenconflicten en de scheiding van afwateringsdoelen ontbreekt daar
 nog. De pagina is vanwege `editorial_status: human` niet aangepast.
@@ -225,9 +225,9 @@ Voor het voorbeeld geldt ook `pixi run pytest tests/test_python_examples.py`.
 ## Documentatie-impact en afhankelijkheden
 
 Documentatie-impact: **confirmed**. Werk de bewerkbare
-[productie-instructies](../../produceren/afwateringseenheden.md),
-[API-referentie](../../reference/afwateringseenheden.md) en voorbeelden bij.
-De functionele pagina [Afwateringseenheden](../../bewerkte-lagen/afwateringseenheden.md)
+[productie-instructies](../../docs/produceren/afwateringseenheden.md),
+[API-referentie](../../docs/reference/afwateringseenheden.md) en voorbeelden bij.
+De functionele pagina [Afwateringseenheden](../../docs/bewerkte-lagen/afwateringseenheden.md)
 is beschermd met `editorial_status: human`. Rapporteer de benodigde uitleg over
 optionele brandlagen, prioriteiten en beperkingen afzonderlijk; wijzig die pagina
 uitsluitend met expliciete toestemming.

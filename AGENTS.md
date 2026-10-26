@@ -126,20 +126,16 @@ Keep these concerns separated. Document only what users or developers need to kn
 - When public behavior, processing methods, inputs, outputs, or workflows change, update the corresponding documentation in the same change. Prefer simplifying or replacing existing text over adding new text.
 - Do not document intended behavior that is not actually implemented unless it is explicitly identified as planned or conceptual.
 
-## Agent Implementation Plans
+## Temporary Development Work Documents
 
-- Implementation plans and grilling outcomes intended for agents are internal repository working documents, not automatically part of the published documentation.
-- A request to save plans under `docs/` authorizes storing the files there, not adding them to the documentation site, MkDocs navigation, or published overview pages.
-- Store such plans under `docs/bijdragen/implementatieplannen/` unless the user specifies another location. An index and links between the plans may be kept inside that directory.
-- Keep agent plans excluded from the site with `exclude_docs` in `mkdocs.yml`. Removing navigation entries or using `not_in_nav` alone does not prevent publication.
-- Publish or link to these plans from the documentation site only when the user explicitly requests that publication.
-- After changing their publication configuration, build the documentation and verify that excluded plans are absent from both the generated pages and the search index.
-- Treat implementation plans as temporary working documents, not permanent project documentation.
+- Store temporary review reports and reproduction scripts under `dev-workdocs/reviews/`, and implementation plans and grilling outcomes under `dev-workdocs/implementatieplannen/`. Keep related files and links together.
+- These are temporary internal working documents. Keep regular project documentation under `docs/`; `dev-workdocs/` is outside the MkDocs source directory and must not be published or linked from the site without explicit user authorization.
+- After changing their location or publication configuration, build the documentation and verify that temporary work documents are absent from both generated pages and the search index.
 - After implementation, preserve only information needed for ongoing use or maintenance in the authoritative project documentation. Keep temporary implementation details and change rationale in the PR; record significant architectural decisions separately when appropriate.
-- Remove completed implementation plans and associated grilling outcomes before merging, unless the user explicitly requests their retention or they contain information worth preserving that has not yet been documented elsewhere.
+- Before merging to `main`, remove completed work documents from Git, preserving relevant knowledge first. The pre-merge check rejects every tracked file under `dev-workdocs/`; see `docs/bijdragen/conventions.md` for the check and how to retain local copies.
 - Track remaining work, known limitations, and future improvements in GitHub issues rather than retaining completed plans as informal backlogs.
-- Do not retain implementation plans solely for historical reference; Git history provides sufficient traceability when the relevant commits remain accessible.
-- Never delete plans that are still in use, contain unresolved decisions, or are needed for ongoing work without first confirming their status.
+- Do not retain temporary work documents solely for historical reference; Git history provides sufficient traceability when the relevant commits remain accessible.
+- Never delete work documents that are still in use, contain unresolved decisions, or are needed for ongoing work without first confirming their status.
 
 ## Documentation Editorial Status
 

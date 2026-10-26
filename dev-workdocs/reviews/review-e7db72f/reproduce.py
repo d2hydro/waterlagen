@@ -1,9 +1,9 @@
 """Drie onafhankelijke regressievoorbeelden met blijvende, inspecteerbare uitvoer.
 
 Voer vanuit de repositoryroot uit (geen downloads of productiegegevens nodig):
-  pixi run --as-is --environment afwateringseenheden python -B reviewcases/review-e7db72f/reproduce.py optional-water
-  pixi run --as-is --environment afwateringseenheden python -B reviewcases/review-e7db72f/reproduce.py crossing
-  pixi run --as-is --environment afwateringseenheden python -B reviewcases/review-e7db72f/reproduce.py empty-culverts
+  pixi run --as-is --environment afwateringseenheden python -B dev-workdocs/reviews/review-e7db72f/reproduce.py optional-water
+  pixi run --as-is --environment afwateringseenheden python -B dev-workdocs/reviews/review-e7db72f/reproduce.py crossing
+  pixi run --as-is --environment afwateringseenheden python -B dev-workdocs/reviews/review-e7db72f/reproduce.py empty-culverts
 
 Iedere uitvoering maakt een nieuwe map output/<case>-<tijdstip>. Open vergelijking.png,
 resultaat.json en de GeoPackages in die map. Bij de waternetvoorbeelden bevat
@@ -45,7 +45,7 @@ def save_layer(data: gpd.GeoDataFrame, path: Path, layer: str) -> None:
 
 
 def save_result(output: Path, result: dict) -> None:
-    repository = Path(__file__).resolve().parents[2]
+    repository = Path(__file__).resolve().parents[3]
 
     def git(*args: str) -> str:
         return subprocess.check_output(

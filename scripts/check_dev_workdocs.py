@@ -1,7 +1,6 @@
 """Controleer tijdelijke ontwikkelwerkdocumenten in de volledige Git-index.
 
-Centrale bron: d2hydro/devtools, scripts/check_dev_workdocs.py.
-Zelfstandig te kopieren; vereist Python 3.11+ en Git, geen extra pakketten.
+Onderhouden in waterlagen; vereist Python 3.11+ en Git, geen extra pakketten.
 Exitcodes: 0 = schoon, 1 = tijdelijke bestanden, 2 = controle niet voltooid.
 """
 
@@ -14,8 +13,7 @@ import sys
 from pathlib import Path
 
 BLOCKED_DIRECTORIES = {
-    "docs/bijdragen/implementatieplannen": "tijdelijke implementatieplannen",
-    "reviewcases": "tijdelijke reviewrapporten, reproducties en resultaten",
+    "dev-workdocs": "tijdelijke ontwikkelwerkdocumenten",
 }
 
 

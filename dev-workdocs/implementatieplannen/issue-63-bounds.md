@@ -248,4 +248,4 @@ uitsluitend uit deze ontwikkeltests kan worden getrokken.
 
 Documentatie-impact: **confirmed**. Dit bestand legt het interne plan vast;
 de toekomstige implementatie verandert de publieke CLI en uitvoerinstructies.
-Houd de implementatieplannen uitgesloten via het bestaande `exclude_docs`.
+Houd de implementatieplannen onder `dev-workdocs/implementatieplannen/`, buiten `docs/`.

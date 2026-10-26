@@ -395,7 +395,7 @@ synthetische tests kunnen wel al worden uitgevoerd.
 
 Documentatie-impact: **confirmed**. De functionele uitleg over branden en
 afwateringsdoelen verandert. De pagina
-[Afwateringseenheden](../../bewerkte-lagen/afwateringseenheden.md) is beschermd
+[Afwateringseenheden](../../docs/bewerkte-lagen/afwateringseenheden.md) is beschermd
 met `editorial_status: human`; rapporteer benodigde aanvullingen afzonderlijk.
 Werk bij implementatie de bewerkbare productie-instructies, HYDAMO- en
 RWS-bronbeschrijving waar relevant, API-referentie en voorbeelden bij.
@@ -404,5 +404,6 @@ RWS-duikerlaag en het ontbreken van terugval op GKW voor RWS-duikers.
 Documenteer nadrukkelijk dat een voltooide run nog controleobjecten kan
 bevatten en hoe die in QGIS worden beoordeeld.
 
-Dit plan blijft een intern werkdocument, uitgesloten via `exclude_docs` in
-`mkdocs.yml`. Voeg het niet toe aan de gepubliceerde navigatie of overzichten.
+Dit plan blijft een intern werkdocument onder
+`dev-workdocs/implementatieplannen/`, buiten de MkDocs-bronmap `docs/`.
+Voeg het niet toe aan de gepubliceerde navigatie of overzichten.

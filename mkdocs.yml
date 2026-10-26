@@ -2,9 +2,6 @@ site_name: Waterlagen
 repo_url: https://github.com/d2hydro/waterlagen
 repo_name: d2hydro/waterlagen
 
-exclude_docs: |
-  /bijdragen/implementatieplannen/
-
 theme:
   name: material
   custom_dir: overrides
