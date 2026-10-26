@@ -225,8 +225,5 @@ scripts/data/*
 # Local Alkmaar DEM launcher
 /run-dem-alkmaar.ps1
 
-# Review work documents: keep Python scripts and reports, ignore generated data and results
-/dev-workdocs/reviews/**
-!/dev-workdocs/reviews/**/
-!/dev-workdocs/reviews/**/*.py
-!/dev-workdocs/reviews/review-*.md
+# Temporary development work stays local, outside release commits.
+/dev-workdocs/
