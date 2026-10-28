@@ -18,18 +18,18 @@ Waterlagen gebruikt het [AHN](../bronlagen/ahn.md), hydroobjecten en kunstwerken
 
 ### Voorbewerken watersysteem uit HyDAMO en Rijkswateren
 
-- Primaire, secundaire en tertiaire waterlopen uit HyDAMO en RWS worden geselecteerd voor de tegels met buffers.
-- Primaire waterlopen worden opgeknipt bij verbindingspunten en op maximaal 500 m lengte.
+- Primaire, secundaire en tertiaire waterlopen uit HyDAMO en hoofdwaterlopen uit RWS worden geselecteerd voor de tegels met buffers.
+- Primaire waterlopen worden opgeknipt bij kunstwerken met een maximale lengte van 500 m.
 
-Waterlopen van Rijkswaterstaat worden uit de Rijkswaterenbron gehaald; GKW-waterlopen met beheerderscode 80 worden daarom niet gebruikt.
+Hoofdwaterlopen van Rijkswaterstaat worden gebruikt in plaats van GKW-waterlopen met beheerderscode 80, anders krijg je dubbelingen.
 
 #### Verbinding van secundaire waterlopen uit HyDAMO
 
-- Secundaire waterlopen uit HyDAMO worden gegroepeerd als ze binnen 2 m van elkaar liggen.
-- Een groep is verbonden als een waterloop binnen 2 m van een primaire waterloop ligt.
+- Secundaire waterlopen uit HyDAMO vormen samen een netwerk als ze binnen 2 m van elkaar liggen.
+- Dit netwerk geldt als verbonden met het primaire watersysteem als minstens één waterloop uit het netwerk binnen 2 m van een primaire waterloop ligt.
 - Die primaire waterloop mag van een andere beheerder zijn.
 
-Dit bepaalt welke secundaire waterlopen als verbonden of niet verbonden worden opgenomen in de uitvoer.
+Zo wordt in de uitvoer onderscheid gemaakt tussen secundaire waterlopen met en zonder verbinding met het primaire watersysteem.
 
 #### Afwateringsdoelen
 

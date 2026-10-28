@@ -1,5 +1,5 @@
 ---
-editorial_status: ai
+editorial_status: human
 ---
 
 # Afwateringseenheden produceren
@@ -55,7 +55,7 @@ Andere runs volgen de indeling
 
 Een niet-toegewezen gebied betekent niet automatisch een softwarefout: er kan
 bijvoorbeeld geen route naar een afwateringsdoel zijn. Zie
-[aandachtspunten en beperkingen](../bewerkte-lagen/afwateringseenheden.md#aandachtspunten-en-beperkingen)
+[Tegels, buffers en samenvoegen](../bewerkte-lagen/afwateringseenheden.md#tegels-buffers-en-samenvoegen)
 en [uitvoer en veldbetekenissen](../bewerkte-lagen/afwateringseenheden.md#uitvoer).
 
 ??? info "Verdiepende controle"
