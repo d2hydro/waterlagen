@@ -10,7 +10,7 @@ Volg eerst [Installatie](installatie.md). Open daarna een terminal in de map
 waarin `pixi.toml` staat. Start bijvoorbeeld een run voor Aa en Maas:
 
 ```console
-pixi run --locked afwateringseenheden --waterbeheercode 38 --workers 2 --run-id proef
+pixi run --locked afwateringseenheden --waterbeheercode 38 --workers 8 --run-id test
 ```
 
 Gebruikt u de broncode uit GitHub? Voeg dan bij de opdrachten op deze pagina
@@ -34,7 +34,7 @@ of [hervat de bestaande run](#hervatten).
 ## Resultaten bekijken en controleren
 
 Bij standaardopslag staat de voorbeeldrun in
-`data/processed_data/afwateringseenheden/waterschap_38/proef/`.
+`data/processed_data/afwateringseenheden/waterschap_38/test/`.
 Andere runs volgen de indeling
 `data/processed_data/afwateringseenheden/<gebied>/<run-id>/`.
 
@@ -88,20 +88,38 @@ Deze proef gebruikt BGT-water en TOP10NL-water voor een selectie van 1 × 1 km.
 Daarmee wordt één kerntegel van 10 × 10 km berekend, met een rekengebied van
 14 × 14 km inclusief buffer.
 
-Zorg dat deze bestanden het volledige rekengebied dekken:
+### 1. Brandlagen downloaden en voorbereiden
 
-- `data/source_data/bgt/bgt.gpkg`, laag `bgt_waterdeel`.
-- `data/source_data/top10nl/top10nl_Compleet.gpkg`, laag `top10nl_waterdeel_vlak`.
+De aanvullende bestanden uit de TOML moeten vóór de productie beschikbaar zijn.
+Zorg dat ze het volledige rekengebied inclusief tegelbuffers dekken, niet alleen
+de opgegeven bounds. Voor deze proef is dat de RD-rechthoek
+`178000 388000 192000 402000`.
 
-Voor BGT downloadt u de landelijke GML-light-ZIP via de
-[BGT-bronpagina](../bronlagen/bgt.md#externe-verwijzingen) en volgt u
-[BGT-vlakken voorbereiden](bgt-vlakken.md) om `bgt.gpkg` te maken.
-Gebruik voor TOP10NL het [downloadvoorbeeld](../reference/bronlagen-downloaden.md#top10nl).
+- **BGT:** volg [BGT-vlakken voorbereiden](bgt-vlakken.md#voorbereiden).
+  Dit levert `data/source_data/bgt/bgt.gpkg` met laag `bgt_waterdeel`.
+- **TOP10NL:** gebruik het [downloadvoorbeeld](../reference/bronlagen-downloaden.md#top10nl)
+  en [download het script](../reference/voorbeelden/download_top10nl.py).
+  Met `DATA_DIR = Path("data")` levert dit
+  `data/source_data/top10nl/top10nl_Compleet.gpkg` met laag `top10nl_waterdeel_vlak`.
+
+**Optioneel: OSM-waterlopen en duikers.** Download deze ook vooraf als u ze als
+brandlagen wilt gebruiken. Zie [OSM-kanalen](../reference/bronlagen-downloaden.md#osm-kanalen)
+en het [downloadscript](../reference/voorbeelden/download_osm_canals.py).
+Stel daarin `DATA_DIR` (gegevensmap) en `BOUNDS` (downloadgebied in RD) in.
+Met `DATA_DIR = Path("data")` komen de vijf GeoPackages in `data/source_data/osm/`.
+Gebruik voor opname van deze lagen de
+[uitgebreide voorbeeld-TOML](../reference/voorbeelden/brandlagen.toml).
+
+Een `.py`-bestand downloaden haalt alleen het script op. Voer het daarna uit
+om de brongegevens op te halen; zie [Een script uitvoeren](../reference/gebruik.md#een-script-uitvoeren)
+voor starten met `pixi run`.
+
+### 2. De TOML opslaan
 
 De lagen moeten geldige vlakgeometrieën en een bekend coördinatenstelsel hebben.
 Voor dit voorbeeld zijn geen extra attributen nodig: `brandwaarde` en
-`prioriteit` staan in de TOML. Zijn deze attributen al bij objecten ingevuld,
-dan hebben die waarden voorrang.
+`prioriteit` staan in de TOML. Zijn deze attributen al bij objecten in het
+GeoPackage ingevuld, dan hebben die waarden voorrang.
 
 Sla het volgende bestand op als `invoer/brandlagen.toml`, gerekend vanaf de map
 met `pixi.toml`. De relatieve bronpaden worden vanaf de TOML gelezen en verwijzen
@@ -127,20 +145,23 @@ De ingestelde verlaging is 10 m voor BGT-water en 5 m voor TOP10NL-water.
 Zie [optionele brandlagen](../bewerkte-lagen/afwateringseenheden.md#optionele-brandlagen)
 voor de overlapregels en het effect op de afstroming.
 
+[Download de uitgebreide voorbeeld-TOML](../reference/voorbeelden/brandlagen.toml)
+voor meer lagen en instellingen. Sla deze ook op als `invoer/brandlagen.toml`;
+de bronpaden verwijzen naar `../data/`. Neem alleen lagen op waarvoor u de
+benodigde bestanden hebt voorbereid.
+
+### 3. De productie starten
+
 Start de proef met deze configuratie:
 
 ```console
-pixi run --locked afwateringseenheden --bounds 184285 392054 185285 393054 --brandlagen-config ./invoer/brandlagen.toml --workers 1 --run-id brandproef
+pixi run --locked afwateringseenheden --bounds 184285 392054 185285 393054 --brandlagen-config ./invoer/brandlagen.toml --workers 8 --run-id brandproef
 ```
 
 De grenzen staan in het project-CRS, standaard RD (`EPSG:28992`). De uitvoer
 wordt niet op de rechthoek afgeknipt. Zie [eigen rechthoekig gebied](cli.md#eigen-rechthoekig-gebied).
 Bekijk daarna de invoer en de daadwerkelijke inbranding zoals beschreven bij
 [Resultaten bekijken en controleren](#resultaten-bekijken-en-controleren).
-
-[Download de uitgebreide voorbeeld-TOML](../reference/voorbeelden/brandlagen.toml)
-voor meer lagen en instellingen. Deze gebruikt dezelfde locatie
-`invoer/brandlagen.toml` en verwijst naar `../data/`.
 
 <span id="doelmodi-en-bronnen"></span>
 <span id="duikers-sifons-en-hevels"></span>
@@ -187,7 +208,7 @@ Voor eigen Python-workflows is er een
 Hervat de voorbeeldrun met dezelfde gebiedskeuze en runnaam:
 
 ```console
-pixi run --locked afwateringseenheden --waterbeheercode 38 --workers 2 --run-id proef --resume
+pixi run --locked afwateringseenheden --waterbeheercode 38 --workers 8 --run-id test --resume
 ```
 
 Bewaar de runmap, inclusief `berekening/` en de overige tussenbestanden.
