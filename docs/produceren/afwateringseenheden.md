@@ -118,6 +118,17 @@ herkomst aan. De bronnen moeten het rekengebied inclusief buffers dekken.
 BGT en OSM worden gebiedsgericht opgehaald voor het rekengebied inclusief
 buffers. TOP10NL gebruikt het landelijke GeoPackage.
 
+Met `brandwaarde` stelt u in hoeveel een aanvullende brandlaag het rekenhoogtemodel
+verlaagt of verhoogt. Een negatieve waarde verlaagt; een positieve waarde verhoogt.
+
+In de voorbeeld-TOML staat onder `[defaults]` een verlaging van 10 meter (`-10.0`).
+Die geldt tenzij bij de laag een andere waarde staat. Zo gebruikt TOP10NL `-5.0`:
+een verlaging van 5 meter. Een waarde bij een afzonderlijk bronobject heeft
+voorrang op beide instellingen.
+
+Deze instellingen gelden alleen voor aanvullende brandlagen. De aparte
+inbrandregels voor waterlopen en duikers uit HyDAMO en Rijkswateren blijven gelden.
+
 Voor BGT-wegdelen staat een uitgecommentarieerd voorbeeld in de TOML. Verwijder
 de commentaartekens van dat blok om het te gebruiken. Vul bij `path` een pad
 voor het bronbestand in en kies de `brandwaarde` en `prioriteit`. Een positieve
@@ -132,8 +143,8 @@ Voor **eigen bestanden** laat u `openbare_bron` weg en stelt u `path` en `layer`
 in. Deze bestanden moeten vooraf aanwezig zijn en het rekengebied dekken.
 Lijn- en vlakgeometrieën worden ondersteund, met een bekend coördinatenstelsel.
 De automatische BGT-duikerselectie behoudt beide typen wanneer ze in de bron voorkomen.
-Zijn `brandwaarde` of `prioriteit` al bij objecten in het GeoPackage ingevuld,
-dan hebben die waarden voorrang op de TOML.
+Ook voor `prioriteit` hebben waarden bij objecten in het GeoPackage voorrang
+op de TOML.
 Zie [optionele brandlagen](../bewerkte-lagen/afwateringseenheden.md#optionele-brandlagen)
 voor de overlapregels en het effect op de afstroming.
 

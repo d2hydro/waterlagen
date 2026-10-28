@@ -10,8 +10,9 @@
 # Gezamenlijke water-/duikerverwerking op het bestaande 2m-raster.
 geisoleerde_branddiepte_m = 10.0
 
-# Standaard 10 m verlaging voor aanvullende bronnen.
-# HYDAMO-verbindingen behouden hun eigen behandeling en voorrang.
+# Aanvullende brandlagen worden standaard 10 meter verlaagd.
+# Een waarde bij de laag of het bronobject gaat voor.
+# Dit verandert de verlagingen voor HyDAMO en Rijkswateren niet.
 [defaults]
 brandwaarde = -10.0
 
