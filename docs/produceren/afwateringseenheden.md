@@ -5,49 +5,48 @@ editorial_status: ai
 # Afwateringseenheden produceren
 
 Deze productie ondersteunt Nederland, een waterschapscode en gedeelde gebieden
-zoals Alkmaar. Volg eerst [Installatie](installatie.md); het releasepakket bevat
-PCRaster. Vanuit de repository gebruikt u de omgeving `afwateringseenheden`.
+zoals Alkmaar. Volg eerst [Installatie](installatie.md).
 
 ## Starten
+
+Open een terminal in de map waarin `pixi.toml` staat.
+Kies een van de volgende opdrachten:
 
 ```console
 pixi run --locked afwateringseenheden --area alkmaar --workers 2
 pixi run --locked afwateringseenheden --waterbeheercode 38 --workers 2
 ```
 
-Zonder gebiedsoptie wordt **Nederland** verwerkt. Een onbekende waterschapscode
-geeft een fout voordat AHN en HYDAMO worden opgehaald. Kies `--workers 1` bij
-weinig werkgeheugen. De overige [gedeelde CLI-opties](cli.md) regelen opslag,
-bronvernieuwing, offline gebruik en hervatten.
+Gebruikt u de broncode uit GitHub? Voeg dan `--environment afwateringseenheden`
+toe na `pixi run`.
+
+Zonder `--area`, `--waterbeheercode` of `--bounds` wordt **heel Nederland** verwerkt.
+Een onbekende waterschapscode geeft een fout voordat AHN en HYDAMO worden opgehaald.
+
+Zie [meer commandline-opties](cli.md) voor meer uitleg en aanvullende instellingen.
 
 ## Workflow
 
 ### Eigen gebied met brandlagen
 
 1. Zet de gewenste bestanden en lagen in de [brandlagen-TOML](#toml-configuratie).
-2. Start het [PowerShell-voorbeeld](voorbeelden/afwateringseenheden_issue63.ps1):
+   Sla deze voor dit voorbeeld op als `invoer/brandlagen.toml`.
+2. Start de productie met uw brandlagenconfiguratie:
 
-   ```powershell
-   .\docs\produceren\voorbeelden\afwateringseenheden_issue63.ps1 -BrandlagenConfig '.\invoer\brandlagen.toml'
+   ```console
+   pixi run --locked afwateringseenheden --bounds 184285 392054 185285 393054 --brandlagen-config ./invoer/brandlagen.toml
    ```
 
 3. Open `afwateringseenheden.gpkg` uit de resultaatmap in QGIS.
 
-Het voorbeeld selecteert 1 x 1 km rond RD-punt `(184785, 392554)`.
-Geef voor een ander gebied `-Xmin`, `-Ymin`, `-Xmax` en `-Ymax` mee.
-Zie [gebiedsselectie](cli.md#eigen-rechthoekig-gebied).
-
-AHN, HYDAMO en Rijkswateren worden automatisch opgehaald of lokaal hergebruikt.
-Zie de [functionele handleiding](../bewerkte-lagen/afwateringseenheden.md#werkwijze)
-voor de tegelindeling, verwerking en beperkingen.
+Het voorbeeld verwerkt de volledige rekentegel van 10 × 10 km waarin het opgegeven gebied ligt.
 
 ## Doelmodi en bronnen
 
 | Optie | Gebruik |
 | --- | --- |
-| `--waterbeheercode 38` | Bereken het gebied van Aa en Maas. |
 | `--overige-waterschappen` | Neem bij een waterschapselectie ook afwateringsdoelen van andere waterschappen mee. |
-| `--eigen-hydamo eigen.gpkg` | Gebruik een eigen levering voor het gekozen waterschap. |
+| `--eigen-hydamo eigen.gpkg` | Vervang de GKW-gegevens van het gekozen waterschap door een eigen HYDAMO-GeoPackage. |
 | `--rijkswateren-url` | Stel een andere locatie voor de Rijkswaterenbron in. |
 
 Zie [afwateringsdoelen](../bewerkte-lagen/afwateringseenheden.md#afwateringsdoelen)

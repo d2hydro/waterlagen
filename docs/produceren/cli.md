@@ -26,21 +26,47 @@ afwateringseenheden de omgeving met PCRaster:
 Elk commando heeft `--help`. Rechtstreeks starten met
 `pixi run python scripts/autos.py` geeft dezelfde CLI.
 
+## Opties
+
+| Optie | Gedrag |
+| --- | --- |
+| `--area GEBIED` | Kies Nederland, een vast voorbeeldgebied of een waterschap. Standaard Nederland. |
+| `--waterbeheercode CODE` | Kies een waterschap, bijvoorbeeld `--waterbeheercode 38` voor Aa en Maas. |
+| `--bounds XMIN YMIN XMAX YMAX` | Kies een eigen rechthoek in het project-CRS. |
+| `--data-dir PAD` | Bronmap en productiemap onder `PAD/source_data` en `PAD/processed_data`. |
+| `--output-root PAD` | Productiemap, ook voor automatisch geproduceerde afhankelijkheden. |
+| `--run-id NAAM` | Eigen runnaam; standaard een UTC-tijdstempel. |
+| `--resume` | Hervat de expliciet benoemde, compatibele run. |
+| `--overwrite` | Bereken de uitvoer van die compatibele run opnieuw. |
+| `--refresh-sources` | Vernieuw bronnen voor een nieuwe run; bouw afhankelijke broncaches opnieuw op wanneer de invoer wijzigt. |
+| `--offline` | Gebruik lokale bronnen; ontbrekende bronnen geven een fout zonder download. |
+| `--debug` | Neem diagnostische meldingen op in het productielog. |
+| `--workers AANTAL` | Maximaal aantal tegels dat tegelijk wordt berekend bij landgebruik, DEM en afwateringseenheden. Met `--workers 2` worden maximaal twee tegels parallel berekend; met `--workers 1` één tegel tegelijk. |
+| `--help` | Toon de beschikbare opties voor het gekozen commando. |
+
+`--refresh-sources` kan niet samen met `--resume`, `--overwrite` of `--offline`.
+Bronnen vernieuwen en uitvoer overschrijven zijn dus afzonderlijke handelingen.
+De opties van de opdracht hebben voorrang op `.datastore`, `.env` en
+omgevingsvariabelen. Er is geen aanvullende configuratiefile nodig.
+Zie [Opslag van gegevens](configuratie.md) voor bronpaden en runcompatibiliteit.
+
 ## Gebieden
 
 Alle producten accepteren `--area nederland` (standaard), `--area alkmaar`,
 `--area alkmaar_centrum` of
 een waterschapscode, bijvoorbeeld `--area 38` of `--area waterschap_38`.
-`--waterbeheercode 38` is een alternatieve schrijfwijze; combineer deze niet met
-`--area`. Eén opdracht verwerkt één gebied.
+`--waterbeheercode 38` is een alternatieve schrijfwijze voor `--area 38`.
+Kies één gebiedsoptie: `--area`, `--waterbeheercode` of `--bounds`.
+Zonder deze opties wordt Nederland verwerkt. Eén opdracht verwerkt één gebied.
 
 De gebiedsgrens selecteert de invoer. De uitvoer wordt **niet op die grens
 geknipt**: volledige tegelkernen, objecten en noodzakelijke rekencontext blijven
 behouden. Daardoor kan uitvoer buiten het gekozen gebied liggen.
 Inwoners en auto's gebruiken volledige intersecterende CBS-buurten met alle
-bijbehorende woon-VBO's. Bij afwateringseenheden bepaalt een waterschapscode
-ook welke beheerder standaard afwateringsdoelen levert; de omringende objecten
-blijven brandcontext. Zie de [doelmodi](afwateringseenheden.md#doelmodi-en-bronnen).
+bijbehorende woon-VBO's.
+
+Zie de [handleiding voor afwateringseenheden](afwateringseenheden.md#doelmodi-en-bronnen)
+voor het effect van een waterschapselectie op de berekening.
 
 Alkmaar is een vaste Polygon in `waterlagen.areas`, in EPSG:28992 met begrenzing
 `(105000, 510000, 115000, 520000)`. De polygon verandert niet met de tegelgrootte.
@@ -63,8 +89,6 @@ bronbestanden blijven nodig. Bij inwoners en auto's gebeurt ook de gedeelde
 voorbereiding van BAG en CBS landelijk; daarna worden de volledige CBS-buurten
 geselecteerd die het voorbeeldgebied raken.
 
-## Opties
-
 ### Eigen rechthoekig gebied
 
 Alle vijf commando's accepteren `--bounds xmin ymin xmax ymax`:
@@ -76,8 +100,6 @@ pixi run dem --bounds 184285 392054 185285 393054
 - Coördinaten staan in `settings.crs`, standaard `EPSG:28992` (RD).
 - Geef vier eindige getallen met `xmin < xmax` en `ymin < ymax`.
 - Decimalen en negatieve coördinaten zijn toegestaan. Gebruik een punt als decimaalteken.
-- Kies één gebiedsoptie: `--bounds`, `--area` of `--waterbeheercode`.
-- Zonder gebiedsoptie blijft Nederland de standaard.
 
 De rechthoek selecteert volledige overlappende tegelkernen of CBS-buurten.
 Alleen aanraking aan de grens selecteert geen extra tegel of buurt.
@@ -86,28 +108,6 @@ uitvoerclip of downloadlimiet.
 
 Bij afwateringseenheden selecteert dit voorbeeld één kern van 10 × 10 km.
 Met de buffer van 2 km blijft de rekenomgeving 14 × 14 km.
-
-### Overige opties
-
-| Optie | Gedrag |
-| --- | --- |
-| `--area GEBIED` | Gedeelde invoerselectie; standaard Nederland. |
-| `--bounds XMIN YMIN XMAX YMAX` | Eigen rechthoek in het project-CRS, met behoud van volledige tegels/objecten. |
-| `--data-dir PAD` | Bronmap en productiemap onder `PAD/source_data` en `PAD/processed_data`. |
-| `--output-root PAD` | Productiemap, ook voor automatisch geproduceerde afhankelijkheden. |
-| `--run-id NAAM` | Eigen runnaam; standaard een UTC-tijdstempel. |
-| `--resume` | Hervat de expliciet benoemde, compatibele run. |
-| `--overwrite` | Bereken de uitvoer van die compatibele run opnieuw. |
-| `--refresh-sources` | Vernieuw bronnen voor een nieuwe run; bouw afhankelijke broncaches opnieuw op wanneer de invoer wijzigt. |
-| `--offline` | Gebruik lokale bronnen; ontbrekende bronnen geven een fout zonder download. |
-| `--debug` | Neem diagnostische meldingen op in het productielog. |
-| `--workers AANTAL` | Werkprocessen voor landgebruik, DEM en afwateringseenheden. |
-
-`--refresh-sources` kan niet samen met `--resume`, `--overwrite` of `--offline`.
-Bronnen vernieuwen en uitvoer overschrijven zijn dus afzonderlijke handelingen.
-De opties van de opdracht hebben voorrang op `.datastore`, `.env` en
-omgevingsvariabelen. Er is geen aanvullende configuratiefile nodig.
-Zie [Opslag van gegevens](configuratie.md) voor bronpaden en runcompatibiliteit.
 
 ## Voortgang, fouten en hervatten
 
