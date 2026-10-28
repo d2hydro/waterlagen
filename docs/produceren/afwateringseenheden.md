@@ -21,10 +21,7 @@ automatisch opgehaald en voorbereid. Bestaande bronnen worden hergebruikt;
 met `--offline` moeten ze al lokaal beschikbaar zijn. Aanvullende bestanden
 uit de brandlagen-TOML en een eventuele eigen HYDAMO-levering levert u zelf aan.
 
-Ook een klein gebied kan volledige rekentegels en landelijke downloads vereisen.
 Zie [gebieden](cli.md#gebieden) voor de beschikbare selecties en hun omvang.
-Een bestaande runnaam wordt niet automatisch hergebruikt: kies een nieuwe naam
-of [hervat de bestaande run](#hervatten).
 
 <span id="uitvoer-en-hervatten"></span>
 <span id="controle-in-qgis"></span>
@@ -106,6 +103,8 @@ de opgegeven bounds. Voor deze proef is dat de RD-rechthoek
 brandlagen wilt gebruiken. Zie [OSM-kanalen](../reference/bronlagen-downloaden.md#osm-kanalen)
 en het [downloadscript](../reference/voorbeelden/download_osm_canals.py).
 Stel daarin `DATA_DIR` (gegevensmap) en `BOUNDS` (downloadgebied in RD) in.
+Gebruik voor deze proef `BOUNDS = (178000, 388000, 192000, 402000)`;
+dit omvat de volledige kerntegel met buffer.
 Met `DATA_DIR = Path("data")` komen de vijf GeoPackages in `data/source_data/osm/`.
 Gebruik voor opname van deze lagen de
 [uitgebreide voorbeeld-TOML](../reference/voorbeelden/brandlagen.toml).
@@ -116,7 +115,8 @@ voor starten met `pixi run`.
 
 ### 2. De TOML opslaan
 
-De lagen moeten geldige vlakgeometrieën en een bekend coördinatenstelsel hebben.
+De BGT- en TOP10NL-waterlagen in het onderstaande minimale voorbeeld moeten
+geldige vlakgeometrieën en een bekend coördinatenstelsel hebben.
 Voor dit voorbeeld zijn geen extra attributen nodig: `brandwaarde` en
 `prioriteit` staan in de TOML. Zijn deze attributen al bij objecten in het
 GeoPackage ingevuld, dan hebben die waarden voorrang.
@@ -155,7 +155,7 @@ benodigde bestanden hebt voorbereid.
 Start de proef met deze configuratie:
 
 ```console
-pixi run --locked afwateringseenheden --bounds 184285 392054 185285 393054 --brandlagen-config ./invoer/brandlagen.toml --workers 8 --run-id brandproef
+pixi run --locked afwateringseenheden --bounds 184285 392054 185285 393054 --brandlagen-config ./invoer/brandlagen.toml --workers 1 --run-id brandproef
 ```
 
 De grenzen staan in het project-CRS, standaard RD (`EPSG:28992`). De uitvoer

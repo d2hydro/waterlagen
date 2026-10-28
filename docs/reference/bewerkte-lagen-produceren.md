@@ -25,6 +25,20 @@ Bij de rastervoorbeelden zijn de instellingen onderdeel van de methode:
 een andere buffer, resolutie of indeling kan andere resultaten geven dan de
 [standaardproductie](../produceren/cli.md).
 
+## BGT-vlakken
+
+Dit voorbereidingsscript zet een al gedownloade landelijke BGT-ZIP om naar
+`data/source_data/bgt/bgt.gpkg`. Het roept de bestaande conversiefunctie
+`waterlagen.bgt.productie.main` aan en haalt geen brongegevens op.
+Zie [BGT-vlakken voorbereiden](../produceren/bgt-vlakken.md#voorbereiden)
+voor de locatie van de ZIP en de uitvoeropdracht.
+
+[Download het Python-script](voorbeelden/bereid_bgt_vlakken.py).
+
+```python
+--8<-- "docs/reference/voorbeelden/bereid_bgt_vlakken.py"
+```
+
 ## Afwateringseenheden
 
 Lees de HYDAMO-objecten, selecteer primaire en secundaire watergangen en

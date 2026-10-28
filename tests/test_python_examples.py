@@ -500,9 +500,42 @@ def test_product_imports_are_inert_and_use_building_blocks(name, tmp_path, monke
             assert not any(alias.name == "main" for alias in node.names)
 
 
+@pytest.mark.parametrize("custom_settings", [False, True])
+def test_bgt_preparation_example_uses_current_api(
+    tmp_path, monkeypatch, capsys, custom_settings
+):
+    output = tmp_path / "bgt.gpkg"
+    prepare = _mock_api(monkeypatch, "waterlagen.bgt.productie", "main", output)
+    path = EXAMPLES / "bereid_bgt_vlakken.py"
+    runpy.run_path(str(path))
+    prepare.assert_not_called()
+    assert not (tmp_path / "data").exists()
+
+    if custom_settings:
+        source = path.read_text(encoding="utf-8")
+        source = source.replace('DATA_DIR = Path("data")', 'DATA_DIR = Path("custom")')
+        source = source.replace("WORKERS = 8", "WORKERS = 3")
+        source = source.replace("OVERWRITE = False", "OVERWRITE = True")
+        adjusted = tmp_path / path.name
+        adjusted.write_text(source, encoding="utf-8")
+        runpy.run_path(str(adjusted), run_name="__main__")
+    else:
+        runpy.run_path(str(path), run_name="__main__")
+
+    prepare.assert_called_once()
+    arguments = prepare.call_args.kwargs
+    data_root = tmp_path / ("custom" if custom_settings else "data")
+    _assert_store(arguments["data_store"], data_root)
+    assert arguments["data_store"].bgt_dir.resolve() == data_root / "source_data/bgt"
+    assert arguments["workers"] == (3 if custom_settings else 8)
+    assert arguments["overwrite"] is custom_settings
+    assert str(output) in capsys.readouterr().out
+
+
 def test_every_published_example_has_a_contract_check_and_download_link():
     expected = {f"download_{name}.py" for name in DOWNLOADS}
     expected |= {f"produceer_{name}.py" for name in PRODUCTS}
+    expected.add("bereid_bgt_vlakken.py")
     assert {path.name for path in EXAMPLES.glob("*.py")} == expected
     pages = "\n".join(
         (ROOT / "docs" / "reference" / name).read_text(encoding="utf-8")
