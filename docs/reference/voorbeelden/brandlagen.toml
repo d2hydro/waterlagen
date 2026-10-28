@@ -1,5 +1,6 @@
-# Voorbeeld voor waterlopen: plaats deze TOML naast de map source_data,
-# of pas de paden aan. De bronbestanden moeten al aanwezig zijn.
+# Voorbeeld voor waterlopen: sla deze TOML op als invoer/brandlagen.toml.
+# De paden gebruiken de standaardgegevensmap data/ naast invoer/.
+# De bronbestanden moeten al aanwezig zijn; pas de paden aan bij andere opslag.
 # Relatieve paden zijn relatief aan dit TOML-bestand.
 # Hoogste prioriteitsgetal wint. De volgorde hieronder bepaalt geen voorrang.
 # Gezamenlijke water-/duikerverwerking op het bestaande 2m-raster.
@@ -11,20 +12,20 @@ geisoleerde_branddiepte_m = 10.0
 brandwaarde = -10.0
 
 [[lagen]]
-path = "source_data/bgt/bgt.gpkg"
+path = "../data/source_data/bgt/bgt.gpkg"
 layer = "bgt_waterdeel"
 rol = "water"
 prioriteit = 2
 
 [[lagen]]
-path = "source_data/top10nl/top10nl_Compleet.gpkg"
+path = "../data/source_data/top10nl/top10nl_Compleet.gpkg"
 layer = "top10nl_waterdeel_vlak"
 brandwaarde = -5.0
 rol = "water"
 prioriteit = 0
 
 [[lagen]]
-path = "source_data/top10nl/top10nl_Compleet.gpkg"
+path = "../data/source_data/top10nl/top10nl_Compleet.gpkg"
 layer = "top10nl_waterdeel_lijn"
 brandwaarde = -5.0
 rol = "water"
@@ -34,7 +35,7 @@ prioriteit = 0
 # Maak voor een ander gebied een nieuwe BGT-selectie.
 # BGT: alleen kunstwerkdelen met plus-type = duiker.
 [[lagen]]
-path = "processed_data/brandlagen/178000_388000_192000_402000/bgt_duikers.gpkg"
+path = "../data/processed_data/brandlagen/178000_388000_192000_402000/bgt_duikers.gpkg"
 layer = "bgt_duiker"
 rol = "duiker"
 bron = "bgt"
@@ -43,7 +44,7 @@ prioriteit = 2
 # OSM: download met download_osm_canals.py voor het rekengebied inclusief buffer.
 # Alleen tunnel=culvert; bronvoorkeur HYDAMO, BGT, OSM.
 [[lagen]]
-path = "source_data/osm/osm_culverts.gpkg"
+path = "../data/source_data/osm/osm_culverts.gpkg"
 layer = "osm_culvert"
 rol = "duiker"
 bron = "osm"
@@ -53,7 +54,7 @@ prioriteit = 1
 # Download eerst met docs/reference/voorbeelden/download_osm_canals.py.
 # Dit selecteert waterway=canal zonder ondergrondse trajecten.
 [[lagen]]
-path = "source_data/osm/osm_canals.gpkg"
+path = "../data/source_data/osm/osm_canals.gpkg"
 layer = "osm_canals"
 rol = "water"
 bron = "osm"
@@ -63,7 +64,7 @@ prioriteit = 1
 # OSM-sloten en greppels (waterway=ditch).
 # Download met docs/reference/voorbeelden/download_osm_canals.py.
 [[lagen]]
-path = "source_data/osm/osm_ditches.gpkg"
+path = "../data/source_data/osm/osm_ditches.gpkg"
 layer = "osm_ditches"
 rol = "water"
 bron = "osm"
@@ -73,7 +74,7 @@ prioriteit = 1
 # OSM-afvoerwatergangen (waterway=drain).
 # Download met docs/reference/voorbeelden/download_osm_canals.py.
 [[lagen]]
-path = "source_data/osm/osm_drains.gpkg"
+path = "../data/source_data/osm/osm_drains.gpkg"
 layer = "osm_drains"
 rol = "water"
 bron = "osm"
@@ -83,7 +84,7 @@ prioriteit = 1
 # OSM-beken (waterway=stream).
 # Download met docs/reference/voorbeelden/download_osm_canals.py.
 [[lagen]]
-path = "source_data/osm/osm_streams.gpkg"
+path = "../data/source_data/osm/osm_streams.gpkg"
 layer = "osm_streams"
 rol = "water"
 bron = "osm"
@@ -92,7 +93,7 @@ prioriteit = 1
 
 # Optioneel: BGT-wegdelen verhogen, standaard uit. Pas de proefwaarde aan.
 # [[lagen]]
-# path = "source_data/bgt/bgt.gpkg"
+# path = "../data/source_data/bgt/bgt.gpkg"
 # layer = "bgt_wegdeel"
 # rol = "overig"
 # brandwaarde = 2.0
