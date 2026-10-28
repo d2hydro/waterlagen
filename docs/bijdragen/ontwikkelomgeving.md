@@ -16,11 +16,13 @@ beheerd met [pixi](https://pixi.sh/):
 pixi install
 ```
 
-Voer gerichte tests uit met `pixi run pytest <test-file-or-node>`. De belangrijkste
+Voer gerichte tests uit met `pixi run pytest <test-file-or-node>`. Gebruik voor
+tests die PCRaster nodig hebben en voor de volledige testsuite de omgeving
+`afwateringseenheden`, net als de coverage- en releaseworkflows. De belangrijkste
 controles zijn:
 
 ```bash
-pixi run test-cov
+pixi run --environment afwateringseenheden test-cov
 pixi run ruff format <bestand>
 pixi run ruff check <bestand>
 pixi run --environment docs docs-build
