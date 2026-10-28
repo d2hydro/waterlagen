@@ -34,7 +34,7 @@ from waterlagen.settings import settings
 
 from ._coverage import _landsgrens_version
 from .brandlagen import _burn_signature, _prepare_brandlagen, _PreparedBrandlagen
-from .config import BrandlagenConfig
+from .config import DEFAULT_TILE_SIZE_M, BrandlagenConfig
 from .pcraster import (
     SUBCATCHMENTS_FILENAME,
     SUBCATCHMENTS_GPKG_FILENAME,
@@ -893,7 +893,7 @@ def calculate_afwateringseenheden_tiles(
     tiles_path: Path | None = None,
     data_store: DataStore | None = None,
     tile_ids: Collection[str] | None = None,
-    tile_size_m: int = 5000,
+    tile_size_m: int = DEFAULT_TILE_SIZE_M,
     tile_buffer_m: float = 2000,
     origin_x: int = 0,
     origin_y: int = 0,
@@ -920,6 +920,9 @@ def calculate_afwateringseenheden_tiles(
     brandlagen : BrandlagenConfig, optional
         Optional layers, validated once on the selected buffered calculation
         grids. Workers read local selections from ``output_dir/brandlagen_voorbereid.gpkg``.
+        This function does not download sources. Resolve public inputs with
+        ``prepare_brand_sources`` first. Water and culvert roles require joint
+        ``prepare_waternet`` preparation on the same grids and watersysteem.
         Changed sources, defaults or burn depth invalidate raster and tile reuse.
     ahn_vrt_path : Path, optional
         AHN VRT used for every tile. Defaults to the datastore AHN DTM VRT.
@@ -951,7 +954,8 @@ def calculate_afwateringseenheden_tiles(
     tile_ids : Collection[str], optional
         Optional subset of selected tile IDs.
     tile_size_m : int, optional
-        Tile width and height in metres, by default 5000.
+        Core tile width and height in metres, by default 10000, as in production.
+        An explicit value overrides this default when generating the tile grid.
     tile_buffer_m : float, optional
         Buffer around each tile used for the hydrological calculation, by
         default 2000. Boundary issues are reported without recalculating the tile.
@@ -963,7 +967,10 @@ def calculate_afwateringseenheden_tiles(
         Maximum PCRaster depression fill depth in metres.
     overwrite : bool, optional
         Whether to regenerate existing per-tile rasters and subcatchments.
-        Cached raster metadata determines the actual buffer.
+        Cached raster bounds must extend equally beyond all four core edges,
+        by a non-negative distance. This distance determines the reused buffer,
+        even when a different ``tile_buffer_m`` was requested. Choose a new
+        output directory to calculate with a changed buffer.
         Cached CRS and resolution must match the requested grid.
         Reusing a tile requires its ``subcatchments.tif`` alongside the GeoPackage.
     engine : {"pcraster"}, optional
@@ -971,7 +978,7 @@ def calculate_afwateringseenheden_tiles(
     workers : int, optional
         Number of separate worker processes. The default of 1 runs serially.
         Workers open their own inputs and write only to their tile folder,
-        including a ``workflow.log``. Results are merged in selection order.
+        using the caller's logging configuration. Results are merged in selection order.
         Run parallel workflows from a script with a ``__main__`` guard.
     random_seed : int, optional
         Positive PCRaster seed reset before each fresh tile calculation.

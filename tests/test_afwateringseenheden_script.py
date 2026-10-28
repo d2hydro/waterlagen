@@ -1,3 +1,4 @@
+import json
 from types import SimpleNamespace
 from unittest.mock import Mock
 
@@ -85,6 +86,11 @@ def test_one_area_product_with_full_tiles_and_selected_authorities(
     assert calculate.call_args.args[0].equals(area.geometry)
     assert calculate.call_args.kwargs["clip_to_area"] is False
     assert calculate.call_args.kwargs["workers"] == 2
+    assert calculate.call_args.kwargs["tile_size_m"] == 10000
+    assert calculate.call_args.kwargs["tile_buffer_m"] == 2000
+    metadata_path = result.parent / "run.json"
+    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    assert metadata["parameters"]["tile_size_m"] == 10000
     assert calculate.call_args.kwargs["brandlagen"] == (config or BrandlagenConfig())
     assert calculate.call_args.kwargs["output_dir"] == (
         result.parent / "berekening" / "tegels"
@@ -135,6 +141,13 @@ def test_one_area_product_with_full_tiles_and_selected_authorities(
                 brandlagen=config,
                 overige_waterschappen=True,
             )
+    if name == "bounds" and not optional_burn:
+        original_metadata = metadata_path.read_text(encoding="utf-8")
+        metadata["parameters"]["tile_size_m"] = 5000
+        metadata_path.write_text(json.dumps(metadata), encoding="utf-8")
+        with pytest.raises(ValueError, match="andere instellingen"):
+            production.main(store, area=area, run_id="test", offline=True, resume=True)
+        metadata_path.write_text(original_metadata, encoding="utf-8")
     # Source changes must not reuse the already prepared network/tile outputs.
     rws["naam"] = "changed source"
     rws.to_file(store.hydamo_dir / "rws_hydamo.gpkg", layer="hydroobject")

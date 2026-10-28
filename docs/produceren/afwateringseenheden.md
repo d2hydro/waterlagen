@@ -4,236 +4,218 @@ editorial_status: ai
 
 # Afwateringseenheden produceren
 
-Deze productie ondersteunt Nederland, een waterschapscode en gedeelde gebieden
-zoals Alkmaar. Volg eerst [Installatie](installatie.md); het releasepakket bevat
-PCRaster. Vanuit de repository gebruikt u de omgeving `afwateringseenheden`.
-
 ## Starten
 
-```console
-pixi run --locked afwateringseenheden --area alkmaar --workers 2
-pixi run --locked afwateringseenheden --waterbeheercode 38 --workers 2
-```
-
-Zonder gebiedsoptie wordt **Nederland** verwerkt. Een onbekende waterschapscode
-geeft een fout voordat AHN en HYDAMO worden opgehaald. Kies `--workers 1` bij
-weinig werkgeheugen. De overige [gedeelde CLI-opties](cli.md) regelen opslag,
-bronvernieuwing, offline gebruik en hervatten.
-
-## Workflow
-
-### Eigen gebied met brandlagen
-
-1. Zet de gewenste bestanden en lagen in de [brandlagen-TOML](#toml-configuratie).
-2. Start het [PowerShell-voorbeeld](voorbeelden/afwateringseenheden_issue63.ps1):
-
-   ```powershell
-   .\docs\produceren\voorbeelden\afwateringseenheden_issue63.ps1 -BrandlagenConfig '.\invoer\brandlagen.toml'
-   ```
-
-3. Open `afwateringseenheden.gpkg` uit de resultaatmap in QGIS.
-
-Het voorbeeld selecteert 1 x 1 km rond RD-punt `(184785, 392554)`.
-Geef voor een ander gebied `-Xmin`, `-Ymin`, `-Xmax` en `-Ymax` mee.
-Zie [gebiedsselectie](cli.md#eigen-rechthoekig-gebied).
-
-AHN, HYDAMO en Rijkswateren worden automatisch opgehaald of lokaal hergebruikt.
-Zie de [functionele handleiding](../bewerkte-lagen/afwateringseenheden.md#werkwijze)
-voor de tegelindeling, verwerking en beperkingen.
-
-## Doelmodi en bronnen
-
-| Optie | Gebruik |
-| --- | --- |
-| `--waterbeheercode 38` | Bereken het gebied van Aa en Maas. |
-| `--overige-waterschappen` | Neem bij een waterschapselectie ook afwateringsdoelen van andere waterschappen mee. |
-| `--eigen-hydamo eigen.gpkg` | Gebruik een eigen levering voor het gekozen waterschap. |
-| `--rijkswateren-url` | Stel een andere locatie voor de Rijkswaterenbron in. |
-
-Zie [afwateringsdoelen](../bewerkte-lagen/afwateringseenheden.md#afwateringsdoelen)
-voor het effect van de gebiedsselectie.
+Volg eerst [Installatie](installatie.md). Open daarna een terminal in de map
+waarin `pixi.toml` staat. Start bijvoorbeeld een run voor Aa en Maas met de
+standaardbronnen:
 
 ```console
-pixi run --environment afwateringseenheden afwateringseenheden --waterbeheercode 38 --overige-waterschappen
-pixi run --environment afwateringseenheden afwateringseenheden --waterbeheercode 38 --eigen-hydamo eigen.gpkg
+pixi run --locked afwateringseenheden --waterbeheercode 38 --workers 8 --run-id test
 ```
 
-### Eigen levering
+Gebruikt u de broncode uit GitHub? Voeg dan bij de opdrachten op deze pagina
+`--environment afwateringseenheden` toe na `pixi run`.
 
-`--eigen-hydamo` vervangt de GKW-gegevens van het gekozen waterschap.
-GKW blijft beschikbaar voor de omgeving.
+Ontbrekende standaardbronnen (AHN, HYDAMO, Rijkswateren en gebiedsgrenzen) worden
+automatisch opgehaald en voorbereid. Bestaande bronnen worden hergebruikt;
+met `--offline` moeten de benodigde bronnen al lokaal beschikbaar zijn.
+Aanvullende BGT-, TOP10NL- en OSM-brandlagen worden alleen gebruikt als u ze
+opneemt in een TOML; zie de [brandlagentest](#test-met-eigen-gebied-en-brandlagen).
+Eigen lokale brandlagen en een eigen HYDAMO-levering levert u zelf aan.
 
-- Verplicht: `hydroobject`, `gemaal`, `stuw` en `duikersifonhevel`.
-- Kunstwerklagen mogen leeg zijn. Ontbrekende gegevens worden niet uit GKW aangevuld.
-- Elk object moet een geldig `nen3610id` van het gekozen waterschap hebben.
-- Het coördinatenstelsel (CRS) en de waterloopcategorie moeten bekend zijn.
+Zie [gebieden](cli.md#gebieden) voor de beschikbare selecties en hun omvang.
 
-De categorie staat in `categorieoppwaterlichaam` of `categorieoppervlaktewater`.
-`primair`, `secundair` en `tertiair` doen mee; `overig` niet.
-GKW-waterlopen zonder categorie komen in `controle.gpkg`.
+<span id="uitvoer-en-hervatten"></span>
+<span id="controle-in-qgis"></span>
+<span id="brandlagen-controleren-in-qgis"></span>
+<span id="afwateringseenheid-aan-een-segment-koppelen"></span>
 
-## Duikers, sifons en hevels
+## Resultaten bekijken en controleren
 
-- HYDAMO-duikers worden gelezen uit `duikersifonhevel`.
-- RWS-duikers komen alleen uit de optionele duikerlaag in de Rijkswaterenbron.
-- BGT- en OSM-duikers worden toegevoegd via de [TOML](#toml-configuratie).
+Bij standaardopslag staat de voorbeeldrun in
+`data/processed_data/afwateringseenheden/waterschap_38/test/`.
+Andere runs volgen de indeling
+`data/processed_data/afwateringseenheden/<gebied>/<run-id>/`.
 
-Bij de koppeling aan primaire waterlopen is de koppelafstand standaard **0,5 m**
-per uiteinde. Aanpassen kan met `--duiker-tolerance`.
-Zie de [koppelregels](../reference/afwateringseenheden.md#duikervoorbereiding).
-
-Met `--max-aansluitlengte 50` worden ook direct aansluitende stukken van maximaal
-50 m uitgesloten als afwateringsdoel. Ze blijven wel ingebrand.
-Zonder deze optie blijven aansluitstukken afwateringsdoelen.
-
-Zie [waterlopen en duikers inbranden](../bewerkte-lagen/afwateringseenheden.md#waterlopen-en-duikers-inbranden)
-voor de verwerking.
-
-### Controle in QGIS
-
-Open `controle.gpkg` naast `watersysteem.gpkg`.
-
-| Controlelaag | Wat controleren? |
-| --- | --- |
-| `duikersifonhevel` | Koppeling aan primaire waterlopen; zie `reden`, `afstand_begin` en `afstand_eind`. |
-| `duikers_waternet` | Behandeling op het raster; zie `behandeling` en `reden`. |
-
-Een duiker zonder primaire koppeling kan wel bij een secundaire waterloop horen.
-Gebruik `bronbestand`, `bronlaag` en `bron_fid` om het oorspronkelijke object terug te vinden.
-
-Zie de [betekenis van de velden](../bewerkte-lagen/afwateringseenheden.md#uitvoer)
-voor `brandgeschikt` en `doelgeschikt`.
-
-### Afwateringseenheid aan een segment koppelen
-
-Gebruik `segment_id` uit de afwateringseenheid om hetzelfde segment in
-`hydroobject_segment` te vinden. `van_segment` en `naar_segment` in
-`hydroobject_verbinding` gebruiken deze nummers ook.
-
-Gebruik bestanden uit dezelfde run. Broninformatie staat in `hydroobject_segment`.
-
-## Optionele brandlagen
-
-Voeg lijnen en vlakken uit GeoPackages toe via de [TOML](#toml-configuratie).
-De [functionele handleiding](../bewerkte-lagen/afwateringseenheden.md#optionele-brandlagen)
-beschrijft hun werking en de regels bij overlap.
-
-| Instelling | Betekenis |
-| --- | --- |
-| `brandwaarde` | Hoogtewijziging in meters: negatief verlaagt, positief verhoogt. |
-| `prioriteit` | Hoger getal heeft voorrang bij overlap tussen aanvullende lagen. |
-
-- Een waarde bij het object gaat voor de TOML-instelling van de laag, daarna geldt `[defaults]`.
-- Gebruik een vlak als u een lijn met een bepaalde breedte wilt inbranden.
-
-### Waterlopen en duikers
-
-De [regels voor inbranding en duikers](../bewerkte-lagen/afwateringseenheden.md#waterlopen-en-duikers-inbranden)
-staan in de functionele handleiding.
-
-- `geisoleerde_branddiepte_m`: vervangt de standaardverlaging van 10 m voor HYDAMO-waterlopen en -duikers in de [tabel](../bewerkte-lagen/afwateringseenheden.md#waterlopen-en-duikers-inbranden).
-
-### TOML-configuratie
-
-[Download de voorbeeld-TOML](../reference/voorbeelden/brandlagen.toml).
-Plaats deze naast `source_data` of pas de paden aan.
-
-| Onderdeel | Invullen |
-| --- | --- |
-| `path`, `layer` | Bestand en laagnaam. Relatieve paden gelden vanaf de TOML. |
-| `brandwaarde`, `prioriteit` | Waarden voor de laag; mogen ook per object zijn ingevuld. |
-| `rol` | `water`, `duiker` of `overig` (bijvoorbeeld wegen). |
-| `bron` | Bij duikers verplicht: `hydamo`, `bgt` of `osm`. |
-| `[defaults]` | Standaardwaarden voor alle lagen. |
-
-De bronnen moeten vooraf beschikbaar zijn:
-
-- BGT en TOP10NL: bestaande GeoPackages.
-- BGT-duikers: selectie van `bgt_kunstwerkdeel` met `plus-type = duiker`.
-- OSM: het [downloadscript](../reference/bronlagen-downloaden.md#osm-kanalen) maakt vijf bestanden onder `source_data/osm/`.
-
-Neem bij gebiedsselecties ook de tegelbuffers mee. De TOML downloadt niets.
-
-In het voorbeeld geldt deze volgorde, met de hoogste prioriteit bovenaan:
-
-| Aanvullende laag | Hoogtewijziging | Prioriteit |
-| --- | ---: | ---: |
-| BGT-water en BGT-duikers | -10 m | 2 |
-| OSM-duikers | -10 m | 1 |
-| OSM-kanalen, sloten, afvoerwatergangen en beken | -5 m | 1 |
-| TOP10NL-waterdelen en waterlijnen | -5 m | 0 |
-
-BGT-wegen staan uitgecommentarieerd: de proefwaarde is **+2 m**.
-
-```toml
---8<-- "docs/reference/voorbeelden/brandlagen.toml"
-```
-
-```console
-pixi run --environment afwateringseenheden afwateringseenheden --bounds 184285 392054 185285 393054 --brandlagen-config brandlagen.toml --workers 32
-```
-
-### Brandlagen controleren in QGIS
-
-| Bestand | Wat ziet u? |
-| --- | --- |
-| `brandlagen.gpkg` | Alle geselecteerde invoer, per bron in een aparte laag. |
-| `berekening/tegels/<tegel>/brandbron.tif` | De gebruikte bron per rastercel. |
-
-Niet elk object uit `brandlagen.gpkg` wordt ingebrand: overlap en duikerregels
-bepalen wat wordt gebruikt. Bekijk daarvoor `brandbron.tif` en controleer
-daarna de stroomrichtingen (LDD) en afwateringsvlakken.
-
-Broncodes zijn labels, geen prioriteiten. `0` betekent geen inbranding.
-De legenda staat bij `broncodes` in de rastermetadata.
-
-## Uitvoer en hervatten
-
-Elke run staat onder `processed_data/afwateringseenheden/<gebied>/<run-id>/`.
+1. Controleer of de opdracht zonder fout is afgerond en `run.json` de status
+   `complete` heeft. Lees bij fouten `productie.log`.
+2. Open `afwateringseenheden.gpkg` en `watersysteem.gpkg` samen in QGIS.
+3. Beoordeel in `controle.gpkg` de niet-toegewezen gebieden (`niet_toegewezen`)
+   en duikermeldingen (`duikersifonhevel` en `duikers_waternet`).
 
 | Bestand | Inhoud |
 | --- | --- |
-| `afwateringseenheden.gpkg` | Het eindresultaat, met één laag: `afvoergebiedaanvoergebied`. |
-| `brandlagen.gpkg` | Alle geselecteerde brandinvoer, met afzonderlijke lagen per bron. |
-| `watersysteem.gpkg` | Vijf lagen: primaire, secundaire en niet-verbonden secundaire waterlopen, segmenten en verbindingen. |
-| `controle.gpkg` | Niet-toegewezen gebieden, aanvullingen uit buurtegels, duikercontroles en bronobjecten zonder categorie. |
-| `berekening/` | Tussenbestanden voor de berekening en het hervatten. |
-| `productie.log` | Hoofdlog, inclusief de werkprocessen. |
+| `afwateringseenheden.gpkg` | Eindresultaat, laag `afvoergebiedaanvoergebied`. |
+| `watersysteem.gpkg` | Waterlopen, segmenten en verbindingen. |
+| `controle.gpkg` | Niet-toegewezen gebieden, aanvullingen uit buurtegels en bron- en duikercontroles. |
+| `brandlagen.gpkg` | Geselecteerde brandinvoer, met afzonderlijke lagen per bron. |
+| `productie.log` | Voortgang en meldingen van de berekening. |
 | `run.json` | Instellingen, bronidentiteit, pakketversie en runstatus. |
 
-Lever voor normaal gebruik `afwateringseenheden.gpkg` en `watersysteem.gpkg`.
-Geef `controle.gpkg` apart mee voor beoordeling.
-`brandlagen.gpkg` helpt bij het bekijken van de gebruikte invoer.
+Een niet-toegewezen gebied betekent niet automatisch een softwarefout: er kan
+bijvoorbeeld geen route naar een afwateringsdoel zijn. Zie
+[aandachtspunten en beperkingen](../bewerkte-lagen/afwateringseenheden.md#aandachtspunten-en-beperkingen)
+en [uitvoer en veldbetekenissen](../bewerkte-lagen/afwateringseenheden.md#uitvoer).
 
-Onder `berekening/` staan:
+??? info "Verdiepende controle"
 
-- `ahn/`: verwijzingen naar de gebruikte AHN-tegels.
-- `watersysteem/`: tussenlagen van de primaire waterlopen.
-- `waterlopen_duikers/`: rasters met de gekozen behandeling van waterlopen en duikers.
-- `tegels/`: resultaten per tegel en de tegelindeling in `tiles.gpkg`.
-  `brandlagen_voorbereid.gpkg` bevat hier de aanvullende brandlagen voor het rekenen.
+    Vergelijk `brandlagen.gpkg` met `berekening/tegels/<tegel>/brandbron.tif`.
+    Het GeoPackage toont de geselecteerde invoer; het raster toont de
+    daadwerkelijk gebruikte bron per cel. De legenda staat bij `broncodes`
+    in de rastermetadata; `0` betekent geen inbranding.
+    Beoordeel ook het stroomrichtingenraster (LDD) en de afwateringsvlakken.
 
-Gebruik voor het bekijken van de invoer **`brandlagen.gpkg` in de hoofdmap**.
-Bewaar `berekening/` als u de run wilt hervatten.
-Ook bij overgeslagen tegels blijven de voorbereide rasters hier beschikbaar.
-De nieuwe indeling geldt voor nieuwe runs. Begin voor uitvoer met de oude
-mapindeling een nieuwe run; bestaande bestanden worden niet verplaatst.
+    Controleer bij duikerkoppelingen `reden`, `afstand_begin` en `afstand_eind`
+    in `duikersifonhevel`, en `behandeling` en `reden` in `duikers_waternet`.
+    Een duiker zonder primaire koppeling kan wel bij een secundaire waterloop horen.
+    Met `bronbestand`, `bronlaag` en `bron_fid` vindt u oorspronkelijke objecten
+    terug. Zie de [duikervoorbereiding](../reference/afwateringseenheden.md#duikervoorbereiding)
+    voor de technische koppelvoorwaarden.
 
-Niet-toegewezen gebieden staan in `controle.gpkg`, laag `niet_toegewezen`.
-Controleer daar op ontbrekende bronnen, tegelranden en rekenproblemen.
+Lever `afwateringseenheden.gpkg` en `watersysteem.gpkg` samen.
+Geef `controle.gpkg` mee voor beoordeling en zo nodig `brandlagen.gpkg` voor
+inzicht in de invoer. Houd bestanden uit dezelfde run bij elkaar.
+
+<span id="optionele-brandlagen"></span>
+<span id="toml-configuratie"></span>
+
+<span id="proef-met-eigen-gebied-en-brandlagen"></span>
+
+## Test met eigen gebied en brandlagen
+
+Brandlagen zijn aanvullende lagen die het rekenhoogtemodel aanpassen om de
+afstroming te sturen. De ingestelde verlagingen zijn geen werkelijke waterbodemhoogtes.
+Deze test gebruikt BGT, TOP10NL en OSM voor een selectie van 1 × 1 km.
+Daarmee wordt één kerntegel van 10 × 10 km berekend, met een rekengebied van
+14 × 14 km inclusief buffer.
+
+<span id="1-brandlagen-downloaden-en-voorbereiden"></span>
+<span id="2-de-toml-opslaan"></span>
+
+### 1. De voorbeeld-TOML opslaan
+
+[Download de voorbeeld-TOML met BGT, TOP10NL en OSM](../reference/voorbeelden/brandlagen.toml).
+Sla deze op als `invoer/brandlagen.toml`, gerekend vanaf de map met `pixi.toml`.
+De bronpaden worden vanaf de TOML gelezen en verwijzen naar `../data/source_data/`
+en `../data/processed_data/`.
+
+| Openbare bron | Opgenomen laagtypen |
+| --- | --- |
+| BGT | Watervlakken en duikers uit kunstwerkdelen. |
+| TOP10NL | Watervlakken en waterlijnen. |
+| OSM | Kanalen, sloten, afvoerwatergangen, beken en duikers. |
+
+<span id="2-instellingen-aanpassen"></span>
+
+### 2. Instellingen aanpassen (optioneel)
+
+De voorbeeld-TOML is voor deze test ongewijzigd bruikbaar als u deze op de
+hierboven genoemde locatie opslaat. De TOML bepaalt welke aanvullende lagen in
+de berekening worden gebruikt. `openbare_bron = "bgt"`, `"top10nl"` of `"osm"`
+schakelt de automatische bronvoorbereiding in; `bron` geeft bij duikers hun
+herkomst aan. De bronnen moeten het rekengebied inclusief buffers dekken.
+BGT en OSM worden gebiedsgericht opgehaald voor het rekengebied inclusief
+buffers. TOP10NL gebruikt het landelijke GeoPackage.
+
+Met `brandwaarde` stelt u in hoeveel een aanvullende brandlaag het rekenhoogtemodel
+verlaagt of verhoogt. Een negatieve waarde verlaagt; een positieve waarde verhoogt.
+
+In de voorbeeld-TOML staat onder `[defaults]` een verlaging van 10 meter (`-10.0`).
+Die geldt tenzij bij de laag een andere waarde staat. Zo gebruikt TOP10NL `-5.0`:
+een verlaging van 5 meter. Een waarde bij een afzonderlijk bronobject heeft
+voorrang op beide instellingen.
+
+Deze instellingen gelden alleen voor aanvullende brandlagen. De aparte
+inbrandregels voor waterlopen en duikers uit HyDAMO en Rijkswateren blijven gelden.
+
+Voor BGT-wegdelen staat een uitgecommentarieerd voorbeeld in de TOML. Verwijder
+de commentaartekens van dat blok om het te gebruiken. Vul bij `path` een pad
+voor het bronbestand in en kies de `brandwaarde` en `prioriteit`. Een positieve
+brandwaarde is een instelbare verhoging; de voorbeeldwaarde is geen advies.
+
+Geschikte bronnen worden hergebruikt. Bewaar de bijbehorende JSON-bestanden en
+raadpleeg het log voor de gebruikte bestanden. Zie
+[opslag en hergebruik van openbare brandbronnen](configuratie.md#openbare-brandbronnen)
+voor de cachevoorwaarden.
+
+Voor **eigen bestanden** laat u `openbare_bron` weg en stelt u `path` en `layer`
+in. Deze bestanden moeten vooraf aanwezig zijn en het rekengebied dekken.
+Lijn- en vlakgeometrieën worden ondersteund, met een bekend coördinatenstelsel.
+De automatische BGT-duikerselectie behoudt beide typen wanneer ze in de bron voorkomen.
+Ook voor `prioriteit` hebben waarden bij objecten in het GeoPackage voorrang
+op de TOML.
+Zie [optionele brandlagen](../bewerkte-lagen/afwateringseenheden.md#optionele-brandlagen)
+voor de overlapregels en het effect op de afstroming.
+
+### 3. De productie starten
+
+Start de test; ontbrekende openbare bronnen worden eerst opgehaald en voorbereid:
 
 ```console
-pixi run --locked afwateringseenheden --area alkmaar --run-id proef
-pixi run --locked afwateringseenheden --area alkmaar --run-id proef --resume
+pixi run --locked afwateringseenheden --bounds 184285 392054 185285 393054 --brandlagen-config ./invoer/brandlagen.toml --workers 1 --run-id brandtest
 ```
 
-Fouten in afzonderlijke tegels verhinderen het samenvoegen, terwijl overige
-onafhankelijke tegels worden afgewerkt. Hervatten hergebruikt geldige resultaten.
-Zie [productiemappen](configuratie.md#productiemappen) voor de compatibiliteitsvoorwaarden.
+De grenzen staan in het project-CRS, standaard RD (`EPSG:28992`). De uitvoer
+wordt niet op de rechthoek afgeknipt. Zie [eigen rechthoekig gebied](cli.md#eigen-rechthoekig-gebied).
+Bekijk daarna de invoer en de daadwerkelijke inbranding zoals beschreven bij
+[Resultaten bekijken en controleren](#resultaten-bekijken-en-controleren).
 
-Gebruik na wijzigingen aan bronnen of instellingen een nieuwe run-ID.
-`--resume` is alleen bedoeld voor dezelfde invoer en instellingen.
-Bewerk invoer niet tijdens een berekening.
+<span id="doelmodi-en-bronnen"></span>
+<span id="duikers-sifons-en-hevels"></span>
+<span id="waterlopen-en-duikers"></span>
 
-Gebruik voor eigen code de [Python-ingang](../reference/gebruik.md) of de
-[lagere API](../reference/afwateringseenheden.md#dekking-en-hergebruik).
+## Aanvullende instellingen
+
+Algemene opties staan bij [gedeelde productiecommando's](cli.md#opties).
+
+??? info "Opties voor afwateringseenheden"
+
+    | Optie | Gebruik |
+    | --- | --- |
+    | `--eigen-hydamo PAD` | Vervang de GKW-gegevens van het gekozen waterschap door een eigen HYDAMO-GeoPackage. Vereist een waterschapselectie. |
+    | `--overige-waterschappen` | Neem ook afwateringsdoelen van andere waterschappen mee. Vereist een waterschapselectie; RWS blijft uitgesloten als doel. |
+    | `--rijkswateren-url URL` | Gebruik een ander downloadadres voor de [Rijkswaterenbron](../bronlagen/rijkswateren.md). |
+    | `--duiker-tolerance METERS` | Koppelafstand per duikeruiteinde tot primaire waterlopen; standaard 0,5 m. |
+    | `--max-aansluitlengte METERS` | Sluit ook directe aansluitstukken tot deze lengte uit als afwateringsdoel. Standaard worden deze niet extra uitgesloten. |
+
+    HYDAMO-duikers worden gelezen uit `duikersifonhevel`; RWS-duikers alleen als
+    die laag in de Rijkswaterenbron zit. Zie
+    [afwateringsdoelen](../bewerkte-lagen/afwateringseenheden.md#afwateringsdoelen)
+    en [waterlopen en duikers](../bewerkte-lagen/afwateringseenheden.md#waterlopen-en-duikers-inbranden)
+    voor de werking.
+
+<span id="eigen-levering"></span>
+
+??? info "Eisen aan een eigen HYDAMO-levering"
+
+    - De lagen `hydroobject`, `gemaal`, `stuw` en `duikersifonhevel` zijn aanwezig,
+      elk met een bekend coördinatenstelsel. Kunstwerklagen mogen leeg zijn.
+    - Elk object heeft een geldig `nen3610id` van het gekozen waterschap.
+    - Waterlopen hebben een categorie in `categorieoppwaterlichaam` of
+      `categorieoppervlaktewater`: `primair`, `secundair`, `tertiair` of `overig`.
+
+    Ontbrekende gegevens van het gekozen waterschap worden niet uit GKW aangevuld.
+    Voor omliggende waterschappen blijft GKW de bron.
+
+Voor eigen Python-workflows is er een
+[bestaand voorbeeld](../reference/bewerkte-lagen-produceren.md#afwateringseenheden).
+
+## Hervatten
+
+Hervat de voorbeeldrun met dezelfde gebiedskeuze en runnaam:
+
+```console
+pixi run --locked afwateringseenheden --waterbeheercode 38 --workers 8 --run-id test --resume
+```
+
+Hervat een run met brandlagen door de oorspronkelijke opdracht, inclusief
+`--brandlagen-config` met dezelfde configuratie, te herhalen met `--resume`.
+
+Bewaar de runmap, inclusief `berekening/` en de overige tussenbestanden.
+Bewaar ook de gebruikte brandbronnen en hun bronmetadata. Bij hervatten worden
+openbare brandbronnen niet opnieuw gedownload of aangemaakt.
+Geldige resultaten worden hergebruikt. Gewijzigde bronnen of rekeninstellingen
+vereisen een nieuwe run-ID; bewerk invoer niet tijdens een berekening.
+Zie [productiemappen](configuratie.md#productiemappen) voor alle
+compatibiliteitsvoorwaarden.

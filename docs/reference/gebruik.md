@@ -34,17 +34,22 @@ Gebruik bij een oudere release de bijbehorende voorbeelden of werk de installati
 
 ## Een script uitvoeren
 
+Open een terminal in de map met `pixi.toml` en het gedownloade `.py`-bestand.
+Het downloaden van het script haalt nog geen brongegevens op; dat gebeurt
+wanneer u het script uitvoert. `pixi run` kiest zelf de standaardomgeving,
+dus u hoeft die niet vooraf te activeren. Gebruik in het releasepakket `--locked`.
+
 Begin bijvoorbeeld met het BGT-voorbeeld. Dat vraagt alleen waterdelen en panden
 voor het voorbeeldgebied op:
 
 ```console
-pixi run python download_bgt.py
+pixi run --locked python download_bgt.py
 ```
 
 Een bewerkte laag maakt u bijvoorbeeld met:
 
 ```console
-pixi run python produceer_autos.py
+pixi run --locked python produceer_autos.py
 ```
 
 Vanuit een repositorycheckout staan de scripts onder `docs/reference/voorbeelden/`:

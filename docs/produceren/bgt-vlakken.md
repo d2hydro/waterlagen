@@ -5,9 +5,29 @@ editorial_status: ai
 # Actuele BGT-vlakken voor QGIS
 
 [Landgebruikproductie](landgebruik.md) downloadt en prepareert BGT automatisch.
-Voor losse conversie van een bestaande [BGT GML Light-ZIP](../bronlagen/bgt.md)
-gebruikt u de [Python-functie](../reference/gebruik.md#losse-bronnen-en-bewerkingen)
-`waterlagen.bgt.productie.main`. Deze conversiefunctie downloadt zelf niets.
+
+## Voorbereiden
+
+Download voor losse voorbereiding de landelijke GML-light-ZIP via de
+[BGT-bronpagina](../bronlagen/bgt.md#externe-verwijzingen). Bewaar deze bij
+standaardopslag als `data/source_data/bgt/bgt-gmllight-nl-nopbp.zip`.
+
+[Download het voorbereidingsscript](../reference/voorbeelden/bereid_bgt_vlakken.py)
+en sla het op in de map met `pixi.toml`. Open daar een terminal en voer uit:
+
+```console
+pixi run --locked python bereid_bgt_vlakken.py
+```
+
+Het script gebruikt `waterlagen.bgt.productie.main` en downloadt zelf niets.
+Het resultaat staat in `data/source_data/bgt/bgt.gpkg`, met onder meer de laag
+`bgt_waterdeel`. Gebruikt u een andere gegevensmap, pas dan `DATA_DIR` bovenaan
+het script aan. Gebruik dezelfde map als voor de productie.
+Zie het [Python-voorbeeld](../reference/bewerkte-lagen-produceren.md#bgt-vlakken)
+voor de scriptinhoud en instellingen.
+
+Het kleine BGT-downloadvoorbeeld voor Alkmaar-centrum levert afzonderlijke
+bestanden en vervangt deze landelijke voorbereiding niet.
 
 ## Selectie
 
@@ -23,7 +43,7 @@ Het argument `workers` bepaalt het aantal gelijktijdige processen.
 
 ## Uitvoer en hergebruik
 
-Uitvoer: `source_data/bgt/bgt.gpkg`.
+Uitvoer bij standaardopslag: `data/source_data/bgt/bgt.gpkg`.
 Elke laag heeft `MultiPolygon`, CRS `EPSG:28992`, een ruimtelijke index,
 opgeslagen objectaantal en laagbegrenzing. Bronattributen blijven behouden.
 `bgt_actuele_vlakken.status.json` en het productielog vermelden voortgang en fouten.

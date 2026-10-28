@@ -78,6 +78,37 @@ Vraag voor Alkmaar-centrum de objecttypen waterdeel en pand op. Het resultaat be
 --8<-- "docs/reference/voorbeelden/download_bgt.py"
 ```
 
+## BGT-duikers voorbereiden
+
+Voor automatische voorbereiding via `openbare_bron` is dit losse script niet nodig;
+zie [de productiehandleiding](../produceren/afwateringseenheden.md#proef-met-eigen-gebied-en-brandlagen).
+
+Dit script selecteert duikers uit het bestaande `data/source_data/bgt/bgt.gpkg`.
+Voer eerst [BGT-vlakken voorbereiden](../produceren/bgt-vlakken.md#voorbereiden) uit;
+de duikers komen uit de laag `bgt_kunstwerkdeel`, met `plus-type = duiker`.
+De oorspronkelijke vlakgeometrieën en attributen blijven behouden, met het
+oorspronkelijke objectnummer in `bron_fid`.
+Deze losse route gebruikt de al voorbereide vlakken en kan eerder weggefilterde
+lijngeometrieën niet herstellen. De automatische route leest de algemene BGT-conversie.
+
+Standaard wordt Aa en Maas geselecteerd, inclusief volledige rekentegels van
+10 × 10 km en 2 km buffer. De selectie dekt ook de bounds-proef in de
+[productiehandleiding](../produceren/afwateringseenheden.md#proef-met-eigen-gebied-en-brandlagen).
+De uitvoer is `data/processed_data/brandlagen/aa_en_maas/bgt_duikers.gpkg`,
+laag `bgt_duiker`; dit pad sluit aan op de voorbeeld-TOML.
+
+Pas `DATA_DIR`, `AREA` en `OUTPUT_SUBDIR` aan voor een andere gegevensmap of
+waterschap. Een ontbrekende waterschapsgrens wordt opgehaald; BGT moet al
+voorbereid zijn. Een bestaand uitvoerbestand blijft behouden en geeft een melding:
+kies een nieuwe uitvoermap of zet bewust `OVERWRITE = True` om het te vervangen.
+Zie [Een script uitvoeren](gebruik.md#een-script-uitvoeren) voor starten met Pixi.
+
+[Download het voorbereidingsscript](voorbeelden/bereid_bgt_duikers.py).
+
+```python
+--8<-- "docs/reference/voorbeelden/bereid_bgt_duikers.py"
+```
+
 ## BRP
 
 Zoek de nieuwste definitieve BRP-release en download het landelijke GeoPackage. Dit kan een groot bestand zijn. Een bestaand doelbestand wordt hergebruikt; de releasefeed wordt wel geraadpleegd.

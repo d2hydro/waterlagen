@@ -78,6 +78,11 @@ def _brand_identity(config: BrandlagenConfig | None) -> dict:
                 "prioriteit": layer.prioriteit,
                 "rol": layer.rol,
                 "bron": layer.bron,
+                **(
+                    {"openbare_bron": layer.openbare_bron}
+                    if layer.openbare_bron
+                    else {}
+                ),
             }
             for layer in config.lagen
         ],
@@ -384,11 +389,11 @@ def _optional_burn_raster(
     logger.info(
         "Rasterizing %s optional brandobjects from %s", len(features), prepared.path
     )
-    options = dict(
-        out_shape=(grid.height, grid.width),
-        transform=grid.transform,
-        fill=0,
-    )
+    options = {
+        "out_shape": (grid.height, grid.width),
+        "transform": grid.transform,
+        "fill": 0,
+    }
     values = _rasterize_brand_shapes(
         list(zip(features.geometry, features.brandwaarde)), dtype="float64", **options
     )

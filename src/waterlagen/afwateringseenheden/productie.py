@@ -12,11 +12,12 @@ from waterlagen.afwateringseenheden import (
     prepare_watersysteem,
     write_watersysteem,
 )
+from waterlagen.afwateringseenheden.brand_sources import prepare_brand_sources
 from waterlagen.afwateringseenheden.brandlagen import (
     _brand_identity,
     _prepare_brandlagen,
 )
-from waterlagen.afwateringseenheden.config import BrandlagenConfig
+from waterlagen.afwateringseenheden.config import DEFAULT_TILE_SIZE_M, BrandlagenConfig
 from waterlagen.afwateringseenheden.pcraster import require_pcraster
 from waterlagen.afwateringseenheden.raster import _grid_for_square
 from waterlagen.afwateringseenheden.sources import (
@@ -93,7 +94,9 @@ def main(
     preparation : SourcePreparation, optional
         Shared source policy for nested productions.
     brandlagen : BrandlagenConfig, optional
-        User-supplied optional burn layers. Checked before AHN preparation.
+        Optional burn layers. Explicit public sources are prepared for the full
+        calculation context; local user files are never downloaded or replaced.
+        Checked before AHN preparation.
         Recorded source identities and defaults must match when resuming a run.
     overige_waterschappen : bool, optional
         Include surrounding water authorities as targets, default False. Requires
@@ -138,7 +141,7 @@ def main(
     )
     selected = resolve_area(area, store, preparation)
     workers = resolve_workers(workers, settings.afwateringseenheden_workers)
-    tile_size, tile_buffer = 10000, 2000
+    tile_size, tile_buffer = DEFAULT_TILE_SIZE_M, 2000
     tiles = _tiles_for_gebied(
         selected.geometry, tile_size_m=tile_size, origin_x=0, origin_y=0
     )
@@ -152,6 +155,19 @@ def main(
         for tile in tiles
     ]
     brandlagen = brandlagen or BrandlagenConfig()
+    requested_public_sources = [
+        {
+            "path": str(layer.path),
+            "layer": layer.layer,
+            "openbare_bron": layer.openbare_bron,
+        }
+        for layer in brandlagen.lagen
+        if layer.openbare_bron is not None
+    ]
+    public_sources = prepare_brand_sources(
+        brandlagen, store, context, preparation, reuse_only=resume or overwrite
+    )
+    brandlagen = public_sources.config
     parameters = {
         "output_schema": "calculation_directory_v7",
         "area": selected.identity,
@@ -189,6 +205,11 @@ def main(
         "waternet_policy": WATERNET_POLICY,
         "brandlagen": _brand_identity(brandlagen),
     }
+    if requested_public_sources:
+        parameters["openbare_brandbronnen"] = requested_public_sources
+        parameters["openbare_brandbron_metadata"] = {
+            name: _file_identity(path) for name, path in public_sources.inputs.items()
+        }
     with production_run(
         store.processed_data_dir,
         "afwateringseenheden",
@@ -253,6 +274,7 @@ def main(
         )
         inputs = {
             **source_paths,
+            **public_sources.inputs,
             "ahn": ahn,
             "landsgrens": boundary,
         }

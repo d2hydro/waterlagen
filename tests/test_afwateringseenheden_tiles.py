@@ -95,6 +95,64 @@ def _write_cached_tile(
         destination.write(np.ones((width, width), dtype=np.int32), 1)
 
 
+@pytest.mark.parametrize("tile_size_m", [None, 5000, 16])
+def test_default_and_explicit_tile_sizes(tmp_path, monkeypatch, tile_size_m):
+    calls = []
+
+    def prepare(geometry, **kwargs):
+        calls.append((geometry, kwargs))
+        return _fake_rasters(kwargs["output_dir"], segment_value=0)
+
+    monkeypatch.setattr(tiles_module, "prepare_watersysteem_rasters", prepare)
+    options = {} if tile_size_m is None else {"tile_size_m": tile_size_m}
+    result = calculate_afwateringseenheden_tiles(
+        box(100002, 400002, 100008, 400008),
+        burn_depth_m=1,
+        output_dir=tmp_path,
+        **options,
+    )
+    size = 10000 if tile_size_m is None else tile_size_m
+    expected_core = box(100000, 400000, 100000 + size, 400000 + size)
+    assert len(result.tile_results) == 1
+    assert result.tile_results[0].tile.bounds == expected_core.bounds
+    assert calls[0][0].bounds == (98000, 398000, 102000 + size, 402000 + size)
+    assert calls[0][1]["resolution_m"] == 2.0
+    selected = gpd.read_file(tmp_path / "tiles.gpkg", layer="tiles")
+    assert selected.geometry.iloc[0].equals(expected_core)
+
+
+def test_different_tile_size_does_not_reuse_previous_grid(tmp_path, monkeypatch):
+    _write_cached_tile(
+        tmp_path,
+        width=8,
+        transform=from_origin(100000, 400016, 2, 2),
+        crs=settings.crs,
+    )
+    calls = []
+
+    def prepare(geometry, **kwargs):
+        calls.append(kwargs["output_dir"].name)
+        return _fake_rasters(kwargs["output_dir"], segment_value=0)
+
+    monkeypatch.setattr(tiles_module, "prepare_watersysteem_rasters", prepare)
+    for size in (16, 32, 16):
+        result = calculate_afwateringseenheden_tiles(
+            box(100002, 400002, 100008, 400008),
+            burn_depth_m=1,
+            output_dir=tmp_path,
+            tile_size_m=size,
+            tile_buffer_m=0,
+        )
+        assert result.tile_results[0].tile.bounds == (
+            100000,
+            400000,
+            100000 + size,
+            400000 + size,
+        )
+        assert bool(result.skipped_tile_ids) is (size == 32)
+    assert calls == ["100000_400000_100032_400032"]
+
+
 def test_new_landsgrens_invalidates_cached_subcatchments_and_reaches_rasters(
     tmp_path, monkeypatch
 ) -> None:

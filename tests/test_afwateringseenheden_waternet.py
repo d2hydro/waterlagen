@@ -6,7 +6,7 @@ import geopandas as gpd
 import numpy as np
 import pytest
 import rasterio
-from shapely.geometry import LineString, box
+from shapely.geometry import LineString, MultiLineString, MultiPolygon, box
 
 from waterlagen.afwateringseenheden.config import (
     Brandlaag,
@@ -160,6 +160,98 @@ def test_bgt_polygon_connects_without_centerline_derivation(tmp_path):
     treatment, _, excluded, _, _ = read_waternet(network, grid())
     assert treatment[cell(grid(), 15, 21)] == 3
     assert excluded[cell(grid(), 15, 21)]
+
+
+@pytest.mark.parametrize("culvert_origin", ["bgt", "osm", "hydamo"])
+@pytest.mark.parametrize("polygon", [False, True])
+def test_culvert_between_optional_waterlines_is_shallow(
+    tmp_path, culvert_origin, polygon
+):
+    geometry = box(10, 20, 22, 22) if polygon else line((11, 21), (21, 21))
+    data = sources(primary=[line((37, 1), (37, 39))])
+    extra = optional(
+        [line((1, 21), (11, 21)), line((21, 21), (37, 21)), geometry],
+        ["water", "water", "duiker"],
+        ["osm", "osm", culvert_origin],
+    )
+    extra["brandwaarde"] = -7.0
+    extra["prioriteit"] = 1
+    classified = _classify_culverts(data, extra, grid())
+    assert classified.behandeling.tolist() == ["aanvoer"]
+    assert not classified.diep_geschikt.any()
+    network = prepare(tmp_path, data, extra)
+    treatment, codes, excluded, _, shallow = read_waternet(network, grid())
+    middle = cell(grid(), 15, 21)
+    assert treatment[middle] == 3
+    assert codes[middle] == 5
+    assert shallow[middle] == 7.0
+    assert excluded[middle]
+
+
+@pytest.mark.parametrize("water_source", ["secondary", "primary", "optional"])
+def test_crossing_line_does_not_activate_polygon_culvert(tmp_path, water_source):
+    crossing = line((21, 1), (21, 39))
+    data = (
+        sources(**{water_source: [crossing]})
+        if water_source != "optional"
+        else sources()
+    )
+    extra = optional([box(10, 20, 32, 22)], ["duiker"], ["bgt"])
+    if water_source == "optional":
+        extra = optional(
+            [crossing, box(10, 20, 32, 22)], ["water", "duiker"], ["osm", "bgt"]
+        )
+    classified = _classify_culverts(data, extra, grid())
+    assert classified.behandeling.tolist() == ["controle"]
+    network = prepare(tmp_path, data, extra)
+    treatment, _, excluded, _, _ = read_waternet(network, grid())
+    assert treatment[cell(grid(), 15, 21)] == 0
+    assert not excluded[cell(grid(), 15, 21)]
+
+
+@pytest.mark.parametrize("surface_water", [False, True])
+def test_polygon_culvert_accepts_multipart_water_and_surface_contacts(surface_water):
+    water = (
+        [MultiPolygon([box(1, 19, 11, 23)]), box(21, 19, 37, 23)]
+        if surface_water
+        else [MultiLineString([[(1, 21), (11, 21)], [(21, 21), (37, 21)]])]
+    )
+    extra = optional(
+        [*water, MultiPolygon([box(10, 20, 22, 22)])],
+        ["water"] * len(water) + ["duiker"],
+        ["osm"] * len(water) + ["bgt"],
+    )
+    classified = _classify_culverts(sources(), extra, grid())
+    assert classified.behandeling.tolist() == ["aanvoer"]
+    assert not classified.diep_geschikt.any()
+    extra.loc[extra.rol.eq("water"), "rol"] = "overig"
+    classified = _classify_culverts(sources(), extra, grid())
+    assert classified.behandeling.tolist() == ["controle"]
+
+
+def test_polygon_culvert_does_not_count_duplicate_endpoints_twice():
+    data = sources(secondary=[line((1, 21), (11, 21)), line((1, 22), (11, 21))])
+    extra = optional([box(10, 20, 22, 22)], ["duiker"], ["bgt"])
+    classified = _classify_culverts(data, extra, grid())
+    assert classified.behandeling.tolist() == ["controle"]
+
+
+def test_old_contact_policy_is_rejected_and_rebuilt(tmp_path, monkeypatch):
+    from waterlagen.afwateringseenheden import waternet
+
+    with monkeypatch.context() as legacy:
+        legacy.setattr(
+            waternet,
+            "WATERNET_POLICY",
+            "prepared_primary_pieces_separate_culvert_rasters_v3",
+        )
+        network = prepare(tmp_path, sources())
+    with pytest.raises(ValueError, match="stale"):
+        read_waternet(network, grid())
+    prepare_waternet(sources(), optional(), [grid()], network, BrandlagenConfig())
+    assert read_waternet(network, grid()) is not None
+    manifest = network.parent / "berekening" / "waterlopen_duikers" / "manifest.json"
+    assert json.loads(manifest.read_text())["policy"] == waternet.WATERNET_POLICY
 
 
 def test_source_preference_retains_provenance_and_does_not_merge_crossings():
