@@ -43,7 +43,7 @@ prioriteit = 0
 # Geldige lijnen en vlakken blijven behouden; de mapnaam bepaalt geen selectie.
 # BGT: alleen kunstwerkdelen met plus-type = duiker.
 [[lagen]]
-path = "../data/processed_data/brandlagen/aa_en_maas/bgt_duikers.gpkg"
+path = "../data/source_data/bgt/bgt_duikers.gpkg"
 layer = "bgt_duiker"
 openbare_bron = "bgt"
 rol = "duiker"
