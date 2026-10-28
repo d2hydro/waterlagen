@@ -25,7 +25,7 @@ from .duikers import _frame_identity
 from .sources import WatersysteemSources
 
 logger = get_logger(__name__)
-WATERNET_POLICY = "prepared_primary_pieces_separate_culvert_rasters_v3"
+WATERNET_POLICY = "optional_water_polygon_endpoint_contacts_v4"
 NEIGHBOURS = np.ones((3, 3), dtype=bool)
 
 
@@ -111,33 +111,44 @@ def _raster_equivalent(first, second, grid: RasterGrid) -> bool:
     )
 
 
+def _polygon_contact_mask(
+    water: gpd.GeoDataFrame,
+    grid: RasterGrid,
+    footprint: np.ndarray,
+    vicinity: np.ndarray,
+) -> np.ndarray:
+    """Use line endpoints and water-surface contact zones, not line crossings."""
+    endpoints = [point for geometry in water.geometry for point in _endpoints(geometry)]
+    endpoint_mask = _mask(endpoints, grid) & vicinity
+    surfaces = water.loc[water.geom_type.isin(["Polygon", "MultiPolygon"])]
+    surface_contacts = _mask(surfaces.geometry, grid) & vicinity & ~footprint
+    return endpoint_mask | surface_contacts
+
+
 def _culvert_contacts(
     geometry: BaseGeometry,
     grid: RasterGrid,
-    primary: np.ndarray,
+    primary: gpd.GeoDataFrame,
     lower: gpd.GeoDataFrame,
 ) -> _CulvertContacts:
-    """Count endpoint/side contacts, retaining the polygon contact-zone rule."""
+    """Count distinct attachments without promoting through-crossings."""
     footprint = _mask([geometry], grid)
     vicinity = binary_dilation(footprint, structure=NEIGHBOURS)
-    lower_mask = _mask(lower.geometry, grid)
-    contacts = (primary | lower_mask) & vicinity & ~footprint
-    _, zone_count = label(contacts, structure=NEIGHBOURS)
-    side_points = [point for line in lower.geometry for point in _endpoints(line)]
-    side = _mask(side_points, grid) & footprint
     endpoints = _endpoints(geometry)
     if not endpoints:
-        # A lower endpoint at an outside contact zone is the same attachment.
-        side &= ~binary_dilation(contacts, structure=NEIGHBOURS)
-        _, side_count = label(side, structure=NEIGHBOURS)
-        return _CulvertContacts(
-            zone_count + side_count, bool((lower_mask & vicinity).any())
-        )
+        primary_contacts = _polygon_contact_mask(primary, grid, footprint, vicinity)
+        lower_contacts = _polygon_contact_mask(lower, grid, footprint, vicinity)
+        _, count = label(primary_contacts | lower_contacts, structure=NEIGHBOURS)
+        return _CulvertContacts(count, bool(lower_contacts.any()))
+    primary_mask = _mask(primary.geometry, grid)
+    lower_mask = _mask(lower.geometry, grid)
+    side_points = [point for line in lower.geometry for point in _endpoints(line)]
+    side = _mask(side_points, grid) & footprint
     # Do not count a waterline endpoint at a culvert end a second time as a side
     # connection. Interior attachments (such as the FID 85 case) still count.
     side &= ~binary_dilation(_mask(endpoints, grid), structure=NEIGHBOURS)
     _, side_count = label(side, structure=NEIGHBOURS)
-    water_vicinity = binary_dilation(primary | lower_mask, structure=NEIGHBOURS)
+    water_vicinity = binary_dilation(primary_mask | lower_mask, structure=NEIGHBOURS)
     lower_vicinity = binary_dilation(lower_mask, structure=NEIGHBOURS)
     end_count = 0
     attached_lower = bool(side_count)
@@ -211,6 +222,12 @@ def _classify_culverts(
     lower = sources.secondary
     if sources.tertiary is not None:
         lower = gpd.GeoDataFrame(pd.concat([lower, sources.tertiary]), crs=grid.crs)
+    additional_water = (
+        optional.loc[optional.rol.eq("water")]
+        if "rol" in optional
+        else optional.iloc[:0]
+    )
+    all_lower = gpd.GeoDataFrame(pd.concat([lower, additional_water]), crs=grid.crs)
     accepted = set()
     for index, row in culverts.iterrows():
         geometry = row.geometry
@@ -237,9 +254,15 @@ def _classify_culverts(
                 culverts.loc[index, "reden"] = "meerdere mogelijke bronduplicaten"
             continue
         local = _local_grid(geometry, grid)
-        primary = _mask(_nearby(sources.primary, local).geometry, local)
+        primary = _nearby(sources.primary, local)
         lower_frame = _nearby(lower, local)
         contacts = _culvert_contacts(geometry, local, primary, lower_frame)
+        # Supplement missing attachments, but retain an established primary-only
+        # exclusion even when an optional water polygon covers the culvert.
+        if contacts.count < 2 and not additional_water.empty:
+            contacts = _culvert_contacts(
+                geometry, local, primary, _nearby(all_lower, local)
+            )
         if contacts.count < 2:
             culverts.loc[index, "reden"] = "minder dan twee rasteraansluitingen"
         elif contacts.has_lower:
@@ -251,7 +274,7 @@ def _classify_culverts(
                 culverts.loc[index, "diep_geschikt"] = (
                     secondary_contacts.count >= 2 and secondary_contacts.has_lower
                 )
-        elif primary.any():
+        elif not primary.empty:
             culverts.loc[index, "behandeling"] = "primair_primair"
         else:
             culverts.loc[index, "reden"] = "geen waterloopaansluiting"
@@ -407,6 +430,31 @@ def prepare_waternet(
     Components from overlapping buffered tiles are joined before depths are
     assigned. Primary RWS remains a deep burn seed, without becoming a target.
     Culvert diagnostics preserve all registrations, including duplicates.
+
+    Parameters
+    ----------
+    sources : WatersysteemSources
+        Selected source geometries, covering all calculation grids.
+    optional : geopandas.GeoDataFrame
+        Optional objects from ``read_brandlagen`` with resolved values and roles.
+        Pass its empty result when no additional layers are configured.
+    grids : list[RasterGrid]
+        The exact buffered grids used by the subsequent tile calculation.
+    watersysteem : pathlib.Path
+        GeoPackage written by ``write_watersysteem``. Preparation rasters and
+        their manifest are stored below its sibling ``berekening`` directory;
+        culvert diagnostics are written to the sibling ``controle.gpkg``.
+    config : BrandlagenConfig
+        Burn configuration, including the isolated-water lowering depth.
+    primary_culvert_pieces : geopandas.GeoDataFrame, optional
+        ``hydroobject_primair_delen`` from ``prepare_watersysteem``. Pass these
+        pieces to retain the geometrically matched primary culvert routes.
+
+    Returns
+    -------
+    None
+        Writes preparation files; matching source identities, grids and policy
+        allow reuse. This function does not download sources.
     """
     directory = watersysteem.parent / "berekening" / "waterlopen_duikers"
     directory.mkdir(parents=True, exist_ok=True)

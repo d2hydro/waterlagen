@@ -52,10 +52,14 @@ samengevoegde resultaat wordt op Alkmaar-centrum geknipt. AHN en watersysteem
 worden ook voor de omgeving opgehaald. HYDAMO blijft een landelijke download.
 Gebruik de omgeving met PCRaster.
 
-Met `BRANDLAGEN_CONFIG` kunt u een lokaal TOML-bestand voor eigen QGIS-lagen
-instellen. Standaard is dit `None`. Het voorbeeld leest de samengestelde
-brandobjecten met de publieke inleesfunctie en geeft de configuratie door aan
-de tegelberekening. Zie het [schema en de brandregels](../produceren/afwateringseenheden.md#optionele-brandlagen).
+Met `BRANDLAGEN_CONFIG` kiest u een TOML-bestand; standaard is dit `None`.
+`prepare_brand_sources` haalt expliciet gekozen openbare brandbronnen op en
+bereidt ze voor. Eigen bestanden moeten al beschikbaar zijn. Daarna leest
+`read_brandlagen` de objecten en bereidt `prepare_waternet` de gezamenlijke
+waterloop- en duikeraansluitingen voor op alle rekenrasters.
+De tegelberekening krijgt dezelfde configuratie. Zie
+[TOML-instellingen](../produceren/afwateringseenheden.md#toml-configuratie)
+en [brandregels](../bewerkte-lagen/afwateringseenheden.md#optionele-brandlagen).
 
 Met `DUIKER_TOLERANCE_M` en `MAX_AANSLUITLENGTE_M` stelt u de duikerkoppeling
 en extra uitsluiting van aansluitdoelen in. De volledige primaire context en

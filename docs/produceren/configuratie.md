@@ -99,6 +99,25 @@ die ontdekt een geschikte landgebruikproductie en legt de keuze vast voor hervat
 Deze conventie geldt voor de huidige scripts; oudere gedownloade
 productiepakketten kunnen nog de eerdere mapindeling gebruiken.
 
+## Openbare brandbronnen
+
+Bij [afwateringseenheden](afwateringseenheden.md#test-met-eigen-gebied-en-brandlagen)
+kiest `openbare_bron` in de TOML voor automatische bronvoorbereiding. De
+bijbehorende JSON-bestanden leggen herkomst, bestandsidentiteit en dekking vast.
+Een bron is herbruikbaar als die gegevens en de benodigde laag passen; ook
+aantoonbaar ruimere dekking kan worden hergebruikt.
+
+`path` geeft het gewenste bronbestand aan. Een bestaand bestand zonder passende
+herkomstmetadata blijft behouden. In dat geval wordt een afzonderlijke beheerde
+broncache gebruikt; het productielog vermeldt het werkelijk gebruikte pad.
+Ook een gewijzigd bestand in die cache wordt niet stilzwijgend vervangen.
+Zonder `openbare_bron` blijft het opgegeven bestand eigen lokale invoer.
+
+Bewaar bronnen en hun JSON-bestanden samen. Wijzigingen in bronbestanden maken
+afhankelijke voorbereidingen ongeldig. Bij hervatten moeten de passende bronnen
+en metadata nog beschikbaar zijn: er wordt dan niets opnieuw voorbereid.
+Zie [productiemappen](#productiemappen) voor de runcompatibiliteit.
+
 ## Gegevens ergens anders bewaren
 
 Wilt u bijvoorbeeld een andere schijf gebruiken omdat daar meer ruimte is?

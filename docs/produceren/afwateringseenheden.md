@@ -7,7 +7,8 @@ editorial_status: ai
 ## Starten
 
 Volg eerst [Installatie](installatie.md). Open daarna een terminal in de map
-waarin `pixi.toml` staat. Start bijvoorbeeld een run voor Aa en Maas:
+waarin `pixi.toml` staat. Start bijvoorbeeld een run voor Aa en Maas met de
+standaardbronnen:
 
 ```console
 pixi run --locked afwateringseenheden --waterbeheercode 38 --workers 8 --run-id test
@@ -18,8 +19,10 @@ Gebruikt u de broncode uit GitHub? Voeg dan bij de opdrachten op deze pagina
 
 Ontbrekende standaardbronnen (AHN, HYDAMO, Rijkswateren en gebiedsgrenzen) worden
 automatisch opgehaald en voorbereid. Bestaande bronnen worden hergebruikt;
-met `--offline` moeten ze al lokaal beschikbaar zijn. Aanvullende bestanden
-uit de brandlagen-TOML en een eventuele eigen HYDAMO-levering levert u zelf aan.
+met `--offline` moeten de benodigde bronnen al lokaal beschikbaar zijn.
+Aanvullende BGT-, TOP10NL- en OSM-brandlagen worden alleen gebruikt als u ze
+opneemt in een TOML; zie de [brandlagentest](#test-met-eigen-gebied-en-brandlagen).
+Eigen lokale brandlagen en een eigen HYDAMO-levering levert u zelf aan.
 
 Zie [gebieden](cli.md#gebieden) voor de beschikbare selecties en hun omvang.
 
@@ -77,85 +80,69 @@ inzicht in de invoer. Houd bestanden uit dezelfde run bij elkaar.
 <span id="optionele-brandlagen"></span>
 <span id="toml-configuratie"></span>
 
-## Proef met eigen gebied en brandlagen
+<span id="proef-met-eigen-gebied-en-brandlagen"></span>
+
+## Test met eigen gebied en brandlagen
 
 Brandlagen zijn aanvullende lagen die het rekenhoogtemodel aanpassen om de
 afstroming te sturen. De ingestelde verlagingen zijn geen werkelijke waterbodemhoogtes.
-Deze proef gebruikt BGT-water en TOP10NL-water voor een selectie van 1 × 1 km.
+Deze test gebruikt BGT, TOP10NL en OSM voor een selectie van 1 × 1 km.
 Daarmee wordt één kerntegel van 10 × 10 km berekend, met een rekengebied van
 14 × 14 km inclusief buffer.
 
-### 1. Brandlagen downloaden en voorbereiden
+<span id="1-brandlagen-downloaden-en-voorbereiden"></span>
+<span id="2-de-toml-opslaan"></span>
 
-De aanvullende bestanden uit de TOML moeten vóór de productie beschikbaar zijn.
-Zorg dat ze het volledige rekengebied inclusief tegelbuffers dekken, niet alleen
-de opgegeven bounds. Voor deze proef is dat de RD-rechthoek
-`178000 388000 192000 402000`.
+### 1. De voorbeeld-TOML opslaan
 
-- **BGT:** volg [BGT-vlakken voorbereiden](bgt-vlakken.md#voorbereiden).
-  Dit levert `data/source_data/bgt/bgt.gpkg` met laag `bgt_waterdeel`.
-- **TOP10NL:** gebruik het [downloadvoorbeeld](../reference/bronlagen-downloaden.md#top10nl)
-  en [download het script](../reference/voorbeelden/download_top10nl.py).
-  Met `DATA_DIR = Path("data")` levert dit
-  `data/source_data/top10nl/top10nl_Compleet.gpkg` met laag `top10nl_waterdeel_vlak`.
+[Download de voorbeeld-TOML met BGT, TOP10NL en OSM](../reference/voorbeelden/brandlagen.toml).
+Sla deze op als `invoer/brandlagen.toml`, gerekend vanaf de map met `pixi.toml`.
+De bronpaden worden vanaf de TOML gelezen en verwijzen naar `../data/source_data/`
+en `../data/processed_data/`.
 
-**Optioneel: OSM-waterlopen en duikers.** Download deze ook vooraf als u ze als
-brandlagen wilt gebruiken. Zie [OSM-kanalen](../reference/bronlagen-downloaden.md#osm-kanalen)
-en het [downloadscript](../reference/voorbeelden/download_osm_canals.py).
-Stel daarin `DATA_DIR` (gegevensmap) en `BOUNDS` (downloadgebied in RD) in.
-Gebruik voor deze proef `BOUNDS = (178000, 388000, 192000, 402000)`;
-dit omvat de volledige kerntegel met buffer.
-Met `DATA_DIR = Path("data")` komen de vijf GeoPackages in `data/source_data/osm/`.
-Gebruik voor opname van deze lagen de
-[uitgebreide voorbeeld-TOML](../reference/voorbeelden/brandlagen.toml).
+| Openbare bron | Opgenomen laagtypen |
+| --- | --- |
+| BGT | Watervlakken en duikers uit kunstwerkdelen. |
+| TOP10NL | Watervlakken en waterlijnen. |
+| OSM | Kanalen, sloten, afvoerwatergangen, beken en duikers. |
 
-Een `.py`-bestand downloaden haalt alleen het script op. Voer het daarna uit
-om de brongegevens op te halen; zie [Een script uitvoeren](../reference/gebruik.md#een-script-uitvoeren)
-voor starten met `pixi run`.
+<span id="2-instellingen-aanpassen"></span>
 
-### 2. De TOML opslaan
+### 2. Instellingen aanpassen (optioneel)
 
-De BGT- en TOP10NL-waterlagen in het onderstaande minimale voorbeeld moeten
-geldige vlakgeometrieën en een bekend coördinatenstelsel hebben.
-Voor dit voorbeeld zijn geen extra attributen nodig: `brandwaarde` en
-`prioriteit` staan in de TOML. Zijn deze attributen al bij objecten in het
-GeoPackage ingevuld, dan hebben die waarden voorrang.
+De voorbeeld-TOML is voor deze test ongewijzigd bruikbaar als u deze op de
+hierboven genoemde locatie opslaat. De TOML bepaalt welke aanvullende lagen in
+de berekening worden gebruikt. `openbare_bron = "bgt"`, `"top10nl"` of `"osm"`
+schakelt de automatische bronvoorbereiding in; `bron` geeft bij duikers hun
+herkomst aan. De bronnen moeten het rekengebied inclusief buffers dekken.
+BGT en OSM worden gebiedsgericht opgehaald voor het rekengebied inclusief
+buffers. TOP10NL gebruikt het landelijke GeoPackage.
 
-Sla het volgende bestand op als `invoer/brandlagen.toml`, gerekend vanaf de map
-met `pixi.toml`. De relatieve bronpaden worden vanaf de TOML gelezen en verwijzen
-dus naar `data/source_data`. Pas ze aan als uw bronnen ergens anders staan.
+Voor BGT-wegdelen staat een uitgecommentarieerd voorbeeld in de TOML. Verwijder
+de commentaartekens van dat blok om het te gebruiken. Vul bij `path` een pad
+voor het bronbestand in en kies de `brandwaarde` en `prioriteit`. Een positieve
+brandwaarde is een instelbare verhoging; de voorbeeldwaarde is geen advies.
 
-```toml
-[[lagen]]
-path = "../data/source_data/bgt/bgt.gpkg"
-layer = "bgt_waterdeel"
-rol = "water"
-brandwaarde = -10.0
-prioriteit = 2
+Geschikte bronnen worden hergebruikt. Bewaar de bijbehorende JSON-bestanden en
+raadpleeg het log voor de gebruikte bestanden. Zie
+[opslag en hergebruik van openbare brandbronnen](configuratie.md#openbare-brandbronnen)
+voor de cachevoorwaarden.
 
-[[lagen]]
-path = "../data/source_data/top10nl/top10nl_Compleet.gpkg"
-layer = "top10nl_waterdeel_vlak"
-rol = "water"
-brandwaarde = -5.0
-prioriteit = 0
-```
-
-De ingestelde verlaging is 10 m voor BGT-water en 5 m voor TOP10NL-water.
+Voor **eigen bestanden** laat u `openbare_bron` weg en stelt u `path` en `layer`
+in. Deze bestanden moeten vooraf aanwezig zijn en het rekengebied dekken.
+Lijn- en vlakgeometrieën worden ondersteund, met een bekend coördinatenstelsel.
+De automatische BGT-duikerselectie behoudt beide typen wanneer ze in de bron voorkomen.
+Zijn `brandwaarde` of `prioriteit` al bij objecten in het GeoPackage ingevuld,
+dan hebben die waarden voorrang op de TOML.
 Zie [optionele brandlagen](../bewerkte-lagen/afwateringseenheden.md#optionele-brandlagen)
 voor de overlapregels en het effect op de afstroming.
 
-[Download de uitgebreide voorbeeld-TOML](../reference/voorbeelden/brandlagen.toml)
-voor meer lagen en instellingen. Sla deze ook op als `invoer/brandlagen.toml`;
-de bronpaden verwijzen naar `../data/`. Neem alleen lagen op waarvoor u de
-benodigde bestanden hebt voorbereid.
-
 ### 3. De productie starten
 
-Start de proef met deze configuratie:
+Start de test; ontbrekende openbare bronnen worden eerst opgehaald en voorbereid:
 
 ```console
-pixi run --locked afwateringseenheden --bounds 184285 392054 185285 393054 --brandlagen-config ./invoer/brandlagen.toml --workers 1 --run-id brandproef
+pixi run --locked afwateringseenheden --bounds 184285 392054 185285 393054 --brandlagen-config ./invoer/brandlagen.toml --workers 1 --run-id brandtest
 ```
 
 De grenzen staan in het project-CRS, standaard RD (`EPSG:28992`). De uitvoer
@@ -211,7 +198,12 @@ Hervat de voorbeeldrun met dezelfde gebiedskeuze en runnaam:
 pixi run --locked afwateringseenheden --waterbeheercode 38 --workers 8 --run-id test --resume
 ```
 
+Hervat een run met brandlagen door de oorspronkelijke opdracht, inclusief
+`--brandlagen-config` met dezelfde configuratie, te herhalen met `--resume`.
+
 Bewaar de runmap, inclusief `berekening/` en de overige tussenbestanden.
+Bewaar ook de gebruikte brandbronnen en hun bronmetadata. Bij hervatten worden
+openbare brandbronnen niet opnieuw gedownload of aangemaakt.
 Geldige resultaten worden hergebruikt. Gewijzigde bronnen of rekeninstellingen
 vereisen een nieuwe run-ID; bewerk invoer niet tijdens een berekening.
 Zie [productiemappen](configuratie.md#productiemappen) voor alle

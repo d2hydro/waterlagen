@@ -6,6 +6,8 @@ from math import isfinite
 from numbers import Real
 from pathlib import Path
 
+DEFAULT_TILE_SIZE_M = 10000
+
 
 def _brand_number(value: object, *, priority: bool = False) -> float | int:
     """Validate explicit values; booleans and numeric text are not numbers here."""
@@ -36,6 +38,9 @@ class Brandlaag:
         ``overig`` (ordinary burn), ``water`` or ``duiker`` for water-network processing.
     bron : str, optional
         Culvert source: ``hydamo``, ``bgt`` or ``osm``. Required for culvert layers.
+    openbare_bron : str, optional
+        Explicit automatic preparation: ``bgt``, ``top10nl`` or ``osm``.
+        Without this option the path remains strictly local user input.
     """
 
     path: Path
@@ -44,6 +49,7 @@ class Brandlaag:
     prioriteit: int | None = None
     rol: str = "overig"
     bron: str | None = None
+    openbare_bron: str | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "path", Path(self.path).resolve())
@@ -54,6 +60,35 @@ class Brandlaag:
             raise ValueError("rol must be overig, water or duiker")
         if self.rol == "duiker" and self.bron not in {"hydamo", "bgt", "osm"}:
             raise ValueError("A duiker layer requires bron=hydamo, bgt or osm")
+        if self.openbare_bron is not None:
+            supported = {
+                "bgt": {"bgt_waterdeel", "bgt_wegdeel", "bgt_duiker"},
+                "top10nl": {"top10nl_waterdeel_vlak", "top10nl_waterdeel_lijn"},
+                "osm": {
+                    "osm_canals",
+                    "osm_ditches",
+                    "osm_drains",
+                    "osm_streams",
+                    "osm_culvert",
+                },
+            }
+            if (
+                self.openbare_bron not in supported
+                or self.layer not in supported[self.openbare_bron]
+            ):
+                raise ValueError(
+                    "Onbekende openbare_bron of niet-ondersteunde openbare laag"
+                )
+            culvert = self.layer in {"bgt_duiker", "osm_culvert"}
+            if culvert and (self.rol != "duiker" or self.bron != self.openbare_bron):
+                raise ValueError(
+                    "Openbare duikers vereisen rol=duiker en een passende bron"
+                )
+            road = self.layer == "bgt_wegdeel"
+            if road and self.rol != "overig":
+                raise ValueError("Openbare wegdelen vereisen rol=overig")
+            if not culvert and not road and self.rol != "water":
+                raise ValueError("Openbare waterlagen vereisen rol=water")
         if self.brandwaarde is not None:
             object.__setattr__(self, "brandwaarde", float(self.brandwaarde))
         if self.prioriteit is not None:
@@ -123,11 +158,14 @@ def read_brandlagen_config(path: Path) -> BrandlagenConfig:
         ``brandwaarde`` and ``prioriteit`` directly on each entry). The root key
         ``geisoleerde_branddiepte_m`` sets the isolated HYDAMO lowering depth.
         Layer keys ``rol`` and ``bron`` identify water and culvert inputs.
+        ``openbare_bron`` opts into preparation by the production entry point
+        or an explicit call to ``prepare_brand_sources``.
 
     Returns
     -------
     BrandlagenConfig
-        Configuration with absolute source paths. Source data is not read yet.
+        Configuration with absolute source paths. No source data is read,
+        downloaded or prepared by this function.
 
     Raises
     ------
@@ -158,7 +196,17 @@ def read_brandlagen_config(path: Path) -> BrandlagenConfig:
         if not isinstance(entry, dict):
             raise TypeError("Each lagen entry must be a TOML table")
         _check_keys(
-            entry, {"path", "layer", "brandwaarde", "prioriteit", "rol", "bron"}, "laag"
+            entry,
+            {
+                "path",
+                "layer",
+                "brandwaarde",
+                "prioriteit",
+                "rol",
+                "bron",
+                "openbare_bron",
+            },
+            "laag",
         )
         if not isinstance(entry.get("path"), str) or not entry["path"].strip():
             raise ValueError("Each laag requires a non-empty path")
@@ -172,6 +220,7 @@ def read_brandlagen_config(path: Path) -> BrandlagenConfig:
                 prioriteit=entry.get("prioriteit"),
                 rol=entry.get("rol", "overig"),
                 bron=entry.get("bron"),
+                openbare_bron=entry.get("openbare_bron"),
             )
         )
     return BrandlagenConfig(

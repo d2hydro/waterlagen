@@ -378,15 +378,18 @@ def test_dem_example_requests_full_building_context_and_passes_config(
     assert mask.covers(NAMED_AREAS["alkmaar_centrum"].buffer(125))
 
 
-@pytest.mark.parametrize("with_brandlagen", [False, True])
+@pytest.mark.parametrize("source_kind", ["none", "local", "public"])
 def test_afwatering_example_connects_steps_and_passes_settings(
-    tmp_path, monkeypatch, with_brandlagen
+    tmp_path, monkeypatch, source_kind
 ):
     from waterlagen.afwateringseenheden import (
         AfwateringseenhedenTilesResult,
+        Brandlaag,
+        BrandlagenConfig,
         WatersysteemResult,
         WatersysteemSources,
     )
+    from waterlagen.afwateringseenheden.brand_sources import PreparedBrandSources
 
     downloads = _mock_downloads(monkeypatch, tmp_path)
     hydro = gpd.GeoDataFrame(
@@ -417,6 +420,13 @@ def test_afwatering_example_connects_steps_and_passes_settings(
     write = _mock_api(
         monkeypatch, module, "write_watersysteem", tmp_path / "network.gpkg"
     )
+    prepare_sources = _mock_api(
+        monkeypatch,
+        module + ".brand_sources",
+        "prepare_brand_sources",
+        None,
+    )
+    waternet = _mock_api(monkeypatch, module + ".waternet", "prepare_waternet", None)
     calculate = _mock_api(
         monkeypatch,
         module,
@@ -436,12 +446,22 @@ def test_afwatering_example_connects_steps_and_passes_settings(
             "MAX_AANSLUITLENGTE_M: float | None = 25.0",
         ),
     ]
-    if with_brandlagen:
-        hydro.to_file(tmp_path / "brandlagen.gpkg", layer="waterlopen", driver="GPKG")
+    if source_kind != "none":
+        hydro.to_file(tmp_path / "brandlagen.gpkg", layer="osm_canals", driver="GPKG")
+        public_option = 'openbare_bron = "osm"\n' if source_kind == "public" else ""
         (tmp_path / "brandlagen.toml").write_text(
             "[defaults]\nbrandwaarde = -3.0\nprioriteit = 2\n"
-            '[[lagen]]\npath = "brandlagen.gpkg"\nlayer = "waterlopen"\n',
+            '[[lagen]]\npath = "requested.gpkg"\nlayer = "osm_canals"\n'
+            'rol = "water"\n' + public_option,
             encoding="utf-8",
+        )
+        prepare_sources.return_value = PreparedBrandSources(
+            BrandlagenConfig(
+                (Brandlaag(tmp_path / "brandlagen.gpkg", "osm_canals", rol="water"),),
+                brandwaarde=-3.0,
+                prioriteit=2,
+            ),
+            {},
         )
         replacements.append(
             (
@@ -473,15 +493,35 @@ def test_afwatering_example_connects_steps_and_passes_settings(
     assert arguments["burn_depth_m"] == 80.0
     assert arguments["tile_size_m"] == 2000
     assert arguments["tile_buffer_m"] == 1500
-    if with_brandlagen:
+    waternet.assert_called_once()
+    assert waternet.call_args.args[0] is read_sources.return_value
+    assert waternet.call_args.args[3] == write.return_value
+    assert waternet.call_args.args[4] is arguments["brandlagen"]
+    assert waternet.call_args.kwargs["primary_culvert_pieces"] is (
+        prepare.return_value.hydroobject_primair_delen
+    )
+    if source_kind != "none":
+        prepare_sources.assert_called_once()
+        requested = prepare_sources.call_args.args[0].lagen[0]
+        assert requested.path == tmp_path / "requested.gpkg"
+        assert requested.openbare_bron == ("osm" if source_kind == "public" else None)
+        assert len(waternet.call_args.args[1]) == 2
         assert arguments["brandlagen"].brandwaarde == -3.0
         assert arguments["brandlagen"].lagen[0].path == tmp_path / "brandlagen.gpkg"
     else:
-        assert arguments["brandlagen"] is None
+        prepare_sources.assert_not_called()
+        assert arguments["brandlagen"] == BrandlagenConfig()
+        assert waternet.call_args.args[1].empty
     mask = downloads["download_ahn"].call_args.kwargs["poly_mask"]
     assert mask.equals(read_sources.call_args.kwargs["spatial_selection"])
     x, y = NAMED_AREAS["alkmaar_centrum"].bounds[:2]
     assert mask.covers(box(x, y, x + 2000, y + 2000).buffer(1500))
+    grids = waternet.call_args.args[2]
+    assert len(grids) == 1
+    assert grids[0].bounds == mask.bounds
+    assert grids[0].resolution == arguments["resolution_m"]
+    if source_kind != "none":
+        assert prepare_sources.call_args.args[2].equals(mask)
 
 
 @pytest.mark.parametrize("name", PRODUCTS)
@@ -532,10 +572,73 @@ def test_bgt_preparation_example_uses_current_api(
     assert str(output) in capsys.readouterr().out
 
 
+@pytest.mark.parametrize("custom_settings", [False, True])
+def test_bgt_culvert_example_preserves_polygons_and_selects_buffer(
+    tmp_path, monkeypatch, custom_settings
+):
+    from waterlagen.areas import ProductionArea
+
+    area = ProductionArea("waterschap_38", box(1, 1, 9999, 9999), "EPSG:28992")
+    resolve = _mock_api(monkeypatch, "waterlagen.areas", "resolve_area", area)
+    script = EXAMPLES / "bereid_bgt_duikers.py"
+    runpy.run_path(str(script))
+    resolve.assert_not_called()
+    assert not (tmp_path / "data").exists()
+
+    data_root = tmp_path / ("custom" if custom_settings else "data")
+    source = data_root / "source_data/bgt/bgt.gpkg"
+    source.parent.mkdir(parents=True)
+    polygons = [
+        box(100, 100, 110, 110),
+        box(-2100, 500, -1900, 600),  # Crosses the buffer; keep the full polygon.
+        box(13000, 100, 13100, 200),  # Outside the buffer.
+        box(500, 500, 510, 510),  # Different kind of structure.
+    ]
+    features = gpd.GeoDataFrame(
+        {
+            "plus-type": ["duiker", "duiker", "duiker", "stuw"],
+            "bgt-status": ["bestaand"] * 4,
+        },
+        geometry=polygons,
+        crs="EPSG:28992",
+    )
+    features.to_file(source, layer="bgt_kunstwerkdeel", driver="GPKG")
+    if custom_settings:
+        content = script.read_text(encoding="utf-8")
+        content = content.replace(
+            'DATA_DIR = Path("data")', 'DATA_DIR = Path("custom")'
+        )
+        content = content.replace('AREA = "38"', 'AREA = "39"')
+        content = content.replace(
+            'Path("brandlagen/aa_en_maas")', 'Path("brandlagen/custom")'
+        )
+        script = tmp_path / script.name
+        script.write_text(content, encoding="utf-8")
+    subdir = "custom" if custom_settings else "aa_en_maas"
+    output = data_root / "processed_data/brandlagen" / subdir / "bgt_duikers.gpkg"
+    runpy.run_path(str(script), run_name="__main__")
+    resolve.assert_called_once()
+    assert resolve.call_args.args[0] == ("39" if custom_settings else "38")
+    _assert_store(resolve.call_args.args[1], data_root)
+    result = gpd.read_file(output, layer="bgt_duiker")
+    assert result.bron_fid.tolist() == [1, 2]
+    assert result["plus-type"].tolist() == ["duiker", "duiker"]
+    assert result.crs.to_epsg() == 28992
+    assert all(
+        actual.equals(expected)
+        for actual, expected in zip(result.geometry, polygons[:2])
+    )
+    original = output.read_bytes()
+    with pytest.raises(FileExistsError, match="OVERWRITE"):
+        runpy.run_path(str(script), run_name="__main__")
+    assert output.read_bytes() == original
+
+
 def test_every_published_example_has_a_contract_check_and_download_link():
     expected = {f"download_{name}.py" for name in DOWNLOADS}
     expected |= {f"produceer_{name}.py" for name in PRODUCTS}
     expected.add("bereid_bgt_vlakken.py")
+    expected.add("bereid_bgt_duikers.py")
     assert {path.name for path in EXAMPLES.glob("*.py")} == expected
     pages = "\n".join(
         (ROOT / "docs" / "reference" / name).read_text(encoding="utf-8")

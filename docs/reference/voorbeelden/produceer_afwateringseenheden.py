@@ -6,11 +6,13 @@ from pathlib import Path
 import geopandas as gpd
 from shapely.geometry import box
 
+from waterlagen._sources import SourcePreparation
 from waterlagen.administratieve_gebieden import (
     DEFAULT_BESTUURLIJKE_GEBIEDEN_YEAR,
     download_bestuurlijke_gebieden,
 )
 from waterlagen.afwateringseenheden import (
+    BrandlagenConfig,
     calculate_afwateringseenheden_tiles,
     prepare_watersysteem,
     read_brandlagen,
@@ -18,11 +20,14 @@ from waterlagen.afwateringseenheden import (
     read_watersysteem_sources,
     write_watersysteem,
 )
+from waterlagen.afwateringseenheden.brand_sources import prepare_brand_sources
+from waterlagen.afwateringseenheden.waternet import prepare_waternet
 from waterlagen.ahn import download_ahn
 from waterlagen.areas import NAMED_AREAS, NAMED_AREAS_CRS
 from waterlagen.datastore import DataStore
 from waterlagen.hydamo import download_hydamo
 from waterlagen.logger import production_logging
+from waterlagen.raster.grid import RasterGrid
 from waterlagen.rijkswateren import download_rijkswateren
 from waterlagen.settings import settings
 
@@ -74,15 +79,31 @@ if __name__ == "__main__":
         origin_y + ceil((ymax - origin_y) / TILE_SIZE_M) * TILE_SIZE_M,
     )
     context = tile_bounds.buffer(TILE_BUFFER_M).envelope
+    grids = [
+        RasterGrid.from_bounds(
+            (
+                x - TILE_BUFFER_M,
+                y - TILE_BUFFER_M,
+                x + TILE_SIZE_M + TILE_BUFFER_M,
+                y + TILE_SIZE_M + TILE_BUFFER_M,
+            ),
+            resolution=RESOLUTION_M,
+            crs=settings.crs,
+        )
+        for y in range(origin_y, int(tile_bounds.bounds[3]), TILE_SIZE_M)
+        for x in range(origin_x, int(tile_bounds.bounds[2]), TILE_SIZE_M)
+    ]
 
     with production_logging():
-        # Optioneel: lees eigen QGIS-lagen; rastercelconflicten worden bij de
-        # tegelvoorbereiding gecontroleerd op het daadwerkelijke rekenraster.
-        brandlagen = None
+        # De TOML kiest bronnen; lezen alleen start geen downloads.
+        brandlagen = BrandlagenConfig()
         if BRANDLAGEN_CONFIG is not None:
             brandlagen = read_brandlagen_config(BRANDLAGEN_CONFIG)
-            brandobjecten = read_brandlagen(brandlagen, spatial_selection=context)
-            print("Optionele brandobjecten in het rekengebied:", len(brandobjecten))
+            voorbereide_bronnen = prepare_brand_sources(
+                brandlagen, store, context, SourcePreparation()
+            )
+            brandlagen = voorbereide_bronnen.config
+        brandobjecten = read_brandlagen(brandlagen, spatial_selection=context)
         # 1. Bronnen ophalen. HYDAMO en de landsgrens zijn landelijke bestanden.
         hydamo = download_hydamo(download_dir=store.hydamo_dir, overwrite=False)
         rijkswateren = download_rijkswateren(store.hydamo_dir, overwrite=False)
@@ -132,7 +153,17 @@ if __name__ == "__main__":
             controle_path=output_dir / "controle.gpkg",
         )
 
-        # 3. Bereken de tegels en voeg ze samen. Pas parameters bovenaan aan.
+        # 3. Bereid waterloop- en duikeraansluitingen op alle rekenrasters voor.
+        prepare_waternet(
+            bronnen,
+            brandobjecten,
+            grids,
+            watersysteem,
+            brandlagen,
+            primary_culvert_pieces=netwerk.hydroobject_primair_delen,
+        )
+
+        # 4. Bereken de tegels en voeg ze samen. Pas parameters bovenaan aan.
         resultaat = calculate_afwateringseenheden_tiles(
             gebied,
             ahn_vrt_path=ahn,

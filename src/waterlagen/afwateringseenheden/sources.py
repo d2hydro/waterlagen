@@ -1,8 +1,8 @@
 """Select source networks independently of drainage-target participation."""
 
+import re
 from dataclasses import dataclass
 from pathlib import Path
-import re
 
 import geopandas as gpd
 import pandas as pd
@@ -210,7 +210,8 @@ def read_watersysteem_sources(
         Primary and secondary burn context, primary targets and participating
         points, with original identifiers and file/layer/FID provenance.
         GKW lines without a category are warned about and retained separately;
-        ``overig`` and ``tertiair`` supply neither burning nor targets.
+        ``overig`` supplies neither burning nor targets. Tertiary lines are
+        returned separately for shallow burning, without drainage targets.
 
     Raises
     ------
