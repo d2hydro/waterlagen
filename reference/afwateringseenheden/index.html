@@ -1,0 +1,7538 @@
+
+<!doctype html>
+<html lang="nl" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+        <link rel="prev" href="../administratieve_gebieden/">
+      
+      
+        <link rel="next" href="../autos/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../icons/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+    
+    
+      
+        <title>Afwateringseenheden - Waterlagen</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#afwateringseenheden-python-api" class="md-skip">
+          Ga naar inhoud
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Waterlagen" class="md-header__button md-logo" aria-label="Waterlagen" data-md-component="logo">
+      
+  <img src="../../icons/logo.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Waterlagen
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Afwateringseenheden
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+    
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Zoeken" placeholder="Zoeken" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Zoeken">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Leegmaken" aria-label="Leegmaken" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Zoeken initialiseren
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/d2hydro/waterlagen" title="Ga naar repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    d2hydro/waterlagen
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Over Waterlagen
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../bronlagen/" class="md-tabs__link">
+          
+  
+  
+  Bronlagen
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../bewerkte-lagen/" class="md-tabs__link">
+          
+  
+  
+  Bewerkte lagen
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../produceren/" class="md-tabs__link">
+          
+  
+  
+  Zelf produceren
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../gebruik/" class="md-tabs__link">
+          
+  
+  
+  Python
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../bijdragen/" class="md-tabs__link">
+          
+  
+  
+  Bijdragen
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigatie" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Waterlagen" class="md-nav__button md-logo" aria-label="Waterlagen" data-md-component="logo">
+      
+  <img src="../../icons/logo.png" alt="logo">
+
+    </a>
+    Waterlagen
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/d2hydro/waterlagen" title="Ga naar repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    d2hydro/waterlagen
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Over Waterlagen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bronlagen
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Bronlagen
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bronlagen/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overzicht
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bronlagen/ahn/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AHN
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bronlagen/bag/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BAG
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bronlagen/bestuurlijke-gebieden/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bestuurlijke gebieden
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bronlagen/bgt/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BGT
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bronlagen/brp/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BRP
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bronlagen/cbs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CBS Wijk- en Buurtkaart en Kerncijfers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bronlagen/dijkringen/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dijkringen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bronlagen/hydamo/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GKW HYDAMO
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bronlagen/rijkswateren/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rijkswateren
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bronlagen/liwo/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    LIWO overstromingsgevoelige gebieden
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bronlagen/osm-drinkwater/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OSM-drinkwaterlocaties
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bronlagen/osm-waterlopen/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OSM-waterlopen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bronlagen/top10nl/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TOP10NL
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bronlagen/waterketen-damo/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Waterketen DAMO
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bronlagen/waterschapsgrenzen/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Waterschapsgrenzen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bewerkte lagen
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Bewerkte lagen
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bewerkte-lagen/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overzicht
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bewerkte-lagen/afwateringseenheden/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Afwateringseenheden
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bewerkte-lagen/autos/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Auto's
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bewerkte-lagen/functioneel-landgebruik/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Functioneel landgebruik
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bewerkte-lagen/dem/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Hoogtemodel
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bewerkte-lagen/inwoners/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Inwoners
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Zelf produceren
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Zelf produceren
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../produceren/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overzicht
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../produceren/installatie/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installatie
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../produceren/cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Productiecommando's
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../produceren/configuratie/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Opslag van gegevens
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../produceren/afwateringseenheden/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Afwateringseenheden
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../produceren/landgebruik/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Functioneel landgebruik
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../produceren/dem/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DEM
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../produceren/bgt-vlakken/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BGT-vlakken voor QGIS
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../produceren/waterketen-damo/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Waterketen DAMO downloaden
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../produceren/inwoners-personenautos/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Inwoners en personenauto's
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Python
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Python
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../gebruik/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Aan de slag
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../bronlagen-downloaden/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bronlagen downloaden
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../bewerkte-lagen-produceren/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bewerkte lagen samenstellen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_5_4" id="__nav_5_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API-referentie
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_5_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API-referentie
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overzicht
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../productie/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Productie-ingangen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ahn/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AHN
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dem/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DEM
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../bag/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BAG
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../bgt/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BGT
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../brp/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BRP
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cbs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CBS
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../top10nl/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TOP10NL
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dijkringen/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dijkringen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../administratieve_gebieden/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Administratieve gebieden
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Afwateringseenheden
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Afwateringseenheden
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Inhoudsopgave">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Inhoudsopgave
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#gebruik-vanuit-python" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gebruik vanuit Python
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#bronselectie-en-afwateringsdoelen" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Bronselectie en afwateringsdoelen
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#duikervoorbereiding" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Duikervoorbereiding
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Duikervoorbereiding">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#waterlagen.afwateringseenheden.waternet.prepare_waternet" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        prepare_waternet
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#brandlagen" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Brandlagen
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Brandlagen">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#waterlagen.afwateringseenheden.brand_sources.prepare_brand_sources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        prepare_brand_sources
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dekking-en-hergebruik" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dekking en hergebruik
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tegelresultaten" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tegelresultaten
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Tegelresultaten">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#randfilter-en-aanvulling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Randfilter en aanvulling
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rekenbuffer-instellen" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Rekenbuffer instellen
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#functies-en-resultaattypen" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Functies en resultaattypen
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Functies en resultaattypen">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#waterlagen.afwateringseenheden" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        afwateringseenheden
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#waterlagen.afwateringseenheden.AfwateringseenhedenTileResult" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AfwateringseenhedenTileResult
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#waterlagen.afwateringseenheden.AfwateringseenhedenTilesResult" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AfwateringseenhedenTilesResult
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#waterlagen.afwateringseenheden.Brandlaag" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Brandlaag
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#waterlagen.afwateringseenheden.BrandlagenConfig" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        BrandlagenConfig
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#waterlagen.afwateringseenheden.SubcatchmentResult" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SubcatchmentResult
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#waterlagen.afwateringseenheden.WatersysteemRasters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        WatersysteemRasters
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="WatersysteemRasters">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#waterlagen.afwateringseenheden.WatersysteemRasters.brandbron_path" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        brandbron_path
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#waterlagen.afwateringseenheden.WatersysteemResult" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        WatersysteemResult
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#waterlagen.afwateringseenheden.WatersysteemSources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        WatersysteemSources
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#waterlagen.afwateringseenheden.calculate_afwateringseenheden_tiles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        calculate_afwateringseenheden_tiles
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#waterlagen.afwateringseenheden.calculate_subcatchments" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        calculate_subcatchments
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#waterlagen.afwateringseenheden.prepare_watersysteem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        prepare_watersysteem
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#waterlagen.afwateringseenheden.prepare_watersysteem_rasters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        prepare_watersysteem_rasters
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#waterlagen.afwateringseenheden.read_brandlagen" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        read_brandlagen
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#waterlagen.afwateringseenheden.read_brandlagen_config" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        read_brandlagen_config
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#waterlagen.afwateringseenheden.read_duikersifonhevel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        read_duikersifonhevel
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#waterlagen.afwateringseenheden.read_hydroobjecten" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        read_hydroobjecten
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#waterlagen.afwateringseenheden.read_puntobjecten" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        read_puntobjecten
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#waterlagen.afwateringseenheden.read_watersysteem_sources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        read_watersysteem_sources
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#waterlagen.afwateringseenheden.require_pcraster" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        require_pcraster
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#waterlagen.afwateringseenheden.split_connected_secondary_hydroobjecten" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        split_connected_secondary_hydroobjecten
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#waterlagen.afwateringseenheden.split_hydroobjecten_at_points" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        split_hydroobjecten_at_points
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#waterlagen.afwateringseenheden.split_hydroobjecten_by_length" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        split_hydroobjecten_by_length
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#waterlagen.afwateringseenheden.waterbeheercode_from_nen3610id" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        waterbeheercode_from_nen3610id
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#waterlagen.afwateringseenheden.write_watersysteem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        write_watersysteem
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../autos/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Auto's
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../functioneel_landgebruik/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Functioneel landgebruik
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../inwoners/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Inwoners
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../vbo_buurt/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Woon-VBO's per buurt
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../hydamo/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HYDAMO
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../rijkswateren/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rijkswateren
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../liwo/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    LIWO
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../osm_drinkwater/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OSM-drinkwaterlocaties
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../osm_waterlopen/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OSM-waterlopen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../waterketen_damo/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Waterketen DAMO
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../datastore/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DataStore
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../raster/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rasters
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bijdragen
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Bijdragen
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bijdragen/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overzicht
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bijdragen/ontwikkelomgeving/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ontwikkelomgeving
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bijdragen/afwateringseenheden-scaling/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Afwateringseenheden-benchmark
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bijdragen/conventions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Conventies
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bijdragen/ai-agents/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AI coding agents
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Inhoudsopgave">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Inhoudsopgave
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#gebruik-vanuit-python" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gebruik vanuit Python
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#bronselectie-en-afwateringsdoelen" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Bronselectie en afwateringsdoelen
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#duikervoorbereiding" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Duikervoorbereiding
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Duikervoorbereiding">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#waterlagen.afwateringseenheden.waternet.prepare_waternet" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        prepare_waternet
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#brandlagen" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Brandlagen
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Brandlagen">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#waterlagen.afwateringseenheden.brand_sources.prepare_brand_sources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        prepare_brand_sources
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dekking-en-hergebruik" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dekking en hergebruik
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tegelresultaten" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tegelresultaten
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Tegelresultaten">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#randfilter-en-aanvulling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Randfilter en aanvulling
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rekenbuffer-instellen" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Rekenbuffer instellen
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#functies-en-resultaattypen" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Functies en resultaattypen
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Functies en resultaattypen">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#waterlagen.afwateringseenheden" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        afwateringseenheden
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#waterlagen.afwateringseenheden.AfwateringseenhedenTileResult" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AfwateringseenhedenTileResult
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#waterlagen.afwateringseenheden.AfwateringseenhedenTilesResult" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AfwateringseenhedenTilesResult
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#waterlagen.afwateringseenheden.Brandlaag" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Brandlaag
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#waterlagen.afwateringseenheden.BrandlagenConfig" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        BrandlagenConfig
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#waterlagen.afwateringseenheden.SubcatchmentResult" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SubcatchmentResult
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#waterlagen.afwateringseenheden.WatersysteemRasters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        WatersysteemRasters
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="WatersysteemRasters">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#waterlagen.afwateringseenheden.WatersysteemRasters.brandbron_path" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        brandbron_path
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#waterlagen.afwateringseenheden.WatersysteemResult" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        WatersysteemResult
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#waterlagen.afwateringseenheden.WatersysteemSources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        WatersysteemSources
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#waterlagen.afwateringseenheden.calculate_afwateringseenheden_tiles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        calculate_afwateringseenheden_tiles
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#waterlagen.afwateringseenheden.calculate_subcatchments" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        calculate_subcatchments
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#waterlagen.afwateringseenheden.prepare_watersysteem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        prepare_watersysteem
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#waterlagen.afwateringseenheden.prepare_watersysteem_rasters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        prepare_watersysteem_rasters
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#waterlagen.afwateringseenheden.read_brandlagen" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        read_brandlagen
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#waterlagen.afwateringseenheden.read_brandlagen_config" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        read_brandlagen_config
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#waterlagen.afwateringseenheden.read_duikersifonhevel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        read_duikersifonhevel
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#waterlagen.afwateringseenheden.read_hydroobjecten" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        read_hydroobjecten
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#waterlagen.afwateringseenheden.read_puntobjecten" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        read_puntobjecten
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#waterlagen.afwateringseenheden.read_watersysteem_sources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        read_watersysteem_sources
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#waterlagen.afwateringseenheden.require_pcraster" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        require_pcraster
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#waterlagen.afwateringseenheden.split_connected_secondary_hydroobjecten" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        split_connected_secondary_hydroobjecten
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#waterlagen.afwateringseenheden.split_hydroobjecten_at_points" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        split_hydroobjecten_at_points
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#waterlagen.afwateringseenheden.split_hydroobjecten_by_length" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        split_hydroobjecten_by_length
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#waterlagen.afwateringseenheden.waterbeheercode_from_nen3610id" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        waterbeheercode_from_nen3610id
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#waterlagen.afwateringseenheden.write_watersysteem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        write_watersysteem
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+  
+                  
+
+
+  
+  
+
+
+<h1 id="afwateringseenheden-python-api">Afwateringseenheden: Python-API</h1>
+<p>Deze pagina beschrijft de Python-functies voor het voorbereiden van het
+watersysteem en het berekenen van afwateringseenheden. Zie de
+<a href="../../bewerkte-lagen/afwateringseenheden/">functionele handleiding</a> voor de
+berekeningswijze en de <a href="../../produceren/afwateringseenheden/">productiehandleiding</a>
+voor uitvoering met Pixi.</p>
+<h2 id="gebruik-vanuit-python">Gebruik vanuit Python</h2>
+<p><code>waterlagen.afwateringseenheden.productie.main</code> voert dezelfde workflow uit als
+het productiecommando: bronvoorbereiding, watersysteem, rasterverbindingen en
+tegelberekening, met runbeheer. Deze ingang haalt ontbrekende standaardbronnen
+en expliciet ingestelde openbare brandbronnen op, behalve bij offline gebruik.
+Zie de <a href="../productie/#afwateringseenheden">productie-API</a> voor de parameters.</p>
+<p>Met de losse functies stelt u zelf de workflow samen. Voor
+<code>calculate_afwateringseenheden_tiles</code> moeten het AHN-VRT, het voorbereide
+watersysteem en eventuele brandbestanden al beschikbaar zijn, met dekking van
+alle kerntegels inclusief buffers. De tegelberekening downloadt deze bronnen
+niet. Het <a href="../bewerkte-lagen-produceren/#afwateringseenheden">volledige Python-voorbeeld</a>
+toont downloads en voorbereiding met de bestaande bouwstenen.</p>
+<p><code>calculate_afwateringseenheden_tiles</code> knipt het samengevoegde resultaat standaard
+op <code>gebied</code> (<code>clip_to_area=True</code>). De productie gebruikt <code>False</code> en behoudt de
+volledige kerntegels. Het voorbeeld kiest bewust een eigen tegelgrootte en oorsprong;
+het is geen automatisch beheerde productierun.</p>
+<h2 id="bronselectie-en-afwateringsdoelen">Bronselectie en afwateringsdoelen</h2>
+<p><code>read_watersysteem_sources</code> leest lokale HYDAMO- en Rijkswaterenbestanden en
+geeft een <code>WatersysteemSources</code> terug. Gebruik <code>targets</code> en <code>points</code> voor
+<code>prepare_watersysteem</code>; behoud <code>primary</code>, <code>secondary</code>, <code>tertiary</code> en <code>culverts</code>
+voor de omringende rekencontext. <code>write_watersysteem</code> schrijft het voorbereide
+watersysteem. Deze functies downloaden geen bronnen.</p>
+<p>Zie de functionele uitleg over <a href="../../bewerkte-lagen/afwateringseenheden/#bronlagen">bronnen</a>
+en <a href="../../bewerkte-lagen/afwateringseenheden/#afwateringsdoelen">afwateringsdoelen</a>.</p>
+<h2 id="duikervoorbereiding">Duikervoorbereiding</h2>
+<p><code>read_duikersifonhevel</code> leest duikers uit een lokaal GeoPackage.
+<code>prepare_watersysteem</code> zoekt hun geometrische koppeling aan primaire waterlopen:</p>
+<ul>
+<li>Beide uiteinden moeten binnen de koppelafstand liggen: standaard <strong>0,5 m</strong> (<code>duiker_tolerance</code>).</li>
+<li>De waterlopen moeten een aansluitende route langs de duiker vormen. Alleen kruisen is niet genoeg.</li>
+<li>Van meerdere routes wordt de best passende gekozen.</li>
+<li>Onduidelijke koppelingen komen in <code>controle.gpkg</code>.</li>
+</ul>
+<p>Dit is een andere stap dan <code>prepare_waternet</code>: die beoordeelt aansluitingen
+tussen waterlopen en duikers op de rekenrasters en bereidt hun inbranding voor.
+Een bruikbare duiker hoeft dus niet aan beide uiteinden op een primaire waterloop
+aan te sluiten. Voer deze stap vóór de tegelberekening uit, ook zonder optionele
+brandlagen, om de gezamenlijke beoordeling uit de productie te gebruiken.
+Zie <a href="../../bewerkte-lagen/afwateringseenheden/#waterlopen-en-duikers-inbranden">inbranding</a>
+en <a href="../../produceren/afwateringseenheden/#controle-in-qgis">controle in QGIS</a>.</p>
+
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="waterlagen.afwateringseenheden.waternet.prepare_waternet" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">prepare_waternet</span>
+
+
+</h3>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">prepare_waternet</span><span class="p">(</span>
+    <span class="n">sources</span><span class="p">,</span>
+    <span class="n">optional</span><span class="p">,</span>
+    <span class="n">grids</span><span class="p">,</span>
+    <span class="n">watersysteem</span><span class="p">,</span>
+    <span class="n">config</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">primary_culvert_pieces</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents first">
+
+        <p>Prepare globally connected components once, independently of worker count.</p>
+<p>Only primary, secondary and eligible HYDAMO culverts establish deep-network
+connectivity. Additional water cannot promote isolated lines to deep burns.
+Components from overlapping buffered tiles are joined before depths are
+assigned. Primary RWS remains a deep burn seed, without becoming a target.
+Culvert diagnostics preserve all registrations, including duplicates.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>sources</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="WatersysteemSources
+
+
+  
+      dataclass
+   (waterlagen.afwateringseenheden.sources.WatersysteemSources)" href="#waterlagen.afwateringseenheden.WatersysteemSources">WatersysteemSources</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Selected source geometries, covering all calculation grids.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>optional</code>
+            </td>
+            <td>
+                  <code><span title="geopandas.GeoDataFrame">GeoDataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional objects from <code>read_brandlagen</code> with resolved values and roles.
+Pass its empty result when no additional layers are configured.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>grids</code>
+            </td>
+            <td>
+                  <code><span title="list">list</span>[<span title="waterlagen.raster.grid.RasterGrid">RasterGrid</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The exact buffered grids used by the subsequent tile calculation.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>watersysteem</code>
+            </td>
+            <td>
+                  <code><span title="pathlib.Path">Path</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>GeoPackage written by <code>write_watersysteem</code>. Preparation rasters and
+their manifest are stored below its sibling <code>berekening</code> directory;
+culvert diagnostics are written to the sibling <code>controle.gpkg</code>.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>config</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="BrandlagenConfig
+
+
+  
+      dataclass
+   (waterlagen.afwateringseenheden.config.BrandlagenConfig)" href="#waterlagen.afwateringseenheden.BrandlagenConfig">BrandlagenConfig</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Burn configuration, including the isolated-water lowering depth.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>primary_culvert_pieces</code>
+            </td>
+            <td>
+                  <code><span title="geopandas.GeoDataFrame">GeoDataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p><code>hydroobject_primair_delen</code> from <code>prepare_watersysteem</code>. Pass these
+pieces to retain the geometrically matched primary culvert routes.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code>None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Writes preparation files; matching source identities, grids and policy
+allow reuse. This function does not download sources.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div><h2 id="brandlagen">Brandlagen</h2>
+<p><code>read_brandlagen_config</code> leest een TOML-bestand naar een <code>BrandlagenConfig</code>;
+relatieve paden worden vanaf de TOML bepaald. Dit leest of downloadt nog geen
+brongegevens. Geef het object met <code>brandlagen=config</code> aan
+<code>waterlagen.afwateringseenheden.productie.main</code> voor de volledige workflow.</p>
+<p><code>Brandlaag.openbare_bron</code> kiest automatische voorbereiding van een ondersteunde
+BGT-, TOP10NL- of OSM-laag. De productie-ingang roept hiervoor
+<code>prepare_brand_sources</code> aan. In een eigen workflow doet u dat zelf, met de
+volledige rekenomgeving inclusief buffers. Gebruik daarna de teruggegeven
+<code>.config</code>: <code>read_brandlagen(config)</code> leest de lokale objecten voor
+<code>prepare_waternet</code>, en <code>calculate_afwateringseenheden_tiles</code> krijgt dezelfde
+configuratie via <code>brandlagen=config</code>. Zonder <code>openbare_bron</code> moet de gebruiker
+het bestand vooraf aanleveren. Het Python-voorbeeld toont deze volgorde.</p>
+
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="waterlagen.afwateringseenheden.brand_sources.prepare_brand_sources" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">prepare_brand_sources</span>
+
+
+</h3>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">prepare_brand_sources</span><span class="p">(</span>
+    <span class="n">config</span><span class="p">,</span>
+    <span class="n">store</span><span class="p">,</span>
+    <span class="n">selection</span><span class="p">,</span>
+    <span class="n">preparation</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">reuse_only</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents first">
+
+        <p>Resolve only explicitly requested public layers before calculating a run.</p>
+<p>Local entries are never downloaded or replaced. Unverified existing public
+paths are left intact; a managed cache is used instead. Resume/overwrite
+only resolve existing compatible sources and never regenerate them.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>config</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="BrandlagenConfig
+
+
+  
+      dataclass
+   (waterlagen.afwateringseenheden.config.BrandlagenConfig)" href="#waterlagen.afwateringseenheden.BrandlagenConfig">BrandlagenConfig</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Requested layers, retaining local paths, defaults and object overrides.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>store</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="DataStore (waterlagen.datastore.DataStore)" href="../datastore/#waterlagen.datastore.DataStore">DataStore</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Shared source and preparation caches.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>selection</code>
+            </td>
+            <td>
+                  <code><span title="shapely.geometry.base.BaseGeometry">BaseGeometry</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Union of calculation tiles including buffers, in <code>settings.crs</code>.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>preparation</code>
+            </td>
+            <td>
+                  <code><span title="waterlagen._sources.SourcePreparation">SourcePreparation</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Offline and refresh policy. Refresh must not be combined with offline
+or reuse-only operation.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>reuse_only</code>
+            </td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Require existing compatible sources for resume or overwrite.</p>
+              </div>
+            </td>
+            <td>
+                  <code>False</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="waterlagen.afwateringseenheden.brand_sources.PreparedBrandSources">PreparedBrandSources</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Resolved configuration and provenance files to record with the run.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div><p>Zie <a href="../../produceren/afwateringseenheden/#toml-configuratie">TOML-instellingen</a>,
+<a href="../../bewerkte-lagen/afwateringseenheden/#optionele-brandlagen">inbranding en overlapregels</a>
+en <a href="../../produceren/afwateringseenheden/#brandlagen-controleren-in-qgis">uitvoer bekijken</a>.</p>
+<h2 id="dekking-en-hergebruik">Dekking en hergebruik</h2>
+<p>Met <code>overwrite=False</code> hergebruiken de Python-functies bestaande resultaten
+als die nog geldig zijn.</p>
+<p>Hervat een volledige berekening alleen met dezelfde bronnen en instellingen.
+Begin na wijzigingen een nieuwe run. Wijzig geen bronbestanden terwijl
+de berekening draait.</p>
+<p>Met <code>landsgrens_path</code> geeft u het bestand met de landsgrens op. Deze grens
+bepaalt waar ontbrekende AHN-hoogtes worden aangevuld. De productie-ingang
+bereidt deze bron automatisch voor en geeft het pad mee.</p>
+<p>Voor hergebruik van tegeluitvoer is ook <code>subcatchments.tif</code> nodig. De vier
+afstanden tussen de rasterbegrenzing en de kerntegel moeten gelijk en
+niet-negatief zijn, binnen de numerieke tolerantie. Die afstand is de beschikbare
+rekenbuffer; ook CRS en resolutie moeten passen. Bij hergebruik geldt deze
+buffer uit het bestand, niet een nieuw opgegeven <code>tile_buffer_m</code>. Kies daarom
+een nieuwe uitvoermap om met een andere buffer te rekenen.</p>
+<p>Het opgegeven samengevoegde eindbestand wordt na succes wel vervangen.
+Kies een nieuw eindpad om de vorige versie te bewaren. Voor beheerde runs gelden
+de <a href="../../produceren/configuratie/#productiemappen">runcompatibiliteitsvoorwaarden</a>.</p>
+<h2 id="tegelresultaten">Tegelresultaten</h2>
+<p><code>calculate_afwateringseenheden_tiles</code> gebruikt standaard kerntegels van
+10 × 10 km met een buffer van 2 km rondom, net als de productiecommando's.
+Python-aanroepen zonder <code>tile_size_m</code> gebruiken voortaan 10 km in plaats van
+5 km. Bestaande productiecommando's veranderen hierdoor niet. Geef
+<code>tile_size_m</code> expliciet op voor een andere tegelgrootte en kies bij een
+gewijzigd rooster een nieuwe uitvoermap. Het Python-voorbeeld kiest bewust
+kleinere tegels met <code>TILE_SIZE_M</code>.</p>
+<p><code>gap_additions</code> bevat aanvullingen uit buurtegels en <code>remaining_gaps</code> de
+resterende gaten. <code>boundary_issue_tile_ids</code> betreft randproblemen voordat het
+resultaat is aangevuld. <code>calculation_duration_seconds</code> geeft de verwerkingstijd
+per tegel, zonder wachttijd in de pool of het gezamenlijke samenvoegen.</p>
+<p><code>skipped_tile_ids</code> bevat tegels zonder segmentcellen op geldige DEM-hoogtes.
+Hiervoor worden zowel het segmentraster als het NoData-masker en de eindige
+hoogtewaarden van het DEM gecontroleerd. Voor overgeslagen tegels worden geen
+LDD- of subcatchmentbestanden gemaakt; de voorbereide rasters blijven behouden.</p>
+<p><code>tiles.gpkg</code> wordt in de opgegeven <code>output_dir</code> geschreven. De laag <code>tiles</code>
+bevat de geselecteerde kerntegels en een <code>tile_id</code>-kolom met de namen van de
+bijbehorende tegelmappen.</p>
+<p><code>calculate_afwateringseenheden_tiles</code> gebruikt standaard één worker. Parallelle berekeningen gebruiken
+afzonderlijke <code>spawn</code>-processen en vereisen een script met een <code>__main__</code>-guard.</p>
+<h3 id="randfilter-en-aanvulling">Randfilter en aanvulling</h3>
+<p>Bij een positieve buffer toetst het randfilter de vlakken aan de omtrek van
+de kerntegel, uitgebreid met <code>max(tile_buffer_m - resolution_m, 0)</code> meter.
+Deze toetslijn ligt één rastercel binnen de buitenrand van het rekengebied.
+Vlakken die de lijn raken worden uitgesloten, zowel uit het kernresultaat als
+uit mogelijke aanvullingen voor buurtegels. Bij buffer <code>0</code> is dit filter uitgeschakeld.</p>
+<p>Per gat worden de bruikbare vlakken van elke buurtegel op dat gat geknipt.
+De keuzevolgorde tussen buurtegels is:</p>
+<ol>
+<li>Grootste gezamenlijke oppervlakte die het gat bedekt.</li>
+<li>Bij gelijke oppervlakte: grootste afstand van die bedekking tot de buitenrand
+   van het rekengebied van de buurtegel, inclusief buffer.</li>
+<li>Bij gelijke afstand: oplopend <code>tile_id</code>.</li>
+</ol>
+<p>Elke volgende buurtegel vult alleen het dan nog ontbrekende deel aan.
+<code>bron_tegel</code> en <code>keuzevolgorde</code> in <code>gap_additions</code> leggen de herkomst vast.
+De <a href="../../bewerkte-lagen/afwateringseenheden/#tegels-buffers-en-samenvoegen">functionele uitleg</a>
+beschrijft wat deze aanvulling voor het resultaat betekent.</p>
+<h3 id="rekenbuffer-instellen">Rekenbuffer instellen</h3>
+<p><code>calculate_afwateringseenheden_tiles</code> accepteert <code>tile_buffer_m</code> (standaard
+2000 m). In het <a href="../bewerkte-lagen-produceren/#afwateringseenheden">Python-voorbeeld</a>
+stelt u dit in met <code>TILE_BUFFER_M</code> en kiest u een nieuwe <code>EXPERIMENT</code>-naam.
+De nieuwe uitvoermap voorkomt hergebruik van tegelrasters met de oorspronkelijke
+buffer. Zorg dat de bronnen ook het grotere rekengebied dekken.</p>
+<p>De productieopdracht gebruikt een vaste buffer van 2 km en heeft hiervoor geen
+CLI-optie. Een andere buffer vraagt een eigen Python-workflow; de berekening
+vergroot de buffer niet automatisch bij randproblemen.</p>
+<h2 id="functies-en-resultaattypen">Functies en resultaattypen</h2>
+
+
+<div class="doc doc-object doc-module">
+
+
+
+<a id="waterlagen.afwateringseenheden"></a>
+    <div class="doc doc-contents first">
+
+        <p>Tools for preparing vector input for afwateringseenheden.</p>
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="waterlagen.afwateringseenheden.AfwateringseenhedenTileResult" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">AfwateringseenhedenTileResult</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
+  </span>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+
+
+        <p>Result for one afwateringseenheden tile calculation.</p>
+<p>calculation_duration_seconds measures elapsed tile processing time,
+including reuse checks, but excluding pool queue time.
+Direct construction without calculation_buffer_m assumes no buffer.</p>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="waterlagen.afwateringseenheden.AfwateringseenhedenTilesResult" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">AfwateringseenhedenTilesResult</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
+  </span>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+
+
+        <p>Results and merged output from a tiled afwateringseenheden workflow.</p>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="waterlagen.afwateringseenheden.Brandlaag" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">Brandlaag</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
+  </span>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+
+
+        <p>One user-supplied GeoPackage layer with optional fallback values.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>path</code>
+            </td>
+            <td>
+                  <code><span title="pathlib.Path">Path</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Local GeoPackage path.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>layer</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Layer name containing lines and/or polygons.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>brandwaarde</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Signed height change in metres for missing object values.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>prioriteit</code>
+            </td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Priority for missing object values; higher numbers win.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>rol</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p><code>overig</code> (ordinary burn), <code>water</code> or <code>duiker</code> for water-network processing.</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;overig&#39;</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>bron</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Culvert source: <code>hydamo</code>, <code>bgt</code> or <code>osm</code>. Required for culvert layers.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>openbare_bron</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Explicit automatic preparation: <code>bgt</code>, <code>top10nl</code> or <code>osm</code>.
+Without this option the path remains strictly local user input.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="waterlagen.afwateringseenheden.BrandlagenConfig" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">BrandlagenConfig</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
+  </span>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+
+
+        <p>Optional burn sources and global fallbacks.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>lagen</code>
+            </td>
+            <td>
+                  <code><span title="tuple">tuple</span>[<a class="autorefs autorefs-internal" title="Brandlaag
+
+
+  
+      dataclass
+   (waterlagen.afwateringseenheden.config.Brandlaag)" href="#waterlagen.afwateringseenheden.Brandlaag">Brandlaag</a>, ...]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Additional sources. The production always prepares HYDAMO connectivity,
+including when no additional sources are configured.</p>
+              </div>
+            </td>
+            <td>
+                  <code>()</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>brandwaarde</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Global signed height change in metres, after object and layer values.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>prioriteit</code>
+            </td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Global priority, after object and layer values. Zero is an explicit value.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>geisoleerde_branddiepte_m</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Positive lowering depth for isolated HYDAMO components and tertiary
+waterlines, default 10 metres. Additional sources use their configured
+signed <code>brandwaarde</code> outside the protected deep HYDAMO network.</p>
+              </div>
+            </td>
+            <td>
+                  <code>10.0</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="waterlagen.afwateringseenheden.SubcatchmentResult" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">SubcatchmentResult</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
+  </span>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+
+
+        <p>Files and polygons produced by one subcatchment calculation.</p>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="waterlagen.afwateringseenheden.WatersysteemRasters" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">WatersysteemRasters</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
+  </span>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+
+
+        <p>Paths to the aligned rasters prepared for one spatial square.</p>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h4 id="waterlagen.afwateringseenheden.WatersysteemRasters.brandbron_path" class="doc doc-heading">
+            <span class="doc doc-object-name doc-attribute-name">brandbron_path</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-property"><code>property</code></small>
+  </span>
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">brandbron_path</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Winning burn sources, including HYDAMO, on the buffered DEM grid.</p>
+
+    </div>
+
+</div>
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="waterlagen.afwateringseenheden.WatersysteemResult" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">WatersysteemResult</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
+  </span>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+
+
+        <p>Prepared primary hydroobject segments and point-induced connections.</p>
+<p><code>hydroobject_segmenten</code> contains primary source lines split at internal
+point locations and subsequently, by the workflow, at the requested maximum
+length. <code>hydroobject_verbinding</code> contains a directed, minimal connection
+tree between final <code>segment_key</code> values at each hydrological node. A
+segment ending at a node is <code>van_segment_key</code> and a segment starting there
+is <code>naar_segment_key</code>. At a node with multiple incoming and
+outgoing segments, the lexicographically first segment of each direction
+is the deterministic main route. Connection geometries are always
+two-dimensional Points at a shared segment endpoint or at the puntobject
+that connects endpoints of distinct source hydroobjects.</p>
+
+
+<p><span class="doc-section-title">Attributes:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td><code><span title="waterlagen.afwateringseenheden.WatersysteemResult.hydroobject_segmenten, hydroobject_verbinding">hydroobject_segmenten, hydroobject_verbinding</span></code></td>
+            <td>
+                  <code><span title="geopandas.GeoDataFrame">GeoDataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Complete prepared target-context segments and their connections.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="waterlagen.afwateringseenheden.WatersysteemResult.hydroobject_primair_bron">hydroobject_primair_bron</span></code></td>
+            <td>
+                  <code>(<span title="geopandas.GeoDataFrame">GeoDataFrame</span>, <span title="optional">optional</span>)</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Full primary source context when culverts were supplied, retained for
+secondary connectivity independently of primary burn eligibility.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="waterlagen.afwateringseenheden.WatersysteemResult.hydroobject_primair_delen">hydroobject_primair_delen</span></code></td>
+            <td>
+                  <code>(<span title="geopandas.GeoDataFrame">GeoDataFrame</span>, <span title="optional">optional</span>)</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>All primary pieces, including excluded culvert routes of non-target
+authorities. <code>brandgeschikt</code> selects the primary burn geometry.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="waterlagen.afwateringseenheden.WatersysteemResult.duiker_controle">duiker_controle</span></code></td>
+            <td>
+                  <code>(<span title="geopandas.GeoDataFrame">GeoDataFrame</span>, <span title="optional">optional</span>)</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Unmatched or ambiguous culverts with provenance, reason and distances.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="waterlagen.afwateringseenheden.WatersysteemResult.duiker_signature">duiker_signature</span></code></td>
+            <td>
+                  <code>(<span title="str">str</span>, <span title="optional">optional</span>)</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Input/settings identity used for snapshot reuse. None denotes the
+legacy preparation without culverts.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="waterlagen.afwateringseenheden.WatersysteemSources" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">WatersysteemSources</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
+  </span>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+
+
+        <p>Full burn context and separate drainage-target selections.</p>
+
+
+<p><span class="doc-section-title">Attributes:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td><code><span title="waterlagen.afwateringseenheden.WatersysteemSources.primary, secondary">primary, secondary</span></code></td>
+            <td>
+                  <code><span title="geopandas.GeoDataFrame">GeoDataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Full selected primary and secondary lines across all authorities.
+Secondary connectivity is classified jointly when writing the network.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="waterlagen.afwateringseenheden.WatersysteemSources.targets">targets</span></code></td>
+            <td>
+                  <code><span title="geopandas.GeoDataFrame">GeoDataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Primary lines of participating authorities, before segmentation.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="waterlagen.afwateringseenheden.WatersysteemSources.points">points</span></code></td>
+            <td>
+                  <code><span title="geopandas.GeoDataFrame">GeoDataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Gemaal and stuw objects of participating authorities.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="waterlagen.afwateringseenheden.WatersysteemSources.missing_category">missing_category</span></code></td>
+            <td>
+                  <code>(<span title="geopandas.GeoDataFrame">GeoDataFrame</span>, <span title="optional">optional</span>)</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>GKW lines without a category, excluded from burning and targets and
+retained with provenance for inspection.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="waterlagen.afwateringseenheden.WatersysteemSources.culverts">culverts</span></code></td>
+            <td>
+                  <code>(<span title="geopandas.GeoDataFrame">GeoDataFrame</span>, <span title="optional">optional</span>)</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Full selected culvert geometries, independent of target participation.
+GKW code 80 is excluded; only the optional RWS layer supplies RWS culverts.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="waterlagen.afwateringseenheden.WatersysteemSources.rws_culverts_present">rws_culverts_present</span></code></td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Whether the RWS source includes the optional culvert layer, even if empty.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="waterlagen.afwateringseenheden.WatersysteemSources.tertiary">tertiary</span></code></td>
+            <td>
+                  <code>(<span title="geopandas.GeoDataFrame">GeoDataFrame</span>, <span title="optional">optional</span>)</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Selected tertiary lines, used only by the joint raster water network.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="waterlagen.afwateringseenheden.calculate_afwateringseenheden_tiles" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">calculate_afwateringseenheden_tiles</span>
+
+
+</h3>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">calculate_afwateringseenheden_tiles</span><span class="p">(</span>
+    <span class="n">gebied</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">burn_depth_m</span><span class="p">,</span>
+    <span class="n">ahn_vrt_path</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">landsgrens_path</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">watersysteem_path</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">output_dir</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">merged_output_path</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">tiles_path</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">data_store</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">tile_ids</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">tile_size_m</span><span class="o">=</span><span class="n">DEFAULT_TILE_SIZE_M</span><span class="p">,</span>
+    <span class="n">tile_buffer_m</span><span class="o">=</span><span class="mi">2000</span><span class="p">,</span>
+    <span class="n">origin_x</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+    <span class="n">origin_y</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+    <span class="n">resolution_m</span><span class="o">=</span><span class="mf">2.0</span><span class="p">,</span>
+    <span class="n">max_fill_depth_m</span><span class="o">=</span><span class="mf">50.0</span><span class="p">,</span>
+    <span class="n">overwrite</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">engine</span><span class="o">=</span><span class="s2">&quot;pcraster&quot;</span><span class="p">,</span>
+    <span class="n">workers</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+    <span class="n">clip_to_area</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">random_seed</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">brandlagen</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Calculate afwateringseenheden for every tile intersecting an area.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>gebied</code>
+            </td>
+            <td>
+                  <code><span title="shapely.geometry.base.BaseGeometry">BaseGeometry</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Project-CRS input selection. Output is clipped only when clip_to_area is True.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>clip_to_area</code>
+            </td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Clip merged results to the input area, default True for API compatibility.
+Production workflows set False to retain complete tile cores.</p>
+              </div>
+            </td>
+            <td>
+                  <code>True</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>burn_depth_m</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Burn depth passed to :func:<code>prepare_watersysteem_rasters</code>.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>brandlagen</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="BrandlagenConfig
+
+
+  
+      dataclass
+   (waterlagen.afwateringseenheden.config.BrandlagenConfig)" href="#waterlagen.afwateringseenheden.BrandlagenConfig">BrandlagenConfig</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional layers, validated once on the selected buffered calculation
+grids. Workers read local selections from <code>output_dir/brandlagen_voorbereid.gpkg</code>.
+This function does not download sources. Resolve public inputs with
+<code>prepare_brand_sources</code> first. Water and culvert roles require joint
+<code>prepare_waternet</code> preparation on the same grids and watersysteem.
+Changed sources, defaults or burn depth invalidate raster and tile reuse.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>ahn_vrt_path</code>
+            </td>
+            <td>
+                  <code><span title="pathlib.Path">Path</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>AHN VRT used for every tile. Defaults to the datastore AHN DTM VRT.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>landsgrens_path</code>
+            </td>
+            <td>
+                  <code><span title="pathlib.Path">Path</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Bestuurlijke gebieden GeoPackage with Dutch <code>landgebied</code> polygons.
+Limits DEM interpolation and valid elevations to Nederland, including
+tile buffers. None retains full source-extent coverage. No download
+is performed. Changed boundary sources invalidate cached tile results.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>watersysteem_path</code>
+            </td>
+            <td>
+                  <code><span title="pathlib.Path">Path</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Prepared watersysteem GeoPackage. Defaults to the datastore output.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>output_dir</code>
+            </td>
+            <td>
+                  <code><span title="pathlib.Path">Path</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Root directory for per-tile folders. Defaults to
+<code>datastore.afwateringseenheden_path / 'tiles'</code>. The selected core
+tiles are written to <code>tiles.gpkg</code> in this directory. Its <code>tile_id</code>
+values match the per-tile folder names.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>merged_output_path</code>
+            </td>
+            <td>
+                  <code><span title="pathlib.Path">Path</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>GeoPackage path for the dissolved merged result. When omitted, no
+merged GeoPackage is written. An existing merged file is replaced
+after success, independently of <code>overwrite</code>; choose a new path
+to retain previous merged results. Worker failures prevent merging.
+Contains only the merged subcatchment layer. Gap additions and
+unassigned areas are written to <code>controle.gpkg</code> beside this file,
+including when all tiles are empty. Other inspection layers are retained.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>tiles_path</code>
+            </td>
+            <td>
+                  <code><span title="pathlib.Path">Path</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Existing tile-index GeoPackage. When omitted, a tile grid is generated
+directly from <code>gebied</code> using <code>tile_size_m</code> and the configured origin.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>data_store</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="DataStore (waterlagen.datastore.DataStore)" href="../datastore/#waterlagen.datastore.DataStore">DataStore</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Datastore used for default input and output paths.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>tile_ids</code>
+            </td>
+            <td>
+                  <code><span title="collections.abc.Collection">Collection</span>[<span title="str">str</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional subset of selected tile IDs.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>tile_size_m</code>
+            </td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Core tile width and height in metres, by default 10000, as in production.
+An explicit value overrides this default when generating the tile grid.</p>
+              </div>
+            </td>
+            <td>
+                  <code><span title="waterlagen.afwateringseenheden.config.DEFAULT_TILE_SIZE_M">DEFAULT_TILE_SIZE_M</span></code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>tile_buffer_m</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Buffer around each tile used for the hydrological calculation, by
+default 2000. Boundary issues are reported without recalculating the tile.</p>
+              </div>
+            </td>
+            <td>
+                  <code>2000</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>origin_x</code>
+            </td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Origin of the generated tile grid, by default 0, 0.</p>
+              </div>
+            </td>
+            <td>
+                  <code>0</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>origin_y</code>
+            </td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Origin of the generated tile grid, by default 0, 0.</p>
+              </div>
+            </td>
+            <td>
+                  <code>0</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>resolution_m</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Raster resolution passed to :func:<code>prepare_watersysteem_rasters</code>.</p>
+              </div>
+            </td>
+            <td>
+                  <code>2.0</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>max_fill_depth_m</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Maximum PCRaster depression fill depth in metres.</p>
+              </div>
+            </td>
+            <td>
+                  <code>50.0</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>overwrite</code>
+            </td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Whether to regenerate existing per-tile rasters and subcatchments.
+Cached raster bounds must extend equally beyond all four core edges,
+by a non-negative distance. This distance determines the reused buffer,
+even when a different <code>tile_buffer_m</code> was requested. Choose a new
+output directory to calculate with a changed buffer.
+Cached CRS and resolution must match the requested grid.
+Reusing a tile requires its <code>subcatchments.tif</code> alongside the GeoPackage.</p>
+              </div>
+            </td>
+            <td>
+                  <code>False</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>engine</code>
+            </td>
+            <td>
+                  <code><span title="waterlagen.afwateringseenheden.pcraster">pcraster</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Flow-direction engine.</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#34;pcraster&#34;</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>workers</code>
+            </td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Number of separate worker processes. The default of 1 runs serially.
+Workers open their own inputs and write only to their tile folder,
+using the caller's logging configuration. Results are merged in selection order.
+Run parallel workflows from a script with a <code>__main__</code> guard.</p>
+              </div>
+            </td>
+            <td>
+                  <code>1</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>random_seed</code>
+            </td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Positive PCRaster seed reset before each fresh tile calculation.
+Use the same seed for reproducible serial and parallel runs. The
+default leaves PCRaster's random state unchanged; cached results
+are reused independently of this setting when <code>overwrite=False</code>.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="AfwateringseenhedenTilesResult
+
+
+  
+      dataclass
+   (waterlagen.afwateringseenheden.tiles.AfwateringseenhedenTilesResult)" href="#waterlagen.afwateringseenheden.AfwateringseenhedenTilesResult">AfwateringseenhedenTilesResult</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Per-tile results, skipped tile IDs, boundary issue tile IDs, and the
+in-memory merged GeoDataFrame.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<details class="note" open>
+  <summary>Notes</summary>
+  <p>Tiles without hydroobject-segment cells on valid DEM elevations are skipped,
+including tiles whose segments lie entirely outside the source coverage or
+the supplied national boundary. Prepared rasters can still be reused.
+Line and point remnants from clipping are removed. After merging the core
+results, uncovered parts of selected tiles are filled from usable neighbour
+buffer polygons. Polygons touching their calculation boundary are excluded.
+Donors are ranked by coverage, distance from their outer boundary, and tile
+ID. Existing assignments are retained. This step performs no new LDD work.
+<code>gap_additions</code> and <code>remaining_gaps</code> report the changes and unfilled area
+in memory. Only the merged subcatchments are written to the GeoPackage. Boundary issue
+tile IDs still describe the original calculations, not the remaining gaps.</p>
+</details>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="waterlagen.afwateringseenheden.calculate_subcatchments" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">calculate_subcatchments</span>
+
+
+</h3>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">calculate_subcatchments</span><span class="p">(</span>
+    <span class="n">rasters</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">watersysteem_path</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">data_store</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">max_fill_depth_m</span><span class="o">=</span><span class="mf">50.0</span><span class="p">,</span>
+    <span class="n">engine</span><span class="o">=</span><span class="s2">&quot;pcraster&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Calculate subcatchments that drain to prepared hydroobject segments.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>rasters</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="WatersysteemRasters
+
+
+  
+      dataclass
+   (waterlagen.afwateringseenheden.raster.WatersysteemRasters)" href="#waterlagen.afwateringseenheden.WatersysteemRasters">WatersysteemRasters</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Aligned DEM and hydroobject-segment raster outputs.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>watersysteem_path</code>
+            </td>
+            <td>
+                  <code><span title="pathlib.Path">Path</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>GeoPackage containing <code>hydroobject_segment</code>.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>data_store</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="DataStore (waterlagen.datastore.DataStore)" href="../datastore/#waterlagen.datastore.DataStore">DataStore</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Datastore used for the default watersysteem path.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>max_fill_depth_m</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Maximum depression fill depth in metres, by default 50.</p>
+              </div>
+            </td>
+            <td>
+                  <code>50.0</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>engine</code>
+            </td>
+            <td>
+                  <code><span title="waterlagen.afwateringseenheden.pcraster">pcraster</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Flow-direction engine. Only PCRaster is implemented.</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#34;pcraster&#34;</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="SubcatchmentResult
+
+
+  
+      dataclass
+   (waterlagen.afwateringseenheden.pcraster.SubcatchmentResult)" href="#waterlagen.afwateringseenheden.SubcatchmentResult">SubcatchmentResult</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>LDD, subcatchment and GeoPackage output paths plus the polygons.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="waterlagen.afwateringseenheden.prepare_watersysteem" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">prepare_watersysteem</span>
+
+
+</h3>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">prepare_watersysteem</span><span class="p">(</span>
+    <span class="n">hydroobjecten</span><span class="p">,</span>
+    <span class="n">puntobjecten</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">tolerance</span><span class="o">=</span><span class="mf">2.0</span><span class="p">,</span>
+    <span class="n">max_length</span><span class="o">=</span><span class="mf">500.0</span><span class="p">,</span>
+    <span class="n">hydroobject_secundair</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">duikersifonhevel</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">hydroobject_primair</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">duiker_tolerance</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span>
+    <span class="n">max_aansluitlengte</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Prepare primary hydroobjecten and final segment connections.</p>
+<p>This function only performs geometric and topological preparation. It does
+not read a GeoPackage, download source data, or write output. Input CRS
+values are required and are explicitly transformed to <code>settings.crs</code> by
+the underlying geometry helpers. Optional culvert routes are matched against
+the full primary context. Culvert and nearby point-object boundaries precede
+the split into segments no longer than <code>max_length</code>.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>hydroobjecten</code>
+            </td>
+            <td>
+                  <code><span title="geopandas.GeoDataFrame">GeoDataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Primary HyDAMO LineString or MultiLineString features. A missing
+<code>bron_id</code> is safely derived from <code>globalid</code>, <code>code</code>, or index.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>puntobjecten</code>
+            </td>
+            <td>
+                  <code><span title="geopandas.GeoDataFrame">GeoDataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Point features that may split or connect primary hydroobjecten. Relevant
+point fields are retained on resulting connection records where a point
+causes a cross-source connection.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>tolerance</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Maximum point-to-line distance in project-CRS units. Must be at least
+zero.</p>
+              </div>
+            </td>
+            <td>
+                  <code>2.0</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>max_length</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Maximum resulting hydroobject segment length in project-CRS units. Must
+be greater than zero.</p>
+              </div>
+            </td>
+            <td>
+                  <code>500.0</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>hydroobject_secundair</code>
+            </td>
+            <td>
+                  <code><span title="geopandas.GeoDataFrame">GeoDataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Retained for backwards compatibility. Secondary objects are classified
+from their full geometry while writing and are not included in primary
+segment connections.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>duikersifonhevel</code>
+            </td>
+            <td>
+                  <code><span title="geopandas.GeoDataFrame">GeoDataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Culverts from all selected authorities. None preserves the legacy
+workflow. Supplied culverts always exclude matched routes from primary
+burning and drainage targets; unsuccessful matches become controls.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>hydroobject_primair</code>
+            </td>
+            <td>
+                  <code><span title="geopandas.GeoDataFrame">GeoDataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Full primary context for culvert matching, independent of target mode.
+Defaults to <code>hydroobjecten</code>. Target selection uses <code>bron_id</code>.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>duiker_tolerance</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Inclusive endpoint matching distance, default 0.5 metres. Independent
+of the general network tolerance; finite and non-negative.</p>
+              </div>
+            </td>
+            <td>
+                  <code>0.5</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>max_aansluitlengte</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Exclude direct adjoining physical pieces at or below this length from
+targets only, before maximum-length splitting. None retains them all;
+zero is valid. Must be finite and non-negative.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="WatersysteemResult
+
+
+  
+      dataclass
+   (waterlagen.afwateringseenheden.lines.WatersysteemResult)" href="#waterlagen.afwateringseenheden.WatersysteemResult">WatersysteemResult</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p><code>hydroobject_segmenten</code> contains stable <code>bron_id</code> and
+<code>segment_key</code> values. <code>hydroobject_verbinding</code> contains deterministic
+directed relations between final segment IDs, their source <code>bron_id</code>
+values, and relevant point attributes.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="waterlagen.afwateringseenheden.prepare_watersysteem_rasters" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">prepare_watersysteem_rasters</span>
+
+
+</h3>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">prepare_watersysteem_rasters</span><span class="p">(</span>
+    <span class="n">ruimtelijk_vierkant</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">burn_depth_m</span><span class="p">,</span>
+    <span class="n">ahn_vrt_path</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">landsgrens_path</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">watersysteem_path</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">output_dir</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">data_store</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">resolution_m</span><span class="o">=</span><span class="mf">2.0</span><span class="p">,</span>
+    <span class="n">overwrite</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">brandlagen</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Create aligned DEM, segment and winning-source rasters for one square.</p>
+<p>The AHN <code>dtm_05</code> VRT is resampled to a 2 by 2 metre grid by default.
+Missing elevation cells inside cached full source raster extents are filled
+with <code>rasterio.fill.fillnodata</code> using the original full-grid search
+distance. NoData outside all source extents is not offered for interpolation.
+With <code>landsgrens_path</code>, source extents are limited to the national boundary.
+All NoData inside that coverage remains fillable, including at its edges.
+Gaps left by the masked interpolation use the nearest original finite
+elevation within coverage. Existing valid outputs are still reused.
+Outside cells are NoData and cannot be interpolation targets or donors.
+Primary and secondary hydroobjects are rasterized separately.
+The primary mask has priority, so its two-times burn depth is not added to
+the one-times secondary depth in overlapping cells. The companion segment
+raster stores GeoPackage feature IDs, with zero denoting no segment.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>ruimtelijk_vierkant</code>
+            </td>
+            <td>
+                  <code><span title="shapely.geometry.base.BaseGeometry">BaseGeometry</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Square output extent in :data:<code>waterlagen.settings.settings.crs</code>. Its
+width and height must be equal and exactly divisible by <code>resolution_m</code>.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>burn_depth_m</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Physical burn depth in metres. Primary hydroobjects are lowered by two
+times this value and secondary hydroobjects by one times this value.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>ahn_vrt_path</code>
+            </td>
+            <td>
+                  <code><span title="pathlib.Path">Path</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>AHN source VRT. Defaults to <code>datastore.ahn_dir / 'dtm_05' /
+'dtm_05.vrt'</code>.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>watersysteem_path</code>
+            </td>
+            <td>
+                  <code><span title="pathlib.Path">Path</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>GeoPackage containing <code>hydroobject_primair</code>,
+<code>hydroobject_secundair</code>, and <code>hydroobject_segment</code>. Defaults to
+<code>datastore.afwateringseenheden_path / 'watersysteem.gpkg'</code>.
+With culvert preparation, <code>hydroobject_primair</code> already excludes
+culvert routes; the full source layer is never burned. Only segments
+with <code>doelgeschikt=True</code> supply targets, retaining their stored FIDs.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>landsgrens_path</code>
+            </td>
+            <td>
+                  <code><span title="pathlib.Path">Path</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Bestuurlijke gebieden GeoPackage with the Dutch <code>landgebied</code> layer.
+Reprojected to the target CRS; pixel centres determine inclusion.
+No download is performed. None retains full source-extent coverage.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>output_dir</code>
+            </td>
+            <td>
+                  <code><span title="pathlib.Path">Path</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Directory for <code>dem_2m.tif</code> and <code>hydroobject_segment.tif</code>. Defaults
+to <code>datastore.afwateringseenheden_path / 'rasters'</code>.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>data_store</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="DataStore (waterlagen.datastore.DataStore)" href="../datastore/#waterlagen.datastore.DataStore">DataStore</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Datastore used for all default paths.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>resolution_m</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Cell size in project-CRS metres, by default 2.</p>
+              </div>
+            </td>
+            <td>
+                  <code>2.0</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>overwrite</code>
+            </td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Whether existing validated raster pairs are regenerated. With False,
+both existing valid outputs from this coverage policy are reused.
+Outputs with missing or outdated coverage metadata or a changed
+landsgrens source (path, modification time or size) or masking policy
+are regenerated.</p>
+              </div>
+            </td>
+            <td>
+                  <code>False</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>brandlagen</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="BrandlagenConfig
+
+
+  
+      dataclass
+   (waterlagen.afwateringseenheden.config.BrandlagenConfig)" href="#waterlagen.afwateringseenheden.BrandlagenConfig">BrandlagenConfig</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Local optional burn layers, checked for attribute and pixel conflicts
+before reading AHN elevations. Primary and secondary masks always win.
+Source or default changes invalidate the cached raster pair. A validated
+local snapshot is stored in <code>output_dir/brandlagen_voorbereid.gpkg</code>.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="WatersysteemRasters
+
+
+  
+      dataclass
+   (waterlagen.afwateringseenheden.raster.WatersysteemRasters)" href="#waterlagen.afwateringseenheden.WatersysteemRasters">WatersysteemRasters</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Paths to the validated DEM and hydroobject-segment GeoTIFFs.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<details class="side-effects" open>
+  <summary>Side Effects</summary>
+  <p>Writes both GeoTIFFs through temporary files beside their targets. Each
+completed temporary raster is validated before it atomically replaces its
+corresponding target.</p>
+</details>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="waterlagen.afwateringseenheden.read_brandlagen" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">read_brandlagen</span>
+
+
+</h3>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">read_brandlagen</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">spatial_selection</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Combine GeoPackage layers into ordered optional burn objects.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>config</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="BrandlagenConfig
+
+
+  
+      dataclass
+   (waterlagen.afwateringseenheden.config.BrandlagenConfig)" href="#waterlagen.afwateringseenheden.BrandlagenConfig">BrandlagenConfig</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Sources and fallback values. Object values override layer and global
+defaults. Numeric zero is preserved; missing columns and NULL fall back.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>spatial_selection</code>
+            </td>
+            <td>
+                  <code><span title="shapely.geometry.base.BaseGeometry">BaseGeometry</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Selection in the configured project CRS, including any required buffers.
+Geometries are selected without clipping or adding a line buffer.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="geopandas.GeoDataFrame">GeoDataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Project-CRS 2D geometries, signed metre <code>brandwaarde</code>, integer
+<code>prioriteit</code> and <code>broncode</code>, <code>bronbestand</code>, <code>bronlaag</code>,
+<code>bron_fid</code> provenance. Codes start at 3 in configuration order;
+codes 1 and 2 are reserved for primary and secondary HYDAMO.
+Sorted by increasing priority and absolute value for replacement burning.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="ValueError">ValueError</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Collected source, geometry or attribute errors with source/FID details.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<details class="note" open>
+  <summary>Notes</summary>
+  <p>Reading does not check pixel conflicts: raster and tile preparation do that
+once on the actual calculation grids, before reading elevation pixels.</p>
+</details>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="waterlagen.afwateringseenheden.read_brandlagen_config" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">read_brandlagen_config</span>
+
+
+</h3>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">read_brandlagen_config</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Read a TOML burn configuration with paths relative to the TOML file.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>path</code>
+            </td>
+            <td>
+                  <code><span title="pathlib.Path">Path</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>TOML file with optional <code>[defaults]</code> (<code>brandwaarde</code>, <code>prioriteit</code>)
+and <code>[[lagen]]</code> entries (<code>path</code>, <code>layer</code> and optional defaults
+<code>brandwaarde</code> and <code>prioriteit</code> directly on each entry). The root key
+<code>geisoleerde_branddiepte_m</code> sets the isolated HYDAMO lowering depth.
+Layer keys <code>rol</code> and <code>bron</code> identify water and culvert inputs.
+<code>openbare_bron</code> opts into preparation by the production entry point
+or an explicit call to <code>prepare_brand_sources</code>.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="BrandlagenConfig
+
+
+  
+      dataclass
+   (waterlagen.afwateringseenheden.config.BrandlagenConfig)" href="#waterlagen.afwateringseenheden.BrandlagenConfig">BrandlagenConfig</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Configuration with absolute source paths. No source data is read,
+downloaded or prepared by this function.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="ValueError">ValueError</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Invalid schema, unknown keys or invalid default values.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="TypeError">TypeError</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Defaults or layer entries have the wrong TOML structure.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="OSError">OSError</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The TOML file cannot be read.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="waterlagen.afwateringseenheden.read_duikersifonhevel" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">read_duikersifonhevel</span>
+
+
+</h3>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">read_duikersifonhevel</span><span class="p">(</span>
+    <span class="n">hydamo_path</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">spatial_selection</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">spatial_selection_crs</span><span class="o">=</span><span class="n">settings</span><span class="o">.</span><span class="n">crs</span><span class="p">,</span>
+<span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Read culverts with full geometry and original file/layer/FID provenance.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>hydamo_path</code>
+            </td>
+            <td>
+                  <code><span title="pathlib.Path">Path</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>GeoPackage with a required <code>duikersifonhevel</code> layer; empty is valid.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>spatial_selection</code>
+            </td>
+            <td>
+                  <code><span title="shapely.geometry.base.BaseGeometry">BaseGeometry</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Calculation context. Selected geometries are not clipped. Objects
+without any spatial location cannot be selected by a spatial query.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>spatial_selection_crs</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span> or <span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Selection CRS. Output uses <code>settings.crs</code>.</p>
+              </div>
+            </td>
+            <td>
+                  <code><span title="waterlagen.settings.settings.crs">crs</span></code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="geopandas.GeoDataFrame">GeoDataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Source objects, including unusable geometries for subsequent inspection.
+Read errors and missing CRS are raised, never replaced by empty output.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="waterlagen.afwateringseenheden.read_hydroobjecten" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">read_hydroobjecten</span>
+
+
+</h3>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">read_hydroobjecten</span><span class="p">(</span>
+    <span class="n">hydamo_path</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">spatial_selection</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">waterbeheercodes</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">attribute_filters</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">spatial_selection_crs</span><span class="o">=</span><span class="n">settings</span><span class="o">.</span><span class="n">crs</span><span class="p">,</span>
+<span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Read selected HyDAMO hydroobjecten as project-CRS line features.</p>
+<p>MultiLineStrings are exploded while preserving relevant source attributes.
+Their parts receive a deterministic <code>:0001</code>-style suffix on <code>bron_id</code>
+so every returned line can be handled independently. Empty, invalid, and
+non-line geometries are skipped with a warning. Other returned features use
+<code>globalid</code> for <code>bron_id</code> where available, otherwise <code>code</code> or the
+source row index.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>hydamo_path</code>
+            </td>
+            <td>
+                  <code><span title="pathlib.Path">Path</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Local HyDAMO GeoPackage containing the <code>hydroobject</code> layer.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>spatial_selection</code>
+            </td>
+            <td>
+                  <code><span title="shapely.geometry.base.BaseGeometry">BaseGeometry</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Selection geometry in <code>spatial_selection_crs</code>. <code>None</code> reads the
+complete source layer.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>waterbeheercodes</code>
+            </td>
+            <td>
+                  <code><span title="collections.abc.Iterable">Iterable</span>[<span title="str">str</span> | <span title="int">int</span> | <span title="float">float</span> | None]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional codes parsed from the source <code>nen3610id</code> field.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>attribute_filters</code>
+            </td>
+            <td>
+                  <code><span title="collections.abc.Mapping">Mapping</span>[<span title="str">str</span>, <span title="collections.abc.Collection">Collection</span>[<span title="object">object</span>]]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Exact source-value filters. The documented alias
+<code>categorieoppervlaktewater</code> maps to the actual HyDAMO column
+<code>categorieoppwaterlichaam</code>.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>spatial_selection_crs</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span> | <span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>CRS of <code>spatial_selection</code>. Results always use <code>settings.crs</code>.</p>
+              </div>
+            </td>
+            <td>
+                  <code><span title="waterlagen.settings.settings.crs">crs</span></code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="geopandas.GeoDataFrame">GeoDataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Selected LineString features with source attributes, <code>bron_id</code>, and
+normalized <code>waterbeheercode</code> in the configured project CRS.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="waterlagen.afwateringseenheden.read_puntobjecten" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">read_puntobjecten</span>
+
+
+</h3>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">read_puntobjecten</span><span class="p">(</span>
+    <span class="n">hydamo_path</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">layers</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;gemaal&quot;</span><span class="p">,</span> <span class="s2">&quot;stuw&quot;</span><span class="p">),</span>
+    <span class="n">spatial_selection</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">waterbeheercodes</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">attribute_filters</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">spatial_selection_crs</span><span class="o">=</span><span class="n">settings</span><span class="o">.</span><span class="n">crs</span><span class="p">,</span>
+<span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Read selected HyDAMO point layers and combine them into one GeoDataFrame.</p>
+<p>Every retained point has an <code>objecttype</code> containing its source-layer name
+and a stable <code>bron_id</code>. Empty, invalid, and non-point geometries are
+skipped with warnings. All source layers are converted to <code>settings.crs</code>
+before combining them.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>hydamo_path</code>
+            </td>
+            <td>
+                  <code><span title="pathlib.Path">Path</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Local HyDAMO GeoPackage containing the requested point layers.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>layers</code>
+            </td>
+            <td>
+                  <code><span title="collections.abc.Iterable">Iterable</span>[<span title="str">str</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Source layer names. Defaults to <code>gemaal</code> and <code>stuw</code>.</p>
+              </div>
+            </td>
+            <td>
+                  <code>(&#39;gemaal&#39;, &#39;stuw&#39;)</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>spatial_selection</code>
+            </td>
+            <td>
+                  <code><span title="shapely.geometry.base.BaseGeometry">BaseGeometry</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Selection geometry in <code>spatial_selection_crs</code>. <code>None</code> reads each
+complete source layer.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>waterbeheercodes</code>
+            </td>
+            <td>
+                  <code><span title="collections.abc.Iterable">Iterable</span>[<span title="str">str</span> | <span title="int">int</span> | <span title="float">float</span> | None]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional codes parsed from source <code>nen3610id</code> fields.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>attribute_filters</code>
+            </td>
+            <td>
+                  <code><span title="collections.abc.Mapping">Mapping</span>[<span title="str">str</span>, <span title="collections.abc.Collection">Collection</span>[<span title="object">object</span>]]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Exact source-value filters with the documented source-column aliases.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>spatial_selection_crs</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span> | <span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>CRS of <code>spatial_selection</code>. Results always use <code>settings.crs</code>.</p>
+              </div>
+            </td>
+            <td>
+                  <code><span title="waterlagen.settings.settings.crs">crs</span></code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="geopandas.GeoDataFrame">GeoDataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Combined point features with <code>objecttype</code>, <code>bron_id</code>, relevant
+source fields, and normalized <code>waterbeheercode</code>.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="waterlagen.afwateringseenheden.read_watersysteem_sources" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">read_watersysteem_sources</span>
+
+
+</h3>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">read_watersysteem_sources</span><span class="p">(</span>
+    <span class="n">hydamo_path</span><span class="p">,</span>
+    <span class="n">rijkswateren_path</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">spatial_selection</span><span class="p">,</span>
+    <span class="n">waterbeheercode</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">overige_waterschappen</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">eigen_hydamo</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Read full source geometries and select participating drainage targets.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>hydamo_path</code>
+            </td>
+            <td>
+                  <code><span title="pathlib.Path">Path</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Local GKW and published RWS sources. GKW code 80 lines are excluded.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>rijkswateren_path</code>
+            </td>
+            <td>
+                  <code><span title="pathlib.Path">Path</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Local GKW and published RWS sources. GKW code 80 lines are excluded.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>spatial_selection</code>
+            </td>
+            <td>
+                  <code><span title="shapely.geometry.base.BaseGeometry">BaseGeometry</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Complete calculation grids and buffers in <code>settings.crs</code>; no clipping.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>waterbeheercode</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Selected authority. Without a code, all authorities including RWS supply
+primary targets. With a code, RWS supplies only burn context.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>overige_waterschappen</code>
+            </td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Include other water authorities as targets, default False. Requires a code.</p>
+              </div>
+            </td>
+            <td>
+                  <code>False</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>eigen_hydamo</code>
+            </td>
+            <td>
+                  <code><span title="pathlib.Path">Path</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Completely replaces the selected authority's hydroobject, gemaal, stuw
+and required duikersifonhevel
+layers. All identifiers are checked before spatial selection; no fallback.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="WatersysteemSources
+
+
+  
+      dataclass
+   (waterlagen.afwateringseenheden.sources.WatersysteemSources)" href="#waterlagen.afwateringseenheden.WatersysteemSources">WatersysteemSources</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Primary and secondary burn context, primary targets and participating
+points, with original identifiers and file/layer/FID provenance.
+GKW lines without a category are warned about and retained separately;
+<code>overig</code> supplies neither burning nor targets. Tertiary lines are
+returned separately for shallow burning, without drainage targets.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="ValueError">ValueError</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Invalid identifiers, categories, missing CRS or own-source layers.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="waterlagen.afwateringseenheden.require_pcraster" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">require_pcraster</span>
+
+
+</h3>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">require_pcraster</span><span class="p">()</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Import PCRaster or raise an actionable installation error.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="waterlagen.afwateringseenheden.split_connected_secondary_hydroobjecten" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">split_connected_secondary_hydroobjecten</span>
+
+
+</h3>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">split_connected_secondary_hydroobjecten</span><span class="p">(</span>
+    <span class="n">hydroobject_secundair</span><span class="p">,</span>
+    <span class="n">hydroobject_primair</span><span class="p">,</span>
+    <span class="n">hydroobject_verbinding</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">tolerance</span><span class="o">=</span><span class="mf">2.0</span><span class="p">,</span>
+<span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Split secondary hydroobjecten into connected and unconnected sources.</p>
+<p>Secondary hydroobjecten form spatially connected components. A component
+is connected only when at least one member lies within <code>tolerance</code> of a
+primary hydroobject; a component consisting solely of secondary objects is
+unconnected. Comparisons include vertices and every position along a line
+segment, so they do not depend on endpoint-based
+<code>hydroobject_verbinding</code> records. Those records are retained as an
+argument for API compatibility and are inspected only to warn about
+unknown source identifiers.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>hydroobject_secundair</code>
+            </td>
+            <td>
+                  <code><span title="geopandas.GeoDataFrame">GeoDataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Original selected secondary hydroobjecten with unique, non-empty
+<code>bron_id</code> values.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>hydroobject_primair</code>
+            </td>
+            <td>
+                  <code><span title="geopandas.GeoDataFrame">GeoDataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Original selected primary hydroobjecten with unique, non-empty
+<code>bron_id</code> values.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>hydroobject_verbinding</code>
+            </td>
+            <td>
+                  <code><span title="geopandas.GeoDataFrame">GeoDataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Existing directed connection layer. It does not determine the spatial
+classification.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>tolerance</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Maximum distance in metres in the configured project CRS, by default
+2. Must be at least zero.</p>
+              </div>
+            </td>
+            <td>
+                  <code>2.0</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="tuple">tuple</span>[<span title="geopandas.GeoDataFrame">GeoDataFrame</span>, <span title="geopandas.GeoDataFrame">GeoDataFrame</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Connected secondary hydroobjecten followed by unconnected secondary
+hydroobjecten. Both preserve the input schema, order, and CRS.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="ValueError">ValueError</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If a non-empty source layer has missing or duplicate <code>bron_id</code> values,
+or <code>tolerance</code> is negative.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="waterlagen.afwateringseenheden.split_hydroobjecten_at_points" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">split_hydroobjecten_at_points</span>
+
+
+</h3>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">split_hydroobjecten_at_points</span><span class="p">(</span>
+    <span class="n">hydroobjecten</span><span class="p">,</span> <span class="n">puntobjecten</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">tolerance</span>
+<span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Split hydroobjecten at nearby points and derive inter-line connections.</p>
+<p>A point is projected to each LineString at distance no greater than
+<code>tolerance</code>. Internal, unique projected positions split the source line.
+Endpoint positions are intentionally not split. Connections are derived
+after the final length segmentation, because only then every connection can
+refer to final <code>segment_key</code> values.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>hydroobjecten</code>
+            </td>
+            <td>
+                  <code><span title="geopandas.GeoDataFrame">GeoDataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>LineString or MultiLineString source features. Missing source IDs are
+derived safely from <code>globalid</code>, <code>code</code>, or the row index.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>puntobjecten</code>
+            </td>
+            <td>
+                  <code><span title="geopandas.GeoDataFrame">GeoDataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Point source features. Relevant point attributes are copied to derived
+connection records.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>tolerance</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Maximum projected point-to-line distance in project-CRS units.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="WatersysteemResult
+
+
+  
+      dataclass
+   (waterlagen.afwateringseenheden.lines.WatersysteemResult)" href="#waterlagen.afwateringseenheden.WatersysteemResult">WatersysteemResult</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Split source lines and deterministic point-induced connections, both in
+<code>settings.crs</code>.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="waterlagen.afwateringseenheden.split_hydroobjecten_by_length" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">split_hydroobjecten_by_length</span>
+
+
+</h3>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">split_hydroobjecten_by_length</span><span class="p">(</span><span class="n">hydroobjecten</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">max_length</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Split lines into equal-length segments no longer than <code>max_length</code>.</p>
+<p>The number of segments is the smallest integer that keeps each segment at
+or below <code>max_length</code>. The source line length is then divided equally
+over those segments. Source fields and <code>bron_id</code> are retained.
+<code>segment_key</code> is based on the source identifier and a deterministic,
+one-based sequence number.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="waterlagen.afwateringseenheden.waterbeheercode_from_nen3610id" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">waterbeheercode_from_nen3610id</span>
+
+
+</h3>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">waterbeheercode_from_nen3610id</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Extract the waterbeheerder code from a HyDAMO NEN3610 identifier.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="waterlagen.afwateringseenheden.write_watersysteem" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">write_watersysteem</span>
+
+
+</h3>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">write_watersysteem</span><span class="p">(</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">hydroobject_primair</span><span class="p">,</span>
+    <span class="n">hydroobject_secundair</span><span class="p">,</span>
+    <span class="n">watersysteem</span><span class="p">,</span>
+    <span class="n">data_store</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">output_path</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">overwrite</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">secondary_connection_tolerance</span><span class="o">=</span><span class="mf">2.0</span><span class="p">,</span>
+    <span class="n">hydroobject_zonder_categorie</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">controle_path</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Atomically write the prepared watersysteem layers to a GeoPackage.</p>
+<p>Existing output is reused only when it passes the required GeoPackage,
+layer, and CRS validation. A failed write or validation removes its
+temporary file and leaves an existing target untouched. Layers with a
+bundled QML style register that style in the GeoPackage automatically.
+Connections include integer <code>van_segment</code> and <code>naar_segment</code> referencing
+the actual GeoPackage segment FIDs, also used by catchment <code>segment_id</code>.
+These numbers are local to this output, unlike the source-based segment IDs.
+Source keys remain in the segment layer; connections omit duplicated keys.
+Optional structure attributes include <code>kunstwerk_waterbeheercode</code>. Connections
+without a linked point object have null point attributes.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>hydroobject_primair</code>
+            </td>
+            <td>
+                  <code><span title="geopandas.GeoDataFrame">GeoDataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>All selected primary burn-context lines, including non-target authorities.
+Used unchanged for the joint secondary test. With culvert preparation,
+retained in <code>berekening/watersysteem/watersysteem.gpkg</code> while <code>hydroobject_primair</code>
+contains only eligible burn pieces.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>hydroobject_secundair</code>
+            </td>
+            <td>
+                  <code><span title="geopandas.GeoDataFrame">GeoDataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Selected secondary source hydroobjecten. They are divided into connected
+and unconnected output layers using their complete line geometry.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>watersysteem</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="WatersysteemResult
+
+
+  
+      dataclass
+   (waterlagen.afwateringseenheden.lines.WatersysteemResult)" href="#waterlagen.afwateringseenheden.WatersysteemResult">WatersysteemResult</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Geometrically prepared participating primary targets and point-induced
+connections. These may be a subset of the primary burn context.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>data_store</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="DataStore (waterlagen.datastore.DataStore)" href="../datastore/#waterlagen.datastore.DataStore">DataStore</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Supplies the default output directory.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>output_path</code>
+            </td>
+            <td>
+                  <code><span title="pathlib.Path">Path</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Override for the target GeoPackage. Defaults to
+<code>datastore.afwateringseenheden_path / 'watersysteem.gpkg'</code>.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>overwrite</code>
+            </td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Whether to replace an existing valid GeoPackage. With <code>False</code>, a
+valid target is reused; an invalid target is replaced only after a new
+temporary GeoPackage has been validated. With culverts, source contents,
+selection and settings must also match the stored preparation identity;
+otherwise the snapshot is regenerated, including control-only changes.</p>
+              </div>
+            </td>
+            <td>
+                  <code>False</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>secondary_connection_tolerance</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Maximum distance in metres between complete primary and secondary
+hydroobject geometries when classifying connected secondary objects, by
+default 2.</p>
+              </div>
+            </td>
+            <td>
+                  <code>2.0</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>hydroobject_zonder_categorie</code>
+            </td>
+            <td>
+                  <code><span title="geopandas.GeoDataFrame">GeoDataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Excluded GKW lines without a category. Written to <code>controle_path</code>,
+never included in burning or secondary connectivity.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>controle_path</code>
+            </td>
+            <td>
+                  <code><span title="pathlib.Path">Path</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Inspection GeoPackage, default <code>output_path.parent/controle.gpkg</code>.
+Its <code>duikersifonhevel</code> layer is refreshed, including when empty or
+resuming; other inspection layers are preserved. Also stores source
+lines without a category. Removed inputs clear old inspection rows. Technical primary
+source and split layers are kept in <code>berekening/watersysteem/watersysteem.gpkg</code> beside
+the output. Missing inspection files are rebuilt even on reuse.
+Culvert snapshots are reused only with matching input metadata.
+Preparation metadata is stored in <code>berekening/watersysteem/&lt;output filename&gt;.json</code>,
+tied to the output checksum. Missing or mismatching metadata causes
+regeneration rather than reuse.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="pathlib.Path">Path</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Validated GeoPackage with exactly five spatial watersysteem layers.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+
+
+                
+  
+  
+    
+    <p class="editorial-status" title="Deze pagina wordt met behulp van AI onderhouden.">Redactie: AI</p>
+  
+
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Gekopieerd naar klembord", "clipboard.copy": "Kopi\u00ebren naar klembord", "search.result.more.one": "1 extra overeenkomst op deze pagina", "search.result.more.other": "# extra overeenkomsten op deze pagina", "search.result.none": "Geen overeenkomende documenten", "search.result.one": "1 overeenkomende document", "search.result.other": "# overeenkomende documenten", "search.result.placeholder": "Typ om te beginnen met zoeken", "search.result.term.missing": "Ontbreekt", "select.version": "Selecteer versie"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

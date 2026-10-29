@@ -1,0 +1,189 @@
+"""Watersysteem voorbereiden en afwateringseenheden met eigen instellingen berekenen."""
+
+from math import ceil, floor
+from pathlib import Path
+
+import geopandas as gpd
+from shapely.geometry import box
+
+from waterlagen._sources import SourcePreparation
+from waterlagen.administratieve_gebieden import (
+    DEFAULT_BESTUURLIJKE_GEBIEDEN_YEAR,
+    download_bestuurlijke_gebieden,
+)
+from waterlagen.afwateringseenheden import (
+    BrandlagenConfig,
+    calculate_afwateringseenheden_tiles,
+    prepare_watersysteem,
+    read_brandlagen,
+    read_brandlagen_config,
+    read_watersysteem_sources,
+    write_watersysteem,
+)
+from waterlagen.afwateringseenheden.brand_sources import prepare_brand_sources
+from waterlagen.afwateringseenheden.waternet import prepare_waternet
+from waterlagen.ahn import download_ahn
+from waterlagen.areas import NAMED_AREAS, NAMED_AREAS_CRS
+from waterlagen.datastore import DataStore
+from waterlagen.hydamo import download_hydamo
+from waterlagen.logger import production_logging
+from waterlagen.raster.grid import RasterGrid
+from waterlagen.rijkswateren import download_rijkswateren
+from waterlagen.settings import settings
+
+DATA_DIR = Path("data")
+AREA = "alkmaar_centrum"
+EXPERIMENT = "experiment_01"  # Nieuwe naam bij andere bronnen of rekeninstellingen.
+TILE_SIZE_M = 1000  # Eén kerntegel voor dit vierkante voorbeeldgebied.
+TILE_BUFFER_M = 2000
+RESOLUTION_M = 2.0
+TOLERANCE_M = 2.0
+MAX_SEGMENT_LENGTH_M = 500.0
+DUIKER_TOLERANCE_M = 0.5
+# Bijvoorbeeld 50.0; alleen directe aansluitdoelen.
+MAX_AANSLUITLENGTE_M: float | None = None
+BURN_DEPTH_M = 100.0
+MAX_FILL_DEPTH_M = 50.0
+WORKERS = 1
+BRANDLAGEN_CONFIG: Path | None = None  # Bijvoorbeeld Path("brandlagen.toml").
+WATERBEHEERCODE: str | None = None  # Zonder code levert ook RWS doelen.
+OVERIGE_WATERSCHAPPEN = False
+EIGEN_HYDAMO: Path | None = None
+
+if __name__ == "__main__":
+    store = DataStore(
+        data_dir=DATA_DIR,
+        source_data_dir=DATA_DIR / "source_data",
+        processed_data_dir=DATA_DIR / "processed_data",
+    )
+    output_dir = (
+        store.processed_data_dir
+        / "voorbeelden"
+        / AREA
+        / EXPERIMENT
+        / "afwateringseenheden"
+    )
+    gebied = (
+        gpd.GeoSeries([NAMED_AREAS[AREA]], crs=NAMED_AREAS_CRS)
+        .to_crs(settings.crs)
+        .iloc[0]
+    )
+    # Voor dit voorbeeld ligt de tegel-oorsprong op de linkeronderhoek van het gebied.
+    # Rond de dekking naar volledige tegels af voordat de buffer wordt toegevoegd.
+    xmin, ymin, xmax, ymax = gebied.bounds
+    origin_x, origin_y = floor(xmin), floor(ymin)
+    tile_bounds = box(
+        origin_x,
+        origin_y,
+        origin_x + ceil((xmax - origin_x) / TILE_SIZE_M) * TILE_SIZE_M,
+        origin_y + ceil((ymax - origin_y) / TILE_SIZE_M) * TILE_SIZE_M,
+    )
+    context = tile_bounds.buffer(TILE_BUFFER_M).envelope
+    grids = [
+        RasterGrid.from_bounds(
+            (
+                x - TILE_BUFFER_M,
+                y - TILE_BUFFER_M,
+                x + TILE_SIZE_M + TILE_BUFFER_M,
+                y + TILE_SIZE_M + TILE_BUFFER_M,
+            ),
+            resolution=RESOLUTION_M,
+            crs=settings.crs,
+        )
+        for y in range(origin_y, int(tile_bounds.bounds[3]), TILE_SIZE_M)
+        for x in range(origin_x, int(tile_bounds.bounds[2]), TILE_SIZE_M)
+    ]
+
+    with production_logging():
+        # De TOML kiest bronnen; lezen alleen start geen downloads.
+        brandlagen = BrandlagenConfig()
+        if BRANDLAGEN_CONFIG is not None:
+            brandlagen = read_brandlagen_config(BRANDLAGEN_CONFIG)
+            voorbereide_bronnen = prepare_brand_sources(
+                brandlagen, store, context, SourcePreparation()
+            )
+            brandlagen = voorbereide_bronnen.config
+        brandobjecten = read_brandlagen(brandlagen, spatial_selection=context)
+        # 1. Bronnen ophalen. HYDAMO en de landsgrens zijn landelijke bestanden.
+        hydamo = download_hydamo(download_dir=store.hydamo_dir, overwrite=False)
+        rijkswateren = download_rijkswateren(store.hydamo_dir, overwrite=False)
+        bronnen = read_watersysteem_sources(
+            hydamo.target_path,
+            rijkswateren,
+            spatial_selection=context,
+            waterbeheercode=WATERBEHEERCODE,
+            overige_waterschappen=OVERIGE_WATERSCHAPPEN,
+            eigen_hydamo=EIGEN_HYDAMO,
+        )
+        landsgrens = download_bestuurlijke_gebieden(
+            year=DEFAULT_BESTUURLIJKE_GEBIEDEN_YEAR,
+            download_dir=store.administratieve_gebieden_dir,
+            overwrite=False,
+        )
+        ahn = download_ahn(
+            ahn_dir=store.ahn_dir,
+            poly_mask=context,
+            model="dtm",
+            ahn_version=4,
+            service="ahn_pdok",
+            cell_size="05",
+            missing_only=True,
+            create_vrt=True,
+        )
+
+        # 2. Lees het watersysteem inclusief omgeving; pas de selectie hier aan.
+        netwerk = prepare_watersysteem(
+            bronnen.targets,
+            bronnen.points,
+            tolerance=TOLERANCE_M,
+            max_length=MAX_SEGMENT_LENGTH_M,
+            hydroobject_primair=bronnen.primary,
+            duikersifonhevel=bronnen.culverts,
+            duiker_tolerance=DUIKER_TOLERANCE_M,
+            max_aansluitlengte=MAX_AANSLUITLENGTE_M,
+        )
+        watersysteem = write_watersysteem(
+            hydroobject_primair=bronnen.primary,
+            hydroobject_secundair=bronnen.secondary,
+            hydroobject_zonder_categorie=bronnen.missing_category,
+            watersysteem=netwerk,
+            output_path=output_dir / "watersysteem.gpkg",
+            secondary_connection_tolerance=TOLERANCE_M,
+            overwrite=False,
+            controle_path=output_dir / "controle.gpkg",
+        )
+
+        # 3. Bereid waterloop- en duikeraansluitingen op alle rekenrasters voor.
+        prepare_waternet(
+            bronnen,
+            brandobjecten,
+            grids,
+            watersysteem,
+            brandlagen,
+            primary_culvert_pieces=netwerk.hydroobject_primair_delen,
+        )
+
+        # 4. Bereken de tegels en voeg ze samen. Pas parameters bovenaan aan.
+        resultaat = calculate_afwateringseenheden_tiles(
+            gebied,
+            ahn_vrt_path=ahn,
+            landsgrens_path=landsgrens.target_path,
+            watersysteem_path=watersysteem,
+            output_dir=output_dir / "tiles",
+            merged_output_path=output_dir / "afwateringseenheden.gpkg",
+            tile_size_m=TILE_SIZE_M,
+            tile_buffer_m=TILE_BUFFER_M,
+            origin_x=origin_x,
+            origin_y=origin_y,
+            resolution_m=RESOLUTION_M,
+            burn_depth_m=BURN_DEPTH_M,
+            max_fill_depth_m=MAX_FILL_DEPTH_M,
+            workers=WORKERS,
+            random_seed=12345,
+            clip_to_area=True,
+            overwrite=False,
+            brandlagen=brandlagen,
+        )
+        print(resultaat.merged_path)
+        print("Controleer duikers in QGIS:", output_dir / "controle.gpkg")
+        print("Tegels met randproblemen:", resultaat.boundary_issue_tile_ids)
