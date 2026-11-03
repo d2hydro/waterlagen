@@ -26,6 +26,22 @@ Eigen lokale brandlagen en een eigen HYDAMO-levering levert u zelf aan.
 
 Zie [gebieden](cli.md#gebieden) voor de beschikbare selecties en hun omvang.
 
+## DEM-resampling kiezen
+
+`--dem-resampling` bepaalt hoe AHN-hoogtes worden omgezet naar het rekenraster van het dem (standaard 2 x 2 meter). Standaard wordt `min` gebruikt.
+
+Beschikbare methoden zijn `nearest`, `bilinear`, `cubic`, `cubic_spline`, `lanczos`, `average`, `min`, `max`, `med`, `q1` en `q3`.
+
+Bijvoorbeeld voor het gebruik van gemiddelde hoogtes:
+
+```console
+pixi run --locked afwateringseenheden --waterbeheercode 38 --workers 8 --run-id dem-average --dem-resampling average
+```
+
+De gekozen methode beïnvloedt de berekende hoogtes en kan daarmee ook de afwateringseenheden beïnvloeden.
+
+Bij `--resume` en `--overwrite` moet dezelfde methode worden gebruikt. Kies een nieuwe `--run-id` om een andere methode toe te passen.
+
 <span id="uitvoer-en-hervatten"></span>
 <span id="controle-in-qgis"></span>
 <span id="brandlagen-controleren-in-qgis"></span>

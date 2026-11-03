@@ -16,8 +16,8 @@ from waterlagen.areas import (
     NAMED_AREAS,
     Area,
     ProductionArea,
-    area_name,
     area_from_bounds,
+    area_name,
     select_area_tiles,
 )
 from waterlagen.logger import get_logger, tile_logging
@@ -391,3 +391,56 @@ def test_logging_collects_spawned_and_nested_records_and_restores_caller(tmp_pat
     assert not (tmp_path / "tile.log").exists()
     assert (root.handlers, root.level) == root_state
     assert (package.handlers, package.level, package.propagate) == package_state
+
+
+@pytest.mark.parametrize(
+    "method",
+    [
+        None,
+        "nearest",
+        "bilinear",
+        "cubic",
+        "cubic_spline",
+        "lanczos",
+        "average",
+        "min",
+        "max",
+        "med",
+        "q1",
+        "q3",
+        "gauss",
+        "AVERAGE",
+    ],
+)
+def test_afwateringseenheden_dem_resampling_cli(tmp_path, monkeypatch, capsys, method):
+    path = Path(__file__).parents[1] / "scripts" / "afwateringseenheden.py"
+    spec = importlib.util.spec_from_file_location("dem_resampling_cli", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    main = Mock(return_value=tmp_path / "result")
+    monkeypatch.setattr(module, "main", main)
+    arguments = [str(path), "--data-dir", str(tmp_path)]
+    if method is not None:
+        arguments.extend(["--dem-resampling", method])
+    monkeypatch.setattr("sys.argv", arguments)
+    if method in {"gauss", "AVERAGE"}:
+        with pytest.raises(SystemExit) as error:
+            module.cli()
+        assert error.value.code == 2
+        main.assert_not_called()
+    else:
+        module.cli()
+        assert main.call_args.kwargs["dem_resampling"] == (method or "min")
+    main.reset_mock()
+    monkeypatch.setattr("sys.argv", [str(path), "--help"])
+    with pytest.raises(SystemExit) as error:
+        module.cli()
+    assert error.value.code == 0
+    help_text = " ".join(capsys.readouterr().out.split())
+    assert "--dem-resampling" in help_text
+    assert (
+        "nearest,bilinear,cubic,cubic_spline,lanczos,average,min,max,med,q1,q3"
+        in help_text
+    )
+    assert "standaard: min" in help_text
+    main.assert_not_called()

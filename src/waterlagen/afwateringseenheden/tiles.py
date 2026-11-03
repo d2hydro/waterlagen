@@ -1,5 +1,6 @@
 """Tile orchestration for afwateringseenheden calculations."""
 
+import json
 import multiprocessing
 from collections.abc import Collection, Iterable
 from concurrent.futures import ProcessPoolExecutor, as_completed
@@ -33,6 +34,7 @@ from waterlagen.raster.tiles import TILES_LAYER, Tile, read_tiles, tile_from_row
 from waterlagen.settings import settings
 
 from ._coverage import _landsgrens_version
+from ._resampling import _validate_dem_resampling
 from .brandlagen import _burn_signature, _prepare_brandlagen, _PreparedBrandlagen
 from .config import DEFAULT_TILE_SIZE_M, BrandlagenConfig
 from .pcraster import (
@@ -131,6 +133,7 @@ class _TileJob:
     random_seed: int | None
     landsgrens_path: Path | None = None
     brandlagen: _PreparedBrandlagen | None = None
+    dem_resampling: str = "min"
 
 
 def _validate_tile_inputs(
@@ -682,6 +685,24 @@ def _write_selected_tiles(output_dir: Path, tiles: Collection[Tile]) -> Path:
     return output_path
 
 
+def _matching_completion(path: Path, burn_signature: str, dem_resampling: str) -> bool:
+    """Accept complete JSON identities or the historical bilinear signature."""
+    try:
+        contents = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeError):
+        return False
+    if contents == burn_signature:
+        return dem_resampling == "bilinear"
+    try:
+        identity = json.loads(contents)
+    except ValueError:
+        return False
+    return identity == {
+        "burn_signature": burn_signature,
+        "dem_resampling": dem_resampling,
+    }
+
+
 def _calculate_tile(job: _TileJob) -> AfwateringseenhedenTileResult:
     """Calculate a tile once with the configured buffer, or reuse its cached result."""
     tile = job.tile
@@ -692,10 +713,18 @@ def _calculate_tile(job: _TileJob) -> AfwateringseenhedenTileResult:
         job.watersysteem_path, job.burn_depth_m, job.brandlagen
     )
     burn_manifest = job.output_dir / "subcatchments_burn.txt"
-    current_burn = (
-        burn_manifest.is_file()
-        and burn_manifest.read_text(encoding="utf-8") == burn_signature
+    current_burn = _matching_completion(
+        burn_manifest, burn_signature, job.dem_resampling
     )
+    dem_path = job.output_dir / "dem_2m.tif"
+    if current_burn:
+        current_burn = False
+        if dem_path.is_file():
+            with rasterio.open(dem_path) as dem:
+                current_burn = (
+                    dem.tags().get("waterlagen_dem_resampling", "bilinear")
+                    == job.dem_resampling
+                )
     if not job.overwrite and current_burn:
         existing_subcatchments = _read_existing_subcatchments(
             job.output_dir / SUBCATCHMENTS_GPKG_FILENAME
@@ -733,6 +762,7 @@ def _calculate_tile(job: _TileJob) -> AfwateringseenhedenTileResult:
             tile, tile_buffer_m=calculation_buffer_m
         )
         raster_options = {
+            "dem_resampling": job.dem_resampling,
             "burn_depth_m": job.burn_depth_m,
             "ahn_vrt_path": job.ahn_vrt_path,
             "landsgrens_path": job.landsgrens_path,
@@ -777,7 +807,16 @@ def _calculate_tile(job: _TileJob) -> AfwateringseenhedenTileResult:
         )
         subcatchments = subcatchment_result.subcatchments
         temporary_manifest = burn_manifest.with_suffix(".tmp")
-        temporary_manifest.write_text(burn_signature, encoding="utf-8")
+        temporary_manifest.write_text(
+            json.dumps(
+                {
+                    "burn_signature": burn_signature,
+                    "dem_resampling": job.dem_resampling,
+                },
+                sort_keys=True,
+            ),
+            encoding="utf-8",
+        )
         replace_file(temporary_manifest, burn_manifest)
     else:
         rasters = WatersysteemRasters(
@@ -905,6 +944,7 @@ def calculate_afwateringseenheden_tiles(
     clip_to_area: bool = True,
     random_seed: int | None = None,
     brandlagen: BrandlagenConfig | None = None,
+    dem_resampling: str = "min",
 ) -> AfwateringseenhedenTilesResult:
     """Calculate afwateringseenheden for every tile intersecting an area.
 
@@ -961,6 +1001,10 @@ def calculate_afwateringseenheden_tiles(
         default 2000. Boundary issues are reported without recalculating the tile.
     origin_x, origin_y : int, optional
         Origin of the generated tile grid, by default 0, 0.
+    dem_resampling : str, optional
+        DEM warp method, default bilinear. Supported: nearest, bilinear, cubic,
+        cubic_spline, lanczos, average, min, max, med, q1, q3. Cached tiles
+        require the same method; missing legacy metadata means bilinear.
     resolution_m : float, optional
         Raster resolution passed to :func:`prepare_watersysteem_rasters`.
     max_fill_depth_m : float, optional
@@ -1006,6 +1050,7 @@ def calculate_afwateringseenheden_tiles(
     in memory. Only the merged subcatchments are written to the GeoPackage. Boundary issue
     tile IDs still describe the original calculations, not the remaining gaps.
     """
+    _validate_dem_resampling(dem_resampling)
     if not isinstance(workers, int) or isinstance(workers, bool):
         raise TypeError("workers must be an integer")
     if workers < 1:
@@ -1091,6 +1136,7 @@ def calculate_afwateringseenheden_tiles(
             crs=format_crs(settings.crs),
             random_seed=random_seed,
             brandlagen=prepared,
+            dem_resampling=dem_resampling,
         )
         for tile in selected_tiles
     ]

@@ -27,6 +27,7 @@ from waterlagen.raster.grid import RasterGrid
 from waterlagen.settings import settings
 
 from ._coverage import _coverage_mask, _landsgrens_version
+from ._resampling import _validate_dem_resampling
 from .brandlagen import (
     _burn_signature,
     _optional_burn_raster,
@@ -271,6 +272,7 @@ def _resample_dem(
     source: rasterio.io.DatasetReader,
     grid: RasterGrid,
     coverage_mask: np.ndarray | None = None,
+    resampling: Resampling = Resampling.min,
 ) -> np.ndarray:
     """Resample DEM values and fill NoData only within full source raster extents."""
     _validate_source_coverage(source, grid)
@@ -284,7 +286,7 @@ def _resample_dem(
         dst_transform=grid.transform,
         dst_crs=grid.crs,
         dst_nodata=np.nan,
-        resampling=Resampling.bilinear,
+        resampling=resampling,
     )
     if coverage_mask is None:
         coverage_mask = _coverage_mask(source, grid)
@@ -407,11 +409,13 @@ def _write_dem(
     offsets: tuple[float, ...],
     landsgrens_version: str = "none",
     burn_signature: str = "",
+    dem_resampling: str = "min",
 ) -> None:
     """Write a DEM while retaining its source scale and offset metadata."""
     with rasterio.open(target_path, "w", **profile) as destination:
         destination.scales = scales
         destination.offsets = offsets
+        destination.update_tags(waterlagen_dem_resampling=dem_resampling)
         destination.update_tags(waterlagen_dem_coverage=COVERAGE_VERSION)
         destination.update_tags(waterlagen_dem_landsgrens=landsgrens_version)
         destination.update_tags(waterlagen_burn=burn_signature)
@@ -505,6 +509,7 @@ def prepare_watersysteem_rasters(
     resolution_m: float = 2.0,
     overwrite: bool = False,
     brandlagen: BrandlagenConfig | None = None,
+    dem_resampling: str = "min",
 ) -> WatersysteemRasters:
     """Create aligned DEM, segment and winning-source rasters for one square.
 
@@ -549,6 +554,10 @@ def prepare_watersysteem_rasters(
         to ``datastore.afwateringseenheden_path / 'rasters'``.
     data_store : waterlagen.datastore.DataStore, optional
         Datastore used for all default paths.
+    dem_resampling : str, optional
+        DEM warp method, default bilinear. Supported: nearest, bilinear, cubic,
+        cubic_spline, lanczos, average, min, max, med, q1, q3. Changed methods
+        regenerate cached rasters; missing legacy tags mean bilinear.
     resolution_m : float, optional
         Cell size in project-CRS metres, by default 2.
     overwrite : bool, optional
@@ -574,6 +583,7 @@ def prepare_watersysteem_rasters(
     completed temporary raster is validated before it atomically replaces its
     corresponding target.
     """
+    _validate_dem_resampling(dem_resampling)
     data_store = data_store or default_datastore
     grid = _grid_for_square(ruimtelijk_vierkant, resolution_m=resolution_m)
     ahn_vrt_path = Path(ahn_vrt_path or data_store.ahn_dir / "dtm_05" / "dtm_05.vrt")
@@ -606,6 +616,7 @@ def prepare_watersysteem_rasters(
         output_dir=output_dir,
         overwrite=overwrite,
         prepared=prepared,
+        dem_resampling=dem_resampling,
     )
 
 
@@ -619,8 +630,10 @@ def _prepare_rasters(
     output_dir: Path,
     overwrite: bool,
     prepared: _PreparedBrandlagen | None,
+    dem_resampling: str = "min",
 ) -> WatersysteemRasters:
     """Apply already validated optional burns; used by independent tile workers."""
+    resampling = _validate_dem_resampling(dem_resampling)
     dem_path = output_dir / DEM_FILENAME
     segment_path = output_dir / HYDROOBJECT_SEGMENT_FILENAME
     result = WatersysteemRasters(dem_path, segment_path)
@@ -638,10 +651,14 @@ def _prepare_rasters(
             version = existing.tags().get("waterlagen_dem_coverage")
             boundary_version = existing.tags().get("waterlagen_dem_landsgrens", "none")
             previous_burn = existing.tags().get("waterlagen_burn")
+            previous_method = existing.tags().get(
+                "waterlagen_dem_resampling", "bilinear"
+            )
         if (
             version == COVERAGE_VERSION
             and boundary_version == landsgrens_version
             and previous_burn == burn_signature
+            and previous_method == dem_resampling
         ):
             with rasterio.open(ahn_vrt_path) as source:
                 coverage = _coverage_mask(source, grid, landsgrens_path)
@@ -650,7 +667,7 @@ def _prepare_rasters(
             logger.info("Reusing validated watersysteem rasters in %s", output_dir)
             return result
         logger.info(
-            "Regenerating rasters with changed burn inputs or coverage metadata in %s",
+            "Regenerating rasters with changed DEM resampling, burn inputs or coverage metadata in %s",
             output_dir,
         )
 
@@ -672,7 +689,8 @@ def _prepare_rasters(
                 raise ValueError(f"AHN VRT has no CRS: {ahn_vrt_path}")
             _validate_source_coverage(source, grid)
             coverage = _coverage_mask(source, grid, landsgrens_path)
-            dem_data = _resample_dem(source, grid, coverage)
+            logger.info("Resampling DEM with %s", dem_resampling)
+            dem_data = _resample_dem(source, grid, coverage, resampling)
             scale = source.scales[0]
             primary = _features_in_project_crs(
                 watersysteem_path,
@@ -743,6 +761,7 @@ def _prepare_rasters(
                 offsets=source.offsets,
                 landsgrens_version=landsgrens_version,
                 burn_signature=burn_signature,
+                dem_resampling=dem_resampling,
             )
 
         logger.info("Rasterizing hydroobject_segment from %s", watersysteem_path)

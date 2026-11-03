@@ -2,8 +2,8 @@ import os
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-import numpy as np
 import geopandas as gpd
+import numpy as np
 import pytest
 import rasterio
 from osgeo import gdal
@@ -237,3 +237,23 @@ def test_resampling_clears_values_on_excluded_source_boundary(tmp_path) -> None:
     assert np.isfinite(data[coverage]).all()
     valid_inside = np.isfinite(unmasked) & coverage
     np.testing.assert_array_equal(data[valid_inside], unmasked[valid_inside])
+
+
+@pytest.mark.parametrize("method", ["nearest", "bilinear", "average", "min", "max"])
+def test_dem_methods_fill_only_covered_cells(tmp_path, method):
+    from waterlagen.afwateringseenheden._resampling import _validate_dem_resampling
+    from waterlagen.afwateringseenheden.raster import _resample_dem
+
+    path = _source(tmp_path / "source.tif")
+    boundary = tmp_path / "boundary.gpkg"
+    gpd.GeoDataFrame(geometry=[box(0, 0, 6, 8)], crs=CRS).to_file(
+        boundary, layer="landgebied"
+    )
+    grid = RasterGrid.from_bounds((-2, -2, 10, 10), resolution=2, crs=CRS)
+    with rasterio.open(path) as source:
+        coverage = _coverage_mask(source, grid, boundary)
+        data = _resample_dem(source, grid, coverage, _validate_dem_resampling(method))
+    assert coverage.any()
+    assert np.isfinite(data[coverage]).all()
+    assert np.isnan(data[~coverage]).all()
+    np.testing.assert_array_equal(data[coverage], 1)

@@ -4,6 +4,7 @@ from pathlib import Path
 
 from waterlagen._cli import production_parser, run_cli
 from waterlagen.afwateringseenheden import read_brandlagen_config
+from waterlagen.afwateringseenheden._resampling import DEM_RESAMPLING_METHODS
 from waterlagen.afwateringseenheden.productie import main
 from waterlagen.afwateringseenheden.sources import validate_authority_options
 from waterlagen.rijkswateren.download import RIJKSWATEREN_URL
@@ -62,6 +63,12 @@ def cli() -> None:
         type=float,
         default=None,
         help="Maximale lengte van directe aansluitstukken zonder afwateringsdoel",
+    )
+    parser.add_argument(
+        "--dem-resampling",
+        choices=DEM_RESAMPLING_METHODS,
+        default="min",
+        help="DEM-resampling naar het rekenraster (standaard: min)",
     )
     run_cli(parser, main, transform=_config)
 

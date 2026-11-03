@@ -96,7 +96,9 @@ en [uitvoer bekijken](../produceren/afwateringseenheden.md#brandlagen-controlere
 ## Dekking en hergebruik
 
 Met `overwrite=False` hergebruiken de Python-functies bestaande resultaten
-als die nog geldig zijn.
+De standaardmethode voor DEM-resampling is `min` bij `prepare_watersysteem_rasters`, `calculate_afwateringseenheden_tiles` en in productie.
+
+Bij wijziging van de methode worden de betreffende rasters en tegels opnieuw berekend. Zie DEM-resampling kiezen voor beschikbare methoden en voorwaarden voor hergebruik.
 
 Hervat een volledige berekening alleen met dezelfde bronnen en instellingen.
 Begin na wijzigingen een nieuwe run. Wijzig geen bronbestanden terwijl
