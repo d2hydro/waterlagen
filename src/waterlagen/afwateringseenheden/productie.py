@@ -1,5 +1,6 @@
 """Complete afwateringseenheden production for a shared input area."""
 
+import json
 from pathlib import Path
 
 from shapely.ops import unary_union
@@ -45,12 +46,31 @@ from waterlagen.logger import get_logger
 from waterlagen.rijkswateren.download import RIJKSWATEREN_URL, download_rijkswateren
 from waterlagen.settings import settings
 
+from ._resampling import _validate_dem_resampling
 from .brandlagen import _empty_brandlagen
 from .brandlagen_overzicht import _write_brandlagen_overzicht
 from .duikers import CULVERT_POLICY, _validate_culvert_options
 from .waternet import WATERNET_POLICY, prepare_waternet
 
 logger = get_logger(__name__)
+
+
+def _compatible_run_parameters(
+    metadata_path: Path, parameters: dict[str, object], *, reuse: bool
+) -> dict[str, object]:
+    """Select only a legacy bilinear identity; the run lock still checks it."""
+    if not reuse or parameters["dem_resampling"] != "bilinear":
+        return parameters
+    try:
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return parameters
+    previous = metadata.get("parameters") if isinstance(metadata, dict) else None
+    if isinstance(previous, dict) and "dem_resampling" not in previous:
+        legacy = parameters.copy()
+        legacy.pop("dem_resampling")
+        return legacy
+    return parameters
 
 
 def main(
@@ -70,6 +90,7 @@ def main(
     rijkswateren_url: str = RIJKSWATEREN_URL,
     duiker_tolerance: float = 0.5,
     max_aansluitlengte: float | None = None,
+    dem_resampling: str = "min",
 ) -> Path:
     """Produce full tiles with separate drainage targets and surrounding burn context.
 
@@ -112,12 +133,18 @@ def main(
     max_aansluitlengte : float, optional
         Maximum direct adjoining length excluded from targets, default None.
         Does not change primary burning. Finite, non-negative; zero is valid.
+    dem_resampling : str, optional
+        DEM warp method, default bilinear. Supported: nearest, bilinear, cubic,
+        cubic_spline, lanczos, average, min, max, med, q1, q3. A different
+        method requires a new run ID. Missing legacy metadata means bilinear;
+        all other run compatibility checks still apply.
 
     Returns
     -------
     pathlib.Path
         Combined afwateringseenheden GeoPackage.
     """
+    _validate_dem_resampling(dem_resampling)
     name = area_name(area)
     code = name.removeprefix("waterschap_") if name.startswith("waterschap_") else None
     validate_authority_options(code, overige_waterschappen, eigen_hydamo)
@@ -200,6 +227,7 @@ def main(
         "secondary_connection_tolerance_m": 2.0,
         "max_segment_length_m": 500.0,
         "resolution_m": 2.0,
+        "dem_resampling": dem_resampling,
         "burn_categories": ["optional", "secundair", "primair"],
         "clip_to_area": False,
         "waternet_policy": WATERNET_POLICY,
@@ -210,6 +238,15 @@ def main(
         parameters["openbare_brandbron_metadata"] = {
             name: _file_identity(path) for name, path in public_sources.inputs.items()
         }
+    run_parameters = _compatible_run_parameters(
+        store.processed_data_dir
+        / "afwateringseenheden"
+        / selected.value
+        / str(run_id)
+        / "run.json",
+        parameters,
+        reuse=resume or overwrite,
+    )
     with production_run(
         store.processed_data_dir,
         "afwateringseenheden",
@@ -217,8 +254,15 @@ def main(
         run_id=run_id,
         resume=resume,
         overwrite=overwrite,
-        parameters=parameters,
+        parameters=run_parameters,
     ) as run:
+        if "dem_resampling" not in run.metadata["parameters"]:
+            logger.info("Interpreting legacy DEM-resampling metadata as bilinear")
+            run.metadata["parameters"] = {
+                **run.metadata["parameters"],
+                "dem_resampling": dem_resampling,
+            }
+            run._save()
         prepared_brandlagen = _prepare_brandlagen(
             brandlagen,
             grids,
@@ -320,6 +364,7 @@ def main(
         )
         result = calculate_afwateringseenheden_tiles(
             selected.geometry,
+            dem_resampling=dem_resampling,
             burn_depth_m=100,
             max_fill_depth_m=50,
             random_seed=12345,

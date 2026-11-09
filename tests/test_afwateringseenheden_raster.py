@@ -610,13 +610,13 @@ def test_water_sources_show_priority_fallback_zero_and_hydamo(
     if reverse:
         layers.reverse()
     codes = {layer.layer: index for index, layer in enumerate(layers, start=3)}
-    options = dict(
-        burn_depth_m=100,
-        ahn_vrt_path=vrt,
-        watersysteem_path=watersysteem,
-        output_dir=tmp_path / "output",
-        brandlagen=BrandlagenConfig(tuple(layers), brandwaarde=-100),
-    )
+    options = {
+        "burn_depth_m": 100,
+        "ahn_vrt_path": vrt,
+        "watersysteem_path": watersysteem,
+        "output_dir": tmp_path / "output",
+        "brandlagen": BrandlagenConfig(tuple(layers), brandwaarde=-100),
+    }
     result = prepare_watersysteem_rasters(box(0, 0, 8, 8), **options)
     bgt, top, own = (
         codes[name]
@@ -689,3 +689,127 @@ def test_float_burn_rejects_nodata_collision_and_overflow(
             output_dir=tmp_path / "result",
         )
     assert not (tmp_path / "result" / "dem_2m.tif").exists()
+
+
+@pytest.mark.parametrize(
+    "method",
+    [
+        None,
+        "nearest",
+        "bilinear",
+        "cubic",
+        "cubic_spline",
+        "lanczos",
+        "average",
+        "min",
+        "max",
+        "med",
+        "q1",
+        "q3",
+    ],
+)
+def test_dem_resampling_real_warp_and_metadata(source_paths, tmp_path, method):
+    from waterlagen.afwateringseenheden._resampling import _validate_dem_resampling
+
+    method_options = {} if method is None else {"dem_resampling": method}
+    method = method or "min"
+    ahn, network = source_paths
+    rows, columns = np.indices((16, 16))
+    data = (rows**2 + columns**2).astype(np.int16)
+    with rasterio.open(tmp_path / "dtm_05.tif", "r+") as source:
+        source.write(data, 1)
+        source.offsets = (2.5,)
+    ahn = tmp_path / "dtm_05.tif"
+    grid = raster_module._grid_for_square(box(0, 0, 8, 8), resolution_m=2)
+    with rasterio.open(ahn) as source:
+        values = raster_module._resample_dem(
+            source, grid, resampling=_validate_dem_resampling(method)
+        )
+        default = raster_module._resample_dem(source, grid)
+        minimum = raster_module._resample_dem(
+            source, grid, resampling=_validate_dem_resampling("min")
+        )
+    np.testing.assert_array_equal(default, minimum)
+    assert np.isfinite(values).all()
+    if method == "nearest":
+        np.testing.assert_array_equal(values, data[2::4, 2::4])
+    elif method == "average":
+        expected = data.reshape(4, 4, 4, 4).mean(axis=(1, 3))
+        np.testing.assert_allclose(values, expected)
+    elif method == "min":
+        np.testing.assert_array_equal(values, data[::4, ::4])
+    result = prepare_watersysteem_rasters(
+        box(0, 0, 8, 8),
+        burn_depth_m=0,
+        ahn_vrt_path=ahn,
+        watersysteem_path=network,
+        output_dir=tmp_path / "output",
+        **method_options,
+    )
+    with rasterio.open(result.dem_path) as dem:
+        assert dem.tags()["waterlagen_dem_resampling"] == method
+        assert dem.crs == CRS
+        assert dem.transform == grid.transform
+        assert dem.dtypes == ("int16",)
+        assert dem.scales == (0.01,)
+        assert dem.offsets == (2.5,)
+        assert dem.nodata == NODATA
+        np.testing.assert_array_equal(dem.read(1), np.rint(values).astype(np.int16))
+
+
+@pytest.mark.parametrize(
+    "tag,requested,reuse",
+    [
+        (None, "bilinear", True),
+        (None, "min", False),
+        (None, "average", False),
+        ("average", "average", True),
+        ("average", "bilinear", False),
+        ("unknown", "bilinear", False),
+    ],
+)
+def test_dem_resampling_cache_identity(
+    source_paths, tmp_path, monkeypatch, tag, requested, reuse
+):
+    ahn, network = source_paths
+    options = {
+        "burn_depth_m": 0,
+        "ahn_vrt_path": ahn,
+        "watersysteem_path": network,
+        "output_dir": tmp_path / "output",
+    }
+    result = prepare_watersysteem_rasters(
+        box(0, 0, 8, 8), **options, dem_resampling="bilinear"
+    )
+    if tag is None:
+        dataset = gdal.Open(str(result.dem_path), gdal.GA_Update)
+        dataset.SetMetadataItem("waterlagen_dem_resampling", None)
+        dataset = None
+    else:
+        with rasterio.open(result.dem_path, "r+") as dem:
+            dem.update_tags(waterlagen_dem_resampling=tag)
+    before = result.dem_path.read_bytes()
+    original = raster_module._resample_dem
+    calls = []
+
+    def resample(*args, **kwargs):
+        calls.append(True)
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(raster_module, "_resample_dem", resample)
+    prepare_watersysteem_rasters(box(0, 0, 8, 8), **options, dem_resampling=requested)
+    assert bool(calls) is not reuse
+    if reuse:
+        assert result.dem_path.read_bytes() == before
+
+
+@pytest.mark.parametrize("method", ["gauss", "AVERAGE", "", None, 1])
+def test_invalid_dem_resampling_fails_before_outputs(tmp_path, method):
+    with pytest.raises(ValueError, match="nearest, bilinear"):
+        prepare_watersysteem_rasters(
+            box(0, 0, 8, 8),
+            burn_depth_m=0,
+            output_dir=tmp_path / "absent",
+            dem_resampling=method,
+        )
+    assert not (tmp_path / "absent").exists()

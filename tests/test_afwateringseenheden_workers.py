@@ -40,17 +40,17 @@ def test_culvert_snapshot_parallel_border_and_cache_invalidation(
         watersysteem=prepared,
         output_path=network_path,
     )
-    options = dict(
-        burn_depth_m=1,
-        ahn_vrt_path=dem,
-        watersysteem_path=network_path,
-        tile_size_m=16,
-        tile_buffer_m=4,
-        origin_x=8,
-        origin_y=8,
-        resolution_m=2,
-        random_seed=12345,
-    )
+    options = {
+        "burn_depth_m": 1,
+        "ahn_vrt_path": dem,
+        "watersysteem_path": network_path,
+        "tile_size_m": 16,
+        "tile_buffer_m": 4,
+        "origin_x": 8,
+        "origin_y": 8,
+        "resolution_m": 2,
+        "random_seed": 12345,
+    }
     area = box(8, 8, 40, 40)
     serial = calculate_afwateringseenheden_tiles(
         area, **options, output_dir=tmp_path / "serial"
@@ -244,6 +244,83 @@ def test_brandlagen_parallel_reuse_changes_and_failed_recalculation(
     assert all(result.subcatchments is not None for result in removed.tile_results)
     with rasterio.open(removed.tile_results[0].rasters.dem_path) as dataset:
         assert 1200 not in dataset.read(1)
+
+
+@pytest.mark.parametrize("optional_burn", [False, True])
+def test_dem_method_workers_reuse_and_failed_switch(
+    sources, tmp_path, monkeypatch, optional_burn
+):
+    from waterlagen.afwateringseenheden import tiles
+
+    pytest.importorskip("pcraster")
+    dem, network = sources
+    options = {
+        "burn_depth_m": 1,
+        "ahn_vrt_path": dem,
+        "watersysteem_path": network,
+        "tile_size_m": 16,
+        "tile_buffer_m": 4,
+        "origin_x": 8,
+        "origin_y": 8,
+        "resolution_m": 2,
+        "random_seed": 12345,
+        "dem_resampling": "average",
+    }
+    if optional_burn:
+        path = tmp_path / "burn.gpkg"
+        gpd.GeoDataFrame(geometry=[box(8, 8, 40, 24)], crs=settings.crs).to_file(
+            path, layer="roads"
+        )
+        options["brandlagen"] = BrandlagenConfig(
+            (Brandlaag(path, "roads"),), brandwaarde=1, prioriteit=0
+        )
+    area = box(8, 8, 40, 24)
+    serial = calculate_afwateringseenheden_tiles(
+        area, **options, output_dir=tmp_path / "serial"
+    )
+    parallel = calculate_afwateringseenheden_tiles(
+        area, **options, workers=2, output_dir=tmp_path / "parallel"
+    )
+    assert_geodataframe_equal(
+        serial.merged_subcatchments, parallel.merged_subcatchments
+    )
+    for first, second in zip(serial.tile_results, parallel.tile_results, strict=True):
+        with (
+            rasterio.open(first.rasters.dem_path) as a,
+            rasterio.open(second.rasters.dem_path) as b,
+        ):
+            assert (
+                a.tags()["waterlagen_dem_resampling"]
+                == b.tags()["waterlagen_dem_resampling"]
+                == "average"
+            )
+            np.testing.assert_array_equal(a.read(1), b.read(1))
+    reused = calculate_afwateringseenheden_tiles(
+        area, **options, workers=2, output_dir=tmp_path / "parallel"
+    )
+    assert all(result.subcatchments is None for result in reused.tile_results)
+    options["dem_resampling"] = "bilinear"
+    switched = calculate_afwateringseenheden_tiles(
+        area, **options, output_dir=tmp_path / "serial"
+    )
+    assert all(result.subcatchments is not None for result in switched.tile_results)
+    options["dem_resampling"] = "average"
+    with monkeypatch.context() as patch:
+
+        def fail(*args, **kwargs):
+            raise ValueError("Simulated method switch failure after DEM update")
+
+        patch.setattr(tiles, "calculate_subcatchments", fail)
+        with pytest.raises(RuntimeError, match="Simulated method switch failure"):
+            calculate_afwateringseenheden_tiles(
+                area, **options, output_dir=tmp_path / "serial"
+            )
+    assert not list((tmp_path / "serial").glob("*/subcatchments_burn.txt"))
+    options["dem_resampling"] = "bilinear"
+    recovered = calculate_afwateringseenheden_tiles(
+        area, **options, output_dir=tmp_path / "serial"
+    )
+    assert all(result.subcatchments is not None for result in recovered.tile_results)
 
 
 @pytest.mark.parametrize("use_landsgrens", [False, True])

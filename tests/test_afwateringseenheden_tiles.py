@@ -1,3 +1,5 @@
+import json
+import shutil
 from pathlib import Path
 
 import geopandas as gpd
@@ -57,6 +59,7 @@ def _write_cached_tile(
     width: int,
     transform: Affine,
     crs: str,
+    legacy: bool = False,
 ) -> None:
     tile_dir = output_dir / "100000_400000_100016_400016"
     tile_dir.mkdir(parents=True)
@@ -77,7 +80,10 @@ def _write_cached_tile(
         1,
         None,
     )
-    (tile_dir / "subcatchments_burn.txt").write_text(signature, encoding="utf-8")
+    completion = signature
+    if not legacy:
+        completion = json.dumps({"burn_signature": signature, "dem_resampling": "min"})
+    (tile_dir / "subcatchments_burn.txt").write_text(completion, encoding="utf-8")
     _write_raster(
         tile_dir / "brandbron.tif", np.array([[1]], dtype=np.int32), nodata=-1
     )
@@ -93,6 +99,12 @@ def _write_cached_tile(
         transform=transform,
     ) as destination:
         destination.write(np.ones((width, width), dtype=np.int32), 1)
+    shutil.copyfile(
+        tile_dir / tiles_module.SUBCATCHMENTS_FILENAME, tile_dir / "dem_2m.tif"
+    )
+    if not legacy:
+        with rasterio.open(tile_dir / "dem_2m.tif", "r+") as dem:
+            dem.update_tags(waterlagen_dem_resampling="min")
 
 
 @pytest.mark.parametrize("tile_size_m", [None, 5000, 16])
@@ -582,3 +594,88 @@ def test_cached_tile_requires_raster_metadata(tmp_path: Path) -> None:
             output_dir=output_dir,
             tile_size_m=16,
         )
+
+
+@pytest.mark.parametrize(
+    "identity,tag,method,reuse",
+    [
+        ("legacy", None, "bilinear", True),
+        ("legacy", "bilinear", "bilinear", True),
+        ("legacy", "average", "bilinear", False),
+        ("legacy", None, "average", False),
+        ("legacy", None, "min", False),
+        ("complete", "min", "min", True),
+        ("complete", "average", "average", True),
+        ("complete", "bilinear", "average", False),
+        ("incomplete", "average", "average", False),
+        ("malformed", "bilinear", "bilinear", False),
+        ("missing", "bilinear", "bilinear", False),
+        ("complete", "missing_dem", "bilinear", False),
+    ],
+)
+def test_completion_and_dem_identity_control_tile_reuse(
+    tmp_path, monkeypatch, identity, tag, method, reuse
+):
+    output = tmp_path / "tiles"
+    _write_cached_tile(
+        output,
+        width=8,
+        transform=from_origin(100000, 400016, 2, 2),
+        crs=settings.crs,
+        legacy=True,
+    )
+    tile = output / "100000_400000_100016_400016"
+    manifest = tile / "subcatchments_burn.txt"
+    signature = manifest.read_text(encoding="utf-8")
+    if identity == "complete":
+        manifest.write_text(
+            json.dumps({"burn_signature": signature, "dem_resampling": method}),
+            encoding="utf-8",
+        )
+    elif identity == "incomplete":
+        manifest.write_text(json.dumps({"burn_signature": signature}), encoding="utf-8")
+    elif identity == "malformed":
+        manifest.write_text('{"burn_signature":', encoding="utf-8")
+    elif identity == "missing":
+        manifest.unlink()
+    if tag == "missing_dem":
+        (tile / "dem_2m.tif").unlink()
+    elif tag is not None:
+        with rasterio.open(tile / "dem_2m.tif", "r+") as dem:
+            dem.update_tags(waterlagen_dem_resampling=tag)
+    before = manifest.read_bytes() if manifest.exists() else None
+    calls = []
+
+    def prepare(geometry, **kwargs):
+        calls.append(kwargs)
+        assert not manifest.exists()
+        return _fake_rasters(kwargs["output_dir"], segment_value=0)
+
+    monkeypatch.setattr(tiles_module, "prepare_watersysteem_rasters", prepare)
+    result = calculate_afwateringseenheden_tiles(
+        box(100000, 400000, 100016, 400016),
+        burn_depth_m=1,
+        output_dir=output,
+        tile_size_m=16,
+        tile_buffer_m=0,
+        dem_resampling=method,
+    )
+    assert bool(calls) is not reuse
+    if reuse:
+        assert result.tile_results[0].subcatchments is None
+        assert manifest.read_bytes() == before
+    else:
+        assert calls[0]["dem_resampling"] == method
+        assert not manifest.exists()
+
+
+@pytest.mark.parametrize("method", ["gauss", "AVERAGE", "", None])
+def test_tile_api_validates_dem_method_before_writing(tmp_path, method):
+    with pytest.raises(ValueError, match="nearest, bilinear"):
+        calculate_afwateringseenheden_tiles(
+            box(0, 0, 16, 16),
+            burn_depth_m=1,
+            output_dir=tmp_path / "absent",
+            dem_resampling=method,
+        )
+    assert not (tmp_path / "absent").exists()
