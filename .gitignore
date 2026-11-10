@@ -217,6 +217,7 @@ scripts/data/*
 
 # Misc extensions
 *.cmd
+!/envs/bijwerken.cmd
 
 # Local VS Code launcher
 /open-vscode.bat

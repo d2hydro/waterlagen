@@ -107,6 +107,19 @@ rekentijd en schijfruimte kunnen vragen. Gebruik `--area alkmaar` voor een klein
 Voer ook bij een volgende sessie de opdrachten vanuit uw projectfolder uit.
 U hoeft de omgeving niet apart te activeren.
 
+## Bijwerken
+
+Stop eerst lopende berekeningen. Start in uw projectfolder:
+
+- **Windows:** dubbelklik op `bijwerken.cmd`.
+- **Linux:** voer `sh ./bijwerken.sh` uit.
+
+Bevestig de update en wacht op **Bijwerken geslaagd**. Instellingen en data blijven
+behouden. Hervat een onderbroken run met de oorspronkelijke softwareversie.
+
+Ontbreken de startbestanden? Kopieer eenmalig `bijwerken.cmd`, `bijwerken.sh` en
+`bijwerken.py` uit het nieuwste productiepakket naar uw bestaande projectfolder.
+
 ## Als een opdracht niet werkt
 
 | Melding | Wat u kunt doen |
