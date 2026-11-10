@@ -66,6 +66,7 @@ Andere runs volgen de indeling
 | `watersysteem.gpkg` | Waterlopen, segmenten en verbindingen. |
 | `controle.gpkg` | Niet-toegewezen gebieden, aanvullingen uit buurtegels en bron- en duikercontroles. |
 | `brandlagen.gpkg` | Geselecteerde brandinvoer, met afzonderlijke lagen per bron. |
+| `signaalkaart.gpkg` | Duikers die grenzen tussen afwateringseenheden doorsnijden, met inbrandstatus en invulvelden voor beoordeling. |
 | `productie.log` | Voortgang en meldingen van de berekening. |
 | `run.json` | Instellingen, bronidentiteit, pakketversie en runstatus. |
 
@@ -92,6 +93,39 @@ en [uitvoer en veldbetekenissen](../bewerkte-lagen/afwateringseenheden.md#uitvoe
 Lever `afwateringseenheden.gpkg` en `watersysteem.gpkg` samen.
 Geef `controle.gpkg` mee voor beoordeling en zo nodig `brandlagen.gpkg` voor
 inzicht in de invoer. Houd bestanden uit dezelfde run bij elkaar.
+
+## Signaalkaart beoordelen
+
+Na de productie staat `signaalkaart.gpkg` klaar. Deze toont geselecteerde duikers
+uit de brandinvoer die een grens tussen afwateringseenheden doorsnijden.
+Een signaal is een aandachtspunt, geen vastgestelde fout.
+
+1. Open `signaalkaart.gpkg` samen met `afwateringseenheden.gpkg` in QGIS.
+2. Open `duikers_afwateringsgrens`: de duikers staan er al in, met lege
+   beoordelingsvelden. Alleen als er duikervlakken zijn, is er ook een vlaklaag.
+3. Vul per duiker de beoordeling in en sla de bewerkingen op:
+
+| Veld | Invullen |
+| --- | --- |
+| `bestaan` | `bestaat`, `bestaat_niet` of `onzeker`. |
+| `ligging` | `correct`, `onjuist` of `onzeker`. |
+| `opmerking` | Korte toelichting. |
+| `beoordelaar` | Naam of team. |
+| `datum_beoordeling` | Datum als `JJJJ-MM-DD`. |
+
+`ingebrand` toont of de duiker heeft bijgedragen aan de hoogteaanpassing:
+`ja`, `nee` of `onbekend`. De reden staat erbij. Ook niet-ingebrande duikers
+kunnen een signaal hebben. `id` bevat de officiële bron-ID (bij HyDAMO: `nen3610id`).
+Laat `duiker_key` ongewijzigd,
+zodat beoordelingen bij opnieuw maken behouden blijven.
+
+Bij opnieuw maken blijven beoordelingen van ongewijzigde duikers behouden.
+Eerdere beoordelingen van gewijzigde of verdwenen duikers staan in de tabel
+`beoordelingsarchief`; die verschijnt alleen als er iets te bewaren is.
+
+Voor bestaande resultaten is er een
+[Python-functie](../reference/afwateringseenheden.md#signaalkaart), zonder nieuwe
+terreinberekening.
 
 <span id="optionele-brandlagen"></span>
 <span id="toml-configuratie"></span>
@@ -218,6 +252,8 @@ Voor eigen Python-workflows is er een
 [bestaand voorbeeld](../reference/bewerkte-lagen-produceren.md#afwateringseenheden).
 
 ## Hervatten
+
+Software bijwerken? Zie [Bijwerken](installatie.md#bijwerken).
 
 Hervat de voorbeeldrun met dezelfde gebiedskeuze en runnaam:
 

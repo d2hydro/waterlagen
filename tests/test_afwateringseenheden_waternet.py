@@ -589,7 +589,9 @@ def test_production_always_prepares_waternet(tmp_path, monkeypatch, additional_s
         if additional_sources:
             assert treatment[cell(grid(), 17, 3)] == 3
         target = kwargs["merged_output_path"]
-        target.write_text("checked prepared network")
+        areas = frame([box(0, 0, 40, 40)])
+        areas["segment_key"] = "primary-0"
+        areas.to_file(target, layer="afvoergebiedaanvoergebied")
         return AfwateringseenhedenTilesResult(
             kwargs["output_dir"], (), target, frame(), (), ()
         )
@@ -606,6 +608,7 @@ def test_production_always_prepares_waternet(tmp_path, monkeypatch, additional_s
     parameters = json.loads((result.parent / "run.json").read_text())["parameters"]
     assert parameters["waternet_policy"] == productie.WATERNET_POLICY
     assert "waternet" not in parameters["brandlagen"]
+    assert (result.parent / "signaalkaart.gpkg").is_file()
 
 
 def test_stale_preparation_is_rejected(tmp_path):

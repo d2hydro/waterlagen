@@ -179,6 +179,36 @@ De productieopdracht gebruikt een vaste buffer van 2 km en heeft hiervoor geen
 CLI-optie. Een andere buffer vraagt een eigen Python-workflow; de berekening
 vergroot de buffer niet automatisch bij randproblemen.
 
+## Signaalkaart
+
+`write_duiker_signaalkaart(run_dir)` maakt de signaalkaart uit een bestaande
+productierun, zonder de afwateringseenheden opnieuw te berekenen. De volledige
+productie roept deze functie automatisch na het samenvoegen aan. De functie
+verwacht `afwateringseenheden.gpkg` en `controle.gpkg` met `duikers_waternet`;
+`brandlagen.gpkg` vult beschikbare bronidentificaties aan.
+
+Met `beoordelingen_path` kunt u beoordelingen uit de signaalkaart van een eerdere
+run overnemen. Gebruik daarbij een nieuwe uitvoerlocatie. Zonder deze parameter
+worden de beoordelingen uit de bestaande uitvoer behouden. `output_path` wijzigt
+de standaardlocatie `run_dir/signaalkaart.gpkg`.
+
+De uitvoer bevat de aanwezige lijnduikers en duikervlakken, met lege
+beoordelingsvelden. Bij nul signalen blijft een lege lijnlaag beschikbaar. Eerdere
+beoordelingen worden bewaard in de niet-ruimtelijke tabel `beoordelingsarchief`,
+met oorspronkelijke geometrie als WKB-hex en het bijbehorende CRS. Bij het opnieuw
+maken van een oudere signaalkaart worden de oude archieflagen hierin overgenomen
+en vervallen de afzonderlijke kruispunt- en grenslagen. Lege vlaklagen en een leeg
+archief worden weggelaten. `duiker_key` blijft behouden voor het overnemen van
+beoordelingen; overige technische bronvelden staan niet in de beoordelingslagen.
+
+De inbrandregistratie wordt gelezen uit `berekening/tegels/*/duiker_inbranding.json`
+en gecontroleerd tegen de bijbehorende DEM- en voorbereidingsbestanden. Ontbrekende
+of gewijzigde registratie levert geen ongefundeerde negatieve inbrandstatus op.
+De API wijzigt de berekening of brongegevens niet.
+
+Zie [signaalkaart beoordelen](../produceren/afwateringseenheden.md#signaalkaart-beoordelen)
+voor de lagen, veldbetekenissen en het behoud van beoordelingen.
+
 ## Functies en resultaattypen
 
 ::: waterlagen.afwateringseenheden

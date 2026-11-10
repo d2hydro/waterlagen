@@ -50,6 +50,7 @@ from ._resampling import _validate_dem_resampling
 from .brandlagen import _empty_brandlagen
 from .brandlagen_overzicht import _write_brandlagen_overzicht
 from .duikers import CULVERT_POLICY, _validate_culvert_options
+from .signalen import write_duiker_signaalkaart
 from .waternet import WATERNET_POLICY, prepare_waternet
 
 logger = get_logger(__name__)
@@ -382,5 +383,6 @@ def main(
         )
         if result.merged_path is None:
             raise ValueError("Geen afwateringseenheden geproduceerd voor dit gebied")
+        write_duiker_signaalkaart(run.path)
         logger.info("Afwateringseenheden voltooid: %s", result.merged_path)
         return result.merged_path

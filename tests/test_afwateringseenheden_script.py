@@ -61,11 +61,18 @@ def test_one_area_product_with_full_tiles_and_selected_authorities(
     monkeypatch.setattr(production, "prepare_ahn", prepare_ahn)
     prepare = Mock(wraps=production.prepare_watersysteem)
     monkeypatch.setattr(production, "prepare_watersysteem", prepare)
-    calculate = Mock(
-        side_effect=lambda *args, **kw: SimpleNamespace(
-            merged_path=kw["merged_output_path"]
+
+    def calculate_result(*args, **kwargs):
+        target = kwargs["merged_output_path"]
+        areas = gpd.GeoDataFrame(
+            {"segment_key": ["primary-0"]},
+            geometry=[area.geometry],
+            crs=area.crs,
         )
-    )
+        areas.to_file(target, layer="afvoergebiedaanvoergebied")
+        return SimpleNamespace(merged_path=target)
+
+    calculate = Mock(side_effect=calculate_result)
     monkeypatch.setattr(production, "calculate_afwateringseenheden_tiles", calculate)
     config = None
     if optional_burn:
@@ -112,6 +119,11 @@ def test_one_area_product_with_full_tiles_and_selected_authorities(
         result.parent / "berekening" / "ahn" / "ahn.vrt"
     )
     assert (result.parent / "brandlagen.gpkg").is_file()
+    signals = gpd.read_file(
+        result.parent / "signaalkaart.gpkg", layer="duikers_afwateringsgrens"
+    )
+    assert signals.empty
+    assert {"bestaan", "ligging", "ingebrand", "duiker_key"}.issubset(signals.columns)
     assert (
         result.parent / "berekening" / "watersysteem" / "watersysteem.gpkg"
     ).is_file()

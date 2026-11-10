@@ -27,6 +27,7 @@ from waterlagen.raster.grid import RasterGrid
 from waterlagen.settings import settings
 
 from ._coverage import _coverage_mask, _landsgrens_version
+from ._duiker_inbranding import _burn_counts, _read_burn_counts, _write_burn_counts
 from ._resampling import _validate_dem_resampling
 from .brandlagen import (
     _burn_signature,
@@ -35,7 +36,7 @@ from .brandlagen import (
     _PreparedBrandlagen,
 )
 from .config import BrandlagenConfig
-from .waternet import read_waternet
+from .waternet import read_waternet, waternet_path
 
 logger = get_logger(__name__)
 
@@ -659,6 +660,10 @@ def _prepare_rasters(
             and boundary_version == landsgrens_version
             and previous_burn == burn_signature
             and previous_method == dem_resampling
+            and (
+                not waternet_path(watersysteem_path, grid).exists()
+                or _read_burn_counts([dem_path])[1]
+            )
         ):
             with rasterio.open(ahn_vrt_path) as source:
                 coverage = _coverage_mask(source, grid, landsgrens_path)
@@ -753,6 +758,9 @@ def _prepare_rasters(
                 dtype=source.dtypes[0],
                 nodata=source.nodata,
             )
+            culvert_counts = _burn_counts(
+                watersysteem_path, grid, dem_data, burned_dem, burn_signature
+            )
             _write_dem(
                 temporary_dem_path,
                 data=burned_dem,
@@ -790,6 +798,7 @@ def _prepare_rasters(
         temporary_source_path.replace(source_path)
         temporary_dem_path.replace(dem_path)
         temporary_segment_path.replace(segment_path)
+        _write_burn_counts(culvert_counts, dem_path)
     except Exception:
         temporary_dem_path.unlink(missing_ok=True)
         temporary_segment_path.unlink(missing_ok=True)

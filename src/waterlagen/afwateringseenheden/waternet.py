@@ -19,13 +19,14 @@ from waterlagen._production import _file_identity
 from waterlagen.logger import get_logger
 from waterlagen.raster.grid import RasterGrid
 
+from ._duiker_identiteit import _source_identifiers
 from .brandlagen import _digest, _rasterize_brand_shapes, _sort_brandlagen
 from .config import BrandlagenConfig
 from .duikers import _frame_identity
 from .sources import WatersysteemSources
 
 logger = get_logger(__name__)
-WATERNET_POLICY = "optional_water_polygon_endpoint_contacts_v4"
+WATERNET_POLICY = "optional_water_polygon_endpoint_contacts_object_provenance_v5"
 NEIGHBOURS = np.ones((3, 3), dtype=bool)
 
 
@@ -167,9 +168,12 @@ def _classify_culverts(
     records = []
     next_code = int(optional.broncode.max()) + 1 if not optional.empty else 3
     if sources.culverts is not None:
-        for row in sources.culverts.itertuples():
+        for _, feature in sources.culverts.iterrows():
+            row = feature
             records.append(
                 {
+                    **_source_identifiers(feature),
+                    "bronversie": feature.get("bronversie"),
                     "geometry": row.geometry,
                     "bron": "hydamo",
                     "rang": 0,
@@ -181,9 +185,12 @@ def _classify_culverts(
                 }
             )
     if "rol" in optional:
-        for row in optional.loc[optional.rol.eq("duiker")].itertuples():
+        for _, feature in optional.loc[optional.rol.eq("duiker")].iterrows():
+            row = feature
             records.append(
                 {
+                    **_source_identifiers(feature),
+                    "bronversie": feature.get("bronversie"),
                     "geometry": row.geometry,
                     "bron": row.bron,
                     "rang": {"hydamo": 0, "bgt": 1, "osm": 2}[row.bron],
@@ -207,6 +214,7 @@ def _classify_culverts(
         "diep_geschikt",
         "reden",
         "voorkeur_id",
+        "inbrand_id",
     ]
     if not records:
         return gpd.GeoDataFrame(columns=columns, geometry="geometry", crs=grid.crs)
@@ -219,6 +227,7 @@ def _classify_culverts(
     culverts["diep_geschikt"] = False
     culverts["reden"] = ""
     culverts["voorkeur_id"] = ""
+    culverts["inbrand_id"] = np.arange(1, len(culverts) + 1, dtype="int32")
     lower = sources.secondary
     if sources.tertiary is not None:
         lower = gpd.GeoDataFrame(pd.concat([lower, sources.tertiary]), crs=grid.crs)
@@ -392,13 +401,19 @@ def _shallow_depths(
     treatment: np.ndarray,
     source_codes: np.ndarray,
     default_depth: float,
+    owners: np.ndarray,
+    culverts: gpd.GeoDataFrame,
 ) -> np.ndarray:
-    """Keep configured additional-source depths only in their own shallow cells."""
+    """Keep configured depths and track the object supplying that exact value."""
     depths = np.full(source_codes.shape, default_depth, dtype="float32")
     if "brandwaarde" not in optional or "rol" not in optional:
         return depths
     features = _nearby(optional, grid)
     features = features.loc[features.rol.isin(["water", "duiker"])]
+    identifiers = {
+        (row.bronbestand, row.bronlaag, row.bron_fid): row.inbrand_id
+        for row in culverts.itertuples()
+    }
     for code, group in features.groupby("broncode", sort=False):
         selected = (treatment == 3) & (source_codes == code)
         if not selected.any():
@@ -411,6 +426,19 @@ def _shallow_depths(
             dtype="float32",
         )
         depths[selected] = -values[selected]
+        object_ids = [
+            identifiers.get((row.bronbestand, row.bronlaag, row.bron_fid), 0)
+            if row.rol == "duiker"
+            else 0
+            for row in ordered.itertuples()
+        ]
+        provenance = _rasterize_brand_shapes(
+            list(zip(ordered.geometry, object_ids)),
+            out_shape=source_codes.shape,
+            transform=grid.transform,
+            dtype="int32",
+        )
+        owners[selected] = provenance[selected]
     return depths
 
 
@@ -430,6 +458,8 @@ def prepare_waternet(
     Components from overlapping buffered tiles are joined before depths are
     assigned. Primary RWS remains a deep burn seed, without becoming a target.
     Culvert diagnostics preserve all registrations, including duplicates.
+    A separate provenance band records the object selected by the same raster
+    ordering. DEM preparation subsequently records its actual stored-height effect.
 
     Parameters
     ----------
@@ -531,6 +561,7 @@ def prepare_waternet(
             transform=grid.transform,
             dtype="int32",
         )
+        owners = np.zeros(source_codes.shape, dtype="int32")
         if sources.tertiary is not None:
             source_codes[_mask(_nearby(sources.tertiary, grid).geometry, grid)] = (
                 tertiary_code
@@ -550,12 +581,20 @@ def prepare_waternet(
             )
             active = codes != 0
             source_codes[active] = codes[active]
+            ids = _rasterize_brand_shapes(
+                list(zip(group.geometry, group.inbrand_id)),
+                out_shape=source_codes.shape,
+                transform=grid.transform,
+                dtype="int32",
+            )
+            owners[active] = ids[active]
         # HYDAMO waterlines and eligible culverts take precedence over shallow
         # sources, including non-duplicate BGT/OSM culverts that cross them.
         secondary = _mask(_nearby(sources.secondary, grid).geometry, grid)
         source_codes[secondary] = 2
         primary = _mask(_nearby(primary_burn, grid).geometry, grid)
         source_codes[primary] = 1
+        owners[secondary | primary] = 0
         deep_supply = supply.loc[supply.diep_geschikt.astype(bool)]
         culvert_codes = _rasterize_brand_shapes(
             list(zip(deep_supply.geometry, deep_supply.broncode)),
@@ -568,6 +607,13 @@ def prepare_waternet(
             # A crossing allowed primary piece keeps its own burn and target.
             deep_culverts &= ~primary
         source_codes[deep_culverts] = culvert_codes[deep_culverts]
+        ids = _rasterize_brand_shapes(
+            list(zip(deep_supply.geometry, deep_supply.inbrand_id)),
+            out_shape=source_codes.shape,
+            transform=grid.transform,
+            dtype="int32",
+        )
+        owners[deep_culverts] = ids[deep_culverts]
         primary[deep_culverts] = False
         deep_network = secondary | deep_culverts
         excluded = _mask(
@@ -578,6 +624,7 @@ def prepare_waternet(
         if primary_culvert_pieces is not None:
             excluded &= ~(primary | secondary)
         source_codes[excluded] = 0
+        owners[excluded] = 0
         primary[excluded] = False
         deep_network[excluded] = False
         no_target = _mask(
@@ -594,33 +641,51 @@ def prepare_waternet(
         treatment[deep_network] = 2
         treatment[primary] = 1
         treatment[excluded] = 4
-        _write_grid(path, grid, [labels, treatment, source_codes, no_target], {})
+        _write_grid(
+            path, grid, [labels, treatment, source_codes, no_target, owners], {}
+        )
         tile = _ComponentTile(grid, path, offset, count)
         for previous in tiles:
             _join_tiles(tile, previous, components)
         tiles.append(tile)
         del labels, treatment, source_codes, primary, excluded, no_target
         del secondary, deep_network, deep_culverts, culvert_codes
+        del owners, ids
     connected = {components.root(value) for value in seeds}
     for tile in tiles:
         with rasterio.open(tile.path) as source:
-            arrays = [source.read(band) for band in (1, 2, 3, 4)]
+            arrays = [source.read(band) for band in (1, 2, 3, 4, 5)]
         lookup = np.zeros(tile.count + 1, dtype=bool)
         for value in range(1, tile.count + 1):
             lookup[value] = components.root(value + tile.offset) in connected
-        labels, treatment, codes, no_target = arrays
+        labels, treatment, codes, no_target, owners = arrays
         treatment[(treatment == 2) & ~lookup[labels]] = 3
         shallow_depths = _shallow_depths(
-            optional, tile.grid, treatment, codes, config.geisoleerde_branddiepte_m
+            optional,
+            tile.grid,
+            treatment,
+            codes,
+            config.geisoleerde_branddiepte_m,
+            owners,
+            culverts,
         )
+        local_ids = set(_nearby(culverts, tile.grid).inbrand_id)
+        local_ids.update(np.unique(owners))
+        local_culverts = culverts.loc[culverts.inbrand_id.isin(local_ids)]
         _write_grid(
             tile.path,
             tile.grid,
-            [treatment, codes, no_target, shallow_depths],
+            [treatment, codes, no_target, shallow_depths, owners],
             {
                 "policy": WATERNET_POLICY,
                 "broncodes": json.dumps(legend),
                 "shallow_depth_m": str(config.geisoleerde_branddiepte_m),
+                "duiker_ids": json.dumps(
+                    {
+                        int(row.inbrand_id): row.bron_id
+                        for row in local_culverts.itertuples()
+                    }
+                ),
             },
             dtype="float64",
         )

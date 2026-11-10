@@ -15,6 +15,7 @@ from .objects import (
 )
 from .pcraster import SubcatchmentResult, calculate_subcatchments, require_pcraster
 from .raster import WatersysteemRasters, prepare_watersysteem_rasters
+from .signalen import write_duiker_signaalkaart
 from .sources import WatersysteemSources, read_watersysteem_sources
 from .tiles import (
     AfwateringseenhedenTileResult,
@@ -42,8 +43,8 @@ __all__ = [
     "prepare_watersysteem_rasters",
     "read_brandlagen",
     "read_brandlagen_config",
-    "read_hydroobjecten",
     "read_duikersifonhevel",
+    "read_hydroobjecten",
     "read_puntobjecten",
     "read_watersysteem_sources",
     "require_pcraster",
@@ -51,5 +52,6 @@ __all__ = [
     "split_hydroobjecten_at_points",
     "split_hydroobjecten_by_length",
     "waterbeheercode_from_nen3610id",
+    "write_duiker_signaalkaart",
     "write_watersysteem",
 ]
