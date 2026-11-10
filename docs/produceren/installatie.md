@@ -117,8 +117,17 @@ Stop eerst lopende berekeningen. Start in uw projectfolder:
 Bevestig de update en wacht op **Bijwerken geslaagd**. Instellingen en data blijven
 behouden. Hervat een onderbroken run met de oorspronkelijke softwareversie.
 
-Ontbreken de startbestanden? Kopieer eenmalig `bijwerken.cmd`, `bijwerken.sh` en
-`bijwerken.py` uit het nieuwste productiepakket naar uw bestaande projectfolder.
+Ontbreken de bijwerkbestanden in uw bestaande installatie? Download dan eenmalig
+het nieuwste productiepakket en kopieer de volgende bestanden uit de ZIP naar uw
+bestaande projectfolder, naast `pixi.toml`:
+
+- **Windows:** `bijwerken.cmd` en `bijwerken.py`.
+- **Linux:** `bijwerken.sh` en `bijwerken.py`.
+
+Beide bestanden voor uw besturingssysteem zijn nodig. Start daarna het bijwerken
+zoals hierboven beschreven. Bij volgende updates haalt het bijwerkscript zelf
+het nieuwe productiepakket op; u hoeft de ZIP niet meer handmatig te downloaden
+of uit te pakken.
 
 ## Als een opdracht niet werkt
 
