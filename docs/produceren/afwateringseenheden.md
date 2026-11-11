@@ -194,6 +194,7 @@ Algemene opties staan bij [gedeelde productiecommando's](cli.md#opties).
     | `--rijkswateren-url URL` | Gebruik een ander downloadadres voor de [Rijkswaterenbron](../bronlagen/rijkswateren.md). |
     | `--duiker-tolerance METERS` | Koppelafstand per duikeruiteinde tot primaire waterlopen; standaard 0,5 m. |
     | `--max-aansluitlengte METERS` | Sluit ook directe aansluitstukken tot deze lengte uit als afwateringsdoel. Standaard worden deze niet extra uitgesloten. |
+    | `--max-complex-routelengte METERS` | Maximale lengte per parallelle kunstwerkroute om interne hydroobjecten als doel uit te sluiten. Standaard 100 m; `0` schakelt deze regel uit. |
 
     HYDAMO-duikers worden gelezen uit `duikersifonhevel`; RWS-duikers alleen als
     die laag in de Rijkswaterenbron zit. Zie

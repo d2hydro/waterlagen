@@ -118,6 +118,8 @@ def excluded_complex_sources(
 
     Only the returned target selection changes. Source geometry and burn flags
     are never modified. Complete source geometry is used before length splitting.
+    Point works require ``objecttype`` stuw or gemaal; matched culvert pieces
+    represent the duiker-, sifon- and hevelroutes.
     """
     validate_complex_length(maximum)
     if maximum == 0 or primary.empty:
@@ -167,14 +169,20 @@ def excluded_complex_sources(
             )
         join(*ends)
     node_works = defaultdict(set)
-    if not points.empty:
-        point_index = points.sindex
+    # read_puntobjecten records the source layer in objecttype. Other point
+    # objects can still split/connect lines, but do not supply a route work.
+    structure_points = points.loc[points.objecttype.isin(("stuw", "gemaal"))]
+    if not structure_points.empty:
+        point_index = structure_points.sindex
         for index, endpoint in enumerate(endpoints):
             query = endpoint if tolerance == 0 else endpoint.buffer(tolerance)
             for position in point_index.query(query, predicate="intersects"):
-                if endpoint.distance(points.geometry.iloc[position]) <= tolerance:
+                if (
+                    endpoint.distance(structure_points.geometry.iloc[position])
+                    <= tolerance
+                ):
                     node_works[root(index)].add(
-                        "point:" + str(points.iloc[position].bron_id)
+                        "point:" + str(structure_points.iloc[position].bron_id)
                     )
     culverts_by_source = defaultdict(list)
     if culvert_pieces is not None:

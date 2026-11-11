@@ -81,6 +81,7 @@ def test_inclusive_full_route_length(length, expected):
         ]
     )
     points = lines([Point(5, height), Point(5, -height)])
+    points["objecttype"] = "stuw"
     result = prepare_watersysteem(primary, points, tolerance=0, max_length=20)
     assert (
         result.hydroobject_segmenten.query("bron_id in ['line0','line1']")
@@ -95,6 +96,46 @@ def test_missing_work_keeps_entire_group():
     assert result.hydroobject_segmenten.afwateringsdoel.all()
 
 
+@pytest.mark.parametrize(
+    "point_types,expected_exclusion",
+    [
+        (("meetpunt", "meetpunt"), False),
+        (("stuw", "meetpunt"), False),
+        (("stuw", "gemaal"), True),
+        (("gemaal", "gemaal"), True),
+        (None, False),
+    ],
+)
+def test_only_registered_point_structures_count_on_parallel_routes(
+    point_types, expected_exclusion
+):
+    # Same geometry as the review reproduction: ordinary points may split lines
+    # but cannot supply the required structure on a route.
+    primary = lines(
+        [
+            LineString([(0, 0), (5, 3), (10, 0)]),
+            LineString([(0, 0), (5, -3), (10, 0)]),
+            LineString([(-5, 0), (0, 0)]),
+            LineString([(10, 0), (15, 0)]),
+        ],
+        ["boven", "onder", "west", "oost"],
+    )
+    points = lines([Point(5, 3), Point(5, -3)], ["punt_boven", "punt_onder"])
+    if point_types is not None:
+        points["objecttype"] = point_types
+        points["bronlaag"] = point_types
+    result = prepare_watersysteem(primary, points, tolerance=0)
+    segments = result.hydroobject_segmenten
+    assert (
+        segments.loc[segments.bron_id.isin(["boven", "onder"]), "afwateringsdoel"]
+        .eq(not expected_exclusion)
+        .all()
+    )
+    assert segments.loc[
+        segments.bron_id.isin(["west", "oost"]), "afwateringsdoel"
+    ].all()
+
+
 def reference():
     folder = Path(__file__).parent / "data/input/afwateringseenheden/complexen"
     primary = wgpd.read_file(folder / "hydroobject.geojson")
@@ -102,6 +143,8 @@ def reference():
     primary = primary.loc[primary.categorieoppwaterlichaam.eq("primair")].copy()
     culverts = wgpd.read_file(folder / "duikersifonhevel.geojson")
     points = wgpd.read_file(folder / "stuw.geojson")
+    # The raw fixture omits the source reader's objecttype column.
+    points["objecttype"] = "stuw"
     return primary, points, culverts
 
 

@@ -33,11 +33,15 @@ Dit bepaalt welke secundaire waterlopen als verbonden of niet verbonden worden o
 
 #### Afwateringsdoelen
 
-Een **afwateringsdoel** is een primair segment waaraan een afwateringseenheid wordt toegewezen.
+Een 88afwateringsdoel88 is een primair segment dat als doel is toegelaten. Zodra het segment minimaal één geldige doelcel krijgt bij rasterisatie, ontstaat een afwateringseenheid. 
 
 Bij selectie van één waterschap worden alleen primaire segmenten van dat waterschap als afwateringsdoel gebruikt. Met --overige-waterschappen tellen ook primaire segmenten van andere waterschappen mee. Zonder waterschapselectie kunnen ook hoofdwaterlopen van Rijkswaterstaat als afwateringsdoel dienen.
 
 Secundaire en tertiaire waterlopen zijn zelf geen afwateringsdoelen.
+
+Bij korte parallelle routes met ieder een kunstwerk (stuw, gemaal, duiker, sifon of hevel) worden de onderliggende hydroobjecten uitgesloten als afwateringsdoel. Dit alleen als iedere route maximaal 100 m lang is en een als kunstwerk bevat.
+
+De maximale routelengte is instelbaar. Met 0 wordt de uitsluitregel uitgeschakeld.
 
 ### Waterlopen en duikers inbranden
 
@@ -59,6 +63,7 @@ die elkaar alleen op een hoek raken, gelden als verbonden.
 | Duiker met minder dan twee herkende aansluitingen | Geen; naar controle |
 
 - Duikertrajecten zijn geen afwateringsdoel. Een afzonderlijke primaire waterloop die een duiker kruist, kan wel een doel blijven.
+- Uitsluiting als afwateringsdoel verandert de inbranding niet.
 - Een rastercel heeft één stroomrichting. Waterlopen die op verschillende hoogtes kruisen, blijven daardoor niet automatisch gescheiden.
 
 ### Optionele brandlagen
@@ -154,7 +159,7 @@ bijbehorende waterloopsegment te vinden. Deze koppeling geldt **binnen dezelfde 
 | --- | --- | --- |
 | `afvoergebiedaanvoergebied`, `hydroobject_segment` | `segment_id` | Nummer dat het afwateringsvlak en het bijbehorende segment verbindt. |
 | `hydroobject_segment`, `hydroobject_primair` | `brandgeschikt` | Het segment of waterloopdeel mag worden ingebrand. |
-| `hydroobject_segment`, `hydroobject_primair` | `doelgeschikt` | Het waterloopdeel is geschikt als doel; alleen de geselecteerde segmenten kunnen daadwerkelijk een toewijzing krijgen. |
+| `hydroobject_segment` | `afwateringsdoel`| Beide velden geven dezelfde toelating als doel aan. |
 | `hydroobject_verbinding` | `van_segment`, `naar_segment` | Segmentnummers aan weerszijden van een verbinding, volgens de tekenrichting van de waterlopen. |
 | `hydroobject_verbinding` | `kunstwerk_…` | Bron-ID, code, naam en beheerder van een gekoppelde stuw of gemaal; anders leeg. |
 

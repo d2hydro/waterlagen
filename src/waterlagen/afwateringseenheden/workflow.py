@@ -82,7 +82,8 @@ def prepare_watersysteem(
     puntobjecten : geopandas.GeoDataFrame
         Point features that may split or connect primary hydroobjecten. Relevant
         point fields are retained on resulting connection records where a point
-        causes a cross-source connection.
+        causes a cross-source connection. Only points with ``objecttype``
+        ``stuw`` or ``gemaal`` count as structures on parallel routes.
     tolerance : float, optional
         Maximum point-to-line distance in project-CRS units. Must be at least
         zero.
