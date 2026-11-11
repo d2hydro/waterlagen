@@ -5,6 +5,7 @@ import geopandas as gpd
 import pytest
 from shapely.geometry import Point
 
+from waterlagen._run_logging import production_logging, run_log
 from waterlagen.functioneel_landgebruik import parallel
 from waterlagen.functioneel_landgebruik.bronnen_voorbereiden import _assign_source_codes
 from waterlagen.functioneel_landgebruik.landgebruik_berekenen import (
@@ -61,3 +62,43 @@ def test_worker_logs_details_to_file_and_restores_logger(
     assert ("mislukt" if fails else "gereed in") in log
     metadata = json.loads((tmp_path / "status.json").read_text())
     assert metadata["status"] == ("failed" if fails else "complete")
+
+
+@pytest.mark.parametrize("fails", [False, True])
+def test_worker_creates_tile_directory_with_central_logging(
+    tmp_path, monkeypatch, fails
+):
+    target = tmp_path / "run" / "tiles" / "test" / "functioneel_landgebruik.tif"
+    marker = target.parent / "status.json"
+
+    def build(**kwargs):
+        assert json.loads(marker.read_text())["status"] == "running"
+        if fails:
+            raise ValueError("testfout")
+        kwargs["target_path"].write_bytes(b"test output")
+        return kwargs["target_path"]
+
+    monkeypatch.setattr(parallel, "bouw_functioneel_landgebruik", build)
+    job = parallel.FunctioneelLandgebruikTileJob(
+        tile_id="test",
+        bounds=(0, 0, 1, 1),
+        target_path=target,
+        overwrite=False,
+        resolution_m=0.5,
+        crs="EPSG:28992",
+        sources=FunctioneelLandgebruikSources(),
+        layers=FunctioneelLandgebruikLayers(),
+        output_config=RasterOutputConfig(),
+    )
+    with production_logging(), run_log(tmp_path / "run"):
+        assert not target.parent.exists()
+        if fails:
+            with pytest.raises(ValueError, match="testfout"):
+                parallel._build_tile_worker(job)
+        else:
+            assert parallel._build_tile_worker(job) == target
+            assert target.read_bytes() == b"test output"
+    assert json.loads(marker.read_text())["status"] == (
+        "failed" if fails else "complete"
+    )
+    assert not marker.with_suffix(".tmp.json").exists()
