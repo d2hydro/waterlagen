@@ -106,21 +106,21 @@ De signaalkaart helpt mogelijke ontbrekende duikerverbindingen in het gebruikte 
 
 **Eerste controle: de 2-meterzone**
 
-1. We nemen de zone tot 2 meter rond de gebruikte, verbonden waterlopen uit HyDAMO
+1. We nemen de zone tot 2 meter rond de gebruikte, verbonden HyDAMO-hydroobjecten
 2. Ligt minstens de helft van de duikerlijn of het duikervlak binnen die zone? Dan valt de duiker af.
 3. Voor de overige duikers volgt de extra controle hieronder.
 
 **Extra controle bij lijnen**
 
 1. We bekijken beide uiteinden van de duiker.
-2. We controleren of elk uiteinde binnen 2 meter van een gebruikte primaire waterloop uit HyDAMO of Rijkswateren ligt.
+2. We controleren of elk uiteinde binnen 2 meter van een gebruikte primaire HyDAMO-hydroobject ligt.
 3. We controleren of de afwateringsdoelen van beide eenheden al verbonden zijn.
 
 **Extra controle bij vlakken**
 
 1. We bekijken in welke afwateringseenheden het duikervlak ligt.
 2. Per eenheid kiezen we het punt in het overlapdeel dat het dichtst bij het afwateringsdoel ligt.
-3. We controleren of elk gekozen punt binnen 2 meter van een gebruikte primaire waterloop uit HyDAMO of Rijkswateren ligt.
+3. We controleren of elk gekozen punt binnen 2 meter van een gebruikte HyDAMO-hydroobject ligt.
 4. We controleren of de afwateringsdoelen van alle betrokken eenheden al verbonden zijn.
 
 Bij deze extra controle valt de duiker alleen af als de punten binnen 2 meter liggen én alle doelen verbonden zijn. Anders blijft hij op de signaalkaart staan.
