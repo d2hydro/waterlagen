@@ -48,6 +48,22 @@ def same_crs(left: str | int | CRS, right: str | int | CRS) -> bool:
     return _same_crs(left, right)
 
 
+def horizontal_crs(value: str | int | CRS) -> CRS:
+    """Return the horizontal component for operations on a two-dimensional grid.
+
+    Parameters
+    ----------
+    value : str, int or pyproj.CRS
+        Source CRS, optionally including a vertical component.
+
+    Returns
+    -------
+    pyproj.CRS
+        Two-dimensional CRS, without transforming elevation values.
+    """
+    return _canonical_crs(value).to_2d()
+
+
 def read_layer_crs_info(path: Path) -> list[LayerCRSInfo]:
     """Read CRS metadata for every layer without loading feature data."""
     path = Path(path)

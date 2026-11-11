@@ -16,7 +16,7 @@ from rasterio.warp import transform_bounds
 from shapely.geometry import Polygon, box
 from shapely.geometry.base import BaseGeometry
 
-from waterlagen._crs import same_crs
+from waterlagen._crs import horizontal_crs, same_crs
 from waterlagen.administratieve_gebieden import read_landsgrens
 from waterlagen.logger import get_logger
 from waterlagen.raster.grid import RasterGrid
@@ -67,7 +67,9 @@ def _source_extent(
             raise ValueError(
                 "Nested VRT coverage is not supported; use a flat source mosaic"
             )
-        bounds = transform_bounds(dataset.crs, crs, *dataset.bounds)
+        bounds = transform_bounds(
+            horizontal_crs(dataset.crs), horizontal_crs(crs), *dataset.bounds
+        )
     return box(*bounds)
 
 

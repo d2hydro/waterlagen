@@ -48,13 +48,14 @@ from waterlagen.raster.vrt import create_cog_file, create_vrt_file
 from waterlagen.settings import settings
 
 from .config import DemConfig
-from .exports import create_float_dem
+from .exports import _create_dem_vrt, _validate_dem_metadata, create_float_dem
 from .gebouwen import aligned_window, calculate_building_elevations
 
 logger = get_logger(__name__)
 VERSION = "2"
 WATER_CODES = (100, 228)
 DIAGNOSTICS_VERSION = 1
+METADATA_VERSION = 1
 
 
 @dataclass
@@ -190,6 +191,8 @@ def _validate_grid(
         or not np.isfinite(ahn.offsets[0])
     ):
         raise ValueError("AHN scale must be positive and offset finite")
+    if ahn.units[0] not in (None, "m"):
+        raise ValueError("AHN unit must be 'm' for decoded heights")
 
 
 def _read_buildings(
@@ -874,6 +877,10 @@ def bouw_dem_tiles(
         ``dem.tif`` COG, accompanied by dem.vrt, dem_bron.vrt/tif, ahn_bron.vrt/tif, nodata.gpkg,
         persistent gebouwhoogten.gpkg and core-only intermediate rasters.
         ``dem_float.tif`` contains decoded Float32 heights in metres.
+        Published DEMs declare unit ``m`` and NAP as the vertical CRS
+        (EPSG:7415 for the default RD grid). Stored dtype, scale, offset and
+        NoData are retained: standard Int16 input uses scale 0.01, offset 0.
+        Older mosaics are republished with this metadata, reusing valid tiles.
         Failed building estimates retain the underlying terrain.
 
     Raises
@@ -1019,11 +1026,18 @@ def bouw_dem_tiles(
             previous = json.loads(checkpoint.read_text(encoding="utf-8"))
             if (
                 previous.get("coverage") == coverage_identity
+                and previous.get("metadata_version") == METADATA_VERSION
                 and previous.get("diagnostics_version") == DIAGNOSTICS_VERSION
                 and previous.get("cores") == core_identity
                 and previous.get("products")
                 == [_file_identity(path) for path in products]
             ):
+                _validate_dem_metadata(
+                    target_dir / "dem.vrt", expected_scale=ahn.scales[0]
+                )
+                _validate_dem_metadata(
+                    target_dir / "dem.tif", expected_scale=ahn.scales[0]
+                )
                 # Export-only upgrades leave existing tiles and integer products intact.
                 if (
                     previous.get("float_export") != _file_identity(float_path)
@@ -1036,6 +1050,7 @@ def bouw_dem_tiles(
                     _save_json(completion, previous)
                 if not completion.exists():
                     _save_json(completion, previous)
+                _validate_dem_metadata(float_path, expected_scale=1.0)
                 logger.info("Reusing complete DEM mosaics and COGs in %s", target_dir)
                 return target_dir / "dem.tif"
         completion.unlink(missing_ok=True)
@@ -1071,7 +1086,7 @@ def bouw_dem_tiles(
         target_dir / "ahn_bron.vrt", files=[p.ahn_provenance for p in paths]
     )
     create_cog_file(ahn_source_vrt, target_dir / "ahn_bron.tif", overwrite=True)
-    dem_vrt = create_vrt_file(
+    dem_vrt = _create_dem_vrt(
         target_dir / "dem.vrt",
         files=[p.terrain for p in paths] + [p.buildings for p in paths],
     )
@@ -1083,10 +1098,12 @@ def bouw_dem_tiles(
     result = create_cog_file(
         dem_vrt, target_dir / "dem.tif", overwrite=True, overview_resampling="average"
     )
+    _validate_dem_metadata(result)
     _save_json(
         base_completion,
         {
             "coverage": coverage_identity,
+            "metadata_version": METADATA_VERSION,
             "diagnostics_version": DIAGNOSTICS_VERSION,
             "cores": core_identity,
             "products": [_file_identity(path) for path in products],
@@ -1097,6 +1114,7 @@ def bouw_dem_tiles(
         completion,
         {
             "coverage": coverage_identity,
+            "metadata_version": METADATA_VERSION,
             "diagnostics_version": DIAGNOSTICS_VERSION,
             "cores": core_identity,
             "float_export": _file_identity(float_path),
