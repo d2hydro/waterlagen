@@ -20,6 +20,7 @@ from requests.models import Response
 from shapely.geometry import Polygon
 
 from waterlagen import datastore, settings
+from waterlagen._http import get as http_get
 from waterlagen.ahn.api_config import DEFAULT_HTTP_TIMEOUT, AHNService
 from waterlagen.logger import get_logger
 
@@ -434,7 +435,7 @@ def download_ahn(
                 )
                 try:
                     temporary_path = _temporary_tile_path(file_path)
-                    response = requests.get(url, timeout=timeout)
+                    response = http_get(url, timeout=timeout)
                     response.raise_for_status()
                     data_bytes = _tif_bytes_from_response(
                         response,
@@ -462,6 +463,8 @@ def download_ahn(
                     successful = True
                     break
                 except Exception as exc:  # noqa: BLE001 - GDAL/raster validation failures must enter the retry policy
+                    if isinstance(exc, requests.exceptions.SSLError):
+                        raise
                     last_error = exc
                     if attempt < retries:
                         logger.warning(

@@ -44,6 +44,7 @@ nav:
   - Zelf produceren:
       - Overzicht: produceren/index.md
       - Installatie: produceren/installatie.md
+      - HTTPS-certificaatproblemen: produceren/https-certificaatproblemen.md
       - Productiecommando's: produceren/cli.md
       - Opslag van gegevens: produceren/configuratie.md
       - Afwateringseenheden: produceren/afwateringseenheden.md
