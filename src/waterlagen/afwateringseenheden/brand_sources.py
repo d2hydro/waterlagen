@@ -322,6 +322,41 @@ def _bgt_culverts(
     return target
 
 
+def prepare_bgt_signal_source(
+    store: DataStore,
+    selection: BaseGeometry,
+    preparation: SourcePreparation,
+    *,
+    reuse_only: bool = False,
+) -> Path:
+    """Prepare all BGT culverts for inspection without adding a burn layer.
+
+    Parameters
+    ----------
+    store : DataStore
+        Shared source and preparation caches.
+    selection : BaseGeometry
+        Required coverage in the configured project CRS.
+    preparation : SourcePreparation
+        Offline and refresh policy, shared with optional BGT burn sources.
+    reuse_only : bool, optional
+        Require a compatible existing source for resume or overwrite.
+
+    Returns
+    -------
+    Path
+        Prepared ``bgt_duiker`` layer retaining original lines and polygons.
+    """
+    layer = Brandlaag(
+        store.processed_data_dir / "brandlagen" / "openbaar" / "bgt_duikers.gpkg",
+        "bgt_duiker",
+        rol="duiker",
+        bron="bgt",
+        openbare_bron="bgt",
+    )
+    return _bgt_culverts(layer, store, selection, preparation, reuse_only)
+
+
 def _osm_reusable(path: Path, layer: str, bounds: tuple) -> bool:
     metadata = _read_json(path.with_suffix(".json"))
     selection = metadata.get("selection", {})

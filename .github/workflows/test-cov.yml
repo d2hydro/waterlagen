@@ -10,9 +10,19 @@ permissions:
   contents: read
 
 jobs:
-  test-cov:
-    if: ${{ github.event.pull_request.draft == false }}
+  tests:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.pull_request.draft == false }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - group: offline
+            marker: not online
+          - group: online
+            marker: online
+    env:
+      COVERAGE_FILE: coverage-data/.coverage.${{ matrix.group }}
     steps:
       - uses: actions/checkout@v4
 
@@ -24,7 +34,65 @@ jobs:
           cache: true
 
       - name: Run tests with coverage
-        run: pixi run --environment afwateringseenheden pytest --cov=src/waterlagen --cov-report=term-missing --cov-report=xml:coverage.xml
+        run: |
+          mkdir -p coverage-data test-results
+          /usr/bin/time -v -o test-results/resources.txt \
+            pixi run --environment afwateringseenheden pytest \
+            -m "${{ matrix.marker }}" --strict-markers \
+            --cov=src/waterlagen --cov-report= --cov-fail-under=0 \
+            --durations=30 --junitxml=test-results/pytest.xml
+
+      - name: Save coverage data
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.group }}
+          path: coverage-data/
+          include-hidden-files: true
+          if-no-files-found: error
+
+      - name: Save test timings and resource usage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.group }}
+          path: test-results/
+          if-no-files-found: error
+
+  test-cov:
+    needs: tests
+    if: ${{ always() && needs.tests.result != 'skipped' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Pixi
+        uses: prefix-dev/setup-pixi@v0.9.6
+        with:
+          pixi-version: v0.70.1
+          environments: afwateringseenheden
+          cache: true
+
+      - name: Download coverage data
+        uses: actions/download-artifact@v4
+        with:
+          pattern: coverage-*
+          path: coverage-data
+          merge-multiple: true
+
+      - name: Combine coverage and enforce the project threshold
+        run: |
+          test -s coverage-data/.coverage.offline
+          test -s coverage-data/.coverage.online
+          pixi run --environment afwateringseenheden coverage combine coverage-data
+          pixi run --environment afwateringseenheden coverage report --show-missing
+          pixi run --environment afwateringseenheden coverage xml -o coverage.xml
+
+      - name: Require both test groups to pass
+        if: ${{ always() && needs.tests.result != 'success' }}
+        run: |
+          echo "At least one test group failed or was cancelled."
+          exit 1
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5

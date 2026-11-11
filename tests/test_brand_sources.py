@@ -359,6 +359,20 @@ def test_real_bgt_conversion_and_cache_invalidation(
     selected = config(store, "bgt", "bgt_duiker")
     result = prepare(selected, store, offline=True)
     assert len(gpd.read_file(result.config.lagen[0].path)) == 2
+    # Inspection uses the same BGT source without adding it to the burn config.
+    signal_source = module.prepare_bgt_signal_source(
+        store, box(0, 0, 10, 10), SourcePreparation(offline=True)
+    )
+    signal_features = gpd.read_file(signal_source, layer="bgt_duiker")
+    assert signal_features.geom_type.tolist() == ["LineString", "Polygon"]
+    signal_identity = _file_identity(signal_source)
+    assert (
+        module.prepare_bgt_signal_source(
+            store, box(0, 0, 10, 10), SourcePreparation(offline=True), reuse_only=True
+        )
+        == signal_source
+    )
+    assert _file_identity(signal_source) == signal_identity
     before = _file_identity(result.config.lagen[0].path)
     prepare(selected, store, (-1, -1, 20, 20), offline=True)
     assert _file_identity(result.config.lagen[0].path) != before
@@ -677,6 +691,13 @@ def test_production_prepares_full_tile_context_before_ahn_and_resume_is_read_onl
     selected = config(store)
     monkeypatch.setattr(productie, "require_pcraster", lambda: None)
     monkeypatch.setattr(productie, "_prepare_brandlagen", lambda *args: None)
+    bgt_calls = []
+
+    def prepare_bgt(data_store, selection, preparation, *, reuse_only):
+        bgt_calls.append((selection.bounds, reuse_only))
+        return data_store.processed_data_dir / "bgt_signalen.gpkg"
+
+    monkeypatch.setattr(productie, "prepare_bgt_signal_source", prepare_bgt)
 
     def stop(*args):
         raise RuntimeError("stop before heavy sources")
@@ -688,6 +709,10 @@ def test_production_prepares_full_tile_context_before_ahn_and_resume_is_read_onl
                 store, area=area, run_id="test", brandlagen=selected, resume=reuse
             )
     assert osm_download == [("osm_canals", (178000, 388000, 192000, 402000))]
+    assert bgt_calls == [
+        ((178000, 388000, 192000, 402000), False),
+        ((178000, 388000, 192000, 402000), True),
+    ]
     run = (
         store.processed_data_dir / "afwateringseenheden" / area.value / "test/run.json"
     )

@@ -5,6 +5,7 @@ from pathlib import Path
 
 from shapely.ops import unary_union
 
+from waterlagen._geopackage import write_geopackage_layer_atomically
 from waterlagen._geopandas import read_file
 from waterlagen._production import _file_identity, production_run, validate_run_target
 from waterlagen._sources import SourcePreparation, source_options
@@ -13,7 +14,10 @@ from waterlagen.afwateringseenheden import (
     prepare_watersysteem,
     write_watersysteem,
 )
-from waterlagen.afwateringseenheden.brand_sources import prepare_brand_sources
+from waterlagen.afwateringseenheden.brand_sources import (
+    prepare_bgt_signal_source,
+    prepare_brand_sources,
+)
 from waterlagen.afwateringseenheden.brandlagen import (
     _brand_identity,
     _prepare_brandlagen,
@@ -51,6 +55,7 @@ from .brandlagen import _empty_brandlagen
 from .brandlagen_overzicht import _write_brandlagen_overzicht
 from .complexen import COMPLEX_POLICY, validate_complex_length
 from .duikers import CULVERT_POLICY, _validate_culvert_options
+from .signalen import BGT_SOURCE, write_duiker_signaalkaart
 from .waternet import WATERNET_POLICY, prepare_waternet
 
 logger = get_logger(__name__)
@@ -276,6 +281,9 @@ def main(
             grids,
             run.path / "berekening" / "tegels" / "brandlagen_voorbereid.gpkg",
         )
+        bgt_duikers = prepare_bgt_signal_source(
+            store, context, preparation, reuse_only=resume or overwrite
+        )
         boundary = ensure_land_boundary(store, preparation)
         hydamo = store.source_data_dir / "hydamo" / "hydamo.gpkg"
         preparation.ensure(
@@ -296,7 +304,11 @@ def main(
                 progress=False,
             ),
         )
-        source_paths = {"hydamo": hydamo, "rijkswateren": rijkswateren}
+        source_paths = {
+            "hydamo": hydamo,
+            "rijkswateren": rijkswateren,
+            "bgt_duikers": bgt_duikers,
+        }
         if eigen_hydamo is not None:
             source_paths["eigen_hydamo"] = Path(eigen_hydamo)
         for label, path in list(source_paths.items()):
@@ -340,6 +352,13 @@ def main(
             {f"brandlaag_{i}": source.path for i, source in enumerate(brandlagen.lagen)}
         )
         run.record_inputs(inputs)
+        bgt_selection = read_file(bgt_duikers, layer="bgt_duiker", bbox=context.bounds)
+        bgt_selection = bgt_selection.loc[bgt_selection.intersects(context)]
+        write_geopackage_layer_atomically(
+            bgt_selection,
+            run.path / BGT_SOURCE,
+            layer_name="bgt_duiker",
+        )
         network = prepare_watersysteem(
             sources.targets,
             sources.points,
@@ -392,5 +411,6 @@ def main(
         )
         if result.merged_path is None:
             raise ValueError("Geen afwateringseenheden geproduceerd voor dit gebied")
+        write_duiker_signaalkaart(run.path)
         logger.info("Afwateringseenheden voltooid: %s", result.merged_path)
         return result.merged_path

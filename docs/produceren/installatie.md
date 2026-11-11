@@ -107,6 +107,28 @@ rekentijd en schijfruimte kunnen vragen. Gebruik `--area alkmaar` voor een klein
 Voer ook bij een volgende sessie de opdrachten vanuit uw projectfolder uit.
 U hoeft de omgeving niet apart te activeren.
 
+## Bijwerken
+
+Stop eerst lopende berekeningen. Start in uw projectfolder:
+
+- **Windows:** dubbelklik op `bijwerken.cmd`.
+- **Linux:** voer `sh ./bijwerken.sh` uit.
+
+Bevestig de update en wacht op **Bijwerken geslaagd**. Instellingen en data blijven
+behouden. Hervat een onderbroken run met de oorspronkelijke softwareversie.
+
+Ontbreken de bijwerkbestanden in uw bestaande installatie? Download dan eenmalig
+het nieuwste productiepakket en kopieer de volgende bestanden uit de ZIP naar uw
+bestaande projectfolder, naast `pixi.toml`:
+
+- **Windows:** `bijwerken.cmd` en `bijwerken.py`.
+- **Linux:** `bijwerken.sh` en `bijwerken.py`.
+
+Beide bestanden voor uw besturingssysteem zijn nodig. Start daarna het bijwerken
+zoals hierboven beschreven. Bij volgende updates haalt het bijwerkscript zelf
+het nieuwe productiepakket op; u hoeft de ZIP niet meer handmatig te downloaden
+of uit te pakken.
+
 ## Als een opdracht niet werkt
 
 | Melding | Wat u kunt doen |

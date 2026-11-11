@@ -1,6 +1,7 @@
 """Build a standalone Pixi production ZIP for an already published release."""
 
 import argparse
+import hashlib
 import json
 import re
 import shutil
@@ -19,6 +20,7 @@ PRODUCTION_SCRIPTS = (
     "functioneel_landgebruik.py",
     "inwoners.py",
 )
+UPDATER_FILES = ("bijwerken.py", "bijwerken.cmd", "bijwerken.sh")
 
 
 def release_version(tag: str, repository: Path) -> str:
@@ -119,6 +121,12 @@ def build_bundle(tag: str, output_dir: Path, repository: Path = REPO_ROOT) -> Pa
                 raise ValueError(f"Source must be a repository file: {relative_path}")
             shutil.copyfile(source, project_dir / relative_path)
         included.extend(f"scripts/{name}" for name in PRODUCTION_SCRIPTS)
+        for name in UPDATER_FILES:
+            source = repository / "envs" / name
+            if source.is_symlink() or not source.resolve().is_relative_to(repository):
+                raise ValueError(f"Source must be a repository file: envs/{name}")
+            shutil.copyfile(source, project_dir / name)
+        included.extend(UPDATER_FILES)
 
         # This runs after PyPI publication: no local wheel or editable dependency.
         subprocess.run(
@@ -134,13 +142,27 @@ def build_bundle(tag: str, output_dir: Path, repository: Path = REPO_ROOT) -> Pa
             check=True,
         )
         validate_lock(project_dir / "pixi.lock", version)
+        metadata = {
+            "version": version,
+            "files": {
+                name: hashlib.sha256((project_dir / name).read_bytes()).hexdigest()
+                for name in included
+                if name != ".datastore"
+            },
+        }
+        (project_dir / "productiepakket.json").write_text(
+            json.dumps(metadata, indent=2), encoding="utf-8"
+        )
+        included.append("productiepakket.json")
         # Only allowlisted files enter the archive, including after Pixi has run.
         temporary_zip = Path(temporary) / "bundle.zip"
         with ZipFile(temporary_zip, "w", compression=ZIP_DEFLATED) as archive:
             for relative_path in sorted(included):
                 info = ZipInfo(relative_path)
                 info.compress_type = ZIP_DEFLATED
-                info.external_attr = 0o100644 << 16
+                info.external_attr = (
+                    0o100755 if relative_path.endswith(".sh") else 0o100644
+                ) << 16
                 archive.writestr(info, (project_dir / relative_path).read_bytes())
         temporary_zip.replace(archive_path)
     return archive_path

@@ -1,7 +1,10 @@
 # %%
+import pytest
 import rasterio
 
 from waterlagen.ahn import create_download_dir, download_ahn
+
+pytestmark = pytest.mark.online
 
 SAMPLE_COORDS = [
     (111176.5, 516525.5),

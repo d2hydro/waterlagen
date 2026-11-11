@@ -34,6 +34,7 @@ from waterlagen.raster.tiles import TILES_LAYER, Tile, read_tiles, tile_from_row
 from waterlagen.settings import settings
 
 from ._coverage import _landsgrens_version
+from ._duiker_inbranding import _read_burn_counts
 from ._resampling import _validate_dem_resampling
 from .brandlagen import _burn_signature, _prepare_brandlagen, _PreparedBrandlagen
 from .config import DEFAULT_TILE_SIZE_M, BrandlagenConfig
@@ -717,6 +718,18 @@ def _calculate_tile(job: _TileJob) -> AfwateringseenhedenTileResult:
         burn_manifest, burn_signature, job.dem_resampling
     )
     dem_path = job.output_dir / "dem_2m.tif"
+    waternet_manifest = (
+        job.watersysteem_path.parent
+        / "berekening"
+        / "waterlopen_duikers"
+        / "manifest.json"
+    )
+    if (
+        current_burn
+        and waternet_manifest.exists()
+        and not _read_burn_counts([dem_path])[1]
+    ):
+        current_burn = False
     if current_burn:
         current_burn = False
         if dem_path.is_file():

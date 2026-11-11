@@ -17,7 +17,7 @@ pixi run --locked afwateringseenheden --waterbeheercode 38 --workers 8 --run-id 
 Gebruikt u de broncode uit GitHub? Voeg dan bij de opdrachten op deze pagina
 `--environment afwateringseenheden` toe na `pixi run`.
 
-Ontbrekende standaardbronnen (AHN, HYDAMO, Rijkswateren en gebiedsgrenzen) worden
+Ontbrekende standaardbronnen (AHN, HYDAMO, Rijkswateren, BGT-duikers en gebiedsgrenzen) worden
 automatisch opgehaald en voorbereid. Bestaande bronnen worden hergebruikt;
 met `--offline` moeten de benodigde bronnen al lokaal beschikbaar zijn.
 Aanvullende BGT-, TOP10NL- en OSM-brandlagen worden alleen gebruikt als u ze
@@ -66,6 +66,7 @@ Andere runs volgen de indeling
 | `watersysteem.gpkg` | Waterlopen, segmenten en verbindingen. |
 | `controle.gpkg` | Niet-toegewezen gebieden, aanvullingen uit buurtegels en bron- en duikercontroles. |
 | `brandlagen.gpkg` | Geselecteerde brandinvoer, met afzonderlijke lagen per bron. |
+| `signaalkaart.gpkg` | BGT-duikers die afwateringsgrenzen doorsnijden, met GML-ID, bronhouder en geometrie. |
 | `productie.log` | Voortgang en meldingen van de berekening. |
 | `run.json` | Instellingen, bronidentiteit, pakketversie en runstatus. |
 
@@ -92,6 +93,42 @@ en [uitvoer en veldbetekenissen](../bewerkte-lagen/afwateringseenheden.md#uitvoe
 Lever `afwateringseenheden.gpkg` en `watersysteem.gpkg` samen.
 Geef `controle.gpkg` mee voor beoordeling en zo nodig `brandlagen.gpkg` voor
 inzicht in de invoer. Houd bestanden uit dezelfde run bij elkaar.
+
+## Signaalkaart beoordelen
+
+Open `signaalkaart.gpkg` samen met `afwateringseenheden.gpkg` in QGIS.
+De signaalkaart helpt mogelijke ontbrekende duikerverbindingen in het gebruikte watersysteem op te sporen. We zoeken BGT-duikers die verschillende afwateringseenheden verbinden en mogelijk nog niet door de HyDAMO-waterlopen of duikers worden vertegenwoordigd. Zo kan het waterschap beoordelen of een verbinding ontbreekt die de berekende afwatering kan beïnvloeden.
+
+**Welke duikers controleren we?**
+
+- BGT-duikerlijnen die een afwateringsgrens kruisen en waarvan begin en einde in verschillende afwateringseenheden liggen.
+- BGT-duikervlakken waarvan aan beide kanten van een afwateringsgrens een deel van het vlak ligt. 
+
+**Eerste controle: de 2-meterzone**
+
+1. We nemen de zone tot 2 meter rond de gebruikte, verbonden HyDAMO-hydroobjecten
+2. Ligt minstens de helft van de duikerlijn of het duikervlak binnen die zone? Dan valt de duiker af.
+3. Voor de overige duikers volgt de extra controle hieronder.
+
+**Extra controle bij lijnen**
+
+1. We bekijken beide uiteinden van de duiker.
+2. We controleren of elk uiteinde binnen 2 meter van een gebruikte primaire HyDAMO-hydroobject ligt.
+3. We controleren of de afwateringsdoelen van beide eenheden al verbonden zijn.
+
+**Extra controle bij vlakken**
+
+1. We bekijken in welke afwateringseenheden het duikervlak ligt.
+2. Per eenheid kiezen we het punt in het overlapdeel dat het dichtst bij het afwateringsdoel ligt.
+3. We controleren of elk gekozen punt binnen 2 meter van een gebruikte HyDAMO-hydroobject ligt.
+4. We controleren of de afwateringsdoelen van alle betrokken eenheden al verbonden zijn.
+
+Bij deze extra controle valt de duiker alleen af als de punten binnen 2 meter liggen én alle doelen verbonden zijn. Anders blijft hij op de signaalkaart staan.
+
+**Uitvoer**
+
+- Lijnen en vlakken staan in aparte lagen.
+- Er zijn twee velden: `id` (de `gml_id` uit de BGT-bron) en `bronhouder` (de bronhoudercode uit de BGT-bron).
 
 <span id="optionele-brandlagen"></span>
 <span id="toml-configuratie"></span>
@@ -219,6 +256,8 @@ Voor eigen Python-workflows is er een
 [bestaand voorbeeld](../reference/bewerkte-lagen-produceren.md#afwateringseenheden).
 
 ## Hervatten
+
+Software bijwerken? Zie [Bijwerken](installatie.md#bijwerken).
 
 Hervat de voorbeeldrun met dezelfde gebiedskeuze en runnaam:
 

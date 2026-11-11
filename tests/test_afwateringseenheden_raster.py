@@ -150,6 +150,26 @@ def source_paths(tmp_path: Path) -> tuple[Path, Path]:
     return _write_ahn_vrt(tmp_path), _write_watersysteem(tmp_path / "watersysteem.gpkg")
 
 
+def test_prepare_rejects_segments_without_afwateringsdoel(source_paths, tmp_path):
+    from waterlagen._geopandas import read_file
+
+    ahn_vrt_path, watersysteem_path = source_paths
+    segments = read_file(watersysteem_path, layer="hydroobject_segment")
+    segments.drop(columns="afwateringsdoel").to_file(
+        watersysteem_path, layer="hydroobject_segment", index=False
+    )
+    with pytest.raises(
+        ValueError, match="hydroobject_segment requires afwateringsdoel"
+    ):
+        prepare_watersysteem_rasters(
+            box(0, 0, 8, 8),
+            burn_depth_m=1.5,
+            ahn_vrt_path=ahn_vrt_path,
+            watersysteem_path=watersysteem_path,
+            output_dir=tmp_path / "output",
+        )
+
+
 def test_prepare_watersysteem_rasters_preserves_grid_scale_and_burn_priority(
     source_paths: tuple[Path, Path],
     tmp_path: Path,

@@ -21,6 +21,13 @@ pixi run --locked controleer
 De controle toont de Waterlagen-versie, importeert de scripts en test een klein
 raster met GDAL, Rasterio en PCRaster. Er worden geen brongegevens gedownload.
 
+## Bijwerken
+
+Stop lopende berekeningen. Dubbelklik op Windows op `bijwerken.cmd`; voer op Linux
+`sh ./bijwerken.sh` uit. Bevestig de update en wacht op **Bijwerken geslaagd**.
+Instellingen en data blijven behouden. Hervat een onderbroken run met de
+oorspronkelijke softwareversie.
+
 ## Een productie starten
 
 Kies één opdracht en voer die vanuit uw projectfolder uit:

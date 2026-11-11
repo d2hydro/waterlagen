@@ -3,13 +3,87 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 
 import geopandas as gpd
+import numpy as np
 import pytest
+import rasterio
 from shapely.geometry import LineString, Point, box
 
 from waterlagen.afwateringseenheden import Brandlaag, BrandlagenConfig
 from waterlagen.afwateringseenheden import productie as production
 from waterlagen.areas import ProductionArea, area_from_bounds
 from waterlagen.datastore import DataStore
+
+
+def test_small_waternet_workflow_create_resume_and_overwrite(tmp_path):
+    from test_afwateringseenheden_duikers import ahn
+    from test_afwateringseenheden_waternet import line, optional, sources
+
+    from waterlagen.afwateringseenheden import (
+        prepare_watersysteem,
+        prepare_watersysteem_rasters,
+        write_watersysteem,
+    )
+    from waterlagen.afwateringseenheden.waternet import prepare_waternet
+    from waterlagen.raster.grid import RasterGrid
+
+    data = sources(
+        primary=[line((1, 10), (19, 10))],
+        secondary=[line((15, 1), (15, 10))],
+        culverts=[line((6, 10), (12, 10))],
+    )
+    data.primary["bron_id"] = "primary"
+    data.targets["bron_id"] = "primary"
+    data.secondary["bron_id"] = "secondary"
+    network = prepare_watersysteem(
+        data.targets, data.points, duikersifonhevel=data.culverts
+    )
+    source = ahn(tmp_path)
+    grid = RasterGrid.from_bounds((0, 0, 20, 20), resolution=1, crs=data.primary.crs)
+    previous_times = None
+    previous_arrays = None
+    for mode in ("create", "resume", "overwrite"):
+        path = write_watersysteem(
+            hydroobject_primair=data.primary,
+            hydroobject_secundair=data.secondary,
+            watersysteem=network,
+            output_path=tmp_path / "watersysteem.gpkg",
+            overwrite=mode == "overwrite",
+        )
+        prepare_waternet(
+            data,
+            optional(),
+            [grid],
+            path,
+            BrandlagenConfig(),
+            primary_culvert_pieces=network.hydroobject_primair_delen,
+        )
+        rasters = prepare_watersysteem_rasters(
+            box(*grid.bounds),
+            burn_depth_m=2,
+            ahn_vrt_path=source,
+            watersysteem_path=path,
+            output_dir=tmp_path / "rasters",
+            resolution_m=1,
+            overwrite=mode == "overwrite",
+        )
+        with rasterio.open(rasters.dem_path) as dem:
+            elevations = dem.read(1)
+            assert elevations[dem.index(3, 10)] == 6
+            assert elevations[dem.index(8, 10)] == 10
+        with rasterio.open(rasters.hydroobject_segment_path) as targets:
+            ids = targets.read(1)
+            assert ids[targets.index(3, 10)] > 0
+            assert ids[targets.index(8, 10)] == 0
+        arrays = (elevations, ids)
+        times = (path.stat().st_mtime_ns, rasters.dem_path.stat().st_mtime_ns)
+        if previous_arrays is not None:
+            for actual, expected in zip(arrays, previous_arrays, strict=True):
+                np.testing.assert_array_equal(actual, expected)
+            if mode == "resume":
+                assert times == previous_times
+            else:
+                assert all(a != b for a, b in zip(times, previous_times, strict=True))
+        previous_arrays, previous_times = arrays, times
 
 
 @pytest.mark.parametrize("name", ["nederland", "alkmaar", "waterschap_38", "bounds"])
@@ -61,12 +135,49 @@ def test_one_area_product_with_full_tiles_and_selected_authorities(
     monkeypatch.setattr(production, "prepare_ahn", prepare_ahn)
     prepare = Mock(wraps=production.prepare_watersysteem)
     monkeypatch.setattr(production, "prepare_watersysteem", prepare)
-    calculate = Mock(
-        side_effect=lambda *args, **kw: SimpleNamespace(
-            merged_path=kw["merged_output_path"]
-        )
+    bgt_source = tmp_path / "bgt_signalen.gpkg"
+    gpd.GeoDataFrame(
+        {"gml_id": [], "identificatie.lokaalID": []}, geometry=[], crs=28992
+    ).to_file(bgt_source, layer="bgt_duiker")
+    monkeypatch.setattr(
+        production, "prepare_bgt_signal_source", Mock(return_value=bgt_source)
     )
+
+    def calculate_result(*args, **kwargs):
+        target = kwargs["merged_output_path"]
+        areas = gpd.GeoDataFrame(
+            {"segment_key": ["primary-0"]},
+            geometry=[area.geometry],
+            crs=area.crs,
+        )
+        areas.to_file(target, layer="afvoergebiedaanvoergebied")
+        return SimpleNamespace(merged_path=target)
+
+    calculate = Mock(side_effect=calculate_result)
     monkeypatch.setattr(production, "calculate_afwateringseenheden_tiles", calculate)
+
+    def prepare_waternet(sources, optional, grids, network_path, config, **kwargs):
+        # Check the production contract without allocating 49 million cells
+        # for every independent combination of area and command options.
+        assert len(grids) == 1
+        grid = grids[0]
+        assert grid.bounds == (148000, 398000, 162000, 412000)
+        assert grid.width == grid.height == 7000
+        assert grid.resolution == 2
+        assert set(sources.primary.waterbeheercode) == {"38", "80"}
+        assert sources.culverts.empty
+        assert optional.empty is (not optional_burn)
+        assert config == (brandlagen or BrandlagenConfig())
+        pieces = kwargs["primary_culvert_pieces"]
+        assert set(pieces.bron_id) == set(sources.primary.bron_id)
+        assert pieces.brandgeschikt.all()
+        assert network_path.is_file()
+        directory = network_path.parent / "berekening" / "waterlopen_duikers"
+        directory.mkdir(parents=True, exist_ok=True)
+        (directory / "manifest.json").write_text("{}", encoding="utf-8")
+
+    waternet = Mock(side_effect=prepare_waternet)
+    monkeypatch.setattr(production, "prepare_waternet", waternet)
     config = None
     if optional_burn:
         source = tmp_path / "burn.gpkg"
@@ -76,6 +187,7 @@ def test_one_area_product_with_full_tiles_and_selected_authorities(
         config = BrandlagenConfig(
             (Brandlaag(source, "objects"),), brandwaarde=1, prioriteit=0
         )
+    brandlagen = config
     result = production.main(
         store,
         area=area,
@@ -94,6 +206,7 @@ def test_one_area_product_with_full_tiles_and_selected_authorities(
         / "afwateringseenheden.gpkg"
     )
     calculate.assert_called_once()
+    waternet.assert_called_once()
     assert calculate.call_args.args[0].equals(area.geometry)
     assert calculate.call_args.kwargs["clip_to_area"] is False
     assert calculate.call_args.kwargs["dem_resampling"] == dem_resampling
@@ -112,6 +225,11 @@ def test_one_area_product_with_full_tiles_and_selected_authorities(
         result.parent / "berekening" / "ahn" / "ahn.vrt"
     )
     assert (result.parent / "brandlagen.gpkg").is_file()
+    signals = gpd.read_file(
+        result.parent / "signaalkaart.gpkg", layer="duikers_afwateringsgrens"
+    )
+    assert signals.empty
+    assert list(signals.columns) == ["id", "bronhouder", "geometry"]
     assert (
         result.parent / "berekening" / "watersysteem" / "watersysteem.gpkg"
     ).is_file()
@@ -342,6 +460,11 @@ def test_authority_options_rejected_before_environment_or_sources(monkeypatch, k
 
 def test_own_contract_rejected_before_ahn(tmp_path, monkeypatch):
     store = DataStore(data_dir=tmp_path, _env_file=None)
+    monkeypatch.setattr(
+        production,
+        "prepare_bgt_signal_source",
+        Mock(return_value=tmp_path / "bgt_duikers.gpkg"),
+    )
     for name in ("hydamo.gpkg", "rws_hydamo.gpkg"):
         (store.hydamo_dir / name).write_text("not read before own validation")
     own = tmp_path / "own.gpkg"

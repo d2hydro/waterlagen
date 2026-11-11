@@ -179,6 +179,55 @@ De productieopdracht gebruikt een vaste buffer van 2 km en heeft hiervoor geen
 CLI-optie. Een andere buffer vraagt een eigen Python-workflow; de berekening
 vergroot de buffer niet automatisch bij randproblemen.
 
+## Signaalkaart
+
+Met [`write_duiker_signaalkaart(run_dir)`](#waterlagen.afwateringseenheden.write_duiker_signaalkaart)
+maakt u de signaalkaart opnieuw uit een bestaande run, zonder de
+afwateringseenheden opnieuw te berekenen. Bij een volledige productierun
+gebeurt dit automatisch..
+
+Benodigd zijn `afwateringseenheden.gpkg`,
+`brandlagen.gpkg` (oorspronkelijke primaire waterlopen),
+`watersysteem.gpkg` (lagen `hydroobject_segment` en `hydroobject_verbinding`) en
+`berekening/signaalkaart/bgt_duikers.gpkg` met laag `bgt_duiker`.
+Voor oudere runs kunt u de BGT-bron meegeven met `bgt_duikers_path`.
+De functie downloadt niets.
+
+Eerst valt een duiker af als minstens 50% van zijn lengte (lijn) of oppervlakte
+(vlak) binnen de 2-meterbuffer van het gebruikte, verbonden watersysteem ligt.
+Primaire bronobjecten worden via `bron_id` gekoppeld aan segmenten met een
+uiteindelijke afwateringseenheid; hun volledige geometrie telt mee.
+Daarnaast tellen de verbonden secundaire en eventuele tertiaire waterlopen uit
+`watersysteem.gpkg` mee. Duikers tellen alleen mee met bewijs van toepassing in
+`duiker_inbranding.json` en verbonden behandeling in het bijbehorende
+waternetraster. Ontbrekend bewijs geeft geen vrijstelling. Overlap telt eenmaal.
+
+Voor de routecontrole moet elk controlepunt binnen 2 meter van een gebruikte
+oorspronkelijke primaire waterloop liggen. Alleen nabijheid tot een niet-gebruikt
+bronobject geeft geen vrijstelling. De berekende rasterstroming telt niet mee.
+
+Alleen bij lokale primaire aansluiting aan beide kanten controleren we of de
+primaire afwateringsdoelen verbonden zijn. De controle volgt de geregistreerde
+verbindingen uit `hydroobject_verbinding` in beide richtingen. Tussenstukken,
+samenkomsten en splitsingen tellen mee, zonder routelengtelimiet. Een verbinding
+tussen verre primaire einddoelen alleen is dus onvoldoende.
+
+Bij lijnen moeten begin en einde binnen verschillende afwateringseenheden liggen
+en een gedeelde grens doorsnijden. Uiteinden op een grens of buiten de eenheden
+en niet-aaneengesloten lijnen worden niet geselecteerd.
+Bij vlakken tellen alle eenheden met positieve overlap mee. Per eenheid gebruiken
+we het punt van het overlappende vlakdeel dat het dichtst bij het doelsegment
+ligt. Alleen als al die punten lokaal primair aansluiten en alle doelen verbonden
+zijn, valt het vlak via de routecontrole af. De oorspronkelijke geometrie blijft behouden.
+
+De uitvoer bevat `id`, `bronhouder` en oorspronkelijke geometrie, in afzonderlijke
+lijn- en vlaklagen. `id` is de oorspronkelijke `gml_id`; een ontbrekende of lege
+`gml_id` geeft een fout. De bronhoudercode komt rechtstreeks uit de BGT-bron;
+ontbrekende waarden blijven leeg. Lege vlaklagen worden weggelaten; bij nul signalen blijft een lege
+lijnlaag beschikbaar. `output_path` wijzigt de standaardlocatie
+`run_dir/signaalkaart.gpkg`. Het bestand wordt volledig en atomair vervangen;
+eerdere beoordelingsvelden en archieven worden niet overgenomen.
+
 ## Functies en resultaattypen
 
 ::: waterlagen.afwateringseenheden

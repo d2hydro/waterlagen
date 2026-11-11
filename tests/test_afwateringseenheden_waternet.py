@@ -566,6 +566,14 @@ def test_production_always_prepares_waternet(tmp_path, monkeypatch, additional_s
     monkeypatch.setattr(productie, "ensure_land_boundary", lambda *a: placeholder)
     monkeypatch.setattr(productie, "prepare_ahn", lambda *a: placeholder)
     monkeypatch.setattr(productie, "_grid_for_square", lambda *a, **kw: grid())
+    bgt_source = tmp_path / "bgt_signalen.gpkg"
+    bgt = frame([box(8, 2, 12, 8)])
+    bgt["identificatie.lokaalID"] = "G0001.duiker.0"
+    bgt["gml_id"] = "gml-duiker-0"
+    bgt.to_file(bgt_source, layer="bgt_duiker")
+    monkeypatch.setattr(
+        productie, "prepare_bgt_signal_source", lambda *a, **kw: bgt_source
+    )
     config = None
     if additional_sources:
         path = tmp_path / "bgt.gpkg"
@@ -589,7 +597,9 @@ def test_production_always_prepares_waternet(tmp_path, monkeypatch, additional_s
         if additional_sources:
             assert treatment[cell(grid(), 17, 3)] == 3
         target = kwargs["merged_output_path"]
-        target.write_text("checked prepared network")
+        areas = frame([box(0, 0, 10, 40), box(10, 0, 40, 40)])
+        areas["segment_key"] = ["primary-0", "primary-1"]
+        areas.to_file(target, layer="afvoergebiedaanvoergebied")
         return AfwateringseenhedenTilesResult(
             kwargs["output_dir"], (), target, frame(), (), ()
         )
@@ -606,6 +616,12 @@ def test_production_always_prepares_waternet(tmp_path, monkeypatch, additional_s
     parameters = json.loads((result.parent / "run.json").read_text())["parameters"]
     assert parameters["waternet_policy"] == productie.WATERNET_POLICY
     assert "waternet" not in parameters["brandlagen"]
+    signals = gpd.read_file(
+        result.parent / "signaalkaart.gpkg", layer="duikervlakken_afwateringsgrens"
+    )
+    assert signals.id.tolist() == ["gml-duiker-0"]
+    assert list(signals.columns) == ["id", "bronhouder", "geometry"]
+    assert signals.geometry.iloc[0].equals(bgt.geometry.iloc[0])
 
 
 def test_stale_preparation_is_rejected(tmp_path):

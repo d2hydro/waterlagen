@@ -1,8 +1,11 @@
 # %%
 import geopandas as gpd
+import pytest
 from shapely.geometry import box
 
 from waterlagen.bgt import get_bgt_features
+
+pytestmark = pytest.mark.online
 
 POLY_MASK = box(111900, 515300, 114300, 517300)
 
