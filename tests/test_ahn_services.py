@@ -1,5 +1,9 @@
 # %%
+import pytest
+
 from waterlagen.ahn.api_config import AHNService
+
+pytestmark = pytest.mark.online
 
 SAMPLE_INDICES = ["M_19BZ1", "M_25BN2", "M_14EN1", "M_14EZ1"]
 
@@ -47,5 +51,3 @@ def test_ahn6_ahn_nl():
 
     # bounds are still as expected
     assert [int(i) for i in gdf.total_bounds] == [12103, 304527, 286716, 620132]
-
-

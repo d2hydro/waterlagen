@@ -26,6 +26,7 @@ def calculate(tmp_path, data, *, extra=None, depth=10, boundary=None):
     data.secondary.to_file(network, layer="hydroobject_secundair")
     targets = data.primary.copy()
     targets["segment_key"] = [f"primary-{i}" for i in range(len(targets))]
+    targets["afwateringsdoel"] = True
     targets.to_file(network, layer="hydroobject_segment")
     ahn = tmp_path / "ahn.tif"
     with rasterio.open(

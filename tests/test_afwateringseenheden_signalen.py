@@ -1,5 +1,8 @@
 """BGT-only signal selection, existing connections and minimal output schema."""
 
+from functools import partial
+import shutil
+
 import geopandas as gpd
 import pandas as pd
 import pyogrio
@@ -10,14 +13,45 @@ from waterlagen.afwateringseenheden import signalen, write_duiker_signaalkaart
 from waterlagen.settings import settings
 
 
-def make_run(path, geometries, *, polygons=None):
-    path.mkdir(parents=True, exist_ok=True)
-    areas = gpd.GeoDataFrame(
+@pytest.fixture(scope="module")
+def base_run(tmp_path_factory):
+    """Write immutable base layers once; each run receives independent copies."""
+    path = tmp_path_factory.mktemp("signal_base")
+    gpd.GeoDataFrame(
         {"segment_key": ["A", "B"]},
-        geometry=polygons or [box(0, 0, 10, 10), box(10, 0, 20, 10)],
+        geometry=[box(0, 0, 10, 10), box(10, 0, 20, 10)],
         crs=settings.crs,
-    )
-    areas.to_file(path / "afwateringseenheden.gpkg", layer="afvoergebiedaanvoergebied")
+    ).to_file(path / "afwateringseenheden.gpkg", layer="afvoergebiedaanvoergebied")
+    empty = gpd.GeoDataFrame(geometry=[], crs=settings.crs)
+    empty.to_file(path / "brandlagen.gpkg", layer="hydamo_primair")
+    empty.to_file(path / "brandlagen.gpkg", layer="hydamo_secundair")
+    empty.to_file(path / "watersysteem.gpkg", layer="hydroobject_secundair")
+    gpd.GeoDataFrame(
+        {"segment_id": [], "segment_key": []}, geometry=[], crs=settings.crs
+    ).to_file(path / "watersysteem.gpkg", layer="hydroobject_segment")
+    gpd.GeoDataFrame(
+        {"van_segment": [], "naar_segment": []}, geometry=[], crs=settings.crs
+    ).to_file(path / "watersysteem.gpkg", layer="hydroobject_verbinding")
+    return path
+
+
+@pytest.fixture
+def make_run(base_run):
+    return partial(_make_run, base_run=base_run)
+
+
+def _make_run(path, geometries, *, base_run, polygons=None):
+    path.mkdir(parents=True, exist_ok=True)
+    for filename in (
+        "afwateringseenheden.gpkg",
+        "brandlagen.gpkg",
+        "watersysteem.gpkg",
+    ):
+        shutil.copyfile(base_run / filename, path / filename)
+    if polygons is not None:
+        gpd.GeoDataFrame(
+            {"segment_key": ["A", "B"]}, geometry=polygons, crs=settings.crs
+        ).to_file(path / "afwateringseenheden.gpkg", layer="afvoergebiedaanvoergebied")
     culverts = gpd.GeoDataFrame(
         {
             "gml_id": [f"gml-duiker-{i}" for i in range(len(geometries))],
@@ -31,16 +65,6 @@ def make_run(path, geometries, *, polygons=None):
     source = path / signalen.BGT_SOURCE
     source.parent.mkdir(parents=True, exist_ok=True)
     culverts.to_file(source, layer="bgt_duiker")
-    empty = gpd.GeoDataFrame(geometry=[], crs=settings.crs)
-    empty.to_file(path / "brandlagen.gpkg", layer="hydamo_primair")
-    empty.to_file(path / "brandlagen.gpkg", layer="hydamo_secundair")
-    empty.to_file(path / "watersysteem.gpkg", layer="hydroobject_secundair")
-    gpd.GeoDataFrame(
-        {"segment_id": [], "segment_key": []}, geometry=[], crs=settings.crs
-    ).to_file(path / "watersysteem.gpkg", layer="hydroobject_segment")
-    gpd.GeoDataFrame(
-        {"van_segment": [], "naar_segment": []}, geometry=[], crs=settings.crs
-    ).to_file(path / "watersysteem.gpkg", layer="hydroobject_verbinding")
     return culverts
 
 
@@ -56,7 +80,9 @@ def assert_simple_layers(path, *, polygon=False):
 
 @pytest.mark.parametrize("polygon", [False, True])
 @pytest.mark.parametrize("holder", ["W0654", None])
-def test_source_holder_is_preserved_without_guessing_from_id(tmp_path, polygon, holder):
+def test_source_holder_is_preserved_without_guessing_from_id(
+    make_run, tmp_path, polygon, holder
+):
     geometry = box(5, 4, 15, 6) if polygon else LineString([(5, 5), (15, 5)])
     source = make_run(tmp_path, [geometry])
     source["bronhouder"] = pd.Series([holder], dtype="string")
@@ -71,13 +97,13 @@ def test_source_holder_is_preserved_without_guessing_from_id(tmp_path, polygon, 
         assert result.bronhouder.iloc[0] == holder
 
 
-def test_missing_source_holder_column_remains_unknown(tmp_path):
+def test_missing_source_holder_column_remains_unknown(make_run, tmp_path):
     make_run(tmp_path, [LineString([(5, 5), (15, 5)])])
     assert read(write_duiker_signaalkaart(tmp_path)).bronhouder.isna().all()
 
 
 @pytest.mark.parametrize("value", [None, "", "   "])
-def test_empty_gml_id_is_rejected(tmp_path, value):
+def test_empty_gml_id_is_rejected(make_run, tmp_path, value):
     source = make_run(tmp_path, [LineString([(5, 5), (15, 5)])])
     source["gml_id"] = pd.Series([value], dtype="string")
     source.to_file(tmp_path / signalen.BGT_SOURCE, layer="bgt_duiker")
@@ -85,7 +111,7 @@ def test_empty_gml_id_is_rejected(tmp_path, value):
         write_duiker_signaalkaart(tmp_path)
 
 
-def test_missing_gml_id_is_not_replaced_by_local_id(tmp_path):
+def test_missing_gml_id_is_not_replaced_by_local_id(make_run, tmp_path):
     source = make_run(tmp_path, [LineString([(5, 5), (15, 5)])])
     source.drop(columns="gml_id").to_file(
         tmp_path / signalen.BGT_SOURCE, layer="bgt_duiker"
@@ -110,7 +136,7 @@ def test_missing_gml_id_is_not_replaced_by_local_id(tmp_path):
         (LineString([(10, 5), (15, 5)]), 0),
     ],
 )
-def test_real_crossings_only(tmp_path, geometry, count):
+def test_real_crossings_only(make_run, tmp_path, geometry, count):
     make_run(tmp_path, [geometry])
     target = write_duiker_signaalkaart(tmp_path)
     assert_simple_layers(target)
@@ -121,7 +147,7 @@ def test_real_crossings_only(tmp_path, geometry, count):
         assert signals.id.iloc[0] == "gml-duiker-0"
 
 
-def test_gaps_and_disconnected_polygons_are_not_crossings(tmp_path):
+def test_gaps_and_disconnected_polygons_are_not_crossings(make_run, tmp_path):
     make_run(
         tmp_path,
         [LineString([(5, 5), (15, 5)])],
@@ -135,7 +161,7 @@ def test_gaps_and_disconnected_polygons_are_not_crossings(tmp_path):
     )
 
 
-def test_mismatched_crs_rejected(tmp_path):
+def test_mismatched_crs_rejected(make_run, tmp_path):
     controls = make_run(tmp_path, [LineString([(5, 5), (15, 5)])])
     controls.to_crs("EPSG:4326").to_file(
         tmp_path / signalen.BGT_SOURCE, layer="bgt_duiker"
@@ -144,7 +170,7 @@ def test_mismatched_crs_rejected(tmp_path):
         write_duiker_signaalkaart(tmp_path)
 
 
-def test_hydamo_and_osm_burn_inputs_are_never_signal_sources(tmp_path):
+def test_hydamo_and_osm_burn_inputs_are_never_signal_sources(make_run, tmp_path):
     make_run(tmp_path, [box(8, 2, 12, 8)])
     controls = gpd.GeoDataFrame(
         {
@@ -164,7 +190,9 @@ def test_hydamo_and_osm_burn_inputs_are_never_signal_sources(tmp_path):
     assert result.id.tolist() == ["gml-duiker-0"]
 
 
-def test_missing_bgt_source_fails_instead_of_falling_back_to_controls(tmp_path):
+def test_missing_bgt_source_fails_instead_of_falling_back_to_controls(
+    make_run, tmp_path
+):
     make_run(tmp_path, [LineString([(5, 5), (15, 5)])])
     (tmp_path / signalen.BGT_SOURCE).unlink()
     with pytest.raises(FileNotFoundError, match="BGT-duikerbron"):
@@ -181,7 +209,7 @@ def test_missing_bgt_source_fails_instead_of_falling_back_to_controls(tmp_path):
 )
 @pytest.mark.parametrize("polygon", [False, True])
 def test_non_primary_or_unverified_connections_keep_crossing_signals(
-    tmp_path, filename, layer, polygon
+    make_run, tmp_path, filename, layer, polygon
 ):
     # Distances to y=0: inside, exactly 2 m, just outside; last does not cross.
     geometries = [
@@ -205,7 +233,7 @@ def test_non_primary_or_unverified_connections_keep_crossing_signals(
     )
 
 
-def test_hydamo_culverts_and_optional_waterlines_do_not_exclude_bgt(tmp_path):
+def test_hydamo_culverts_and_optional_waterlines_do_not_exclude_bgt(make_run, tmp_path):
     geometry = LineString([(5, 5), (15, 5)])
     make_run(tmp_path, [geometry])
     for layer in ("hydamo_duikers", "osm_canals"):
@@ -215,14 +243,16 @@ def test_hydamo_culverts_and_optional_waterlines_do_not_exclude_bgt(tmp_path):
     assert read(write_duiker_signaalkaart(tmp_path)).id.tolist() == ["gml-duiker-0"]
 
 
-def test_missing_waterlines_fails_instead_of_skipping_connection_check(tmp_path):
+def test_missing_waterlines_fails_instead_of_skipping_connection_check(
+    make_run, tmp_path
+):
     make_run(tmp_path, [LineString([(5, 5), (15, 5)])])
     (tmp_path / "brandlagen.gpkg").unlink()
     with pytest.raises(FileNotFoundError, match="waterlopen"):
         write_duiker_signaalkaart(tmp_path)
 
 
-def test_original_primary_line_excludes_bgt_at_gap_in_burn_pieces(tmp_path):
+def test_original_primary_line_excludes_bgt_at_gap_in_burn_pieces(make_run, tmp_path):
     make_run(tmp_path, [LineString([(8, 5), (12, 5)])])
     gpd.GeoDataFrame(
         {"bron_id": ["primary-source"]},
@@ -245,7 +275,7 @@ def test_original_primary_line_excludes_bgt_at_gap_in_burn_pieces(tmp_path):
 @pytest.mark.parametrize("polygon", [False, True])
 @pytest.mark.parametrize("endpoint_only", [False, True])
 def test_unconnected_secondary_waterlines_do_not_exclude_culverts(
-    tmp_path, polygon, endpoint_only
+    make_run, tmp_path, polygon, endpoint_only
 ):
     geometry = box(5, 4, 15, 6) if polygon else LineString([(5, 5), (15, 5)])
     make_run(tmp_path, [geometry])
@@ -266,6 +296,7 @@ def test_unconnected_secondary_waterlines_do_not_exclude_culverts(
 
 
 def test_missing_primary_topology_fails(
+    make_run,
     tmp_path,
 ):
     make_run(tmp_path, [LineString([(5, 5), (15, 5)])])
@@ -275,7 +306,9 @@ def test_missing_primary_topology_fails(
 
 
 @pytest.mark.parametrize("polygon", [False, True])
-def test_crossing_hydamo_at_one_point_does_not_exclude_whole_culvert(tmp_path, polygon):
+def test_crossing_hydamo_at_one_point_does_not_exclude_whole_culvert(
+    make_run, tmp_path, polygon
+):
     geometry = box(1, 4, 19, 6) if polygon else LineString([(1, 5), (19, 5)])
     make_run(tmp_path, [geometry])
     gpd.GeoDataFrame(
@@ -289,7 +322,9 @@ def test_crossing_hydamo_at_one_point_does_not_exclude_whole_culvert(tmp_path, p
 
 @pytest.mark.parametrize("water_x", [3.1, 16.9])
 @pytest.mark.parametrize("reverse", [False, True])
-def test_near_endpoint_alone_does_not_exclude_line(tmp_path, water_x, reverse):
+def test_near_endpoint_alone_does_not_exclude_line(
+    make_run, tmp_path, water_x, reverse
+):
     coordinates = [(5, 5), (15, 5)]
     if reverse:
         coordinates.reverse()
@@ -305,7 +340,7 @@ def test_near_endpoint_alone_does_not_exclude_line(tmp_path, water_x, reverse):
 )
 @pytest.mark.parametrize("reverse", [False, True])
 def test_separate_waterlines_at_both_endpoints_do_not_exclude(
-    tmp_path, end_distance, expected_count, reverse
+    make_run, tmp_path, end_distance, expected_count, reverse
 ):
     coordinates = [(5, 5), (15, 5)]
     if reverse:
@@ -333,7 +368,7 @@ def test_separate_waterlines_at_both_endpoints_do_not_exclude(
     ],
 )
 def test_separate_waterlines_do_not_form_an_existing_route(
-    tmp_path, start_layer, end_layer
+    make_run, tmp_path, start_layer, end_layer
 ):
     make_run(tmp_path, [LineString([(5, 5), (15, 5)])])
     layers = {}
@@ -351,7 +386,9 @@ def test_separate_waterlines_do_not_form_an_existing_route(
     assert read(write_duiker_signaalkaart(tmp_path)).id.tolist() == ["gml-duiker-0"]
 
 
-def test_connected_multiline_kept_when_endpoint_waterlines_are_separate(tmp_path):
+def test_connected_multiline_kept_when_endpoint_waterlines_are_separate(
+    make_run, tmp_path
+):
     geometry = MultiLineString([[(5, 5), (10, 5)], [(15, 5), (10, 5)]])
     make_run(tmp_path, [geometry])
     gpd.GeoDataFrame(
@@ -364,7 +401,9 @@ def test_connected_multiline_kept_when_endpoint_waterlines_are_separate(tmp_path
     assert read(write_duiker_signaalkaart(tmp_path)).id.tolist() == ["gml-duiker-0"]
 
 
-def test_connected_multiline_preserves_geometry_after_connection_check(tmp_path):
+def test_connected_multiline_preserves_geometry_after_connection_check(
+    make_run, tmp_path
+):
     geometry = MultiLineString([[(1, 5), (10, 5)], [(19, 5), (10, 5)]])
     make_run(tmp_path, [geometry])
     gpd.GeoDataFrame(
@@ -378,7 +417,7 @@ def test_connected_multiline_preserves_geometry_after_connection_check(tmp_path)
 @pytest.mark.parametrize("polygon", [False, True])
 @pytest.mark.parametrize("percent", [49.99, 50.0, 100.0])
 def test_unverified_primary_coverage_does_not_exclude_culvert(
-    tmp_path, polygon, percent
+    make_run, tmp_path, polygon, percent
 ):
     geometry = box(0, 4, 100, 6) if polygon else LineString([(0, 5), (100, 5)])
     make_run(
@@ -398,7 +437,9 @@ def test_unverified_primary_coverage_does_not_exclude_culvert(
     assert signals.geometry.iloc[0].equals(geometry)
 
 
-def test_existing_connection_across_multiple_original_waterlines_excludes(tmp_path):
+def test_existing_connection_across_multiple_original_waterlines_excludes(
+    make_run, tmp_path
+):
     make_run(tmp_path, [LineString([(5, 5), (15, 5)])])
     gpd.GeoDataFrame(
         {"bron_id": ["first", "second"]},
@@ -417,7 +458,9 @@ def test_existing_connection_across_multiple_original_waterlines_excludes(tmp_pa
     assert read(write_duiker_signaalkaart(tmp_path)).empty
 
 
-def test_existing_run_can_use_explicit_bgt_source_without_burn_controls(tmp_path):
+def test_existing_run_can_use_explicit_bgt_source_without_burn_controls(
+    make_run, tmp_path
+):
     make_run(tmp_path, [LineString([(5, 5), (15, 5)])])
     source = tmp_path / "bgt.gpkg"
     (tmp_path / signalen.BGT_SOURCE).replace(source)
@@ -426,7 +469,7 @@ def test_existing_run_can_use_explicit_bgt_source_without_burn_controls(tmp_path
     assert signals.id.tolist() == ["gml-duiker-0"]
 
 
-def test_only_current_bgt_culverts_are_included(tmp_path):
+def test_only_current_bgt_culverts_are_included(make_run, tmp_path):
     features = make_run(tmp_path, [LineString([(5, y), (15, y)]) for y in range(1, 6)])
     features["plus-type"] = ["duiker", "brug", "duiker", "duiker", "duiker"]
     features["bgt-status"] = ["bestaand", "bestaand", "plan", "bestaand", "bestaand"]
@@ -436,7 +479,7 @@ def test_only_current_bgt_culverts_are_included(tmp_path):
     assert read(write_duiker_signaalkaart(tmp_path)).id.tolist() == ["gml-duiker-0"]
 
 
-def test_polygon_keeps_original_geometry_and_source_fields(tmp_path):
+def test_polygon_keeps_original_geometry_and_source_fields(make_run, tmp_path):
     original = box(8, 2, 12, 8)
     make_run(tmp_path, [original, box(2, 2, 10, 8)])
     target = write_duiker_signaalkaart(tmp_path)
@@ -449,14 +492,16 @@ def test_polygon_keeps_original_geometry_and_source_fields(tmp_path):
 @pytest.mark.parametrize(
     "column", ["identificatie", "lokaalID", "identificatie.lokaalID"]
 )
-def test_gml_id_is_used_regardless_of_other_identifier_fields(tmp_path, column):
+def test_gml_id_is_used_regardless_of_other_identifier_fields(
+    make_run, tmp_path, column
+):
     features = make_run(tmp_path, [LineString([(5, 5), (15, 5)])])
     features = features.rename(columns={"identificatie.lokaalID": column})
     features.to_file(tmp_path / signalen.BGT_SOURCE, layer="bgt_duiker")
     assert read(write_duiker_signaalkaart(tmp_path)).id.tolist() == ["gml-duiker-0"]
 
 
-def test_regeneration_removes_old_fields_and_archive(tmp_path):
+def test_regeneration_removes_old_fields_and_archive(make_run, tmp_path):
     make_run(tmp_path, [LineString([(5, 5), (15, 5)])])
     target = write_duiker_signaalkaart(tmp_path)
     old = read(target)
@@ -469,7 +514,7 @@ def test_regeneration_removes_old_fields_and_archive(tmp_path):
     assert_simple_layers(target)
 
 
-def test_atomic_failure_keeps_previous_map(tmp_path, monkeypatch):
+def test_atomic_failure_keeps_previous_map(make_run, tmp_path, monkeypatch):
     make_run(tmp_path, [LineString([(5, 5), (15, 5)])])
     target = write_duiker_signaalkaart(tmp_path)
     original = target.read_bytes()
@@ -483,7 +528,7 @@ def test_atomic_failure_keeps_previous_map(tmp_path, monkeypatch):
     assert target.read_bytes() == original
 
 
-def make_connection_run(path, *, reverse=False, width=100):
+def make_connection_run(make_run, path, *, reverse=False, width=100):
     coordinates = [(0, 5), (width, 5)]
     if reverse:
         coordinates.reverse()
@@ -515,8 +560,10 @@ def write_primary_target_route(path, *, connected):
 
 
 @pytest.mark.parametrize("reverse", [False, True])
-def test_primary_target_alone_does_not_remove_distant_culvert(tmp_path, reverse):
-    make_connection_run(tmp_path, reverse=reverse)
+def test_primary_target_alone_does_not_remove_distant_culvert(
+    make_run, tmp_path, reverse
+):
+    make_connection_run(make_run, tmp_path, reverse=reverse)
     write_primary_target_route(tmp_path, connected=True)
     # A primary drainage target is not a physical primary attachment.
     assert len(read(write_duiker_signaalkaart(tmp_path))) == 1
@@ -534,7 +581,7 @@ def test_primary_target_alone_does_not_remove_distant_culvert(tmp_path, reverse)
     ],
 )
 def test_local_attachment_requires_distance_and_used_connected_route(
-    tmp_path, end_distance, connected, used, excluded
+    make_run, tmp_path, end_distance, connected, used, excluded
 ):
     # The bent culvert has less than 50% buffer coverage: only the route can exclude it.
     make_run(
@@ -553,8 +600,8 @@ def test_local_attachment_requires_distance_and_used_connected_route(
     assert read(write_duiker_signaalkaart(tmp_path)).empty == excluded
 
 
-def test_primary_targets_override_proximity_to_another_connection(tmp_path):
-    make_connection_run(tmp_path)
+def test_primary_targets_override_proximity_to_another_connection(make_run, tmp_path):
+    make_connection_run(make_run, tmp_path)
     write_primary_target_route(tmp_path, connected=False)
     gpd.GeoDataFrame(
         geometry=[LineString([(0, 5), (100, 5)])], crs=settings.crs
@@ -579,7 +626,7 @@ def test_primary_targets_override_proximity_to_another_connection(tmp_path):
     ],
 )
 def test_primary_route_distinguishes_confluence_split_and_common_receiver(
-    tmp_path, edges, expected_count
+    make_run, tmp_path, edges, expected_count
 ):
     make_run(
         tmp_path,
@@ -617,7 +664,7 @@ def test_primary_route_distinguishes_confluence_split_and_common_receiver(
 @pytest.mark.parametrize("split", [False, True])
 @pytest.mark.parametrize("reverse", [False, True])
 def test_off_primary_route_keeps_signal_regardless_of_length(
-    tmp_path, length, split, reverse, on_primary
+    make_run, tmp_path, length, split, reverse, on_primary
 ):
     # Only actual primary attachments permit route-based exclusion.
     middle_length = length - 16
@@ -681,7 +728,14 @@ def test_off_primary_route_keeps_signal_regardless_of_length(
     ],
 )
 def test_polygon_checks_all_overlapped_primary_targets(
-    tmp_path, multipart, edges, middle_length, expected_count, on_primary, monkeypatch
+    make_run,
+    tmp_path,
+    multipart,
+    edges,
+    middle_length,
+    expected_count,
+    on_primary,
+    monkeypatch,
 ):
     geometry = box(48, 19, 50 + middle_length, 21)
     if multipart:
@@ -735,7 +789,7 @@ def test_polygon_checks_all_overlapped_primary_targets(
 
 
 def test_polygon_boundary_touch_does_not_add_an_unconnected_target(
-    tmp_path, monkeypatch
+    make_run, tmp_path, monkeypatch
 ):
     make_run(tmp_path, [box(48, 19, 51, 21)])
     gpd.GeoDataFrame(
@@ -764,7 +818,7 @@ def test_polygon_boundary_touch_does_not_add_an_unconnected_target(
 @pytest.mark.parametrize("percent", [33.0, 49.99, 50.0, 50.01, 100.0])
 @pytest.mark.parametrize("used", [False, True])
 def test_half_coverage_uses_original_primary_objects_with_final_areas(
-    tmp_path, polygon, percent, used
+    make_run, tmp_path, polygon, percent, used
 ):
     geometry = box(0, 4, 100, 6) if polygon else LineString([(0, 5), (100, 5)])
     make_run(

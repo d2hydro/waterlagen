@@ -1,6 +1,9 @@
 # %%
+import pytest
 
 from waterlagen.bag import get_bag_features
+
+pytestmark = pytest.mark.online
 
 
 def test_download_bag_pand():

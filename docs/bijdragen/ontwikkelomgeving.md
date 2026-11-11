@@ -28,6 +28,23 @@ pixi run ruff check <bestand>
 pixi run --environment docs docs-build
 ```
 
+De CI **Tests (Coverage)** draait twee testgroepen parallel: tests zonder externe
+diensten en online integratietests die AHN-, BAG- en BGT-gegevens downloaden.
+Beide groepen draaien bij iedere niet-concept-PR naar `main` en moeten slagen. Hun coverage wordt
+samengevoegd voordat de minimale dekking van 90% wordt gecontroleerd.
+De CI bewaart per groep de testtijden, JUnit-uitvoer en het geheugengebruik,
+ook als een test faalt.
+
+Gebruik lokaal dezelfde selectie met `-m "not online"` of `-m online`:
+
+```bash
+pixi run --environment afwateringseenheden pytest -m "not online" --durations=30
+pixi run --environment afwateringseenheden pytest -m online --durations=30
+```
+
+Zonder deze selectie blijven alle tests meelopen. De opdracht `test-cov` blijft
+de volledige suite inclusief online tests en de 90%-controle uitvoeren.
+
 Start de lokale documentatieserver met `pixi run --environment docs docs-serve`.
 De broncode staat in `src/waterlagen`, tests in `tests` en workflow-scripts in
 `scripts`.

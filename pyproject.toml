@@ -51,10 +51,14 @@ include = [
   "src/waterlagen/functioneel_landgebruik/drinkwater_beoordelingen.json",
 ]
 
+[tool.pytest.ini_options]
+markers = ["online: integration test that downloads from a live external service"]
+
 [tool.coverage.run]
 source = ["src/waterlagen"]
 concurrency = ["multiprocessing", "thread"]
 parallel = true
+relative_files = true
 
 [tool.coverage.report]
 fail_under = 90
