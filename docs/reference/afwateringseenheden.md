@@ -181,8 +181,10 @@ vergroot de buffer niet automatisch bij randproblemen.
 
 ## Signaalkaart
 
-`write_duiker_signaalkaart(run_dir)` maakt de BGT-signaalkaart zonder nieuwe
-terreinberekening. De productie roept deze functie automatisch aan.
+Met [`write_duiker_signaalkaart(run_dir)`](#waterlagen.afwateringseenheden.write_duiker_signaalkaart)
+maakt u de signaalkaart opnieuw uit een bestaande run, zonder de
+afwateringseenheden opnieuw te berekenen. Bij een volledige productierun
+gebeurt dit automatisch..
 
 Benodigd zijn `afwateringseenheden.gpkg`,
 `brandlagen.gpkg` (oorspronkelijke primaire waterlopen),
