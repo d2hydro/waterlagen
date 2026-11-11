@@ -239,15 +239,6 @@ compatibiliteitsvoorwaarden.
 
 ## Parallelle routes instellen
 
-Met `--max-complex-routelengte` worden parallelle routes tussen dezelfde splitsing
-en samenkomst als afwateringsdoel uitgesloten als **iedere** volledige route
-maximaal de ingestelde lengte heeft en een eigen kunstwerk bevat. De standaard
-is 100 meter, inclusief de grens; met `0` staat deze regel uit. De route omvat
-ook interne aansluitstukken en wordt v??r segmentatie gemeten.
+Met --max-complex-routelengte worden parallelle routes met elk een kunstwerk uitgesloten als afwateringsdoel, mits iedere volledige route maximaal 100 m lang is (instelbaar, 0 schakelt de regel uit).
 
-Ook gewone korte waterlopenlussen kunnen hierdoor worden uitgesloten. Pas de
-instelling aan en produceer opnieuw om de keuze te beoordelen. Open
-`watersysteem.gpkg` in QGIS: in `hydroobject_segment` zijn doelen blauw en
-uitgesloten segmenten oranje. Oranje beschrijft de doelstatus en zegt niets over
-inbranding. De nieuwe regel verandert `brandgeschikt` niet; bestaande duikerregels
-blijven gelden. Aansluitende waterlopen buiten de lus behouden hun doelstatus.
+In de laag `watersysteem.gpkg:hydroobject_segment` zijn afwateringsdoelen blauw en uitgesloten segmenten oranje. Bij complexen met duikers, sifons of hevels worden de interne hydroobjecten ook niet ingebrand. Bij uitsluitend stuwen of gemalen blijft de inbranding behouden. Aansluitende waterlopen buiten de lus blijven ongemoeid.

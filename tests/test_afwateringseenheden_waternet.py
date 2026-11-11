@@ -629,6 +629,7 @@ def test_side_connection_reaches_primary_target_through_burned_culvert(tmp_path)
     data.secondary.to_file(network, layer="hydroobject_secundair")
     targets = data.primary.copy()
     targets["segment_key"] = ["primary"]
+    targets["afwateringsdoel"] = True
     targets.to_file(network, layer="hydroobject_segment")
     ahn = tmp_path / "dem.tif"
     with rasterio.open(

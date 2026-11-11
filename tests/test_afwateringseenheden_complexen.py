@@ -1,6 +1,7 @@
-"""Functional tests for complete parallel routes and unchanged burning."""
+"""Functional tests for parallel route targets and burning."""
 
 from pathlib import Path
+from contextlib import closing
 import sqlite3
 import hashlib
 import json
@@ -63,7 +64,8 @@ def test_parallel_stuwen(maximum, expected, max_length, reversed_input):
     assert segments.loc[
         segments.bron_id.isin(["line3", "line4"]), "afwateringsdoel"
     ].all()
-    assert segments.afwateringsdoel.equals(segments.doelgeschikt)
+    assert segments.brandgeschikt.all()
+    assert "doelgeschikt" not in segments.columns
 
 
 @pytest.mark.parametrize(
@@ -172,7 +174,97 @@ def test_six_real_reference_objects(max_length, permuted):
     selected = segments.bron_id.str.startswith(prefixes)
     assert segments.loc[selected, "bron_id"].nunique() == 6
     assert not segments.loc[selected, "afwateringsdoel"].any()
+    assert not segments.loc[selected, "brandgeschikt"].any()
     assert segments.loc[~selected, "afwateringsdoel"].all()
+
+
+@pytest.mark.parametrize("kind", ["duikers", "stuwen_gemalen", "gemengd"])
+def test_complex_burning_depends_on_structure_kind(kind, tmp_path):
+    if kind == "duikers":
+        primary, _ = parallel(count=2)
+        points = empty()
+        culverts = lines(
+            [
+                LineString([(3, 9.4), (5, 8.2)]),
+                LineString([(3, 10), (5, 10)]),
+            ]
+        )
+        internal_ids = {"line0", "line1"}
+    else:
+        primary, points = parallel()
+        points.loc[1, "objecttype"] = "gemaal"
+        culverts = (
+            lines([LineString([(3, 9.4), (5, 8.2)])]) if kind == "gemengd" else empty()
+        )
+        internal_ids = {"line0", "line1", "line2"}
+    result = prepare_watersysteem(
+        primary, points, duikersifonhevel=culverts, tolerance=0
+    )
+    internal = result.hydroobject_segmenten.bron_id.isin(internal_ids)
+    assert not result.hydroobject_segmenten.loc[internal, "afwateringsdoel"].any()
+    assert result.hydroobject_segmenten.loc[~internal, "afwateringsdoel"].all()
+    assert (
+        result.hydroobject_segmenten.loc[internal, "brandgeschikt"]
+        .eq(kind == "stuwen_gemalen")
+        .all()
+    )
+    assert result.hydroobject_segmenten.loc[~internal, "brandgeschikt"].all()
+    path = write(tmp_path, primary, result)
+    burned = wgpd.read_file(path, layer="hydroobject_primair")
+    assert set(burned.bron_id).isdisjoint(internal_ids) == (kind != "stuwen_gemalen")
+
+
+def test_point_only_complex_preserves_dem_and_burn_source(tmp_path):
+    primary, points = parallel()
+    points.loc[1, "objecttype"] = "gemaal"
+    source = ahn(tmp_path)
+    dem_arrays = []
+    burn_arrays = []
+    target_arrays = []
+    for maximum in (0, 100):
+        result = prepare_watersysteem(
+            primary,
+            points,
+            duikersifonhevel=empty(),
+            tolerance=0,
+            max_complex_routelengte=maximum,
+        )
+        path = write(tmp_path / "output", primary, result)
+        rasters = prepare_watersysteem_rasters(
+            box(0, 0, 20, 20),
+            burn_depth_m=2,
+            ahn_vrt_path=source,
+            watersysteem_path=path,
+            output_dir=tmp_path / "rasters",
+            resolution_m=1,
+        )
+        for path, arrays in (
+            (rasters.dem_path, dem_arrays),
+            (rasters.brandbron_path, burn_arrays),
+            (rasters.hydroobject_segment_path, target_arrays),
+        ):
+            with rasterio.open(path) as raster:
+                arrays.append(raster.read(1))
+    np.testing.assert_array_equal(dem_arrays[0], dem_arrays[1])
+    np.testing.assert_array_equal(burn_arrays[0], burn_arrays[1])
+    assert not np.array_equal(target_arrays[0], target_arrays[1])
+
+
+def test_legacy_segment_schema_is_not_reused(tmp_path):
+    primary, points = parallel()
+    result = prepare_watersysteem(primary, points, tolerance=0)
+    path = write(tmp_path, primary, result)
+    with closing(sqlite3.connect(path)) as connection, connection:
+        connection.execute(
+            "ALTER TABLE hydroobject_segment ADD COLUMN doelgeschikt BOOLEAN"
+        )
+    metadata_path = tmp_path / "berekening" / "watersysteem" / "watersysteem.gpkg.json"
+    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    metadata["output_sha256"] = hashlib.sha256(path.read_bytes()).hexdigest()
+    metadata_path.write_text(json.dumps(metadata), encoding="utf-8")
+    write(tmp_path, primary, result)
+    written = wgpd.read_file(path, layer="hydroobject_segment")
+    assert "doelgeschikt" not in written.columns
 
 
 def test_export_cache_style_and_real_burn_raster(tmp_path):
@@ -181,6 +273,7 @@ def test_export_cache_style_and_real_burn_raster(tmp_path):
     source = ahn(tmp_path)
     arrays = []
     target_arrays = []
+    burn_source_arrays = []
     evidence = []
     burn_flags = []
     path = None
@@ -193,11 +286,17 @@ def test_export_cache_style_and_real_burn_raster(tmp_path):
             max_complex_routelengte=maximum,
         )
         burn_flags.append(result.hydroobject_segmenten.brandgeschikt.tolist())
+        if maximum == 100:
+            internal = result.hydroobject_segmenten.bron_id.isin(
+                ["line0", "line1", "line2"]
+            )
+            assert not result.hydroobject_segmenten.loc[internal, "brandgeschikt"].any()
+            assert result.hydroobject_segmenten.loc[~internal, "brandgeschikt"].all()
         path = write(tmp_path / "output", primary, result)
         shutil.copyfile(path, tmp_path / f"watersysteem_{maximum}.gpkg")
         written = wgpd.read_file(path, layer="hydroobject_segment", fid_as_index=True)
         assert written.segment_id.tolist() == written.index.tolist()
-        assert written.afwateringsdoel.equals(written.doelgeschikt)
+        assert "doelgeschikt" not in written.columns
         assert not written.afwateringsdoel.isna().any()
         assert written.loc[
             written.bron_id.isin(["line0", "line1", "line2"]), "afwateringsdoel"
@@ -226,12 +325,16 @@ def test_export_cache_style_and_real_burn_raster(tmp_path):
         shutil.copyfile(rasters.dem_path, tmp_path / f"dem_{len(arrays)}.tif")
         with rasterio.open(rasters.hydroobject_segment_path) as raster:
             target_arrays.append(raster.read(1))
-    assert burn_flags[0] == burn_flags[1] == burn_flags[2]
-    assert any(burn_flags[0]) and not all(burn_flags[0])
+        with rasterio.open(rasters.brandbron_path) as raster:
+            burn_source_arrays.append(raster.read(1))
+    assert burn_flags[0] == burn_flags[2]
+    assert burn_flags[0] != burn_flags[1]
     (tmp_path / "rastervergelijking.json").write_text(json.dumps(evidence, indent=2))
     assert len({e["valid_mask_sha256"] for e in evidence}) == 1
-    np.testing.assert_array_equal(arrays[0], arrays[1])
+    assert not np.array_equal(arrays[0], arrays[1])
     np.testing.assert_array_equal(arrays[0], arrays[2])
+    assert not np.array_equal(burn_source_arrays[0], burn_source_arrays[1])
+    np.testing.assert_array_equal(burn_source_arrays[0], burn_source_arrays[2])
     assert not np.array_equal(target_arrays[0], target_arrays[1])
     np.testing.assert_array_equal(target_arrays[0], target_arrays[2])
     with sqlite3.connect(path) as connection:
@@ -241,7 +344,11 @@ def test_export_cache_style_and_real_burn_raster(tmp_path):
     assert len(styles) == 1
     renderer = ET.fromstring(styles[0][0]).find("renderer-v2")
     assert renderer.get("attr") == "afwateringsdoel"
-    assert {c.get("value") for c in renderer.find("categories")} == {"0", "1"}
+    assert {c.get("value") for c in renderer.find("categories")} == {
+        "true",
+        "false",
+        "NULL",
+    }
     assert "255,140,0,255" in styles[0][0]
 
 

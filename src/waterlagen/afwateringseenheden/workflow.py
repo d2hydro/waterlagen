@@ -182,14 +182,25 @@ def prepare_watersysteem(
         maximum=max_complex_routelengte,
     )
     physical_pieces = physical_pieces.copy()
-    eligible = physical_pieces.get("doelgeschikt", True)
-    physical_pieces["doelgeschikt"] = eligible & ~physical_pieces.bron_id.isin(excluded)
-    physical_pieces["afwateringsdoel"] = physical_pieces.doelgeschikt.astype(bool)
+    eligible = physical_pieces.get("afwateringsdoel", True)
+    physical_pieces["afwateringsdoel"] = (
+        eligible & ~physical_pieces.bron_id.isin(excluded.targets)
+    ).astype(bool)
+    burn_excluded = physical_pieces.bron_id.isin(excluded.burning)
+    physical_pieces["brandgeschikt"] = (
+        physical_pieces.get("brandgeschikt", True) & ~burn_excluded
+    )
+    primary_pieces = None
+    if culverts is not None:
+        primary_pieces = culverts.pieces.copy()
+        primary_pieces["brandgeschikt"] = primary_pieces.brandgeschikt & ~(
+            primary_pieces.bron_id.isin(excluded.burning)
+        )
     preparation_signature = hashlib.sha256(
         json.dumps(
             {
                 "policy": COMPLEX_POLICY,
-                "schema_style": 1,
+                "schema_style": 2,
                 "maximum": max_complex_routelengte,
                 "primary": _frame_identity(context),
                 "points": _frame_identity(context_points),
@@ -219,7 +230,7 @@ def prepare_watersysteem(
         hydroobject_segmenten=segmenten,
         hydroobject_verbinding=verbindingen,
         hydroobject_primair_bron=culverts.primary if culverts is not None else None,
-        hydroobject_primair_delen=culverts.pieces if culverts is not None else None,
+        hydroobject_primair_delen=primary_pieces,
         duiker_controle=culverts.controls if culverts is not None else None,
         preparation_signature=preparation_signature,
         duiker_signature=hashlib.sha256(
@@ -598,6 +609,16 @@ def _connection_segment_ids(
 def _validate_segment_numbers(path: Path) -> None:
     """Require compact connections with valid numeric segment references."""
     with closing(sqlite3.connect(path)) as connection:
+        segment_columns = {
+            row[1]
+            for row in connection.execute("PRAGMA table_info(hydroobject_segment)")
+        }
+        if (
+            "afwateringsdoel" not in segment_columns
+            or "brandgeschikt" not in segment_columns
+            or "doelgeschikt" in segment_columns
+        ):
+            raise ValueError("Outdated hydroobject_segment schema")
         columns = {
             row[1]
             for row in connection.execute("PRAGMA table_info(hydroobject_verbinding)")
@@ -853,16 +874,10 @@ def write_watersysteem(
                 features = features.copy()
                 features["segment_id"] = range(1, len(features) + 1)
                 if "afwateringsdoel" not in features:
-                    features["afwateringsdoel"] = features.get("doelgeschikt", True)
+                    raise ValueError("hydroobject_segment requires afwateringsdoel")
                 if features.afwateringsdoel.isna().any():
                     raise ValueError("afwateringsdoel must not contain null values")
-                if (
-                    "doelgeschikt" in features
-                    and not features.afwateringsdoel.eq(features.doelgeschikt).all()
-                ):
-                    raise ValueError("afwateringsdoel and doelgeschikt disagree")
                 features["afwateringsdoel"] = features.afwateringsdoel.astype(bool)
-                features["doelgeschikt"] = features.afwateringsdoel
             if layer_name == "hydroobject_verbinding":
                 features = _connection_segment_ids(features, temporary_path)
             logger.info(

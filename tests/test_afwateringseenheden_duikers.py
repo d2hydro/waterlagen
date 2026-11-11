@@ -53,7 +53,7 @@ def test_both_endpoints_inclusive_and_direction_independent(reverse, offset, mat
     if matched:
         assert segments.length.tolist() == [5, 10, 5]
         assert segments.brandgeschikt.tolist() == [True, False, True]
-        assert segments.doelgeschikt.tolist() == [True, False, True]
+        assert segments.afwateringsdoel.tolist() == [True, False, True]
         assert result.duiker_controle.empty
     else:
         assert len(segments) == 1
@@ -73,7 +73,7 @@ def test_half_match_has_no_partial_effect(last, reason):
         straight(), lines([LineString([(5, 5), last])]), max_aansluitlengte=100
     )
     assert result.hydroobject_segmenten.length.tolist() == [20]
-    assert result.hydroobject_segmenten.doelgeschikt.all()
+    assert result.hydroobject_segmenten.afwateringsdoel.all()
     assert reason in result.duiker_controle.reden.iloc[0]
 
 
@@ -126,7 +126,7 @@ def test_disconnected_and_unusable_geometry_controls():
     assert len(result.duiker_controle) == 3
     assert "aaneengesloten" in result.duiker_controle.reden.iloc[0]
     assert result.duiker_controle.reden.iloc[1:].str.contains("bruikbare").all()
-    assert result.hydroobject_segmenten.doelgeschikt.all()
+    assert result.hydroobject_segmenten.afwateringsdoel.all()
 
 
 @pytest.mark.parametrize(
@@ -150,9 +150,11 @@ def test_adjacent_length_before_maximum_split_and_no_recursion(
         max_length=max_length,
     )
     segments = result.hydroobject_segmenten
-    assert segments.loc[segments.doelgeschikt].length.sum() == pytest.approx(expected)
+    assert segments.loc[segments.afwateringsdoel].length.sum() == pytest.approx(
+        expected
+    )
     assert segments.loc[segments.brandgeschikt].length.sum() == 20
-    assert segments.loc[segments.bron_id.ne("line0"), "doelgeschikt"].all()
+    assert segments.loc[segments.bron_id.ne("line0"), "afwateringsdoel"].all()
 
 
 def test_branch_lengths_and_physical_points():
@@ -167,15 +169,15 @@ def test_branch_lengths_and_physical_points():
         primary, lines([LineString([(0, 5), (5, 5)])]), max_aansluitlengte=3
     )
     segments = result.hydroobject_segmenten
-    assert not segments.loc[segments.bron_id.eq("line1"), "doelgeschikt"].any()
-    assert segments.loc[segments.bron_id.eq("line2"), "doelgeschikt"].all()
+    assert not segments.loc[segments.bron_id.eq("line1"), "afwateringsdoel"].any()
+    assert segments.loc[segments.bron_id.eq("line2"), "afwateringsdoel"].all()
     result = prepare_watersysteem(
         straight(),
         lines([Point(3, 5)]),
         duikersifonhevel=lines([LineString([(5, 5), (15, 5)])]),
         max_aansluitlengte=2,
     )
-    assert result.hydroobject_segmenten.doelgeschikt.tolist() == [
+    assert result.hydroobject_segmenten.afwateringsdoel.tolist() == [
         True,
         False,
         False,
@@ -192,7 +194,7 @@ def test_new_culvert_cut_does_not_connect_crossing_source():
         primary, lines([LineString([(5, 5), (15, 5)])]), max_aansluitlengte=20
     )
     assert result.hydroobject_segmenten.loc[
-        result.hydroobject_segmenten.bron_id.eq("line1"), "doelgeschikt"
+        result.hydroobject_segmenten.bron_id.eq("line1"), "afwateringsdoel"
     ].all()
     connected = prepare_watersysteem(
         primary,
@@ -470,14 +472,14 @@ def test_lower_writer_never_reuses_changed_culvert_settings(tmp_path, change):
     assert path.stat().st_mtime_ns != original
     written = wgpd.read_file(path, layer="hydroobject_segment")
     if change == "length":
-        assert not written.doelgeschikt.any()
+        assert not written.afwateringsdoel.any()
     if change in ("control", "tolerance"):
-        assert written.doelgeschikt.all()
+        assert written.afwateringsdoel.all()
         assert (
             len(wgpd.read_file(tmp_path / "controle.gpkg", layer="duikersifonhevel"))
             == 1
         )
     if change == "remove":
         assert len(written) == 1
-        assert written.doelgeschikt.all()
+        assert written.afwateringsdoel.all()
         assert written.afwateringsdoel.all()

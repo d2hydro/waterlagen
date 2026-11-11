@@ -1,4 +1,4 @@
-"""Exclude short parallel routes from targets without changing burn eligibility."""
+"""Classify short parallel routes for target selection and burning."""
 
 from collections import defaultdict
 from dataclasses import dataclass
@@ -18,7 +18,7 @@ from .lines import (
     split_hydroobjecten_at_points,
 )
 
-COMPLEX_POLICY = "parallel_routes_length_v1"
+COMPLEX_POLICY = "parallel_routes_length_v2"
 logger = get_logger(__name__)
 
 
@@ -35,6 +35,14 @@ class _Edge:
     source: str
     length: float
     works: frozenset[str]
+
+
+@dataclass(frozen=True)
+class ComplexExclusions:
+    """Source IDs excluded as targets and, for line works, from burning."""
+
+    targets: frozenset[str]
+    burning: frozenset[str]
 
 
 def _blocks(adjacency: dict[int, list[int]], edges: list[_Edge]):
@@ -113,17 +121,17 @@ def excluded_complex_sources(
     *,
     tolerance: float,
     maximum: float,
-) -> set[str]:
-    """Return full source IDs in short parallel groups with a work on each route.
+) -> ComplexExclusions:
+    """Classify full source IDs in short parallel groups with a work on each route.
 
-    Only the returned target selection changes. Source geometry and burn flags
-    are never modified. Complete source geometry is used before length splitting.
+    Complete source geometry is used before length splitting. A group containing
+    any matched line work is also excluded from burning.
     Point works require ``objecttype`` stuw or gemaal; matched culvert pieces
     represent the duiker-, sifon- and hevelroutes.
     """
     validate_complex_length(maximum)
     if maximum == 0 or primary.empty:
-        return set()
+        return ComplexExclusions(frozenset(), frozenset())
     primary = _prepare_hydroobjecten(primary)
     points = _prepare_puntobjecten(points)
     pieces = split_hydroobjecten_at_points(
@@ -196,7 +204,9 @@ def excluded_complex_sources(
     for index, row in pieces.iterrows():
         works = set()
         for geometry, ids in culverts_by_source[str(row.bron_id)]:
-            if row.geometry.intersection(geometry).length > 0:
+            # Matched pieces may be collinear within floating-point precision
+            # without producing a line-valued exact intersection.
+            if row.geometry.buffer(1e-8).intersection(geometry).length > 1e-7:
                 works.update("culvert:" + str(identifier) for identifier in ids)
         edge = _Edge(
             root(2 * index),
@@ -210,6 +220,7 @@ def excluded_complex_sources(
         adjacency[edge.last].append(index)
         source_edges[edge.source].add(index)
     excluded = set()
+    excluded_from_burning = set()
     groups = 0
     for block in _blocks(adjacency, edges):
         if len(block) < 2:
@@ -259,12 +270,19 @@ def excluded_complex_sources(
                 )
             if eligible:
                 excluded.update(sources)
+                if any(
+                    work.startswith("culvert:")
+                    for works in route_works
+                    for work in works
+                ):
+                    excluded_from_burning.update(sources)
                 groups += 1
                 break
     logger.info(
-        "Excluded %s parallel groups (%s source objects), maximum route length %s m",
+        "Excluded %s parallel groups (%s target sources, %s burn sources), maximum route length %s m",
         groups,
         len(excluded),
+        len(excluded_from_burning),
         maximum,
     )
-    return excluded
+    return ComplexExclusions(frozenset(excluded), frozenset(excluded_from_burning))

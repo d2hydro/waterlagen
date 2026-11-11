@@ -148,7 +148,10 @@ def sources(tmp_path: Path) -> tuple[Path, Path]:
         dataset.write(dem, 1)
     watersysteem_path = tmp_path / "watersysteem.gpkg"
     primary = gpd.GeoDataFrame(
-        {"segment_key": ["first", "second", "third"]},
+        {
+            "segment_key": ["first", "second", "third"],
+            "afwateringsdoel": [True, True, True],
+        },
         geometry=[LineString([(x, 0), (x, 48)]) for x in (10, 26, 42)],
         crs=settings.crs,
     )
