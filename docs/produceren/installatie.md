@@ -32,9 +32,6 @@ Er verschijnt een versienummer. Hebt u Pixi al, dan kunt u deze installatiestap 
 
 ## 2. Download het productiepakket
 
-!!! warning "Updaten bestaande installatie"
-    Volg onderstaande procedure, maar neem .datastore over uit uw bestaande installatie en zorg dat de daarin aanwezige `DATA_DIR` naar uw bestaande gegevensmap verwijst.
-
 1. Download [**waterlagen-productie.zip**](https://github.com/d2hydro/waterlagen/releases/latest/download/waterlagen-productie.zip)
    van de nieuwste stabiele release.
 2. Pak de inhoud van de zip-file uit in een projectfolder naar keuze, bijvoorbeeld
@@ -64,7 +61,9 @@ waterlagen-productie/
     autos.py
 ```
 
-De meegeleverde `.datastore` bevat `DATA_DIR=./data`. Dit is de locatie voor waar de bron- en bewerkte gegevens worden opgeslagen.
+De meegeleverde `.datastore` bevat `DATA_DIR=./data`. Laat dit bestand staan.
+Pixi maakt later de map `.pixi` aan; Waterlagen maakt `data` voor uw gegevens.
+De locatie van uw projectfolder kiest u zelf.
 
 ## 3. Installeer en controleer de omgeving
 
