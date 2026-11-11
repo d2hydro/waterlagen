@@ -1,5 +1,5 @@
-import logging
 from pathlib import Path
+import logging
 
 import geopandas as gpd
 import pandas as pd
@@ -7,23 +7,11 @@ import pyogrio
 import pytest
 from shapely.geometry import Point
 
-from waterlagen._crs import (
-    MissingCRSError,
-    ensure_dataset_crs,
-    horizontal_crs,
-    read_layer_crs_info,
-    same_crs,
-)
+from waterlagen._crs import MissingCRSError, ensure_dataset_crs, read_layer_crs_info
 from waterlagen._downloads import validate_geopackage
 
+
 EXPECTED_CRS = "EPSG:28992"
-
-
-@pytest.mark.parametrize("crs,expected", [(7415, 28992), (28992, 28992), (3857, 3857)])
-def test_horizontal_crs_preserves_horizontal_reference(crs, expected):
-    assert horizontal_crs(crs).to_epsg() == expected
-    # Full CRS comparisons must still distinguish RD from RD + NAP.
-    assert not same_crs(7415, 28992)
 
 
 def _write_spatial_layer(

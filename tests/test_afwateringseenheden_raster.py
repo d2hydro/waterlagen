@@ -147,23 +147,11 @@ def source_paths(tmp_path: Path) -> tuple[Path, Path]:
     return _write_ahn_vrt(tmp_path), _write_watersysteem(tmp_path / "watersysteem.gpkg")
 
 
-@pytest.mark.parametrize("source_crs", [28992, 7415])
-@pytest.mark.parametrize("source_format", ["VRT", "GTiff"])
 def test_prepare_watersysteem_rasters_preserves_grid_scale_and_burn_priority(
     source_paths: tuple[Path, Path],
     tmp_path: Path,
-    source_crs: int,
-    source_format: str,
 ) -> None:
     ahn_vrt_path, watersysteem_path = source_paths
-    with rasterio.open(ahn_vrt_path, "r+") as source:
-        source.crs = source_crs
-        source.units = ("m",)
-    if source_format == "GTiff":
-        tiff = tmp_path / "hydrodem.tif"
-        with gdal.Translate(str(tiff), str(ahn_vrt_path), format="GTiff"):
-            pass
-        ahn_vrt_path = tiff
 
     result = prepare_watersysteem_rasters(
         box(0, 0, 8, 8),

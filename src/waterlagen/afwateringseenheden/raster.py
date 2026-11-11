@@ -19,7 +19,7 @@ from shapely.geometry.base import BaseGeometry
 
 from waterlagen import _geopandas as wgpd
 from waterlagen import datastore as default_datastore
-from waterlagen._crs import horizontal_crs, same_crs
+from waterlagen._crs import same_crs
 from waterlagen.datastore import DataStore
 from waterlagen.logger import get_logger
 from waterlagen.raster.config import RasterOutputConfig
@@ -258,7 +258,7 @@ def _validate_source_coverage(
     grid: RasterGrid,
 ) -> None:
     """Raise a clear error when a project-CRS square is outside the AHN VRT."""
-    if not same_crs(horizontal_crs(source.crs), horizontal_crs(grid.crs)):
+    if not same_crs(source.crs, grid.crs):
         return
     if box(*source.bounds).intersects(box(*grid.bounds)):
         return
@@ -281,15 +281,12 @@ def _resample_dem(
         source=rasterio.band(source, 1),
         destination=data,
         src_transform=source.transform,
-        # Only resample the horizontal grid; stored NAP heights stay unchanged.
-        src_crs=horizontal_crs(source.crs),
+        src_crs=source.crs,
         src_nodata=source.nodata,
         dst_transform=grid.transform,
-        dst_crs=horizontal_crs(grid.crs),
+        dst_crs=grid.crs,
         dst_nodata=np.nan,
         resampling=resampling,
-        # A rasterio band keeps its dataset CRS even when src_crs is supplied.
-        SRC_SRS=horizontal_crs(source.crs).to_wkt(),
     )
     if coverage_mask is None:
         coverage_mask = _coverage_mask(source, grid)

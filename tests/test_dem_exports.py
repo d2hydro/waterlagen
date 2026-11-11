@@ -162,7 +162,7 @@ def test_float_validation_checks_unit(tmp_path):
 
 @pytest.mark.parametrize("crs", [28992, 7415, 3857])
 def test_dem_vrt_adds_nap_without_changing_horizontal_grid(tmp_path, crs):
-    from waterlagen._crs import horizontal_crs
+    from pyproj import CRS
 
     source = tmp_path / "terrain.tif"
     target = tmp_path / "dem.vrt"
@@ -175,7 +175,7 @@ def test_dem_vrt_adds_nap_without_changing_horizontal_grid(tmp_path, crs):
         count=1,
         dtype="int16",
         nodata=-9999,
-        crs=horizontal_crs(crs),
+        crs=CRS.from_epsg(crs).to_2d(),
         transform=from_origin(0, 16, 1, 1),
     ) as dst:
         dst.write(np.full((16, 16), 123, dtype="int16"), 1)
@@ -192,7 +192,7 @@ def test_dem_vrt_adds_nap_without_changing_horizontal_grid(tmp_path, crs):
     exports._create_dem_vrt(target, [source])
     exports._validate_dem_metadata(target, expected_scale=0.01)
     with rasterio.open(source) as original, rasterio.open(target) as result:
-        assert horizontal_crs(original.crs) == horizontal_crs(result.crs)
+        assert CRS(original.crs).to_2d() == CRS(result.crs).to_2d()
         assert result.transform == original.transform
         assert result.nodata == original.nodata
         np.testing.assert_array_equal(result.read(1), original.read(1))
