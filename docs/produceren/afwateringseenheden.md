@@ -116,8 +116,8 @@ Een signaal is een aandachtspunt, geen vastgestelde fout.
 `ingebrand` toont of de duiker heeft bijgedragen aan de hoogteaanpassing:
 `ja`, `nee` of `onbekend`. De reden staat erbij. Ook niet-ingebrande duikers
 kunnen een signaal hebben. `id` bevat de officiële bron-ID (bij HyDAMO: `nen3610id`).
-Laat `duiker_key` ongewijzigd,
-zodat beoordelingen bij opnieuw maken behouden blijven.
+`duiker_key` herkent dezelfde duiker bij het opnieuw maken van de signaalkaart,
+zodat beoordelingen behouden blijven. Laat dit veld ongewijzigd.
 
 Bij opnieuw maken blijven beoordelingen van ongewijzigde duikers behouden.
 Eerdere beoordelingen van gewijzigde of verdwenen duikers staan in de tabel
