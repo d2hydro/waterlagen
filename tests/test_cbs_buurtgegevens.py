@@ -85,7 +85,7 @@ def test_download_wijk_buurtkaart_uses_official_cbs_zip(monkeypatch, tmp_path):
         calls.append((url, kwargs))
         return DownloadResponse(payload)
 
-    monkeypatch.setattr("waterlagen._downloads.requests.get", fake_get)
+    monkeypatch.setattr("waterlagen._http.requests.get", fake_get)
 
     result = download_wijk_buurtkaart_2025(download_dir=tmp_path, progress=False)
 
@@ -149,7 +149,7 @@ def test_download_buurtgegevens_selects_only_buurten_and_requested_measures(
         calls.append((url, kwargs))
         return JsonResponse(responses[url], url)
 
-    monkeypatch.setattr("waterlagen.cbs.buurtgegevens.requests.get", fake_get)
+    monkeypatch.setattr("waterlagen._http.requests.get", fake_get)
 
     result = download_buurtgegevens_2025(download_dir=tmp_path)
 
@@ -192,7 +192,7 @@ def test_download_buurtgegevens_reuses_existing_result(monkeypatch, tmp_path):
     def fail_get(*args, **kwargs):
         raise AssertionError("CBS StatLine should not be requested")
 
-    monkeypatch.setattr("waterlagen.cbs.buurtgegevens.requests.get", fail_get)
+    monkeypatch.setattr("waterlagen._http.requests.get", fail_get)
 
     result = download_buurtgegevens_2025(target_path=target_path, overwrite=False)
 

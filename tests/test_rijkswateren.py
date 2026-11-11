@@ -9,6 +9,7 @@ import requests
 from shapely.geometry import LineString
 
 from waterlagen._downloads import DownloadPayloadError
+from waterlagen import _http
 from waterlagen.rijkswateren import download_rijkswateren
 
 module = importlib.import_module("waterlagen.rijkswateren.download")
@@ -55,17 +56,23 @@ def payload(tmp_path):
     return source.read_bytes()
 
 
-def test_redirect_file_selection_and_offline_reuse(tmp_path, monkeypatch, payload):
+@pytest.mark.parametrize("verify", [True, False])
+def test_redirect_file_selection_and_offline_reuse(
+    tmp_path, monkeypatch, payload, verify
+):
+    monkeypatch.setattr(_http.settings, "waterlagen_ssl_verify", verify)
+    monkeypatch.setattr(_http, "_warned_insecure_download", False)
     get = Mock(side_effect=[Response(), Response(payload)])
     monkeypatch.setattr(requests, "get", get)
     result = download_rijkswateren(tmp_path, timeout=7, progress=False)
     assert result.read_bytes() == payload
     assert get.call_count == 2
     assert (
-        get.call_args_list[1].args[0]
+        get.call_args_list[1].kwargs["url"]
         == "https://cloud.example/s/changing-token/download?path=%2Fhydamo&files=rws_hydamo.gpkg"
     )
     assert all(call.kwargs["timeout"] == 7 for call in get.call_args_list)
+    assert all(call.kwargs["verify"] is verify for call in get.call_args_list)
     get.reset_mock(side_effect=True)
     assert download_rijkswateren(tmp_path, source_url="unreachable") == result
     get.assert_not_called()

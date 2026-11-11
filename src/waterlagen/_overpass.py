@@ -7,6 +7,7 @@ from typing import Any
 
 import requests
 
+from waterlagen._http import post as http_post
 from waterlagen.logger import get_logger
 
 logger = get_logger(__name__)
@@ -48,7 +49,7 @@ def _read_overpass(
     logger.info("Ophalen OSM-%s via Overpass", description)
     for attempt in range(3):
         try:
-            response = requests.post(
+            response = http_post(
                 endpoint,
                 data={"data": query},
                 headers={
@@ -61,10 +62,14 @@ def _read_overpass(
             payload = response.json()
             break
         except (requests.RequestException, requests.exceptions.JSONDecodeError) as exc:
-            retryable = isinstance(exc, requests.RequestException) and (
-                not isinstance(exc, requests.HTTPError)
-                or exc.response is not None
-                and exc.response.status_code in {406, 429, 500, 502, 503, 504}
+            retryable = (
+                isinstance(exc, requests.RequestException)
+                and not isinstance(exc, requests.exceptions.SSLError)
+                and (
+                    not isinstance(exc, requests.HTTPError)
+                    or exc.response is not None
+                    and exc.response.status_code in {406, 429, 500, 502, 503, 504}
+                )
             )
             if not retryable or attempt == 2:
                 raise RuntimeError(f"OSM-{description} ophalen mislukt: {exc}") from exc

@@ -52,12 +52,15 @@ def test_download_default_datastore_and_options(monkeypatch, tmp_path, payload):
         calls.append((url, kwargs))
         return FakeResponse(payload)
 
-    monkeypatch.setattr("waterlagen._downloads.requests.get", fake_get)
+    monkeypatch.setattr("waterlagen._http.requests.get", fake_get)
     result = download_waterketen_damo(progress=False, timeout=17, chunk_size=8192)
     assert store.waterketen_damo_dir == tmp_path / "sources" / "waterketen_damo"
     assert result.target_path == store.waterketen_damo_dir / "waterketen_damo.gpkg"
     assert calls == [
-        (WATERKETEN_DAMO_URL, {"stream": True, "allow_redirects": True, "timeout": 17})
+        (
+            WATERKETEN_DAMO_URL,
+            {"stream": True, "allow_redirects": True, "timeout": 17, "verify": True},
+        )
     ]
     assert result.downloaded_bytes == len(payload)
     validate_geopackage(result.target_path)
@@ -69,7 +72,7 @@ def test_output_overrides_and_offline_reuse(
     monkeypatch, tmp_path, payload, explicit_target
 ):
     monkeypatch.setattr(
-        "waterlagen._downloads.requests.get",
+        "waterlagen._http.requests.get",
         lambda *args, **kwargs: FakeResponse(payload),
     )
     kwargs = {"download_dir": tmp_path / "download"}
@@ -84,7 +87,7 @@ def test_output_overrides_and_offline_reuse(
     def fail_get(*args, **kwargs):
         raise AssertionError("No network request expected")
 
-    monkeypatch.setattr("waterlagen._downloads.requests.get", fail_get)
+    monkeypatch.setattr("waterlagen._http.requests.get", fail_get)
     result = download_waterketen_damo(**kwargs, overwrite=False, progress=False)
     assert result.downloaded_bytes == 0
     assert expected.read_bytes() == previous
@@ -104,7 +107,7 @@ def test_failed_download_preserves_existing_file(
         response = FakeResponse(b"", status=503)
         error = requests.HTTPError
     monkeypatch.setattr(
-        "waterlagen._downloads.requests.get", lambda *args, **kwargs: response
+        "waterlagen._http.requests.get", lambda *args, **kwargs: response
     )
     with pytest.raises(error):
         download_waterketen_damo(target_path=target, progress=False)
@@ -116,7 +119,7 @@ def test_download_uses_configured_crs(monkeypatch, tmp_path, payload):
     module = import_module("waterlagen.waterketen_damo.download")
     monkeypatch.setattr(module.settings, "crs", "EPSG:4326")
     monkeypatch.setattr(
-        "waterlagen._downloads.requests.get",
+        "waterlagen._http.requests.get",
         lambda *args, **kwargs: FakeResponse(payload),
     )
     result = download_waterketen_damo(download_dir=tmp_path / "output", progress=False)
