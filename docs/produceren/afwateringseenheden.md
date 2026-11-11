@@ -97,32 +97,38 @@ inzicht in de invoer. Houd bestanden uit dezelfde run bij elkaar.
 ## Signaalkaart beoordelen
 
 Open `signaalkaart.gpkg` samen met `afwateringseenheden.gpkg` in QGIS.
-De kaart toont BGT-duikers die een grens tussen afwateringseenheden kruisen.
-Bij lijnen moeten begin en einde in verschillende afwateringseenheden liggen.
-Bij vlakken moet aan beide kanten van de grens een deel van het vlak liggen.
+De signaalkaart helpt mogelijke ontbrekende duikerverbindingen in het gebruikte watersysteem op te sporen. We zoeken BGT-duikers die verschillende afwateringseenheden verbinden en mogelijk nog niet door de HyDAMO-waterlopen of duikers worden vertegenwoordigd. Zo kan het waterschap beoordelen of een verbinding ontbreekt die de berekende afwatering kan beïnvloeden.
 
-**Selectie.** Een duiker valt af als minstens de helft van zijn lijn of vlak binnen de 2-meterzone ligt
+**Welke duikers controleren we?**
 
-**Extra controle.** Voor de overige duikers controleren we de aansluiting op het
-gebruikte primaire watersysteem. Een aansluiting telt als de afstand tot een
-gebruikte primaire waterloop hoogstens 2 meter is.
+- BGT-duikerlijnen die een afwateringsgrens kruisen en waarvan begin en einde in verschillende afwateringseenheden liggen.
+- BGT-duikervlakken waarvan aan beide kanten van een afwateringsgrens een deel van het vlak ligt. 
 
-Bij lijnen controleren we beide uiteinden. Bij vlakken controleren we de
-aansluiting in elke afwateringseenheid waarin een deel van het vlak ligt.
-De duiker valt alleen af als alle aansluitingen voldoen én de bijbehorende
-afwateringsdoelen al verbonden zijn.
+**Eerste controle: de 2-meterzone**
 
-Alle BGT-duikers worden gecontroleerd, ook zonder opname in een brandlaag.
+1. We nemen de zone tot 2 meter rond de gebruikte, verbonden waterlopen uit HyDAMO
+2. Ligt minstens de helft van de duikerlijn of het duikervlak binnen die zone? Dan valt de duiker af.
+3. Voor de overige duikers volgt de extra controle hieronder.
 
-**Uitvoer.** Lijnen en vlakken staan in aparte lagen; lege vlaklagen worden weggelaten.
-Elke duiker behoudt zijn oorspronkelijke geometrie en heeft twee velden:
-`id` (de `gml_id` uit de BGT-bron) en `bronhouder` (de bronhoudercode uit de BGT-bron).
-Een signaal is een aandachtspunt, geen vastgestelde fout.
+**Extra controle bij lijnen**
 
-De BGT-bron wordt automatisch voorbereid; met `--offline` moet deze lokaal
-beschikbaar zijn. Voor bestaande resultaten kunt u de
-[Python-functie](../reference/afwateringseenheden.md#signaalkaart) gebruiken.
-Opnieuw maken vervangt de signaalkaart volledig.
+1. We bekijken beide uiteinden van de duiker.
+2. We controleren of elk uiteinde binnen 2 meter van een gebruikte primaire waterloop uit HyDAMO of Rijkswateren ligt.
+3. We controleren of de afwateringsdoelen van beide eenheden al verbonden zijn.
+
+**Extra controle bij vlakken**
+
+1. We bekijken in welke afwateringseenheden het duikervlak ligt.
+2. Per eenheid kiezen we het punt in het overlapdeel dat het dichtst bij het afwateringsdoel ligt.
+3. We controleren of elk gekozen punt binnen 2 meter van een gebruikte primaire waterloop uit HyDAMO of Rijkswateren ligt.
+4. We controleren of de afwateringsdoelen van alle betrokken eenheden al verbonden zijn.
+
+Bij deze extra controle valt de duiker alleen af als de punten binnen 2 meter liggen én alle doelen verbonden zijn. Anders blijft hij op de signaalkaart staan.
+
+**Uitvoer**
+
+- Lijnen en vlakken staan in aparte lagen.
+- Er zijn twee velden: `id` (de `gml_id` uit de BGT-bron) en `bronhouder` (de bronhoudercode uit de BGT-bron).
 
 <span id="optionele-brandlagen"></span>
 <span id="toml-configuratie"></span>
