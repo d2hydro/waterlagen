@@ -181,33 +181,50 @@ vergroot de buffer niet automatisch bij randproblemen.
 
 ## Signaalkaart
 
-`write_duiker_signaalkaart(run_dir)` maakt de signaalkaart uit een bestaande
-productierun, zonder de afwateringseenheden opnieuw te berekenen. De volledige
-productie roept deze functie automatisch na het samenvoegen aan. De functie
-verwacht `afwateringseenheden.gpkg` en `controle.gpkg` met `duikers_waternet`;
-`brandlagen.gpkg` vult beschikbare bronidentificaties aan.
+`write_duiker_signaalkaart(run_dir)` maakt de BGT-signaalkaart zonder nieuwe
+terreinberekening. De productie roept deze functie automatisch aan.
 
-Met `beoordelingen_path` kunt u beoordelingen uit de signaalkaart van een eerdere
-run overnemen. Gebruik daarbij een nieuwe uitvoerlocatie. Zonder deze parameter
-worden de beoordelingen uit de bestaande uitvoer behouden. `output_path` wijzigt
-de standaardlocatie `run_dir/signaalkaart.gpkg`.
+Benodigd zijn `afwateringseenheden.gpkg`,
+`brandlagen.gpkg` (oorspronkelijke primaire waterlopen),
+`watersysteem.gpkg` (lagen `hydroobject_segment` en `hydroobject_verbinding`) en
+`berekening/signaalkaart/bgt_duikers.gpkg` met laag `bgt_duiker`.
+Voor oudere runs kunt u de BGT-bron meegeven met `bgt_duikers_path`.
+De functie downloadt niets.
 
-De uitvoer bevat de aanwezige lijnduikers en duikervlakken, met lege
-beoordelingsvelden. Bij nul signalen blijft een lege lijnlaag beschikbaar. Eerdere
-beoordelingen worden bewaard in de niet-ruimtelijke tabel `beoordelingsarchief`,
-met oorspronkelijke geometrie als WKB-hex en het bijbehorende CRS. Bij het opnieuw
-maken van een oudere signaalkaart worden de oude archieflagen hierin overgenomen
-en vervallen de afzonderlijke kruispunt- en grenslagen. Lege vlaklagen en een leeg
-archief worden weggelaten. `duiker_key` blijft behouden voor het overnemen van
-beoordelingen; overige technische bronvelden staan niet in de beoordelingslagen.
+Eerst valt een duiker af als minstens 50% van zijn lengte (lijn) of oppervlakte
+(vlak) binnen de 2-meterbuffer van het gebruikte, verbonden watersysteem ligt.
+Primaire bronobjecten worden via `bron_id` gekoppeld aan segmenten met een
+uiteindelijke afwateringseenheid; hun volledige geometrie telt mee.
+Daarnaast tellen de verbonden secundaire en eventuele tertiaire waterlopen uit
+`watersysteem.gpkg` mee. Duikers tellen alleen mee met bewijs van toepassing in
+`duiker_inbranding.json` en verbonden behandeling in het bijbehorende
+waternetraster. Ontbrekend bewijs geeft geen vrijstelling. Overlap telt eenmaal.
 
-De inbrandregistratie wordt gelezen uit `berekening/tegels/*/duiker_inbranding.json`
-en gecontroleerd tegen de bijbehorende DEM- en voorbereidingsbestanden. Ontbrekende
-of gewijzigde registratie levert geen ongefundeerde negatieve inbrandstatus op.
-De API wijzigt de berekening of brongegevens niet.
+Voor de routecontrole moet elk controlepunt binnen 2 meter van een gebruikte
+oorspronkelijke primaire waterloop liggen. Alleen nabijheid tot een niet-gebruikt
+bronobject geeft geen vrijstelling. De berekende rasterstroming telt niet mee.
 
-Zie [signaalkaart beoordelen](../produceren/afwateringseenheden.md#signaalkaart-beoordelen)
-voor de lagen, veldbetekenissen en het behoud van beoordelingen.
+Alleen bij lokale primaire aansluiting aan beide kanten controleren we of de
+primaire afwateringsdoelen verbonden zijn. De controle volgt de geregistreerde
+verbindingen uit `hydroobject_verbinding` in beide richtingen. Tussenstukken,
+samenkomsten en splitsingen tellen mee, zonder routelengtelimiet. Een verbinding
+tussen verre primaire einddoelen alleen is dus onvoldoende.
+
+Bij lijnen moeten begin en einde binnen verschillende afwateringseenheden liggen
+en een gedeelde grens doorsnijden. Uiteinden op een grens of buiten de eenheden
+en niet-aaneengesloten lijnen worden niet geselecteerd.
+Bij vlakken tellen alle eenheden met positieve overlap mee. Per eenheid gebruiken
+we het punt van het overlappende vlakdeel dat het dichtst bij het doelsegment
+ligt. Alleen als al die punten lokaal primair aansluiten en alle doelen verbonden
+zijn, valt het vlak via de routecontrole af. De oorspronkelijke geometrie blijft behouden.
+
+De uitvoer bevat `id`, `bronhouder` en oorspronkelijke geometrie, in afzonderlijke
+lijn- en vlaklagen. `id` is de oorspronkelijke `gml_id`; een ontbrekende of lege
+`gml_id` geeft een fout. De bronhoudercode komt rechtstreeks uit de BGT-bron;
+ontbrekende waarden blijven leeg. Lege vlaklagen worden weggelaten; bij nul signalen blijft een lege
+lijnlaag beschikbaar. `output_path` wijzigt de standaardlocatie
+`run_dir/signaalkaart.gpkg`. Het bestand wordt volledig en atomair vervangen;
+eerdere beoordelingsvelden en archieven worden niet overgenomen.
 
 ## Functies en resultaattypen
 

@@ -19,7 +19,6 @@ from waterlagen._production import _file_identity
 from waterlagen.logger import get_logger
 from waterlagen.raster.grid import RasterGrid
 
-from ._duiker_identiteit import _source_identifiers
 from .brandlagen import _digest, _rasterize_brand_shapes, _sort_brandlagen
 from .config import BrandlagenConfig
 from .duikers import _frame_identity
@@ -168,12 +167,9 @@ def _classify_culverts(
     records = []
     next_code = int(optional.broncode.max()) + 1 if not optional.empty else 3
     if sources.culverts is not None:
-        for _, feature in sources.culverts.iterrows():
-            row = feature
+        for row in sources.culverts.itertuples():
             records.append(
                 {
-                    **_source_identifiers(feature),
-                    "bronversie": feature.get("bronversie"),
                     "geometry": row.geometry,
                     "bron": "hydamo",
                     "rang": 0,
@@ -185,12 +181,9 @@ def _classify_culverts(
                 }
             )
     if "rol" in optional:
-        for _, feature in optional.loc[optional.rol.eq("duiker")].iterrows():
-            row = feature
+        for row in optional.loc[optional.rol.eq("duiker")].itertuples():
             records.append(
                 {
-                    **_source_identifiers(feature),
-                    "bronversie": feature.get("bronversie"),
                     "geometry": row.geometry,
                     "bron": row.bron,
                     "rang": {"hydamo": 0, "bgt": 1, "osm": 2}[row.bron],

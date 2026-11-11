@@ -61,6 +61,13 @@ def test_one_area_product_with_full_tiles_and_selected_authorities(
     monkeypatch.setattr(production, "prepare_ahn", prepare_ahn)
     prepare = Mock(wraps=production.prepare_watersysteem)
     monkeypatch.setattr(production, "prepare_watersysteem", prepare)
+    bgt_source = tmp_path / "bgt_signalen.gpkg"
+    gpd.GeoDataFrame(
+        {"gml_id": [], "identificatie.lokaalID": []}, geometry=[], crs=28992
+    ).to_file(bgt_source, layer="bgt_duiker")
+    monkeypatch.setattr(
+        production, "prepare_bgt_signal_source", Mock(return_value=bgt_source)
+    )
 
     def calculate_result(*args, **kwargs):
         target = kwargs["merged_output_path"]
@@ -123,7 +130,7 @@ def test_one_area_product_with_full_tiles_and_selected_authorities(
         result.parent / "signaalkaart.gpkg", layer="duikers_afwateringsgrens"
     )
     assert signals.empty
-    assert {"bestaan", "ligging", "ingebrand", "duiker_key"}.issubset(signals.columns)
+    assert list(signals.columns) == ["id", "bronhouder", "geometry"]
     assert (
         result.parent / "berekening" / "watersysteem" / "watersysteem.gpkg"
     ).is_file()
@@ -353,6 +360,11 @@ def test_authority_options_rejected_before_environment_or_sources(monkeypatch, k
 
 def test_own_contract_rejected_before_ahn(tmp_path, monkeypatch):
     store = DataStore(data_dir=tmp_path, _env_file=None)
+    monkeypatch.setattr(
+        production,
+        "prepare_bgt_signal_source",
+        Mock(return_value=tmp_path / "bgt_duikers.gpkg"),
+    )
     for name in ("hydamo.gpkg", "rws_hydamo.gpkg"):
         (store.hydamo_dir / name).write_text("not read before own validation")
     own = tmp_path / "own.gpkg"

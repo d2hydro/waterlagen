@@ -29,11 +29,10 @@ from waterlagen.logger import get_logger
 from waterlagen.raster.grid import RasterGrid
 from waterlagen.settings import settings
 
-from ._duiker_identiteit import ID_COLUMNS, _source_identifiers
 from .config import BrandlagenConfig, _brand_number
 
 logger = get_logger(__name__)
-BRAND_POLICY = "relative_priority_abs_sources_polygon_touch_ids_v4"
+BRAND_POLICY = "relative_priority_abs_sources_polygon_touch_v3"
 BRAND_LAYER = "brandlagen"
 SOURCE_COLUMNS = ["bronbestand", "bronlaag", "bron_fid"]
 
@@ -123,20 +122,13 @@ def _read_brandlagen(
         return _empty_brandlagen(), errors
     for source_code, source in enumerate(config.lagen, start=3):
         label = f"{source.path} / {source.layer}"
-        source_version = _digest(
-            {
-                "file": _file_identity(source.path),
-                "wal": _file_identity(Path(str(source.path) + "-wal")),
-            }
-        )
         try:
             info = pyogrio.read_info(source.path, layer=source.layer)
             if info["crs"] is None:
                 raise ValueError("layer has no CRS")
-            retained = {
-                name.casefold() for name in ("brandwaarde", "prioriteit", *ID_COLUMNS)
-            }
-            fields = [name for name in info["fields"] if name.casefold() in retained]
+            fields = [
+                name for name in ("brandwaarde", "prioriteit") if name in info["fields"]
+            ]
             options = {"layer": source.layer, "fid_as_index": True, "columns": fields}
             if spatial_selection is not None:
                 selection = gpd.GeoSeries([spatial_selection], crs=settings.crs)
@@ -183,10 +175,8 @@ def _read_brandlagen(
                 records.append(
                     {
                         **values,
-                        **(_source_identifiers(row) if source.rol == "duiker" else {}),
                         "broncode": source_code,
                         "bronbestand": str(source.path),
-                        "bronversie": source_version,
                         "bronlaag": source.layer,
                         "bron_fid": int(fid),
                         "rol": source.rol,
@@ -225,8 +215,6 @@ def read_brandlagen(
         ``prioriteit`` and ``broncode``, ``bronbestand``, ``bronlaag``,
         ``bron_fid`` provenance. Codes start at 3 in configuration order;
         codes 1 and 2 are reserved for primary and secondary HYDAMO.
-        Culverts also retain available official source identifiers and a source
-        version for conservative assessment reuse in the signal map.
         Sorted by increasing priority and absolute value for replacement burning.
 
     Raises

@@ -17,7 +17,7 @@ pixi run --locked afwateringseenheden --waterbeheercode 38 --workers 8 --run-id 
 Gebruikt u de broncode uit GitHub? Voeg dan bij de opdrachten op deze pagina
 `--environment afwateringseenheden` toe na `pixi run`.
 
-Ontbrekende standaardbronnen (AHN, HYDAMO, Rijkswateren en gebiedsgrenzen) worden
+Ontbrekende standaardbronnen (AHN, HYDAMO, Rijkswateren, BGT-duikers en gebiedsgrenzen) worden
 automatisch opgehaald en voorbereid. Bestaande bronnen worden hergebruikt;
 met `--offline` moeten de benodigde bronnen al lokaal beschikbaar zijn.
 Aanvullende BGT-, TOP10NL- en OSM-brandlagen worden alleen gebruikt als u ze
@@ -66,7 +66,7 @@ Andere runs volgen de indeling
 | `watersysteem.gpkg` | Waterlopen, segmenten en verbindingen. |
 | `controle.gpkg` | Niet-toegewezen gebieden, aanvullingen uit buurtegels en bron- en duikercontroles. |
 | `brandlagen.gpkg` | Geselecteerde brandinvoer, met afzonderlijke lagen per bron. |
-| `signaalkaart.gpkg` | Duikers die grenzen tussen afwateringseenheden doorsnijden, met inbrandstatus en invulvelden voor beoordeling. |
+| `signaalkaart.gpkg` | BGT-duikers die afwateringsgrenzen doorsnijden, met GML-ID, bronhouder en geometrie. |
 | `productie.log` | Voortgang en meldingen van de berekening. |
 | `run.json` | Instellingen, bronidentiteit, pakketversie en runstatus. |
 
@@ -96,36 +96,33 @@ inzicht in de invoer. Houd bestanden uit dezelfde run bij elkaar.
 
 ## Signaalkaart beoordelen
 
-Na de productie staat `signaalkaart.gpkg` klaar. Deze toont geselecteerde duikers
-uit de brandinvoer die een grens tussen afwateringseenheden doorsnijden.
+Open `signaalkaart.gpkg` samen met `afwateringseenheden.gpkg` in QGIS.
+De kaart toont BGT-duikers die een grens tussen afwateringseenheden kruisen.
+Bij lijnen moeten begin en einde in verschillende afwateringseenheden liggen.
+Bij vlakken moet aan beide kanten van de grens een deel van het vlak liggen.
+
+**Selectie.** Een duiker valt af als minstens de helft van zijn lijn of vlak binnen de 2-meterzone ligt
+
+**Extra controle.** Voor de overige duikers controleren we de aansluiting op het
+gebruikte primaire watersysteem. Een aansluiting telt als de afstand tot een
+gebruikte primaire waterloop hoogstens 2 meter is.
+
+Bij lijnen controleren we beide uiteinden. Bij vlakken controleren we de
+aansluiting in elke afwateringseenheid waarin een deel van het vlak ligt.
+De duiker valt alleen af als alle aansluitingen voldoen én de bijbehorende
+afwateringsdoelen al verbonden zijn.
+
+Alle BGT-duikers worden gecontroleerd, ook zonder opname in een brandlaag.
+
+**Uitvoer.** Lijnen en vlakken staan in aparte lagen; lege vlaklagen worden weggelaten.
+Elke duiker behoudt zijn oorspronkelijke geometrie en heeft twee velden:
+`id` (de `gml_id` uit de BGT-bron) en `bronhouder` (de bronhoudercode uit de BGT-bron).
 Een signaal is een aandachtspunt, geen vastgestelde fout.
 
-1. Open `signaalkaart.gpkg` samen met `afwateringseenheden.gpkg` in QGIS.
-2. Open `duikers_afwateringsgrens`: de duikers staan er al in, met lege
-   beoordelingsvelden. Alleen als er duikervlakken zijn, is er ook een vlaklaag.
-3. Vul per duiker de beoordeling in en sla de bewerkingen op:
-
-| Veld | Invullen |
-| --- | --- |
-| `bestaan` | `bestaat`, `bestaat_niet` of `onzeker`. |
-| `ligging` | `correct`, `onjuist` of `onzeker`. |
-| `opmerking` | Korte toelichting. |
-| `beoordelaar` | Naam of team. |
-| `datum_beoordeling` | Datum als `JJJJ-MM-DD`. |
-
-`ingebrand` toont of de duiker heeft bijgedragen aan de hoogteaanpassing:
-`ja`, `nee` of `onbekend`. De reden staat erbij. Ook niet-ingebrande duikers
-kunnen een signaal hebben. `id` bevat de officiële bron-ID (bij HyDAMO: `nen3610id`).
-`duiker_key` herkent dezelfde duiker bij het opnieuw maken van de signaalkaart,
-zodat beoordelingen behouden blijven. Laat dit veld ongewijzigd.
-
-Bij opnieuw maken blijven beoordelingen van ongewijzigde duikers behouden.
-Eerdere beoordelingen van gewijzigde of verdwenen duikers staan in de tabel
-`beoordelingsarchief`; die verschijnt alleen als er iets te bewaren is.
-
-Voor bestaande resultaten is er een
-[Python-functie](../reference/afwateringseenheden.md#signaalkaart), zonder nieuwe
-terreinberekening.
+De BGT-bron wordt automatisch voorbereid; met `--offline` moet deze lokaal
+beschikbaar zijn. Voor bestaande resultaten kunt u de
+[Python-functie](../reference/afwateringseenheden.md#signaalkaart) gebruiken.
+Opnieuw maken vervangt de signaalkaart volledig.
 
 <span id="optionele-brandlagen"></span>
 <span id="toml-configuratie"></span>

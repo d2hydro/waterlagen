@@ -14,6 +14,7 @@ from waterlagen.afwateringseenheden._duiker_inbranding import (
     TRACE_FILENAME,
     _read_burn_counts,
 )
+from waterlagen.afwateringseenheden._signaalnetwerk import read_used_network
 from waterlagen.afwateringseenheden.config import BrandlagenConfig
 from waterlagen.afwateringseenheden.waternet import prepare_waternet
 from waterlagen.settings import settings
@@ -57,7 +58,7 @@ def calculate(tmp_path, data, *, extra=None, depth=10, boundary=None):
         "burn_depth_m": 10,
         "ahn_vrt_path": ahn,
         "watersysteem_path": network,
-        "output_dir": tmp_path / "rasters",
+        "output_dir": tmp_path / "berekening" / "tegels" / "test",
         "landsgrens_path": boundary_path,
     }
     result = prepare_watersysteem_rasters(box(0, 0, 40, 40), **options)
@@ -81,6 +82,17 @@ def test_same_source_overlap_records_only_actual_winner(tmp_path):
     assert counts["hydamo-1"]["toegepast"] > 0
     with rasterio.open(result.dem_path) as source:
         assert source.read(1)[cell(grid(), 15, 21)] == 90
+
+
+def test_new_run_supplies_actual_burn_evidence_to_signal_map(tmp_path):
+    """The producer, not a manually supplied audit fixture, enables the 2 m check."""
+    data = connected()
+    calculate(tmp_path, data)
+    signals = data.culverts[["geometry"]].copy()
+    network = read_used_network(tmp_path, data.primary, signals)
+    assert any(
+        geometry.equals(signals.geometry.iloc[0]) for geometry in network.geometry
+    )
 
 
 def test_missing_dem_is_distinct_from_displaced_burning(tmp_path):
