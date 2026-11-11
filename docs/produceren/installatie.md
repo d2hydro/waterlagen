@@ -4,6 +4,9 @@ editorial_status: ai
 
 # Installatie
 
+!!! warning "Bijwerken bestaande installatie"
+    Voor het bijwerken van een betaande installatie, zie [bijwerken bestaande installatie](#bijwerken-bestaande-installatie)
+
 Met het **productiepakket** van een Waterlagen-release kunt u zelfstandig
 afwateringseenheden, functioneel landgebruik, inwoners en personenauto's produceren.
 Het pakket bevat Pixi-installatiebestanden en de bijbehorende Python-scripts.
@@ -107,27 +110,10 @@ rekentijd en schijfruimte kunnen vragen. Gebruik `--area alkmaar` voor een klein
 Voer ook bij een volgende sessie de opdrachten vanuit uw projectfolder uit.
 U hoeft de omgeving niet apart te activeren.
 
-## Bijwerken
+##  Bijwerken bestaande installatie
+Stop lopende berekeningen en start `bijwerken.cmd` (Windows) of `sh ./bijwerken.sh` (Linux) vanuit uw projectfolder. Instellingen en data blijven behouden.
 
-Stop eerst lopende berekeningen. Start in uw projectfolder:
-
-- **Windows:** dubbelklik op `bijwerken.cmd`.
-- **Linux:** voer `sh ./bijwerken.sh` uit.
-
-Bevestig de update en wacht op **Bijwerken geslaagd**. Instellingen en data blijven
-behouden. Hervat een onderbroken run met de oorspronkelijke softwareversie.
-
-Ontbreken de bijwerkbestanden in uw bestaande installatie? Download dan eenmalig
-het nieuwste productiepakket en kopieer de volgende bestanden uit de ZIP naar uw
-bestaande projectfolder, naast `pixi.toml`:
-
-- **Windows:** `bijwerken.cmd` en `bijwerken.py`.
-- **Linux:** `bijwerken.sh` en `bijwerken.py`.
-
-Beide bestanden voor uw besturingssysteem zijn nodig. Start daarna het bijwerken
-zoals hierboven beschreven. Bij volgende updates haalt het bijwerkscript zelf
-het nieuwe productiepakket op; u hoeft de ZIP niet meer handmatig te downloaden
-of uit te pakken.
+Ontbreken de bijwerkbestanden? Download het Download [**waterlagen-productie.zip**](https://github.com/d2hydro/waterlagen/releases/latest/download/waterlagen-productie.zip) en kopieer `bijwerken.py` en het bijbehorende script (`.cmd` of `.sh`) naast `pixi.toml`. Bij volgende updates is dit niet meer nodig.
 
 ## Als een opdracht niet werkt
 
