@@ -78,7 +78,7 @@ def test_download_bestuurlijke_gebieden_uses_requested_year_url(monkeypatch, tmp
         calls.append((url, kwargs))
         return FakeResponse(payload)
 
-    monkeypatch.setattr("waterlagen._downloads.requests.get", fake_get)
+    monkeypatch.setattr("waterlagen._http.requests.get", fake_get)
 
     result = download_bestuurlijke_gebieden(2024, download_dir=tmp_path, progress=False)
 
@@ -95,7 +95,7 @@ def test_download_waterschapsgrenzen_uses_configured_url(monkeypatch, tmp_path):
         calls.append((url, kwargs))
         return FakeResponse(payload)
 
-    monkeypatch.setattr("waterlagen._downloads.requests.get", fake_get)
+    monkeypatch.setattr("waterlagen._http.requests.get", fake_get)
 
     result = download_waterschapsgrenzen(download_dir=tmp_path, progress=False)
 
@@ -112,7 +112,7 @@ def test_download_reuses_existing_geopackage_without_http_request(
     def fail_get(*args, **kwargs):
         raise AssertionError("download should not be requested")
 
-    monkeypatch.setattr("waterlagen._downloads.requests.get", fail_get)
+    monkeypatch.setattr("waterlagen._http.requests.get", fail_get)
 
     result = download_bestuurlijke_gebieden(
         2026,
@@ -130,7 +130,7 @@ def test_download_validates_before_replacing_existing_geopackage(monkeypatch, tm
     previous_payload = _geopackage_bytes(tmp_path)
     target.write_bytes(previous_payload)
     monkeypatch.setattr(
-        "waterlagen._downloads.requests.get",
+        "waterlagen._http.requests.get",
         lambda *args, **kwargs: FakeResponse(b"not a geopackage"),
     )
 

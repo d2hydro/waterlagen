@@ -7,11 +7,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TypeAlias
 
-import requests
 import pandas as pd
 
 from waterlagen import datastore
 from waterlagen._geopandas import read_file
+from waterlagen._http import get as http_get
 from waterlagen.administratieve_gebieden.download import (
     CBS_BUURTCODE_COLUMN,
     CBS_BUURTEN_LAYER,
@@ -81,7 +81,7 @@ def _request_json(
     params: dict[str, str | int] | None,
     timeout: int,
 ) -> dict[str, object]:
-    response = requests.get(url, params=params, timeout=timeout)
+    response = http_get(url, params=params, timeout=timeout)
     response.raise_for_status()
     try:
         payload = response.json()

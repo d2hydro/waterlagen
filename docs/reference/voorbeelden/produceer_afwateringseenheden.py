@@ -141,6 +141,7 @@ if __name__ == "__main__":
             duikersifonhevel=bronnen.culverts,
             duiker_tolerance=DUIKER_TOLERANCE_M,
             max_aansluitlengte=MAX_AANSLUITLENGTE_M,
+            max_complex_routelengte=100.0,
         )
         watersysteem = write_watersysteem(
             hydroobject_primair=bronnen.primary,

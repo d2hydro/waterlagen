@@ -65,6 +65,12 @@ def cli() -> None:
         help="Maximale lengte van directe aansluitstukken zonder afwateringsdoel",
     )
     parser.add_argument(
+        "--max-complex-routelengte",
+        type=float,
+        default=100.0,
+        help="Maximale volledige parallelle route met eigen kunstwerk zonder doel (100 m; 0 uit)",
+    )
+    parser.add_argument(
         "--dem-resampling",
         choices=DEM_RESAMPLING_METHODS,
         default="min",

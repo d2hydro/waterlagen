@@ -5,10 +5,10 @@ from urllib.parse import urlencode, urlsplit, urlunsplit
 import re
 
 import pyogrio
-import requests
 
 from waterlagen._downloads import stream_download_to_temp, validate_geopackage
 from waterlagen._filesystem import replace_file
+from waterlagen._http import get as http_get
 from waterlagen.datastore import DataStore
 from waterlagen.logger import get_logger
 
@@ -20,7 +20,7 @@ def _download_url(source_url: str, timeout: float) -> str:
     """Resolve a public share without downloading its HTML as source data."""
     if urlsplit(source_url).path.lower().endswith(".gpkg"):
         return source_url
-    with requests.get(source_url, stream=True, timeout=timeout) as response:
+    with http_get(source_url, stream=True, timeout=timeout) as response:
         response.raise_for_status()
         resolved = urlsplit(response.url)
     match = re.fullmatch(r"(.*?/s/[^/]+)/?", resolved.path)

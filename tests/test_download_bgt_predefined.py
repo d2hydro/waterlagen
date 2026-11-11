@@ -62,10 +62,15 @@ def _zip_with_gml(*names: str) -> bytes:
 def _mock_download(monkeypatch, response: FakeStreamResponse):
     def fake_get(url, **kwargs):
         assert url == BGT_PREDEFINED_URL
-        assert kwargs == {"stream": True, "allow_redirects": True, "timeout": 30}
+        assert kwargs == {
+            "stream": True,
+            "allow_redirects": True,
+            "timeout": 30,
+            "verify": True,
+        }
         return response
 
-    monkeypatch.setattr("waterlagen._downloads.requests.get", fake_get)
+    monkeypatch.setattr("waterlagen._http.requests.get", fake_get)
 
 
 def _mock_gml_reader(monkeypatch, crs_by_layer: dict[str, str | None]):
@@ -416,7 +421,7 @@ def test_successful_predefined_bgt_download(monkeypatch, tmp_path):
             },
         )
 
-    monkeypatch.setattr("waterlagen._downloads.requests.get", fake_get)
+    monkeypatch.setattr("waterlagen._http.requests.get", fake_get)
     _mock_gml_reader(monkeypatch, {"bgt_waterdeel": "EPSG:28992"})
 
     result = download_bgt(download_dir=tmp_path, progress=False)
@@ -424,7 +429,7 @@ def test_successful_predefined_bgt_download(monkeypatch, tmp_path):
     assert calls == [
         (
             BGT_PREDEFINED_URL,
-            {"stream": True, "allow_redirects": True, "timeout": 30},
+            {"stream": True, "allow_redirects": True, "timeout": 30, "verify": True},
         )
     ]
     assert result.source_url == BGT_PREDEFINED_URL
@@ -448,7 +453,7 @@ def test_valid_existing_predefined_archive_is_reused(monkeypatch, tmp_path):
     def fake_get(url, **kwargs):
         raise AssertionError("valid archive should be reused")
 
-    monkeypatch.setattr("waterlagen._downloads.requests.get", fake_get)
+    monkeypatch.setattr("waterlagen._http.requests.get", fake_get)
     _mock_gml_reader(monkeypatch, {"bgt_waterdeel": "EPSG:28992"})
 
     result = download_bgt(download_dir=tmp_path, progress=False)
@@ -745,7 +750,7 @@ def test_predefined_download_logs_reused_valid_archive(
     def fake_get(url, **kwargs):
         raise AssertionError("valid archive should be reused")
 
-    monkeypatch.setattr("waterlagen._downloads.requests.get", fake_get)
+    monkeypatch.setattr("waterlagen._http.requests.get", fake_get)
     _mock_gml_reader(monkeypatch, {"bgt_waterdeel": "EPSG:28992"})
     caplog.set_level(logging.INFO, logger="waterlagen.bgt.download")
 
@@ -830,7 +835,7 @@ def test_existing_target_without_overwrite_skips_archive_download(
     def fake_get(url, **kwargs):
         raise AssertionError("target overwrite=False should skip archive download")
 
-    monkeypatch.setattr("waterlagen._downloads.requests.get", fake_get)
+    monkeypatch.setattr("waterlagen._http.requests.get", fake_get)
 
     result = download_bgt(download_dir=tmp_path, overwrite=False, progress=False)
 
