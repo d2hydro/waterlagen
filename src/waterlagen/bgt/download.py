@@ -12,7 +12,6 @@ from pathlib import Path, PurePosixPath
 from urllib.parse import unquote, urlparse
 
 import pyogrio
-import requests
 from osgeo import gdal
 from shapely.geometry import Polygon, box
 from shapely.geometry.base import BaseGeometry
@@ -30,6 +29,8 @@ from waterlagen._downloads import (
     stream_download_to_temp,
     validate_geopackage,
 )
+from waterlagen._http import get as http_get
+from waterlagen._http import post as http_post
 from waterlagen.logger import get_logger
 from waterlagen.settings import settings
 
@@ -164,7 +165,7 @@ def request_download(
         body["geofilter"] = poly_mask.wkt
 
     # post download request
-    response = requests.post(url, json=body)
+    response = http_post(url, json=body)
     response.raise_for_status()
 
     # return download request-id
@@ -198,7 +199,7 @@ def poll_downloadstatus(
     waiting = True
 
     while waiting:
-        response = requests.get(status_url, timeout=60)
+        response = http_get(status_url, timeout=60)
         response.raise_for_status()
 
         data = response.json()

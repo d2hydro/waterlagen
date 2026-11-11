@@ -47,7 +47,12 @@ def _zip_with_gml() -> bytes:
 
 def test_bgt_download_reprojects_written_geopackage(monkeypatch, tmp_path):
     def fake_get(url, **kwargs):
-        assert kwargs == {"stream": True, "allow_redirects": True, "timeout": 30}
+        assert kwargs == {
+            "stream": True,
+            "allow_redirects": True,
+            "timeout": 30,
+            "verify": True,
+        }
         return FakeResponse(_zip_with_gml())
 
     def fail_read_file(*args, **kwargs):
@@ -61,7 +66,7 @@ def test_bgt_download_reprojects_written_geopackage(monkeypatch, tmp_path):
         ).to_crs(expected_crs)
         gdf.to_file(target_path, driver="GPKG", layer=layer_name)
 
-    monkeypatch.setattr("waterlagen._downloads.requests.get", fake_get)
+    monkeypatch.setattr("waterlagen._http.requests.get", fake_get)
     monkeypatch.setattr("geopandas.read_file", fail_read_file)
     monkeypatch.setattr(
         "waterlagen.bgt.download._translate_gml_layer_to_geopackage",
@@ -88,7 +93,12 @@ def test_bgt_download_missing_crs_raises_without_replacing_existing(
     before = existing.read_bytes()
 
     def fake_get(url, **kwargs):
-        assert kwargs == {"stream": True, "allow_redirects": True, "timeout": 30}
+        assert kwargs == {
+            "stream": True,
+            "allow_redirects": True,
+            "timeout": 30,
+            "verify": True,
+        }
         return FakeResponse(_zip_with_gml())
 
     def fake_translate(*args, **kwargs):
@@ -97,7 +107,7 @@ def test_bgt_download_missing_crs_raises_without_replacing_existing(
             "Cannot reproject to EPSG:28992 without a source CRS."
         )
 
-    monkeypatch.setattr("waterlagen._downloads.requests.get", fake_get)
+    monkeypatch.setattr("waterlagen._http.requests.get", fake_get)
     monkeypatch.setattr(
         "waterlagen.bgt.download._translate_gml_layer_to_geopackage",
         fake_translate,

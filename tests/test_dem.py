@@ -366,6 +366,55 @@ def test_explicit_vrt_priority(tmp_path):
     assert read(vrt)[0, 0] == 10
 
 
+def test_hydrodem_metadata_and_values(tmp_path, landuse_inputs, monkeypatch):
+    from waterlagen.dem import productie
+
+    data = np.full((64, 64), -123, dtype="int16")
+    ahn = write_ahn(tmp_path / "ahn.tif", data, scale=0.01)
+    output = tmp_path / "dem"
+    bouw_dem_tiles(output, ahn_vrt_path=ahn, landuse_tiles=landuse_inputs)
+    for name in ("dem.vrt", "dem.tif", "dem_float.tif"):
+        with rasterio.open(output / name) as result:
+            assert result.crs.to_epsg() == 7415
+            assert result.units == ("m",)
+            assert result.offsets == (0.0,)
+            if name == "dem_float.tif":
+                assert result.scales == (1.0,)
+                assert result.read(1)[0, 0] == pytest.approx(-1.23)
+            else:
+                assert result.dtypes == ("int16",)
+                assert result.scales == (0.01,)
+                assert result.read(1)[0, 0] == -123
+    with rasterio.open(ahn) as source:
+        assert source.crs.to_epsg() == 28992
+        np.testing.assert_array_equal(source.read(1), data)
+
+    # An older metadata checkpoint must republish without recalculating tiles.
+    checkpoint = output / "dem_complete.json"
+    previous = json.loads(checkpoint.read_text())
+    del previous["metadata_version"]
+    checkpoint.write_text(json.dumps(previous))
+    tile_times = {
+        path: path.stat().st_mtime_ns
+        for tile in landuse_inputs
+        for path in _tile_paths(output, tile).rasters
+    }
+
+    def no_recalculation(*args, **kwargs):
+        pytest.fail("Metadata upgrades must reuse computed heights and tiles")
+
+    monkeypatch.setattr(productie, "calculate_building_elevations", no_recalculation)
+    monkeypatch.setattr(interpolate, "interpolate_masked", no_recalculation)
+    bouw_dem_tiles(output, ahn_vrt_path=ahn, landuse_tiles=landuse_inputs)
+    assert all(path.stat().st_mtime_ns == time for path, time in tile_times.items())
+    assert json.loads(checkpoint.read_text())["metadata_version"] == 1
+    with rasterio.open(output / "dem.tif") as result:
+        assert result.crs.to_epsg() == 7415
+        assert result.units == ("m",)
+        assert result.scales == (0.01,)
+        assert result.read(1)[0, 0] == -123
+
+
 def test_cog_preserves_nan_nodata_scale_and_offset(tmp_path):
     path = write_ahn(
         tmp_path / "float.tif",

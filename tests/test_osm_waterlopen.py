@@ -5,6 +5,7 @@ from unittest.mock import Mock
 
 import geopandas as gpd
 import pytest
+import requests
 
 from waterlagen import _overpass
 from waterlagen.datastore import DataStore
@@ -67,6 +68,23 @@ def test_download_open_canals_and_reuse(download):
     with pytest.raises(ValueError, match="andere invoer"):
         download_osm_canals((100000, 400000, 190000, 500000), data_store=store)
     request.assert_not_called()
+
+
+def test_overpass_certificate_error_is_not_retried(monkeypatch):
+    request = Mock(side_effect=requests.exceptions.SSLError("certificate failed"))
+    monkeypatch.setattr(_overpass.requests, "post", request)
+
+    with pytest.raises(RuntimeError, match="WATERLAGEN_SSL_VERIFY=false"):
+        _overpass._read_overpass(
+            "way[waterway=canal];out;",
+            "canals",
+            endpoint="https://example.test/overpass",
+            cache_dir=None,
+            offline=False,
+            timeout=10,
+        )
+
+    request.assert_called_once()
 
 
 @pytest.mark.parametrize("failure", ["remark", "geometry", "timestamp", "duplicate"])

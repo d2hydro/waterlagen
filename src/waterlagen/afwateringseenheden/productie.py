@@ -53,6 +53,7 @@ from waterlagen.settings import settings
 from ._resampling import _validate_dem_resampling
 from .brandlagen import _empty_brandlagen
 from .brandlagen_overzicht import _write_brandlagen_overzicht
+from .complexen import COMPLEX_POLICY, validate_complex_length
 from .duikers import CULVERT_POLICY, _validate_culvert_options
 from .signalen import BGT_SOURCE, write_duiker_signaalkaart
 from .waternet import WATERNET_POLICY, prepare_waternet
@@ -95,6 +96,7 @@ def main(
     rijkswateren_url: str = RIJKSWATEREN_URL,
     duiker_tolerance: float = 0.5,
     max_aansluitlengte: float | None = None,
+    max_complex_routelengte: float = 100.0,
     dem_resampling: str = "min",
 ) -> Path:
     """Produce full tiles with separate drainage targets and surrounding burn context.
@@ -135,6 +137,9 @@ def main(
         is requested. Without an authority code, RWS also supplies targets.
     duiker_tolerance : float, optional
         Inclusive maximum endpoint distance to primary lines, default 0.5 m.
+    max_complex_routelengte : float, optional
+        Maximum full parallel route length in metres, default 100; zero disables
+        complex target exclusion. Burning remains unchanged.
     max_aansluitlengte : float, optional
         Maximum direct adjoining length excluded from targets, default None.
         Does not change primary burning. Finite, non-negative; zero is valid.
@@ -153,6 +158,7 @@ def main(
     name = area_name(area)
     code = name.removeprefix("waterschap_") if name.startswith("waterschap_") else None
     validate_authority_options(code, overige_waterschappen, eigen_hydamo)
+    validate_complex_length(max_complex_routelengte)
     _validate_culvert_options(duiker_tolerance, max_aansluitlengte)
     require_pcraster()
     store = data_store or DataStore()
@@ -228,6 +234,8 @@ def main(
         "duiker_gkw_excluded_codes": ["80"],
         "duiker_tolerance": duiker_tolerance,
         "max_aansluitlengte": max_aansluitlengte,
+        "max_complex_routelengte": max_complex_routelengte,
+        "complex_policy": COMPLEX_POLICY,
         "secondary_connection_policy": CONNECTION_POLICY,
         "secondary_connection_tolerance_m": 2.0,
         "max_segment_length_m": 500.0,
@@ -358,6 +366,8 @@ def main(
             duikersifonhevel=sources.culverts,
             duiker_tolerance=duiker_tolerance,
             max_aansluitlengte=max_aansluitlengte,
+            max_complex_routelengte=max_complex_routelengte,
+            puntobjecten_context=sources.points_context,
         )
         network_path = write_watersysteem(
             hydroobject_primair=sources.primary,

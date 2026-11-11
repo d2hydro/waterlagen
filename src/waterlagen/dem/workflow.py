@@ -204,12 +204,20 @@ def main(
                 rasterio.open(run.path / f"{name}.vrt") as vrt,
                 rasterio.open(run.path / f"{name}.tif") as cog,
             ):
-                if (vrt.shape, vrt.transform, vrt.crs, vrt.scales, vrt.offsets) != (
+                if (
+                    vrt.shape,
+                    vrt.transform,
+                    vrt.crs,
+                    vrt.scales,
+                    vrt.offsets,
+                    vrt.units,
+                ) != (
                     cog.shape,
                     cog.transform,
                     cog.crs,
                     cog.scales,
                     cog.offsets,
+                    cog.units,
                 ):
                     raise ValueError(f"VRT/COG metadata wijkt af: {name}")
                 block_height, block_width = cog.block_shapes[0]

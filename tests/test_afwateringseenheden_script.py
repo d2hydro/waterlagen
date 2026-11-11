@@ -148,6 +148,7 @@ def test_one_area_product_with_full_tiles_and_selected_authorities(
     assert prepare.call_args.kwargs["duikersifonhevel"].empty
     assert prepare.call_args.kwargs["duiker_tolerance"] == 0.5
     assert prepare.call_args.kwargs["max_aansluitlengte"] is None
+    assert prepare.call_args.kwargs["max_complex_routelengte"] == 100.0
     assert set(prepare.call_args.args[0].waterbeheercode) == expected
     context = prepare_ahn.call_args.args[1]
     assert context.covers(box(150000, 400000, 160000, 410000))

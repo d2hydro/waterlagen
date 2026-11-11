@@ -37,6 +37,8 @@ class WatersysteemSources:
         Secondary connectivity is classified jointly when writing the network.
     targets : geopandas.GeoDataFrame
         Primary lines of participating authorities, before segmentation.
+    points_context : geopandas.GeoDataFrame, optional
+        Point context before target-authority filtering, for parallel routes.
     points : geopandas.GeoDataFrame
         Gemaal and stuw objects of participating authorities.
     missing_category : geopandas.GeoDataFrame, optional
@@ -59,6 +61,7 @@ class WatersysteemSources:
     culverts: gpd.GeoDataFrame | None = None
     rws_culverts_present: bool = False
     tertiary: gpd.GeoDataFrame | None = None
+    points_context: gpd.GeoDataFrame | None = None
 
 
 def validate_authority_options(
@@ -293,6 +296,7 @@ def read_watersysteem_sources(
     ].copy()
     primary["brandcategorie"] = "primair"
     secondary["brandcategorie"] = "secundair"
+    points_context = points.copy()
     targets = primary.copy()
     if waterbeheercode is not None:
         if overige_waterschappen:
@@ -317,4 +321,5 @@ def read_watersysteem_sources(
         culverts,
         rws_culverts_present,
         hydro.loc[hydro[CATEGORIE_OPPERVLAKTEWATER_COLUMN].eq("tertiair")].copy(),
+        points_context,
     )

@@ -234,3 +234,15 @@ eerdere beoordelingsvelden en archieven worden niet overgenomen.
     options:
       heading_level: 3
       separate_signature: true
+
+## Parallelle routes
+
+`prepare_watersysteem(..., max_complex_routelengte=100.0)` sluit volledige interne
+bronobjecten uit als iedere parallelle route maximaal deze lengte heeft en een
+eigen kunstwerk bevat. `0` schakelt deze doeluitsluiting uit. De lengte wordt v??r
+`max_length`-segmentatie gemeten. `afwateringsdoel` geeft de toelating als doel
+weer; een toegelaten segment hoeft bij rasterisatie geen doelcel op te leveren.
+Bij een complex met een duiker, sifon of hevel wordt `brandgeschikt` voor alle
+interne hydroobjecten ook `False`. Bij uitsluitend stuwen en/of gemalen blijft
+`brandgeschikt` gelijk. Zie de [productie-instructies](../produceren/afwateringseenheden.md#parallelle-routes-instellen)
+voor instelling en visuele beoordeling.

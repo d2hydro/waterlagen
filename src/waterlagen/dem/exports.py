@@ -6,13 +6,62 @@ from pathlib import Path
 import numpy as np
 import rasterio
 from osgeo import gdal
+from pyproj import CRS
+from pyproj.crs import CompoundCRS
 from tqdm.auto import tqdm
 
 from waterlagen._filesystem import replace_file
 from waterlagen.logger import get_logger
-from waterlagen.raster.vrt import create_cog_file
+from waterlagen.raster.vrt import create_cog_file, create_vrt_file
 
 logger = get_logger(__name__)
+
+
+def _validate_dem_metadata(path: Path, *, expected_scale: float | None = None) -> None:
+    """Check height metadata, including scale preservation and the NAP datum."""
+    with gdal.Open(str(path)) as dataset:
+        if dataset.RasterCount != 1:
+            raise ValueError("DEM must have exactly one height band")
+        band = dataset.GetRasterBand(1)
+        scale = band.GetScale()
+        offset = band.GetOffset()
+        if scale is None or not np.isfinite(scale) or scale <= 0:
+            raise ValueError("DEM must declare a finite positive scale")
+        if expected_scale is not None and scale != expected_scale:
+            raise ValueError("DEM scale differs from the expected height scale")
+        if offset is not None and not np.isfinite(offset):
+            raise ValueError("DEM offset must be finite")
+        if band.GetUnitType() != "m":
+            raise ValueError("DEM must declare unit 'm' for decoded heights")
+        crs = CRS.from_wkt(dataset.GetProjection())
+        if not crs.is_compound or crs.sub_crs_list[-1] != CRS.from_epsg(5709):
+            raise ValueError("DEM CRS must include NAP height (EPSG:5709)")
+
+
+def _create_dem_vrt(target: Path, files: list[Path]) -> Path:
+    """Publish NAP metadata without resampling or changing stored heights."""
+    temporary = target.with_suffix(".publish.vrt")
+    with rasterio.open(files[0]) as source:
+        expected_scale = source.scales[0]
+    try:
+        logger.info("Writing DEM height metadata (unit m, NAP datum) to %s", target)
+        create_vrt_file(temporary, files=files)
+        with gdal.Open(str(temporary), gdal.GA_Update) as dataset:
+            source_crs = CRS.from_wkt(dataset.GetProjection())
+            # Preserve the configured horizontal grid; RD + NAP is EPSG:7415.
+            height_crs = source_crs
+            if not source_crs.is_compound:
+                height_crs = CompoundCRS(
+                    name=f"{source_crs.name} + NAP height",
+                    components=[source_crs, CRS.from_epsg(5709)],
+                )
+            dataset.SetProjection(height_crs.to_wkt())
+            dataset.GetRasterBand(1).SetUnitType("m")
+        _validate_dem_metadata(temporary, expected_scale=expected_scale)
+        replace_file(temporary, target)
+    finally:
+        temporary.unlink(missing_ok=True)
+    return target
 
 
 def validate_float_dem(source_path: Path, float_path: Path) -> None:
@@ -22,7 +71,8 @@ def validate_float_dem(source_path: Path, float_path: Path) -> None:
     ----------
     source_path, float_path : pathlib.Path
         Stored DEM and its Float32 export. Values may differ only by Float32
-        rounding; the float raster must have identity scale and offset.
+        rounding; the float raster must have identity scale and offset and
+        declare unit ``m`` for the decoded heights.
     """
     with rasterio.open(source_path) as source, rasterio.open(float_path) as target:
         if (source.shape, source.transform, source.crs) != (
@@ -37,6 +87,8 @@ def validate_float_dem(source_path: Path, float_path: Path) -> None:
             raise ValueError("Float DEM grid, dtype or scale/offset differs")
         if target.nodata is None or not np.isnan(target.nodata):
             raise ValueError("Float DEM must declare NaN NoData")
+        if target.units != ("m",):
+            raise ValueError("Float DEM must declare unit 'm'")
         block_height, block_width = source.block_shapes[0]
         block_count = ceil(source.height / block_height) * ceil(
             source.width / block_width

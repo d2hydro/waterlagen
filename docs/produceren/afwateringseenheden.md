@@ -231,6 +231,7 @@ Algemene opties staan bij [gedeelde productiecommando's](cli.md#opties).
     | `--rijkswateren-url URL` | Gebruik een ander downloadadres voor de [Rijkswaterenbron](../bronlagen/rijkswateren.md). |
     | `--duiker-tolerance METERS` | Koppelafstand per duikeruiteinde tot primaire waterlopen; standaard 0,5 m. |
     | `--max-aansluitlengte METERS` | Sluit ook directe aansluitstukken tot deze lengte uit als afwateringsdoel. Standaard worden deze niet extra uitgesloten. |
+    | `--max-complex-routelengte METERS` | Maximale lengte per parallelle kunstwerkroute om interne hydroobjecten als doel uit te sluiten. Standaard 100 m; `0` schakelt deze regel uit. |
 
     HYDAMO-duikers worden gelezen uit `duikersifonhevel`; RWS-duikers alleen als
     die laag in de Rijkswaterenbron zit. Zie
@@ -274,3 +275,9 @@ Geldige resultaten worden hergebruikt. Gewijzigde bronnen of rekeninstellingen
 vereisen een nieuwe run-ID; bewerk invoer niet tijdens een berekening.
 Zie [productiemappen](configuratie.md#productiemappen) voor alle
 compatibiliteitsvoorwaarden.
+
+## Parallelle routes instellen
+
+Met --max-complex-routelengte worden parallelle routes met elk een kunstwerk uitgesloten als afwateringsdoel, mits iedere volledige route maximaal 100 m lang is (instelbaar, 0 schakelt de regel uit).
+
+In de laag `watersysteem.gpkg:hydroobject_segment` zijn afwateringsdoelen blauw en uitgesloten segmenten oranje. Bij complexen met duikers, sifons of hevels worden de interne hydroobjecten ook niet ingebrand. Bij uitsluitend stuwen of gemalen blijft de inbranding behouden. Aansluitende waterlopen buiten de lus blijven ongemoeid.

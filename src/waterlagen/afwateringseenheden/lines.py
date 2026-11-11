@@ -47,6 +47,9 @@ class WatersysteemResult:
         authorities. ``brandgeschikt`` selects the primary burn geometry.
     duiker_controle : geopandas.GeoDataFrame, optional
         Unmatched or ambiguous culverts with provenance, reason and distances.
+    preparation_signature : str, optional
+        Identity of parallel-route inputs, settings and target schema/style,
+        including preparation without culverts.
     duiker_signature : str, optional
         Input/settings identity used for snapshot reuse. None denotes the
         legacy preparation without culverts.
@@ -58,6 +61,7 @@ class WatersysteemResult:
     hydroobject_primair_delen: gpd.GeoDataFrame | None = None
     duiker_controle: gpd.GeoDataFrame | None = None
     duiker_signature: str | None = None
+    preparation_signature: str | None = None
 
 
 @dataclass(frozen=True)

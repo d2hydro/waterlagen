@@ -3,8 +3,9 @@ import warnings
 from typing import Literal
 
 import geopandas as gpd
-import requests
 from pydantic import BaseModel
+
+from waterlagen._http import get as http_get
 
 DEFAULT_HTTP_TIMEOUT = 60.0
 
@@ -111,7 +112,7 @@ class AHNService(BaseModel):
         url = self.get_tiles_url(
             model=model, cell_size=cell_size, ahn_version=ahn_version
         )
-        response = requests.get(url=url, timeout=timeout)
+        response = http_get(url=url, timeout=timeout)
         response.raise_for_status()
 
         # process into GeoDataframe
