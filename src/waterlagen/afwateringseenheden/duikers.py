@@ -288,7 +288,7 @@ def _prepare_culverts(
             record.update(
                 geometry=substring(line, start, end),
                 brandgeschikt=not ids,
-                doelgeschikt=not ids,
+                afwateringsdoel=not ids,
                 duiker_ids=json.dumps(ids),
                 duiker_knip_start=start != 0,
                 duiker_knip_eind=end != line.length,
@@ -302,7 +302,7 @@ def _prepare_culverts(
     if not records:
         for column in (
             "brandgeschikt",
-            "doelgeschikt",
+            "afwateringsdoel",
             "duiker_knip_start",
             "duiker_knip_eind",
         ):
@@ -360,6 +360,6 @@ def _classify_adjacent(
                         adjacent.update(culverts)
         identifiers.append(json.dumps(sorted(adjacent)))
         if adjacent and max_length is not None and row.geometry.length <= max_length:
-            result.loc[index, "doelgeschikt"] = False
+            result.loc[index, "afwateringsdoel"] = False
     result["aansluit_duiker_ids"] = identifiers
     return result

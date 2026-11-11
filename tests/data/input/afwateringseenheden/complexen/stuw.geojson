@@ -1,0 +1,8 @@
+{
+"type": "FeatureCollection",
+"name": "stuw",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:EPSG::28992" } },
+"features": [
+{ "type": "Feature", "properties": { "globalid": "{73664AF3-6AC6-48E7-B1C0-2FD9DA0EF522}" }, "geometry": { "type": "Point", "coordinates": [ 179732.287999999010935, 373864.512999999977183, 0.0 ] } }
+]
+}

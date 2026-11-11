@@ -129,7 +129,10 @@ def _write_watersysteem(path: Path) -> Path:
         crs=CRS,
     )
     segments = gpd.GeoDataFrame(
-        {"segment_key": ["primair:0001", "primair:0002"]},
+        {
+            "segment_key": ["primair:0001", "primair:0002"],
+            "afwateringsdoel": [True, True],
+        },
         geometry=[
             LineString([(1, 0), (1, 8)]),
             LineString([(3, 0), (3, 8)]),

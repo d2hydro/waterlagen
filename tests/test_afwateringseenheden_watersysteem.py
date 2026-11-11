@@ -493,7 +493,7 @@ def test_culvert_target_selection_preserves_index_after_filtering_and_exploding(
     assert segments.geometry.union_all().equals(geometry)
     assert set(segments.bron_id) == {"42"}
     assert segments.segment_key.is_unique
-    assert segments.loc[~segments.doelgeschikt].length.sum() == (
+    assert segments.loc[~segments.afwateringsdoel].length.sum() == (
         6 if with_culvert else 0
     )
     assert set(result.hydroobject_primair_bron.bron_id) == {"42", "75"}
@@ -817,8 +817,10 @@ def test_connection_validation_rejects_missing_segment(tmp_path, invalid_id):
     path = tmp_path / "invalid.gpkg"
     with closing(sqlite3.connect(path)) as connection, connection:
         connection.executescript(
-            "CREATE TABLE hydroobject_segment (fid INTEGER, segment_id INTEGER);"
-            "INSERT INTO hydroobject_segment VALUES (1, 1);"
+            "CREATE TABLE hydroobject_segment "
+            "(fid INTEGER, segment_id INTEGER, afwateringsdoel BOOLEAN, "
+            "brandgeschikt BOOLEAN);"
+            "INSERT INTO hydroobject_segment VALUES (1, 1, 1, 1);"
             "CREATE TABLE hydroobject_verbinding "
             "(van_segment INTEGER, naar_segment INTEGER, kunstwerk_waterbeheercode TEXT);"
         )
