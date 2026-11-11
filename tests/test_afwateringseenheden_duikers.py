@@ -265,7 +265,9 @@ def test_snapshot_reuse_controls_recovery_and_stale_replacement(tmp_path, caplog
     assert json.loads(metadata_path.read_text())["signature"] is not None
     no_culverts = prepare_watersysteem(primary, empty())
     write(tmp_path, primary, no_culverts)
-    assert json.loads(metadata_path.read_text())["signature"] is None
+    # Parallel-route preparation also requires a signature without culverts.
+    assert no_culverts.duiker_signature is None
+    assert json.loads(metadata_path.read_text())["signature"] is not None
     assert wgpd.read_file(control_path, layer="duikersifonhevel").empty
     assert wgpd.read_file(internal_path, layer="hydroobject_primair_bron").empty
     assert len(wgpd.read_file(control_path, layer="other_control")) == 1
@@ -477,4 +479,5 @@ def test_lower_writer_never_reuses_changed_culvert_settings(tmp_path, change):
         )
     if change == "remove":
         assert len(written) == 1
-        assert "doelgeschikt" not in written
+        assert written.doelgeschikt.all()
+        assert written.afwateringsdoel.all()

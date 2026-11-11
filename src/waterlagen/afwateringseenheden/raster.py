@@ -427,7 +427,13 @@ def _segment_raster(
     grid: RasterGrid,
 ) -> np.ndarray:
     """Rasterize hydroobject segment FIDs, reserving zero for cells without a segment."""
-    if "doelgeschikt" in segments:
+    if "afwateringsdoel" in segments:
+        if "doelgeschikt" in segments and not segments.afwateringsdoel.equals(
+            segments.doelgeschikt
+        ):
+            raise ValueError("afwateringsdoel and doelgeschikt disagree")
+        segments = segments.loc[segments.afwateringsdoel.eq(True)]
+    elif "doelgeschikt" in segments:
         segments = segments.loc[segments.doelgeschikt.eq(True)]
     shapes = [
         (geometry, int(fid))

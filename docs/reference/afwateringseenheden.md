@@ -185,3 +185,14 @@ vergroot de buffer niet automatisch bij randproblemen.
     options:
       heading_level: 3
       separate_signature: true
+
+## Parallelle routes
+
+`prepare_watersysteem(..., max_complex_routelengte=100.0)` sluit volledige interne
+bronobjecten uit als iedere parallelle route maximaal deze lengte heeft en een
+eigen kunstwerk bevat. `0` schakelt deze doeluitsluiting uit. De lengte wordt v??r
+`max_length`-segmentatie gemeten. `afwateringsdoel` en de compatibiliteitskolom
+`doelgeschikt` geven dezelfde toelating als doel weer; een toegelaten segment
+hoeft bij rasterisatie geen doelcel op te leveren. `brandgeschikt` wordt door deze
+regel niet gewijzigd. Zie de [productie-instructies](../produceren/afwateringseenheden.md#parallelle-routes-instellen)
+voor instelling en visuele beoordeling.

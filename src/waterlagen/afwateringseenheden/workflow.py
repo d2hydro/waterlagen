@@ -23,6 +23,7 @@ from waterlagen.datastore import DataStore
 from waterlagen.logger import get_logger
 from waterlagen.settings import settings
 
+from .complexen import COMPLEX_POLICY, excluded_complex_sources, validate_complex_length
 from .duikers import (
     _classify_adjacent,
     _frame_identity,
@@ -61,6 +62,8 @@ def prepare_watersysteem(
     hydroobject_primair: gpd.GeoDataFrame | None = None,
     duiker_tolerance: float = 0.5,
     max_aansluitlengte: float | None = None,
+    max_complex_routelengte: float = 100.0,
+    puntobjecten_context: gpd.GeoDataFrame | None = None,
 ) -> WatersysteemResult:
     """Prepare primary hydroobjecten and final segment connections.
 
@@ -105,6 +108,12 @@ def prepare_watersysteem(
         targets only, before maximum-length splitting. None retains them all;
         zero is valid. Must be finite and non-negative.
 
+    max_complex_routelengte : float, optional
+        Maximum full parallel route length in metres, inclusive; 100 by default.
+        Zero disables complex target exclusion without changing burning.
+    puntobjecten_context : geopandas.GeoDataFrame, optional
+        Full point context for complex recognition; defaults to puntobjecten.
+
     Returns
     -------
     WatersysteemResult
@@ -118,6 +127,7 @@ def prepare_watersysteem(
     if max_length <= 0:
         raise ValueError("max_length must be greater than zero")
 
+    validate_complex_length(max_complex_routelengte)
     _validate_culvert_options(duiker_tolerance, max_aansluitlengte)
     culverts = None
     lines = hydroobjecten
@@ -159,6 +169,36 @@ def prepare_watersysteem(
         physical_pieces = physical_pieces.loc[
             physical_pieces.bron_id.isin(targets)
         ].copy()
+    context = hydroobjecten if hydroobject_primair is None else hydroobject_primair
+    context_points = (
+        puntobjecten if puntobjecten_context is None else puntobjecten_context
+    )
+    excluded = excluded_complex_sources(
+        context,
+        context_points,
+        culverts.pieces if culverts is not None else None,
+        tolerance=tolerance,
+        maximum=max_complex_routelengte,
+    )
+    physical_pieces = physical_pieces.copy()
+    eligible = physical_pieces.get("doelgeschikt", True)
+    physical_pieces["doelgeschikt"] = eligible & ~physical_pieces.bron_id.isin(excluded)
+    physical_pieces["afwateringsdoel"] = physical_pieces.doelgeschikt.astype(bool)
+    preparation_signature = hashlib.sha256(
+        json.dumps(
+            {
+                "policy": COMPLEX_POLICY,
+                "schema_style": 1,
+                "maximum": max_complex_routelengte,
+                "primary": _frame_identity(context),
+                "points": _frame_identity(context_points),
+                "targets": _frame_identity(hydroobjecten),
+                "segments": _frame_identity(physical_pieces),
+                "max_length": max_length,
+            },
+            sort_keys=True,
+        ).encode()
+    ).hexdigest()
     segmenten = split_hydroobjecten_by_length(
         physical_pieces,
         max_length=max_length,
@@ -180,6 +220,7 @@ def prepare_watersysteem(
         hydroobject_primair_bron=culverts.primary if culverts is not None else None,
         hydroobject_primair_delen=culverts.pieces if culverts is not None else None,
         duiker_controle=culverts.controls if culverts is not None else None,
+        preparation_signature=preparation_signature,
         duiker_signature=hashlib.sha256(
             json.dumps(
                 {
@@ -725,6 +766,23 @@ def write_watersysteem(
                 len(watersysteem.duiker_controle),
                 controle_path,
             )
+    if watersysteem.preparation_signature is not None:
+        signature = hashlib.sha256(
+            json.dumps(
+                {
+                    "preparation": watersysteem.preparation_signature,
+                    "culvert_snapshot": signature,
+                    "primary": _frame_identity(hydroobject_primair),
+                    "secondary": _frame_identity(hydroobject_secundair),
+                    "connections": _frame_identity(watersysteem.hydroobject_verbinding),
+                    "secondary_tolerance": secondary_connection_tolerance,
+                    "missing_category": _frame_identity(hydroobject_zonder_categorie)
+                    if hydroobject_zonder_categorie is not None
+                    else None,
+                },
+                sort_keys=True,
+            ).encode()
+        ).hexdigest()
     internal_path = (
         output_path.parent / "berekening" / "watersysteem" / "watersysteem.gpkg"
     )
@@ -773,7 +831,7 @@ def write_watersysteem(
         (
             "hydroobject_primair",
             hydroobject_primair
-            if signature is None
+            if watersysteem.hydroobject_primair_delen is None
             else watersysteem.hydroobject_primair_delen.loc[
                 watersysteem.hydroobject_primair_delen.brandgeschikt
             ].copy(),
@@ -793,6 +851,17 @@ def write_watersysteem(
             if layer_name == "hydroobject_segment":
                 features = features.copy()
                 features["segment_id"] = range(1, len(features) + 1)
+                if "afwateringsdoel" not in features:
+                    features["afwateringsdoel"] = features.get("doelgeschikt", True)
+                if features.afwateringsdoel.isna().any():
+                    raise ValueError("afwateringsdoel must not contain null values")
+                if (
+                    "doelgeschikt" in features
+                    and not features.afwateringsdoel.eq(features.doelgeschikt).all()
+                ):
+                    raise ValueError("afwateringsdoel and doelgeschikt disagree")
+                features["afwateringsdoel"] = features.afwateringsdoel.astype(bool)
+                features["doelgeschikt"] = features.afwateringsdoel
             if layer_name == "hydroobject_verbinding":
                 features = _connection_segment_ids(features, temporary_path)
             logger.info(

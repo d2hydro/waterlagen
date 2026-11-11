@@ -1,0 +1,15 @@
+{
+"type": "FeatureCollection",
+"name": "duikersifonhevel",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:EPSG::28992" } },
+"features": [
+{ "type": "Feature", "properties": { "globalid": "{CC1A734D-58F5-4FC0-A4E8-3586276DABDC}" }, "geometry": { "type": "LineString", "coordinates": [ [ 179733.6099999989965, 373863.134000000020023, 0.0 ], [ 179739.280999998998595, 373863.228, 0.0 ] ] } },
+{ "type": "Feature", "properties": { "globalid": "{BC083DE6-72DD-4C9A-9773-0DEF1E5E7C5A}" }, "geometry": { "type": "LineString", "coordinates": [ [ 179741.103999998013023, 373863.620000000984874, 0.0 ], [ 179755.693, 373865.305, 0.0 ] ] } },
+{ "type": "Feature", "properties": { "globalid": "{6DD46C5C-FBBA-4998-AF41-FCE9158BDDED}" }, "geometry": { "type": "LineString", "coordinates": [ [ 179756.712999999988824, 373865.258000001020264, 0.0 ], [ 179759.771699998993427, 373865.603899999987334, 23.0 ], [ 179782.1274, 373868.132199999003205, 23.0 ], [ 179785.228999998013023, 373868.48299999901792, 0.0 ] ] } },
+{ "type": "Feature", "properties": { "globalid": "{B7153F98-9A8E-4556-82FD-98E0C8E32549}" }, "geometry": { "type": "LineString", "coordinates": [ [ 179733.34, 373866.055, 0.0 ], [ 179739.087000000989065, 373866.456, 0.0 ] ] } },
+{ "type": "Feature", "properties": { "globalid": "{6FDECCDA-B389-41EE-A4C2-119C908404C4}" }, "geometry": { "type": "LineString", "coordinates": [ [ 179740.842, 373866.583999998983927, 0.0 ], [ 179755.412999999010935, 373868.144000001018867, 0.0 ] ] } },
+{ "type": "Feature", "properties": { "globalid": "{B13A7DFB-8AED-422D-837C-6FFED7131815}" }, "geometry": { "type": "LineString", "coordinates": [ [ 179756.401999999012332, 373868.24800000002142, 0.0 ], [ 179759.438099999009864, 373868.605500001984183, 23.0 ], [ 179781.829500001011183, 373871.2425, 23.0 ], [ 179784.848000000987668, 373871.598000000987668, 0.0 ] ] } },
+{ "type": "Feature", "properties": { "globalid": "{80A6FC5E-B024-4386-BA88-620E92E0B572}" }, "geometry": { "type": "LineString", "coordinates": [ [ 179786.217, 373868.592, 0.0 ], [ 179797.364, 373869.82, 0.0 ] ] } },
+{ "type": "Feature", "properties": { "globalid": "{EA587D10-B876-4D02-B977-4F38DEBC22FA}" }, "geometry": { "type": "LineString", "coordinates": [ [ 179785.831, 373871.675000000977889, 0.0 ], [ 179797.043000000994653, 373872.600000002013985, 0.0 ] ] } }
+]
+}
