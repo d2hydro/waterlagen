@@ -21,7 +21,9 @@ featuretypen en een gebied worden gebruikt.
 
 ## Gebruik in Waterlagen
 
-BGT-wegdelen zijn invoer voor [functioneel landgebruik](../bewerkte-lagen/functioneel-landgebruik.md).
+BGT wordt gebruik als bron bij:
+- [functioneel landgebruik](../bewerkte-lagen/functioneel-landgebruik.md); BGT-wegdelen beschrijven hier deze functie
+- [afwateringseenheden](../bewerkte-lagen/afwateringseenheden.md). BGT-duikers worden gebruikt bij het maken van de signaalkaart. Optioneel kunnen BGT lagen (waterdelen, wegen, duikers, ...) gebruikt worden als brandlagen.
 
 ## Externe verwijzingen
 
