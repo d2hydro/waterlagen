@@ -84,6 +84,8 @@ class FunctioneelLandgebruikTileJob:
 def _build_tile_worker(job: FunctioneelLandgebruikTileJob) -> Path:
     """Build one tile; write worker details to its own log instead of the terminal."""
     started = perf_counter()
+    # Central logging does not create a per-tile log directory.
+    job.target_path.parent.mkdir(parents=True, exist_ok=True)
     with tile_logging(job.target_path.parent / "workflow.log"):
         return _run_tile_job(job, started)
 

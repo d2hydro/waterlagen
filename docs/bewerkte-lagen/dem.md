@@ -60,10 +60,16 @@ De berekende tegels worden met een [VRT-bestand](https://gdal.org/en/stable/driv
 Daaruit wordt een tweede COG gemaakt waarin de hoogtes direct in meters als kommagetallen (floats) zijn opgeslagen. Beide bestanden bevatten dezelfde hoogtes; de floatversie voegt geen nauwkeurigheid toe.
 
 ## Uitvoer
+
+Het HydroDEM bevat bij standaardinvoer gehele getallen met schaalfactor 0,01 en
+eenheid m. Een opgeslagen waarde van 123 betekent 1,23 meter boven NAP.
+EPSG:7415 legt RD en NAP vast. De floatversie bevat dezelfde hoogtes direct in
+meters, met schaalfactor 1.
+
 Een volledige productie bevat:
 
-- dem.vrt en dem.tif (COG): hoogtemodel, bij standaardinvoer als Int16 in cm NAP met schaalfactor 0,01 naar m NAP.
-- dem_float.tif (COG): dezelfde hoogtes als Float32 in m NAP, met schaalfactor 1.
+- dem.vrt en dem.tif (COG): hoogtemodel, bij standaardinvoer als Int16.
+- dem_float.tif (COG): dezelfde hoogtes als Float32.
 - dem_bron en ahn_bron, beide als VRT en COG: herkomst van de hoogtes, respectievelijk na en vóór toevoeging van gebouwhoogtes. Codes: 0 = ontbrekend, 1 = origineel AHN, 2 = gebouwhoogte (alleen dem_bron), 3 = interpolatie.
 - nodata.gpkg, laag nodata: ontbrekende gebouwhoogtes en resterende AHN-gaten.
 - gebouwhoogten.gpkg: berekende hoogtes per gebouw.

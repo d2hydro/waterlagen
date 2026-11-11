@@ -238,6 +238,10 @@ def _validate_cog_file(cog_file: Path, vrt_dataset) -> None:
             raise ValueError(
                 f"COG validation failed for {cog_file}: scale/offset differs from VRT"
             )
+        if cog_band.GetUnitType() != vrt_band.GetUnitType():
+            raise ValueError(
+                f"COG validation failed for {cog_file}: unit differs from VRT"
+            )
 
         if cog_band.GetOverviewCount() < 1:
             raise ValueError(

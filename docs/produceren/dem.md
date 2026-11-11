@@ -139,6 +139,14 @@ nadat ook `dem_float.tif` is gevalideerd. Workers mogen veranderen; gewijzigde r
 vereisen een nieuwe run-ID. `--overwrite` herberekent alleen de DEM-uitvoer van
 een compatibele run en overschrijft de landgebruikafhankelijkheid niet.
 
+Bij hervatten van een compatibele run met oudere hoogtemetadata worden de
+eindmozaïeken opnieuw gepubliceerd, met behoud van berekende tegels en
+gebouwhoogten. Controleer in `dem.vrt`, `dem.tif` en `dem_float.tif` de
+bandeenheid `m` en bij het standaard RD-grid het CRS `EPSG:7415` (RD + NAP).
+De schaalfactor en offset worden eveneens gecontroleerd: standaard heeft
+`dem.tif` gehele getallen met schaalfactor `0.01` en offset `0`;
+`dem_float.tif` heeft schaalfactor `1` en offset `0`.
+
 De dekkingscontrole registreert haar bron en beleid afzonderlijk in
 `dem_coverage_inputs.json`. Een eerdere run die op de oude, strengere controle
 van alle tegelkernen stopte, kan daardoor dezelfde tegels en gebouwhoogten
