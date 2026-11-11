@@ -4,10 +4,10 @@ from pathlib import Path
 from typing import Literal, Union
 
 import geopandas as gpd
-import requests
 
 from waterlagen import datastore
 from waterlagen._downloads import download_geopackage
+from waterlagen._http import get as http_get
 from waterlagen.logger import get_logger
 from waterlagen.settings import settings
 
@@ -77,7 +77,7 @@ def get_bag_features_from_wfs(
 
         # request by start-index
         params["startIndex"] = start_index
-        response = requests.get(url, params=params)
+        response = http_get(url, params=params)
         response.raise_for_status()
 
         # read to GeoPackage

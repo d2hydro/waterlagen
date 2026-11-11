@@ -5,10 +5,10 @@ from pathlib import Path
 from urllib.parse import unquote, urljoin, urlparse
 from xml.etree import ElementTree
 
-import requests
 
 from waterlagen import datastore
 from waterlagen._downloads import download_geopackage
+from waterlagen._http import get as http_get
 from waterlagen.logger import get_logger
 from waterlagen.settings import settings
 
@@ -51,7 +51,9 @@ def _local_name(tag: str) -> str:
     return tag.rsplit("}", maxsplit=1)[-1]
 
 
-def _first_child_text(element: ElementTree.Element, names: tuple[str, ...]) -> str | None:
+def _first_child_text(
+    element: ElementTree.Element, names: tuple[str, ...]
+) -> str | None:
     for name in names:
         for child in element:
             if _local_name(child.tag) == name and child.text:
@@ -59,7 +61,9 @@ def _first_child_text(element: ElementTree.Element, names: tuple[str, ...]) -> s
     return None
 
 
-def _descendant_text(element: ElementTree.Element, names: tuple[str, ...]) -> str | None:
+def _descendant_text(
+    element: ElementTree.Element, names: tuple[str, ...]
+) -> str | None:
     for name in names:
         for child in element.iter():
             if _local_name(child.tag) == name and child.text:
@@ -94,7 +98,9 @@ def _entry_text(entry: ElementTree.Element) -> str:
             parts.append(element.text)
     for link in _entry_links(entry):
         parts.extend(
-            value for value in (link.get("href"), link.get("title"), link.get("type")) if value
+            value
+            for value in (link.get("href"), link.get("title"), link.get("type"))
+            if value
         )
     return " ".join(parts)
 
@@ -200,9 +206,8 @@ def _parse_brp_releases(xml_content: bytes | str, feed_url: str) -> list[BrpRele
         publication_or_update_date = _entry_date(entry)
         for link in _entry_links(entry):
             link_text = _link_text(link)
-            if (
-                not _looks_like_geopackage_link(link)
-                or _contains_non_definitive_term(link_text)
+            if not _looks_like_geopackage_link(link) or _contains_non_definitive_term(
+                link_text
             ):
                 continue
 
@@ -227,7 +232,7 @@ def find_latest_brp_geopackage(
     timeout: int = 30,
 ) -> BrpRelease:
     """Find the latest definitive BRP GeoPackage download in the Atom feed."""
-    response = requests.get(feed_url, timeout=timeout)
+    response = http_get(feed_url, timeout=timeout)
     response.raise_for_status()
 
     releases = _parse_brp_releases(response.content, feed_url=feed_url)

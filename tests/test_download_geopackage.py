@@ -2,8 +2,10 @@ from pathlib import Path
 
 import geopandas as gpd
 import pytest
+import requests
 from shapely.geometry import Point
 
+from waterlagen import _http
 from waterlagen._downloads import (
     DownloadPayloadError,
     download_geopackage,
@@ -62,7 +64,7 @@ def test_content_length_checks_only_unencoded_bytes(monkeypatch, tmp_path, encod
     if encoding is not None:
         response.headers["Content-Encoding"] = encoding
     monkeypatch.setattr(
-        "waterlagen._downloads.requests.get", lambda *args, **kwargs: response
+        "waterlagen._http.requests.get", lambda *args, **kwargs: response
     )
     target = tmp_path / "download.gpkg"
     if encoding == "gzip":
@@ -86,7 +88,7 @@ def test_download_geopackage_success(monkeypatch, tmp_path):
         calls.append((url, kwargs))
         return FakeResponse(payload)
 
-    monkeypatch.setattr("waterlagen._downloads.requests.get", fake_get)
+    monkeypatch.setattr("waterlagen._http.requests.get", fake_get)
 
     result = download_geopackage("https://example.com/download.gpkg", target)
 
@@ -98,7 +100,7 @@ def test_download_geopackage_success(monkeypatch, tmp_path):
     assert calls == [
         (
             "https://example.com/download.gpkg",
-            {"stream": True, "allow_redirects": True, "timeout": 30},
+            {"stream": True, "allow_redirects": True, "timeout": 30, "verify": True},
         )
     ]
 
@@ -111,7 +113,7 @@ def test_download_geopackage_rejects_invalid_gpkg(monkeypatch, tmp_path):
     def fake_get(url, **kwargs):
         return FakeResponse(b"<html>not a geopackage</html>")
 
-    monkeypatch.setattr("waterlagen._downloads.requests.get", fake_get)
+    monkeypatch.setattr("waterlagen._http.requests.get", fake_get)
 
     with pytest.raises(ValueError, match="not a valid GeoPackage"):
         download_geopackage("https://example.com/download.gpkg", target)
@@ -127,12 +129,32 @@ def test_download_geopackage_interrupted_download_cleans_temp(monkeypatch, tmp_p
     def fake_get(url, **kwargs):
         return FakeResponse(payload, error=ConnectionError("interrupted"))
 
-    monkeypatch.setattr("waterlagen._downloads.requests.get", fake_get)
+    monkeypatch.setattr("waterlagen._http.requests.get", fake_get)
 
     with pytest.raises(ConnectionError, match="interrupted"):
         download_geopackage("https://example.com/download.gpkg", target)
 
     assert not target.exists()
+    assert _temp_downloads_for(target) == []
+
+
+def test_streamed_ssl_error_preserves_existing_target(monkeypatch, tmp_path):
+    original_payload = _valid_gpkg_bytes(tmp_path)
+    target = tmp_path / "download.gpkg"
+    target.write_bytes(original_payload)
+    original_error = requests.exceptions.SSLError("CERTIFICATE_VERIFY_FAILED")
+
+    def fake_get(url, **kwargs):
+        return FakeResponse(original_payload, error=original_error)
+
+    monkeypatch.setattr("waterlagen._http.requests.get", fake_get)
+
+    with pytest.raises(requests.exceptions.SSLError) as error:
+        download_geopackage("https://example.com/download.gpkg", target)
+
+    assert error.value.__cause__ is original_error
+    assert _http.CERTIFICATE_HELP_URL in str(error.value)
+    assert target.read_bytes() == original_payload
     assert _temp_downloads_for(target) == []
 
 
@@ -144,7 +166,7 @@ def test_download_geopackage_existing_target_without_overwrite(monkeypatch, tmp_
     def fake_get(url, **kwargs):
         raise AssertionError("download should not be requested")
 
-    monkeypatch.setattr("waterlagen._downloads.requests.get", fake_get)
+    monkeypatch.setattr("waterlagen._http.requests.get", fake_get)
 
     result = download_geopackage(
         "https://example.com/download.gpkg",

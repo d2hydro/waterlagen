@@ -59,7 +59,7 @@ def test_download_hydamo_extracts_valid_geopackage(monkeypatch, tmp_path, caplog
         requests.append((url, kwargs))
         return FakeResponse(payload)
 
-    monkeypatch.setattr("waterlagen._downloads.requests.get", fake_get)
+    monkeypatch.setattr("waterlagen._http.requests.get", fake_get)
     caplog.set_level(logging.INFO, logger="waterlagen.hydamo.download")
 
     result = download_hydamo(download_dir=tmp_path, progress=False)
@@ -73,7 +73,7 @@ def test_download_hydamo_extracts_valid_geopackage(monkeypatch, tmp_path, caplog
     assert requests == [
         (
             HYDAMO_URL,
-            {"stream": True, "allow_redirects": True, "timeout": 30},
+            {"stream": True, "allow_redirects": True, "timeout": 30, "verify": True},
         )
     ]
     assert "Downloading GKW HYDAMO GeoPackage to" in caplog.text
@@ -91,7 +91,7 @@ def test_download_hydamo_reuses_existing_target_when_not_overwriting(
     def fail_get(*args, **kwargs):
         raise AssertionError("download should not be requested")
 
-    monkeypatch.setattr("waterlagen._downloads.requests.get", fail_get)
+    monkeypatch.setattr("waterlagen._http.requests.get", fail_get)
 
     result = download_hydamo(target_path=target, overwrite=False, progress=False)
 
@@ -108,7 +108,7 @@ def test_download_hydamo_rejects_invalid_archive_without_replacing_target(
     target.write_bytes(previous_payload)
 
     monkeypatch.setattr(
-        "waterlagen._downloads.requests.get",
+        "waterlagen._http.requests.get",
         lambda *args, **kwargs: FakeResponse(b"not a zip archive"),
     )
 
@@ -122,7 +122,7 @@ def test_download_hydamo_rejects_invalid_archive_without_replacing_target(
 def test_download_hydamo_progress_identifies_download(monkeypatch, tmp_path, capsys):
     payload = _zip_with_geopackage(_valid_geopackage_bytes(tmp_path))
     monkeypatch.setattr(
-        "waterlagen._downloads.requests.get",
+        "waterlagen._http.requests.get",
         lambda *args, **kwargs: FakeResponse(payload),
     )
 

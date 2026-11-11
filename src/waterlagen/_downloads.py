@@ -12,6 +12,9 @@ import geopandas as gpd
 import requests
 
 from waterlagen._crs import ensure_dataset_crs
+from waterlagen._http import DownloadCertificateError, explain_certificate_error
+from waterlagen._http import get as http_get
+from waterlagen.settings import settings
 
 
 class DownloadPayloadError(ValueError):
@@ -183,7 +186,7 @@ def stream_download_to_temp(
 
         with (
             os.fdopen(fd, "wb") as f,
-            requests.get(
+            http_get(
                 url, stream=True, allow_redirects=True, timeout=timeout
             ) as response,
         ):
@@ -223,6 +226,14 @@ def stream_download_to_temp(
             total_bytes=total,
             content_type=content_type,
         )
+    except requests.exceptions.SSLError as exc:
+        tmp_path.unlink(missing_ok=True)
+        if (
+            isinstance(exc, DownloadCertificateError)
+            or not settings.waterlagen_ssl_verify
+        ):
+            raise
+        raise explain_certificate_error(url) from exc
     except Exception:
         tmp_path.unlink(missing_ok=True)
         raise
