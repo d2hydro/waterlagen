@@ -76,10 +76,10 @@ def _entry(
 def _mock_feed(monkeypatch, payload: bytes):
     def fake_get(url, **kwargs):
         assert url == ATOM_FEED_URL
-        assert kwargs == {"timeout": 30}
+        assert kwargs == {"timeout": 30, "verify": True}
         return FakeResponse(payload)
 
-    monkeypatch.setattr("waterlagen.brp.download.requests.get", fake_get)
+    monkeypatch.setattr("waterlagen._http.requests.get", fake_get)
 
 
 def _valid_gpkg_bytes(path: Path) -> bytes:
@@ -107,7 +107,7 @@ def _mock_feed_and_download(
             return FakeResponse(feed)
         return FakeResponse(payload, error=payload_error)
 
-    monkeypatch.setattr("waterlagen.brp.download.requests.get", fake_get)
+    monkeypatch.setattr("waterlagen._http.requests.get", fake_get)
 
 
 def _temp_downloads_for(target: Path) -> list[Path]:
@@ -203,9 +203,9 @@ def test_find_latest_brp_geopackage_ignores_concept_link_in_same_entry(monkeypat
             "https://example.com/downloads/gewaspercelen_concept_2026.gpkg",
             updated="2026-06-26T09:32:35Z",
             extra_link=(
-                "<link rel=\"section\" type=\"application/geopackage+sqlite3\" "
-                "href=\"https://example.com/downloads/brpgewaspercelen_definitief_2025.gpkg\" "
-                "title=\"BRP definitief 2025\" />"
+                '<link rel="section" type="application/geopackage+sqlite3" '
+                'href="https://example.com/downloads/brpgewaspercelen_definitief_2025.gpkg" '
+                'title="BRP definitief 2025" />'
             ),
         )
     )

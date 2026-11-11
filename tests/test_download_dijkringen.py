@@ -77,10 +77,15 @@ def _temp_downloads_for(target: Path) -> list[Path]:
 
 def _mock_download_response(monkeypatch, response: FakeResponse):
     def fake_get(url, **kwargs):
-        assert kwargs == {"stream": True, "allow_redirects": True, "timeout": 30}
+        assert kwargs == {
+            "stream": True,
+            "allow_redirects": True,
+            "timeout": 30,
+            "verify": True,
+        }
         return response
 
-    monkeypatch.setattr("waterlagen._downloads.requests.get", fake_get)
+    monkeypatch.setattr("waterlagen._http.requests.get", fake_get)
 
 
 def test_download_geopackage_with_known_content_length(monkeypatch, tmp_path):
@@ -231,7 +236,7 @@ def test_download_dijkringen_falls_back_to_mapserver(monkeypatch, tmp_path):
         assert url == DIJKRINGEN_MAPSERVER_URL
         return FakeResponse(geojson, headers={"Content-Type": "application/geo+json"})
 
-    monkeypatch.setattr("waterlagen._downloads.requests.get", fake_get)
+    monkeypatch.setattr("waterlagen._http.requests.get", fake_get)
 
     result = download_dijkringen_historie(target_path=target, progress=False)
 

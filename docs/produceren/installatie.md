@@ -116,6 +116,7 @@ U hoeft de omgeving niet apart te activeren.
 | `pixi.lock` ontbreekt of past niet bij `pixi.toml` | Pak het productiepakket opnieuw uit in een nieuwe map; gebruik de bestanden van dezelfde release. |
 | Een productietaak ontbreekt | Controleer of u het productiepakket hebt gedownload en PowerShell in de juiste map hebt geopend. |
 | Geen toegang tot de datamap | Kies een schrijfbare [opslaglocatie](configuratie.md). |
+| Downloaden van bronbestanden lukt niet | Lees [wat u kunt doen bij HTTPS-certificaatproblemen](https-certificaatproblemen.md). |
 
 Voor tests en wijzigingen aan Waterlagen zelf, zie
 [Ontwikkelomgeving](../bijdragen/ontwikkelomgeving.md).

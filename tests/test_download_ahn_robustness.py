@@ -110,7 +110,7 @@ def test_missing_tile_is_downloaded_to_a_temporary_tiff(monkeypatch, tmp_path):
     monkeypatch.setattr(
         ahn_download.requests,
         "get",
-        lambda url, *, timeout: FakeResponse(payload, url=url),
+        lambda url, *, timeout, verify: FakeResponse(payload, url=url),
     )
     validations: list[Path] = []
     original_validate = ahn_download._is_valid_ahn_tile
@@ -148,7 +148,7 @@ def test_valid_existing_tile_is_reused_with_missing_only(monkeypatch, tmp_path):
     _write_valid_tiff(tile_path)
     original_payload = tile_path.read_bytes()
 
-    def fail_get(url: str, *, timeout: float):
+    def fail_get(url: str, *, timeout: float, verify: bool):
         raise AssertionError("valid existing tile should not be downloaded")
 
     monkeypatch.setattr(ahn_download.requests, "get", fail_get)
@@ -169,7 +169,7 @@ def test_corrupt_existing_tile_is_removed_and_downloaded_again(
     monkeypatch.setattr(
         ahn_download.requests,
         "get",
-        lambda url, *, timeout: FakeResponse(payload, url=url),
+        lambda url, *, timeout, verify: FakeResponse(payload, url=url),
     )
     caplog.set_level(logging.WARNING, logger="waterlagen.ahn.download")
 
@@ -186,7 +186,7 @@ def test_corrupt_tiff_response_retries_and_cleans_temporary_files(
     responses = iter([b"not a tiff", _tiff_bytes()])
     calls: list[str] = []
 
-    def fake_get(url: str, *, timeout: float) -> FakeResponse:
+    def fake_get(url: str, *, timeout: float, verify: bool) -> FakeResponse:
         calls.append(url)
         return FakeResponse(next(responses), url=url)
 
@@ -204,7 +204,7 @@ def test_http_timeout_retries_and_uses_configured_limit(monkeypatch, tmp_path):
     _configure_download(monkeypatch, _tiles("tile_1"))
     timeouts = []
 
-    def fake_get(url: str, *, timeout: float) -> FakeResponse:
+    def fake_get(url: str, *, timeout: float, verify: bool) -> FakeResponse:
         timeouts.append(timeout)
         if len(timeouts) == 1:
             raise requests.Timeout("read timed out")
@@ -243,7 +243,7 @@ def test_tile_index_request_uses_configured_timeout(monkeypatch):
                 ],
             }
 
-    def fake_get(*, url: str, timeout: float) -> IndexResponse:
+    def fake_get(*, url: str, timeout: float, verify: bool) -> IndexResponse:
         timeouts.append(timeout)
         return IndexResponse()
 
@@ -271,7 +271,7 @@ def test_corrupt_zip_response_retries(monkeypatch, tmp_path):
     )
     calls = []
 
-    def fake_get(url: str, *, timeout: float) -> FakeResponse:
+    def fake_get(url: str, *, timeout: float, verify: bool) -> FakeResponse:
         calls.append(url)
         return next(responses)
 
@@ -299,7 +299,7 @@ def test_overview_error_retries(monkeypatch, tmp_path):
     monkeypatch.setattr(
         ahn_download.requests,
         "get",
-        lambda url, *, timeout: FakeResponse(_tiff_bytes(), url=url),
+        lambda url, *, timeout, verify: FakeResponse(_tiff_bytes(), url=url),
     )
 
     ahn_download.download_ahn(ahn_dir=tmp_path, create_vrt=False, retries=2)
@@ -312,7 +312,7 @@ def test_retry_stops_after_maximum_and_reports_all_failed_tiles(monkeypatch, tmp
     _configure_download(monkeypatch, _tiles("tile_1", "tile_2"))
     calls: list[str] = []
 
-    def fake_get(url: str, *, timeout: float) -> FakeResponse:
+    def fake_get(url: str, *, timeout: float, verify: bool) -> FakeResponse:
         calls.append(url)
         return FakeResponse(b"invalid", url=url)
 
@@ -337,7 +337,7 @@ def test_valid_existing_tile_survives_failed_replacement(monkeypatch, tmp_path):
     monkeypatch.setattr(
         ahn_download.requests,
         "get",
-        lambda url, *, timeout: FakeResponse(b"invalid", url=url),
+        lambda url, *, timeout, verify: FakeResponse(b"invalid", url=url),
     )
 
     with pytest.raises(RuntimeError, match="tile_1"):
@@ -360,7 +360,7 @@ def test_direct_tiff_response_keeps_meter_to_centimeter_conversion(
     monkeypatch.setattr(
         ahn_download.requests,
         "get",
-        lambda url, *, timeout: FakeResponse(_tiff_bytes(value=1.23), url=url),
+        lambda url, *, timeout, verify: FakeResponse(_tiff_bytes(value=1.23), url=url),
     )
 
     ahn_download.download_ahn(ahn_dir=tmp_path, create_vrt=False, retries=1)
@@ -380,7 +380,7 @@ def test_direct_tiff_response_keeps_meter_values_when_conversion_is_disabled(
     monkeypatch.setattr(
         ahn_download.requests,
         "get",
-        lambda url, *, timeout: FakeResponse(_tiff_bytes(value=1.23), url=url),
+        lambda url, *, timeout, verify: FakeResponse(_tiff_bytes(value=1.23), url=url),
     )
 
     ahn_download.download_ahn(ahn_dir=tmp_path, create_vrt=False, retries=1)
@@ -397,7 +397,7 @@ def test_zip_response_with_tiff_is_supported(monkeypatch, tmp_path):
     monkeypatch.setattr(
         ahn_download.requests,
         "get",
-        lambda url, *, timeout: FakeResponse(
+        lambda url, *, timeout, verify: FakeResponse(
             payload,
             url="https://example.com/tile.zip",
             content_type="application/zip",
@@ -443,7 +443,7 @@ def test_download_ahn_validates_timeout(monkeypatch, tmp_path, timeout, error):
 def test_zero_retries_makes_no_http_request(monkeypatch, tmp_path):
     _configure_download(monkeypatch, _tiles("tile_1"))
 
-    def fail_get(url: str, *, timeout: float):
+    def fail_get(url: str, *, timeout: float, verify: bool):
         raise AssertionError("zero retries should not make an HTTP request")
 
     monkeypatch.setattr(ahn_download.requests, "get", fail_get)
@@ -460,7 +460,7 @@ def test_logging_contains_tile_url_attempt_and_retry_reason(
     monkeypatch.setattr(
         ahn_download.requests,
         "get",
-        lambda url, *, timeout: FakeResponse(next(responses), url=url),
+        lambda url, *, timeout, verify: FakeResponse(next(responses), url=url),
     )
     caplog.set_level(logging.INFO, logger="waterlagen.ahn.download")
 
