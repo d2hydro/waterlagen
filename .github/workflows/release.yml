@@ -140,13 +140,20 @@ jobs:
       - name: Build and lock against the published PyPI release
         shell: bash
         run: |
-          # PyPI indexes may take a short time to expose a newly uploaded wheel.
-          for attempt in 1 2 3 4 5; do
+          # Allow time for PyPI index propagation after publication.
+          for attempt in {1..10}; do
+            echo "Building production bundle for $RELEASE_TAG (attempt $attempt/10)"
             if python tools/build_production_bundle.py --tag "$RELEASE_TAG" --output-dir dist; then
               exit 0
             fi
-            if [ "$attempt" -lt 5 ]; then sleep 15; fi
+            if [ "$attempt" -lt 10 ]; then
+              sleep 30
+              # A new project directory still shares Pixi's cached PyPI index.
+              # Keep the Conda cache, but fetch fresh PyPI metadata next time.
+              pixi clean cache --pypi --yes
+            fi
           done
+          echo "::error::Could not build the production bundle for $RELEASE_TAG after 10 attempts."
           exit 1
 
       - uses: actions/upload-artifact@v7
