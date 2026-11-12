@@ -1,0 +1,17 @@
+:root  > * {
+  --md-primary-fg-color: #007db8;
+  --md-primary-fg-color--light: #2e9fd0;
+  --md-primary-fg-color--dark: #006a9c;
+}
+
+.md-typeset table td:first-child code {
+  white-space: nowrap;
+}
+
+.md-typeset .editorial-status {
+  margin: 2rem 0 0;
+  color: var(--md-default-fg-color--light);
+  font-size: 0.6rem;
+  text-align: left;
+  line-height: 1.5;
+}
