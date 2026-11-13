@@ -15,11 +15,14 @@ from shapely.geometry import box
 
 REPOSITORY = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location(
-    "runscript_maken", REPOSITORY / "envs/runscript_maken.py"
+    "runscript_tool_tests", REPOSITORY / "tools/runscript_maken/__init__.py"
 )
-generator = importlib.util.module_from_spec(spec)
-sys.modules[spec.name] = generator
-spec.loader.exec_module(generator)
+package = importlib.util.module_from_spec(spec)
+sys.modules[spec.name] = package
+spec.loader.exec_module(package)
+generator = importlib.import_module("runscript_tool_tests.waterlagen")
+script_helpers = importlib.import_module("runscript_tool_tests.script")
+generic_window = importlib.import_module("runscript_tool_tests.window")
 
 
 @pytest.fixture
@@ -31,7 +34,7 @@ def options():
 
 def test_script_defaults_and_literal_paths(tmp_path, options):
     project = tmp_path / "Aa's $map `test`"
-    script = generator._script(options, project)
+    script = script_helpers.build_script(generator._commands(options), project)
     assert "--workers 8" in script
     assert "--resume" not in script
     assert "--refresh-sources" not in script
@@ -82,7 +85,7 @@ def test_save_before_starting_exact_saved_script(tmp_path, monkeypatch, start):
     script = "# Opgeslagen keuzes\nWrite-Output 'proef'\n"
     calls = []
     process = object()
-    monkeypatch.setattr(generator.shutil, "which", lambda name: "powershell.exe")
+    monkeypatch.setattr(script_helpers.shutil, "which", lambda name: "powershell.exe")
 
     def launch(command, **kwargs):
         assert path.read_text(encoding="utf-8-sig") == script
@@ -94,7 +97,7 @@ def test_save_before_starting_exact_saved_script(tmp_path, monkeypatch, start):
         return process
 
     monkeypatch.setattr(generator.subprocess, "Popen", launch)
-    result = generator._save_script(script, path, tmp_path, start=start)
+    result = script_helpers.save_script(script, path, tmp_path, start=start)
     assert path.read_text(encoding="utf-8-sig") == script
     if start:
         assert result is process
@@ -112,18 +115,18 @@ def test_failed_save_does_not_start_production(tmp_path, monkeypatch):
 
     monkeypatch.setattr(generator.subprocess, "Popen", unexpected_launch)
     with pytest.raises(OSError):
-        generator._save_script(
+        script_helpers.save_script(
             "test", tmp_path / "missing/run.ps1", tmp_path, start=True
         )
     with pytest.raises(ValueError, match=".ps1"):
-        generator._save_script("test", tmp_path / "run.txt", tmp_path, start=True)
+        script_helpers.save_script("test", tmp_path / "run.txt", tmp_path, start=True)
 
 
 def test_missing_powershell_preserves_saved_script(tmp_path, monkeypatch):
-    monkeypatch.setattr(generator.shutil, "which", lambda name: None)
+    monkeypatch.setattr(script_helpers.shutil, "which", lambda name: None)
     path = tmp_path / "run.ps1"
     with pytest.raises(OSError, match="Script opgeslagen.*PowerShell"):
-        generator._save_script("test", path, tmp_path, start=True)
+        script_helpers.save_script("test", path, tmp_path, start=True)
     assert path.read_text(encoding="utf-8-sig") == "test"
 
 
@@ -145,7 +148,7 @@ def test_window_saves_and_starts_selection_or_cancels(
     monkeypatch.setattr(
         filedialog, "asksaveasfilename", lambda **kwargs: "" if cancel else str(path)
     )
-    monkeypatch.setattr(generator.shutil, "which", lambda name: "powershell.exe")
+    monkeypatch.setattr(script_helpers.shutil, "which", lambda name: "powershell.exe")
     polygon_path = tmp_path / "gebied.gpkg"
     if selection == "Polygoonbestand":
         gpd.GeoDataFrame(geometry=[box(0, 0, 1, 1)], crs=28992).to_file(
@@ -229,7 +232,9 @@ def test_window_saves_and_starts_selection_or_cancels(
 )
 def test_invalid_choices_rejected_before_saving(tmp_path, options, changes):
     with pytest.raises(ValueError):
-        generator._script(replace(options, **changes), tmp_path)
+        script_helpers.build_script(
+            generator._commands(replace(options, **changes)), tmp_path
+        )
 
 
 @pytest.mark.parametrize(
@@ -330,7 +335,10 @@ def test_saved_powershell_runs_layers_in_order_and_stops_on_error(
             area_arguments=("--area-file", str(polygon_path), "--area-layer", "gebied"),
         )
     script = tmp_path / "productie.ps1"
-    script.write_text(generator._script(options, project), encoding="utf-8-sig")
+    script.write_text(
+        script_helpers.build_script(generator._commands(options), project),
+        encoding="utf-8-sig",
+    )
     trace = tmp_path / "calls.json"
     harness = tmp_path / "test.ps1"
     # Vervang alleen pixi, zodat er geen productie of download start.
@@ -341,11 +349,11 @@ function pixi {{
     $global:LASTEXITCODE = {exit_code}
 }}
 try {{
-    & {generator._ps_quote(str(script))}
+    & {script_helpers.quote(str(script))}
 }} catch {{
     Write-Output $_
 }} finally {{
-    ConvertTo-Json -InputObject $global:RunTestCalls -Depth 4 | Set-Content -LiteralPath {generator._ps_quote(str(trace))} -Encoding UTF8
+    ConvertTo-Json -InputObject $global:RunTestCalls -Depth 4 | Set-Content -LiteralPath {script_helpers.quote(str(trace))} -Encoding UTF8
 }}
 """,
         encoding="utf-8-sig",

@@ -4,6 +4,7 @@ import json
 import re
 import shutil
 import subprocess
+import sys
 import tomllib
 from pathlib import Path
 from zipfile import ZipFile
@@ -30,6 +31,7 @@ def public_lock(version):
 def test_bundle_is_standalone_and_contains_only_public_inputs(
     tmp_path, monkeypatch, tag
 ):
+    real_run = subprocess.run
     repository = tmp_path / "private-checkout"
     for path in [
         "pyproject.toml",
@@ -38,7 +40,10 @@ def test_bundle_is_standalone_and_contains_only_public_inputs(
         "envs/pixi.toml.in",
         "envs/README.md",
         *(f"envs/{name}" for name in builder.UPDATER_FILES),
-        *(f"envs/{name}" for name in builder.RUNSCRIPT_FILES),
+        *(
+            name if name.startswith("tools/") else f"envs/{name}"
+            for name in builder.RUNSCRIPT_FILES
+        ),
         *(f"scripts/{name}" for name in builder.PRODUCTION_SCRIPTS),
     ]:
         target = repository / path
@@ -116,6 +121,19 @@ def test_bundle_is_standalone_and_contains_only_public_inputs(
             content = archive.read(name)
             assert b"never-copy-me" not in content
             assert str(repository).encode() not in content
+
+        unpacked = tmp_path / "unpacked"
+        archive.extractall(unpacked)
+    # De starter moet alle modules in de ZIP vinden, zonder de checkout op sys.path.
+    result = real_run(
+        [sys.executable, "-I", str(unpacked / "runscript_maken.py"), "--help"],
+        cwd=unpacked,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    assert "--area-file" in result.stdout
 
 
 @pytest.mark.parametrize("tag", ["../2026.9.0", "2026.9.0/secret", "$(secret)", "main"])

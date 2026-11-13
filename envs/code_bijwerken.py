@@ -34,7 +34,14 @@ BASE_FILES = (
     "scripts/functioneel_landgebruik.py",
     "scripts/inwoners.py",
 )
-RUNSCRIPT_FILES = ("runscript_maken.py", "runscript-maken.cmd")
+RUNSCRIPT_FILES = (
+    "runscript_maken.py",
+    "runscript-maken.cmd",
+    "tools/runscript_maken/__init__.py",
+    "tools/runscript_maken/script.py",
+    "tools/runscript_maken/window.py",
+    "tools/runscript_maken/waterlagen.py",
+)
 MANAGED_FILES = (
     *BASE_FILES,
     *UPDATER_FILES,

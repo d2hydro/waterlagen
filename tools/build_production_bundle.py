@@ -21,7 +21,14 @@ PRODUCTION_SCRIPTS = (
     "inwoners.py",
 )
 UPDATER_FILES = ("code_bijwerken.py", "code_bijwerken.cmd", "code_bijwerken.sh")
-RUNSCRIPT_FILES = ("runscript_maken.py", "runscript-maken.cmd")
+RUNSCRIPT_FILES = (
+    "runscript_maken.py",
+    "runscript-maken.cmd",
+    "tools/runscript_maken/__init__.py",
+    "tools/runscript_maken/script.py",
+    "tools/runscript_maken/window.py",
+    "tools/runscript_maken/waterlagen.py",
+)
 
 
 def release_version(tag: str, repository: Path) -> str:
@@ -123,10 +130,13 @@ def build_bundle(tag: str, output_dir: Path, repository: Path = REPO_ROOT) -> Pa
             shutil.copyfile(source, project_dir / relative_path)
         included.extend(f"scripts/{name}" for name in PRODUCTION_SCRIPTS)
         for name in (*UPDATER_FILES, *RUNSCRIPT_FILES):
-            source = repository / "envs" / name
+            relative_path = name if name.startswith("tools/") else f"envs/{name}"
+            source = repository / relative_path
             if source.is_symlink() or not source.resolve().is_relative_to(repository):
-                raise ValueError(f"Source must be a repository file: envs/{name}")
-            shutil.copyfile(source, project_dir / name)
+                raise ValueError(f"Source must be a repository file: {relative_path}")
+            target = project_dir / name
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(source, target)
         included.extend(UPDATER_FILES)
         included.extend(RUNSCRIPT_FILES)
 

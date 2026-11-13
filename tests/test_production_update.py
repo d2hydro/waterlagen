@@ -94,7 +94,8 @@ def test_update_adds_runscript_window_without_touching_user_scripts(
     root, private = project
     files = release_files(NEW)
     for name in updater.RUNSCRIPT_FILES:
-        files[name] = (REPOSITORY / "envs" / name).read_bytes()
+        source = REPOSITORY / (name if name.startswith("tools/") else f"envs/{name}")
+        files[name] = source.read_bytes()
     files[updater.METADATA] = json.dumps(
         {"version": NEW, "files": updater._hashes(files)}
     ).encode()
