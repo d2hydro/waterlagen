@@ -9,10 +9,12 @@ from enum import StrEnum
 from pathlib import Path
 
 import geopandas as gpd
+import pyogrio
 from shapely.geometry import Polygon, box
 from shapely.geometry.base import BaseGeometry
 
 from waterlagen._crs import same_crs
+from waterlagen._geopandas import read_file
 from waterlagen._sources import SourcePreparation
 from waterlagen.administratieve_gebieden import (
     DEFAULT_BESTUURLIJKE_GEBIEDEN_YEAR,
@@ -109,12 +111,113 @@ def area_from_bounds(bounds: Sequence[float]) -> ProductionArea:
     return ProductionArea("_".join(parts), box(*coordinates), settings.crs)
 
 
+def area_file_layers(path: Path) -> list[str]:
+    """List polygon layers in a local GeoPackage or GeoJSON.
+
+    Parameters
+    ----------
+    path : pathlib.Path
+        Existing local GeoPackage or GeoJSON file.
+
+    Returns
+    -------
+    list of str
+        Polygon layers, including layers whose geometry type is unspecified.
+    """
+    if path.suffix.lower() not in {".gpkg", ".geojson", ".json"}:
+        raise ValueError("Kies een GeoPackage (.gpkg) of GeoJSON (.geojson).")
+    if not path.is_file():
+        raise ValueError(f"Polygoonbestand bestaat niet: {path}")
+    try:
+        layers = pyogrio.list_layers(path)
+    except (pyogrio.errors.DataSourceError, OSError) as error:
+        raise ValueError(f"Kan polygoonbestand niet lezen: {path}") from error
+    names = [
+        str(name)
+        for name, kind in layers
+        if kind and ("Polygon" in kind or kind == "Unknown")
+    ]
+    if not names:
+        raise ValueError("Het bestand bevat geen polygoonlaag.")
+    return names
+
+
+def _polygon_name(geometry: BaseGeometry) -> str:
+    digest = hashlib.sha256(geometry.normalize().wkb).hexdigest()
+    return f"polygoon_{digest[:16]}"
+
+
+def area_from_file(path: Path, *, layer: str | None = None) -> ProductionArea:
+    """Read polygons as an input selection, preserving holes and separate parts.
+
+    Parameters
+    ----------
+    path : pathlib.Path
+        Local GeoPackage or GeoJSON. A CRS must be present.
+    layer : str, optional
+        Polygon layer; required when the file has multiple polygon layers.
+
+    Returns
+    -------
+    ProductionArea
+        Union of all polygons in the layer, transformed to ``settings.crs``.
+        The geometry determines the stable area name. Outputs are not clipped.
+
+    Raises
+    ------
+    ValueError
+        If the file, layer, CRS or polygon geometry is missing or invalid.
+    """
+    names = area_file_layers(path)
+    if layer is None:
+        if len(names) != 1:
+            raise ValueError(
+                "Het bestand bevat meerdere polygoonlagen. Kies een laag met --area-layer."
+            )
+        layer = names[0]
+    if layer not in names:
+        raise ValueError(f"Polygoonlaag niet gevonden: {layer}")
+    try:
+        frame = read_file(path, layer=layer)
+    except (
+        pyogrio.errors.DataSourceError,
+        pyogrio.errors.DataLayerError,
+        OSError,
+    ) as error:
+        raise ValueError(f"Kan polygoonlaag niet lezen: {layer}") from error
+    if frame.empty or frame.geometry.isna().any() or frame.geometry.is_empty.any():
+        raise ValueError(
+            "De gebiedslaag bevat geen polygonen of heeft lege geometrieën."
+        )
+    if (
+        not frame.geom_type.isin(["Polygon", "MultiPolygon"]).all()
+        or not frame.is_valid.all()
+    ):
+        raise ValueError("De gebiedslaag moet uitsluitend geldige polygonen bevatten.")
+    if frame.crs is None:
+        raise ValueError(
+            "De gebiedslaag heeft geen CRS. Geef het CRS op in het bronbestand."
+        )
+    if not same_crs(frame.crs, settings.crs):
+        frame = frame.to_crs(settings.crs)
+    geometry = frame.geometry.union_all()
+    if not geometry.is_valid or geometry.is_empty:
+        raise ValueError("De gebiedslaag vormt geen geldig gebied in het project-CRS.")
+    return ProductionArea(_polygon_name(geometry), geometry, settings.crs)
+
+
 def area_name(value: str | Area | ProductionArea) -> str:
-    """Validate a known name, water authority code or constructed bbox without I/O."""
+    """Validate a known name, authority code or constructed selection without I/O."""
     name = value.value if isinstance(value, ProductionArea) else str(value)
     if name in {"nederland", *NAMED_AREAS}:
         return name
     if isinstance(value, ProductionArea) and not value.geometry.is_empty:
+        if (
+            value.geometry.geom_type in {"Polygon", "MultiPolygon"}
+            and value.geometry.is_valid
+            and name == _polygon_name(value.geometry)
+        ):
+            return name
         rectangle = area_from_bounds(value.geometry.bounds)
         if name == rectangle.value and value.geometry.equals(rectangle.geometry):
             return name
@@ -135,7 +238,7 @@ def resolve_area(
     ----------
     area : str or Area or ProductionArea
         Named polygon, Nederland, a water authority code, or a rectangle made
-        with ``area_from_bounds``.
+        with ``area_from_bounds`` or polygon selection from ``area_from_file``.
     store : DataStore
         Source cache locations.
     preparation : SourcePreparation

@@ -7,7 +7,7 @@ from unittest.mock import Mock
 
 import geopandas as gpd
 import pytest
-from shapely.geometry import box
+from shapely.geometry import Polygon, box
 
 from waterlagen._cli import production_parser, run_cli
 from waterlagen._run_logging import executor_logging, production_logging, run_log
@@ -130,6 +130,8 @@ def test_help_is_shared_and_does_not_start_production(product, monkeypatch, caps
         for option in (
             "--area",
             "--bounds",
+            "--area-file",
+            "--area-layer",
             "--waterbeheercode",
             "--data-dir",
             "--output-root",
@@ -166,6 +168,64 @@ def test_cli_passes_bounds_in_project_crs(product, tmp_path, monkeypatch):
     assert area.crs == "EPSG:4326"
     assert area.value == "-1.5_0_2_3"
     assert "bounds" not in main.call_args.kwargs
+
+
+@pytest.mark.parametrize("product", PRODUCTS)
+def test_cli_passes_polygon_file_without_replacing_it_with_bounds(
+    product, tmp_path, monkeypatch
+):
+    path = Path(__file__).parents[1] / "scripts" / f"{product}.py"
+    spec = importlib.util.spec_from_file_location(product, path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    polygon_path = tmp_path / "gebied.gpkg"
+    triangle = Polygon([(110000, 515000), (111000, 515000), (110000, 516000)])
+    gpd.GeoDataFrame(geometry=[triangle], crs=28992).to_file(
+        polygon_path, layer="gebied"
+    )
+    main = Mock(return_value=tmp_path / "result")
+    monkeypatch.setattr(module, "main", main)
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            str(path),
+            "--area-file",
+            str(polygon_path),
+            "--area-layer",
+            "gebied",
+            "--data-dir",
+            str(tmp_path),
+        ],
+    )
+    module.cli()
+    area = main.call_args.kwargs["area"]
+    assert area.geometry.equals(triangle)
+    assert area_name(area).startswith("polygoon_")
+    assert "area_file" not in main.call_args.kwargs
+    assert "area_layer" not in main.call_args.kwargs
+
+
+@pytest.mark.parametrize(
+    "arguments",
+    [
+        ["--area-layer", "gebied"],
+        ["--area-file", "missing.gpkg"],
+        ["--area-file", "missing.gpkg", "--area", "nederland"],
+        ["--area-file", "missing.gpkg", "--bounds", "0", "0", "1", "1"],
+        ["--area-file", "missing.gpkg", "--waterbeheercode", "12"],
+    ],
+)
+def test_invalid_file_selection_does_not_start_production(tmp_path, arguments):
+    main = Mock()
+    with pytest.raises(SystemExit) as result:
+        run_cli(
+            production_parser("test"),
+            main,
+            ["--data-dir", str(tmp_path / "new"), *arguments],
+        )
+    assert result.value.code == 2
+    main.assert_not_called()
+    assert not (tmp_path / "new").exists()
 
 
 def test_cli_default_remains_nederland(tmp_path):

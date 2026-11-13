@@ -197,9 +197,9 @@ jobs:
           pixi run --locked controleer
           # Run the updater entry point without downloading or applying a release.
           if [ "$RUNNER_OS" = "Windows" ]; then
-            MSYS_NO_PATHCONV=1 cmd.exe /d /c "bijwerken.cmd --help"
+            MSYS_NO_PATHCONV=1 cmd.exe /d /c "code_bijwerken.cmd --help"
           else
-            sh ./bijwerken.sh --help
+            sh ./code_bijwerken.sh --help
           fi
 
   production-upload:

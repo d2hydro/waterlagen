@@ -20,7 +20,8 @@ PRODUCTION_SCRIPTS = (
     "functioneel_landgebruik.py",
     "inwoners.py",
 )
-UPDATER_FILES = ("bijwerken.py", "bijwerken.cmd", "bijwerken.sh")
+UPDATER_FILES = ("code_bijwerken.py", "code_bijwerken.cmd", "code_bijwerken.sh")
+RUNSCRIPT_FILES = ("runscript_maken.py", "runscript-maken.cmd")
 
 
 def release_version(tag: str, repository: Path) -> str:
@@ -121,12 +122,13 @@ def build_bundle(tag: str, output_dir: Path, repository: Path = REPO_ROOT) -> Pa
                 raise ValueError(f"Source must be a repository file: {relative_path}")
             shutil.copyfile(source, project_dir / relative_path)
         included.extend(f"scripts/{name}" for name in PRODUCTION_SCRIPTS)
-        for name in UPDATER_FILES:
+        for name in (*UPDATER_FILES, *RUNSCRIPT_FILES):
             source = repository / "envs" / name
             if source.is_symlink() or not source.resolve().is_relative_to(repository):
                 raise ValueError(f"Source must be a repository file: envs/{name}")
             shutil.copyfile(source, project_dir / name)
         included.extend(UPDATER_FILES)
+        included.extend(RUNSCRIPT_FILES)
 
         # This runs after PyPI publication: no local wheel or editable dependency.
         subprocess.run(

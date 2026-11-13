@@ -21,7 +21,8 @@ from zipfile import BadZipFile, ZipFile
 REPOSITORY = "d2hydro/waterlagen"
 METADATA = "productiepakket.json"
 PENDING = ".bijwerken-herstel.json"
-UPDATER_FILES = ("bijwerken.py", "bijwerken.cmd", "bijwerken.sh")
+UPDATER_FILES = ("code_bijwerken.py", "code_bijwerken.cmd", "code_bijwerken.sh")
+LEGACY_UPDATER_FILES = ("bijwerken.py", "bijwerken.cmd", "bijwerken.sh")
 BASE_FILES = (
     "pixi.toml",
     "pixi.lock",
@@ -33,7 +34,14 @@ BASE_FILES = (
     "scripts/functioneel_landgebruik.py",
     "scripts/inwoners.py",
 )
-MANAGED_FILES = (*BASE_FILES, *UPDATER_FILES, METADATA)
+RUNSCRIPT_FILES = ("runscript_maken.py", "runscript-maken.cmd")
+MANAGED_FILES = (
+    *BASE_FILES,
+    *UPDATER_FILES,
+    *LEGACY_UPDATER_FILES,
+    *RUNSCRIPT_FILES,
+    METADATA,
+)
 VERSION_PATTERN = (
     r"v?(?P<version>\d{4}\.\d{1,2}\.\d+(?:(?:a|b|rc)\d+)?(?:\.post\d+)?(?:\.dev\d+)?)"
 )
@@ -284,6 +292,14 @@ def _restore(root: Path) -> None:
 
 
 def _apply(root: Path, files: dict[str, bytes]) -> None:
+    # De oude namen verdwijnen zodra de release de nieuwe namen bevat.
+    obsolete = []
+    if set(UPDATER_FILES).issubset(files):
+        obsolete = [
+            name
+            for name in LEGACY_UPDATER_FILES
+            if name not in files and _target(root, name).exists()
+        ]
     backup_root = root / ".updates"
     if not backup_root.resolve().is_relative_to(root):
         raise ValueError("De herstelmap verwijst buiten de projectmap")
@@ -294,7 +310,7 @@ def _apply(root: Path, files: dict[str, bytes]) -> None:
         )
     )
     existed = {}
-    for name in files:
+    for name in [*files, *obsolete]:
         target = _target(root, name)
         existed[name] = target.exists()
         if existed[name]:
@@ -304,6 +320,8 @@ def _apply(root: Path, files: dict[str, bytes]) -> None:
     try:
         for name, content in files.items():
             _write(_target(root, name), content)
+        for name in obsolete:
+            _target(root, name).unlink()
         _checks(root)
     except BaseException as error:
         print("Bijwerken mislukt. Vorige versie herstellen...", flush=True)
@@ -324,7 +342,7 @@ def update(root: Path, *, version: str | None = None, yes: bool = False) -> None
     root = root.resolve()
     if Path(sys.prefix).resolve().is_relative_to(root / ".pixi"):
         raise RuntimeError(
-            "Start de updater via bijwerken.cmd of bijwerken.sh, buiten de productieomgeving"
+            "Start de updater via code_bijwerken.cmd of code_bijwerken.sh, buiten de productieomgeving"
         )
     _manifest_version((root / "pixi.toml").read_bytes())
     with _update_lock(root):
@@ -352,7 +370,10 @@ def update(root: Path, *, version: str | None = None, yes: bool = False) -> None
         _check_idle(root)
         print("Productiepakket downloaden...", flush=True)
         files = _bundle(tag)
-        if not set(MANAGED_FILES).issubset(files):
+        has_updater = set(UPDATER_FILES).issubset(files) or set(
+            LEGACY_UPDATER_FILES
+        ).issubset(files)
+        if not {*BASE_FILES, METADATA}.issubset(files) or not has_updater:
             raise ValueError("Deze release ondersteunt automatisch bijwerken nog niet")
         _check_local_files(root, current, files)
         _check_idle(root)

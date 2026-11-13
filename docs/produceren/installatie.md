@@ -111,9 +111,9 @@ Voer ook bij een volgende sessie de opdrachten vanuit uw projectfolder uit.
 U hoeft de omgeving niet apart te activeren.
 
 ##  Bijwerken bestaande installatie
-Stop lopende berekeningen en start `bijwerken.cmd` (Windows) of `sh ./bijwerken.sh` (Linux) vanuit uw projectfolder. Instellingen en data blijven behouden.
+Stop lopende berekeningen en start `code_bijwerken.cmd` (Windows) of `sh ./code_bijwerken.sh` (Linux) vanuit uw projectfolder. Instellingen en data blijven behouden.
 
-Ontbreken de bijwerkbestanden? Download het Download [**waterlagen-productie.zip**](https://github.com/d2hydro/waterlagen/releases/latest/download/waterlagen-productie.zip) en kopieer `bijwerken.py` en het bijbehorende script (`.cmd` of `.sh`) naast `pixi.toml`. Bij volgende updates is dit niet meer nodig.
+Ontbreken de bijwerkbestanden? Download het Download [**waterlagen-productie.zip**](https://github.com/d2hydro/waterlagen/releases/latest/download/waterlagen-productie.zip) en kopieer `code_bijwerken.py` en het bijbehorende script (`.cmd` of `.sh`) naast `pixi.toml`. Bij volgende updates is dit niet meer nodig.
 
 ## Als een opdracht niet werkt
 

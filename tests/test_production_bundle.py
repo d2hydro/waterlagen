@@ -38,6 +38,7 @@ def test_bundle_is_standalone_and_contains_only_public_inputs(
         "envs/pixi.toml.in",
         "envs/README.md",
         *(f"envs/{name}" for name in builder.UPDATER_FILES),
+        *(f"envs/{name}" for name in builder.RUNSCRIPT_FILES),
         *(f"scripts/{name}" for name in builder.PRODUCTION_SCRIPTS),
     ]:
         target = repository / path
@@ -85,6 +86,7 @@ def test_bundle_is_standalone_and_contains_only_public_inputs(
             ".datastore",
             "productiepakket.json",
             *builder.UPDATER_FILES,
+            *builder.RUNSCRIPT_FILES,
             *(f"scripts/{name}" for name in builder.PRODUCTION_SCRIPTS),
         }
         assert archive.read(".datastore") == b"DATA_DIR=./data\n"
@@ -96,7 +98,7 @@ def test_bundle_is_standalone_and_contains_only_public_inputs(
         }
         for name, digest in metadata["files"].items():
             assert hashlib.sha256(archive.read(name)).hexdigest() == digest
-        assert archive.getinfo("bijwerken.sh").external_attr >> 16 & 0o111
+        assert archive.getinfo("code_bijwerken.sh").external_attr >> 16 & 0o111
         for name in builder.PRODUCTION_SCRIPTS:
             assert (
                 archive.read(f"scripts/{name}")
