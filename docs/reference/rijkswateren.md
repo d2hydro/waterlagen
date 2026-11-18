@@ -4,7 +4,9 @@ editorial_status: ai
 
 # Rijkswateren
 
-Zie [broninformatie](../bronlagen/rijkswateren.md) en het
-[downloadvoorbeeld](bronlagen-downloaden.md#rijkswateren).
+[Bekijk het downloadvoorbeeld](bronlagen-downloaden.md#rijkswateren){ .md-button }
+[Over deze bron](../bronlagen/rijkswateren.md){ .meerlink }
 
-::: waterlagen.rijkswateren.download_rijkswateren
+??? info "Voorbereide Rijkswateren downloaden · `download_rijkswateren`"
+
+    ::: waterlagen.rijkswateren.download_rijkswateren

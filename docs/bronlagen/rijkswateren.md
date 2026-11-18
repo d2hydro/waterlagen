@@ -10,11 +10,11 @@ Deze bron bevat voorbereide hydroobjectlijnen voor Rijkswaterstaat, met
 waterbeheercode `80` in `nen3610id`. De bron wordt handmatig gepubliceerd.
 Het is geen automatische download van een officiële Rijkswaterstaatregistratie.
 
-## Leverancier
+<span id="leverancier"></span>
 
-De distributie staat op de waterlagen-cloud van d2hydro. De voorbereidende
-repository beschrijft de bronproductie; deze keten wordt hier niet uitgevoerd.
-Controleer bronversie, dekking en gebruiksvoorwaarden vóór inhoudelijke publicatie.
+## Herkomst
+
+D2Hydro combineert vaarweg-, rivier- en kanaallijnen van OpenStreetMap-bijdragers met eigen aanvullende lijnen. Het veld `bron` onderscheidt `osm` en `d2hydro`. Rijkswaterstaat is de waterbeheerder van het gebied (code `80`). [Bouwscript van D2Hydro](https://github.com/d2hydro/rws_hydroobject/blob/main/bouw_hydroobjecten.py)
 
 ## Dataset of service
 
@@ -24,11 +24,13 @@ en haalt het afzonderlijke bestand op. De sharetoken wordt niet vast ingesteld.
 De bronlocatie kan worden aangepast en een geldige lokale bron wordt zonder
 netwerkverkeer hergebruikt.
 
-Bij controle op 15 oktober 2026 bevatte de distributie 2.305 LineStrings in
-`EPSG:28992`, met `categorieoppervlaktewater = primair`. Aanwezige attributen
-waren `globalid`, `nen3610id`, `categorieoppervlaktewater`, `naam`, `bron`,
-`osm_id` en `osm_laag`. Dit beschrijft één bronversie en bewijst geen volledige
-of hydrologisch gevalideerde landelijke dekking. Kunstwerklagen zijn niet vereist.
+??? info "Objecten en attributen in de levering van oktober 2026"
+
+    Bij controle op 15 oktober 2026 bevatte de distributie 2.305 LineStrings in
+    `EPSG:28992`, met `categorieoppervlaktewater = primair`. Aanwezige attributen
+    waren `globalid`, `nen3610id`, `categorieoppervlaktewater`, `naam`, `bron`,
+    `osm_id` en `osm_laag`. Dit beschrijft één bronversie en bewijst geen volledige
+    of hydrologisch gevalideerde landelijke dekking. Kunstwerklagen zijn niet vereist.
 
 De optionele laag `duikersifonhevel` kan RWS-duikers, sifons en hevels leveren.
 Een ontbrekende of lege laag is geldig. Indien aanwezig worden CRS en
@@ -49,5 +51,3 @@ doelselectie, brandcontext, bronvervanging en controle-uitvoer.
 
 - [Openbare waterlagen-cloud](https://waterlagen.d2hydro.nl)
 - [Voorbereidende bronproductie](https://github.com/d2hydro/rws_hydroobject)
-
-Beide verwijzingen zijn op 15 oktober 2026 gecontroleerd.

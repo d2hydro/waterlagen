@@ -39,9 +39,12 @@ def test_bundle_is_standalone_and_contains_only_public_inputs(
         "LICENSE",
         "envs/pixi.toml.in",
         "envs/README.md",
-        *(f"envs/{name}" for name in builder.UPDATER_FILES),
         *(
             name if name.startswith("tools/") else f"envs/{name}"
+            for name in builder.UPDATER_FILES
+        ),
+        *(
+            name if name.startswith(("tools/", "docs/")) else f"envs/{name}"
             for name in builder.RUNSCRIPT_FILES
         ),
         *(f"scripts/{name}" for name in builder.PRODUCTION_SCRIPTS),
@@ -94,6 +97,8 @@ def test_bundle_is_standalone_and_contains_only_public_inputs(
             *builder.RUNSCRIPT_FILES,
             *(f"scripts/{name}" for name in builder.PRODUCTION_SCRIPTS),
         }
+        template = "docs/reference/voorbeelden/brandlagen.toml"
+        assert archive.read(template) == (repository / template).read_bytes()
         assert archive.read(".datastore") == b"DATA_DIR=./data\n"
         metadata = json.loads(archive.read("productiepakket.json"))
         assert metadata["version"] == tag.removeprefix("v")
@@ -126,7 +131,7 @@ def test_bundle_is_standalone_and_contains_only_public_inputs(
         archive.extractall(unpacked)
     # De starter moet alle modules in de ZIP vinden, zonder de checkout op sys.path.
     result = real_run(
-        [sys.executable, "-I", str(unpacked / "runscript_maken.py"), "--help"],
+        [sys.executable, "-I", str(unpacked / "tools/runscript_maken.py"), "--help"],
         cwd=unpacked,
         capture_output=True,
         text=True,

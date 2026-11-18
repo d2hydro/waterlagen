@@ -179,50 +179,26 @@ def write_duiker_signaalkaart(
     output_path: Path | None = None,
     bgt_duikers_path: Path | None = None,
 ) -> Path:
-    """Write BGT boundary-crossing signals after checks against the primary network.
+    """Maak een signaalkaart van mogelijk ontbrekende duikerverbindingen.
+
+    De controle bekijkt welke BGT-duikers een grens tussen afwateringseenheden
+    kruisen. Alle duikers uit de BGT-laag tellen mee, ongeacht de gekozen brandlagen.
 
     Parameters
     ----------
     run_dir : pathlib.Path
-        Production directory containing final ``afwateringseenheden.gpkg``,
-        ``brandlagen.gpkg`` with original primary waterlines, and
-        ``watersysteem.gpkg`` with primary segments and their recorded connections.
+        Productiemap met afwateringseenheden.gpkg, watersysteem.gpkg en brandlagen.gpkg.
     output_path : pathlib.Path, optional
-        Defaults to ``run_dir/signaalkaart.gpkg``. The entire derived file is
-        replaced atomically, including any earlier assessment fields or archives.
+        Standaard: run_dir/signaalkaart.gpkg. Het hele bestand wordt vervangen,
+        inclusief eventueel toegevoegde beoordelingen.
     bgt_duikers_path : pathlib.Path, optional
-        Prepared GeoPackage with layer ``bgt_duiker``. Defaults to
-        ``run_dir/berekening/signaalkaart/bgt_duikers.gpkg``.
+        GeoPackage met de laag bgt_duiker.
+        Standaard: run_dir/berekening/signaalkaart/bgt_duikers.gpkg.
 
     Returns
     -------
     pathlib.Path
-        Signal map with source ``gml_id`` as ``id``, ``bronhouder`` code and original
-        geometry. Missing source-holder values remain null; they are not inferred
-        from the identifier, which may refer to a different original holder.
-        Lines and polygons have separate layers; empty polygon layers are omitted.
-
-    Notes
-    -----
-    All current BGT culverts are considered independently of burn-layer selection.
-    Culverts with at least 50% of their length (lines) or area (polygons) inside
-    the 2 m buffer of used connected watercourses and applied connected culverts
-    are excluded first. Unconnected source objects do not qualify.
-    Source objects are matched through ``bron_id`` from primary target segments
-    present in the final drainage areas. Their complete original geometry is used;
-    overlapping buffers count once. Missing source IDs prevent primary exclusions.
-    Lines must start and end strictly inside different drainage areas and cross
-    a shared boundary. Disconnected lines and ambiguous endpoints are excluded.
-    A route excludes a remaining line only when each endpoint is within 2 m of
-    a used original primary watercourse and their targets have a recorded
-    connection, irrespective of direction. Route length is
-    irrelevant; confluences and splits are allowed. Merely reaching a primary
-    target does not prove local attachment. Raster flow is not used for this check.
-    Polygons must cross a shared boundary. For each positive-area overlap, use
-    its point nearest the target segment. Route-based exclusion requires all
-    these points locally attached and a recorded connection for every pair
-    of targets, including the outermost pair. Original geometry is retained.
-    No downloads or terrain calculations are performed.
+        Pad naar de signaalkaart met id, bronhouder en de oorspronkelijke geometrie.
     """
     run_dir = Path(run_dir)
     target = Path(output_path or run_dir / "signaalkaart.gpkg")

@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="nl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Waterlagen · Run maken</title>
+    <link rel="icon" href="favicon.png" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div id="loading" role="status">
+      Run maken wordt geladen. Lokale gebiedsgrenzen worden opgezocht…
+    </div>
+    <div id="run-map-preview" hidden>
+      <header class="top">
+        <img alt="Waterlagen" id="rm-logo" />
+        <div>
+          <div class="brand">WATERLAGEN</div>
+          <h2>Run maken</h2>
+        </div>
+        <span class="tag"></span>
+      </header>
+      <div class="tools">
+        <button id="rm-load">Run laden…</button
+        ><button id="rm-update">Code bijwerken</button>
+      </div>
+      <div class="workspace">
+        <section class="map-pane" aria-label="Gebied op de kaart">
+          <div class="map-title">
+            <h3>Jouw gebied</h3>
+            <span class="muted">Nederland</span>
+          </div>
+          <div class="backgrounds" role="group" aria-label="Kaartachtergrond">
+            <button
+              data-background="streets"
+              aria-pressed="true"
+              aria-label="Stratenkaart"
+              title="Stratenkaart"
+              data-tooltip="Stratenkaart"
+            >
+              <span
+                class="map-icon"
+                data-icon="map"
+                aria-hidden="true"
+              ></span></button
+            ><button
+              data-background="satellite"
+              aria-pressed="false"
+              aria-label="Luchtfoto · PDOK actueel"
+              title="Luchtfoto · PDOK actueel"
+              data-tooltip="Luchtfoto · PDOK actueel"
+            >
+              <span
+                class="map-icon"
+                data-icon="satellite"
+                aria-hidden="true"
+              ></span>
+            </button>
+          </div>
+          <div class="map">
+            <div class="area-toolbar" role="group" aria-label="Gebied kiezen">
+              <button id="rm-choose-area" aria-expanded="false" aria-controls="rm-area-menu">Gebied kiezen</button>
+              <button id="rm-custom-area" aria-expanded="false" aria-controls="rm-custom-menu">Eigen gebied</button>
+            </div>
+            <section id="rm-area-menu" class="area-popover" aria-label="Gebied kiezen" hidden>
+              <header><h3>Gebied kiezen</h3><button data-close-area aria-label="Sluiten">×</button></header>
+              <label class="area-choice"><input type="radio" name="area-kind" value="country"> Heel Nederland</label>
+              <label class="area-choice"><input type="radio" name="area-kind" value="authorities" checked> Waterschappen</label>
+              <div id="rm-authority-slot"></div>
+              <button data-close-area class="primary">Gereed</button>
+            </section>
+            <section id="rm-custom-menu" class="area-popover" aria-label="Eigen gebied" hidden>
+              <header><h3>Eigen gebied</h3><button data-close-area aria-label="Sluiten">×</button></header>
+              <div class="custom-choices">
+                <button data-area-mode="draw" data-shape="polygon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 9 7-4 11H7L3 10Z"/><circle cx="12" cy="3" r="1.5"/><circle cx="21" cy="10" r="1.5"/><circle cx="7" cy="21" r="1.5"/></svg><span>Polygoon tekenen<small>Klik de hoekpunten op de kaart</small></span></button>
+                <button data-area-mode="bounds"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 3v17h17M1 7h6m-6 6h6m2 4v6m6-6v6"/></svg><span>Coördinaten invoeren<small>Rechthoek met X- en Y-coördinaten</small></span></button>
+                <button data-area-mode="file"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 19V5h7l2 3h9v3M3 19h16l3-8H6Z"/></svg><span>Gebied uit bestand<small>GeoPackage (.gpkg)</small></span></button>
+              </div>
+            </section>
+          <div class="area-controls">
+            <label class="field" hidden
+              ><select id="rm-mode" aria-label="Gebied kiezen">
+                <option value="authorities">Waterschappen</option>
+                <option value="country">Heel Nederland</option>
+                <option value="draw">Zelf een polygoon tekenen</option>
+                <option value="file">Polygoon uit bestand</option>
+                <option value="bounds">Eigen rechthoek</option>
+              </select></label
+            >
+            <div id="rm-authority-panel" class="picker">
+              <span class="picker-caption">Waterschappen</span
+              ><button
+                id="rm-picker"
+                aria-expanded="false"
+                aria-controls="rm-picker-popup"
+              >
+                <span id="rm-picker-label">2 geselecteerd</span
+                ><span aria-hidden="true">⌄</span>
+              </button>
+              <div class="picker-popup" id="rm-picker-popup" hidden>
+                <div class="muted">Vink aan of klik op de kaart.</div>
+                <div class="authorities" id="rm-list"></div>
+              </div>
+            </div>
+            <div id="rm-country-panel" hidden>
+              <div class="notice">
+                Het hele Nederlandse landgebied is geselecteerd.
+              </div>
+            </div>
+            <div id="rm-draw-panel" hidden>
+              <div class="notice">
+                Klik hoekpunten op de kaart. Rond af om je gebied als GeoPackage
+                te bewaren.
+              </div>
+              <div class="draw-tools">
+                <button id="rm-undo">Punt terug</button
+                ><button class="primary" id="rm-finish">
+                  Polygoon sluiten
+                </button>
+              </div>
+              <div id="rm-draw-status" class="notice">
+                Nog geen punten geplaatst.
+              </div>
+            </div>
+            <div id="rm-file-panel" hidden>
+              <div class="file-choice-row">
+                <details class="selected-file" id="rm-file-location">
+                  <summary id="rm-file-name" title="Klik om het volledige pad te bekijken">Geen bestand gekozen</summary>
+                  <div id="rm-file-path"></div>
+                </details>
+                <button id="rm-file-demo">Kiezen…</button>
+              </div>
+              <label class="field"
+                ><span>Laag</span
+                ><select id="rm-file-layer" aria-describedby="rm-file-status"></select
+              ></label>
+              <p class="file-status" id="rm-file-status" role="status">Kies een bestand en daarna een laag.</p>
+            </div>
+            <div id="rm-bounds-panel" hidden>
+              <div class="bounds-fields">
+                <label class="field"
+                  ><span>X min</span
+                  ><input value="105000" type="number" step="any" /></label
+                ><label class="field"
+                  ><span>Y min</span
+                  ><input value="510000" type="number" step="any" /></label
+                ><label class="field"
+                  ><span>X max</span
+                  ><input value="115000" type="number" step="any" /></label
+                ><label class="field"
+                  ><span>Y max</span
+                  ><input value="520000" type="number" step="any"
+                /></label>
+              </div>
+            </div>
+          </div>
+
+            <svg
+              id="rm-map"
+              viewBox="0 0 400 530"
+              role="img"
+              aria-label="Kaart met aanklikbare waterschappen"
+            >
+              <g id="rm-geography"></g>
+              <g id="rm-drawing"></g>
+            </svg>
+            <div class="map-controls">
+              <button
+                id="rm-zoom-in"
+                aria-label="Inzoomen"
+                title="Inzoomen"
+                data-tooltip="Inzoomen"
+              >
+                <span
+                  class="map-icon"
+                  data-icon="plus"
+                  aria-hidden="true"
+                ></span></button
+              ><button
+                id="rm-zoom-out"
+                aria-label="Uitzoomen"
+                title="Uitzoomen"
+                data-tooltip="Uitzoomen"
+              >
+                <span
+                  class="map-icon"
+                  data-icon="minus"
+                  aria-hidden="true"
+                ></span></button
+              ><button
+                id="rm-reset"
+                aria-label="Heel Nederland in beeld"
+                title="Heel Nederland in beeld"
+                data-tooltip="Heel Nederland in beeld"
+              >
+                <span
+                  class="map-icon"
+                  data-icon="expand"
+                  aria-hidden="true"
+                ></span>
+              </button>
+            </div>
+            <div class="north">N<br />↑</div>
+            <div class="map-note" id="rm-map-hint">
+              Klik op een waterschap om het aan of uit te zetten.
+            </div>
+          </div>
+          <div class="legend">
+            <span class="swatch"></span> Geselecteerd
+            <span style="margin-left: auto">Grenzen: HWH / Kadaster</span>
+          </div>
+          <div class="attribution" id="rm-attribution">
+            Achtergrond zonder straten
+          </div>
+          <div class="selection" aria-live="polite">
+            <strong id="rm-selection-title">2 waterschappen geselecteerd</strong
+            ><span id="rm-selection-detail"
+              >Hollands Noorderkwartier en Rijnland</span
+            >
+          </div>
+        </section>
+        <section class="form" aria-label="Runinstellingen">
+          <h3>Basislagen</h3>
+          <div id="rm-layers"></div>
+          <hr class="sep" />
+          <h3>Uitvoering</h3>
+          <div class="execution-fields">
+            <label class="field"
+              ><span>Runnaam</span
+              ><input id="rm-run-name" type="text" value="" /></label
+            ><label class="field"
+              ><span>Workers</span
+              ><input id="rm-workers" type="number" min="1" value="8" /></label
+            ><label class="field"
+              ><span>Als de run al bestaat</span
+              ><select id="rm-run-mode">
+                <option value="resume">Hervatten</option>
+                <option value="overwrite">Overschrijven</option>
+              </select></label
+            >
+          </div>
+          <div class="checks">
+            <label
+              ><input id="rm-refresh" type="checkbox" /> Bronnen opnieuw
+              ophalen</label
+            ><label><input id="rm-debug" type="checkbox" /> Debug-optie</label>
+          </div>
+        </section>
+      </div>
+      <footer class="footer">
+        <button id="rm-preview">Script bekijken</button
+        ><button id="rm-save">Alleen opslaan</button
+        ><button class="primary" id="rm-start">Opslaan en starten</button>
+      </footer>
+      <dialog id="rm-script-preview" aria-labelledby="rm-script-title">
+        <section>
+          <header>
+            <h2 id="rm-script-title">Script bekijken</h2>
+            <button type="button" id="rm-script-close" aria-label="Scriptvoorbeeld sluiten" autofocus>&times;</button>
+          </header>
+          <pre tabindex="0" aria-label="Pixi-commando's"></pre>
+        </section>
+      </dialog>
+      <div class="toast" id="rm-message" aria-live="polite" hidden></div>
+    </div>
+    <script src="d3.min.js"></script>
+    <script type="module" src="app.js"></script>
+  </body>
+</html>

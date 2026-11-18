@@ -234,6 +234,23 @@ def test_cli_default_remains_nederland(tmp_path):
     assert main.call_args.kwargs["area"] == "nederland"
 
 
+@pytest.mark.parametrize("debug", [False, True])
+def test_cli_shows_reason_and_only_debug_shows_traceback(tmp_path, capsys, debug):
+    reason = "Landgebruik is vergrendeld. Kies een afgeronde run met --landuse-run."
+    workflow = Mock(side_effect=RuntimeError(reason))
+    arguments = ["--data-dir", str(tmp_path)]
+    if debug:
+        arguments.append("--debug")
+
+    with pytest.raises(SystemExit) as error:
+        run_cli(production_parser("test"), workflow, arguments)
+
+    assert error.value.code == 1
+    output = capsys.readouterr().err
+    assert f"Productie gestopt: {reason}" in output
+    assert ("Traceback" in output) == debug
+
+
 @pytest.mark.parametrize(
     "values",
     [
@@ -504,3 +521,19 @@ def test_afwateringseenheden_dem_resampling_cli(tmp_path, monkeypatch, capsys, m
     )
     assert "standaard: min" in help_text
     main.assert_not_called()
+
+
+@pytest.mark.parametrize("product", PRODUCTS)
+def test_cli_passes_multiple_authorities_as_one_area(product, tmp_path, monkeypatch):
+    path = Path(__file__).parents[1] / "scripts" / f"{product}.py"
+    spec = importlib.util.spec_from_file_location(product, path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    main = Mock(return_value=tmp_path / "result")
+    monkeypatch.setattr(module, "main", main)
+    monkeypatch.setattr(
+        "sys.argv",
+        [str(path), "--waterbeheercode", "13,12,12", "--data-dir", str(tmp_path)],
+    )
+    module.cli()
+    assert main.call_args.kwargs["area"] == "waterschappen_12_13"

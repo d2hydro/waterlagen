@@ -8,9 +8,11 @@ editorial_status: ai
 
 De historische dijkringenbron bevat de laag `dijkring_v_2012`.
 
-## Leverancier
+<span id="leverancier"></span>
 
-Rijkswaterstaat.
+## Herkomst
+
+Rijkswaterstaat is de data-eigenaar van de historische laag `dijkring_v_2012`. [Registratie van de dataset](https://data.overheid.nl/en/dataset/16386-dijkring-v)
 
 ## Dataset of service
 

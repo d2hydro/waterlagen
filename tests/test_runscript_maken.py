@@ -32,16 +32,16 @@ def options():
     )
 
 
-def test_script_defaults_and_literal_paths(tmp_path, options):
+def test_saved_script_contains_only_selected_commands(tmp_path, options):
     project = tmp_path / "Aa's $map `test`"
-    script = script_helpers.build_script(generator._commands(options), project)
+    commands = generator._commands(options)
+    script = script_helpers.build_script(commands, project)
+    assert script == "\n".join(commands) + "\n"
     assert "--workers 8" in script
     assert "--resume" not in script
     assert "--refresh-sources" not in script
     assert "--waterbeheercode 12" in script
     assert "runscript_maken" not in script
-    assert "Aa''s $map `test`" in script
-    assert "$LASTEXITCODE -ne 0" in script
     assert "--data-dir" not in script
     assert "--output-root" not in script
     assert "--offline" not in script
@@ -57,6 +57,51 @@ def test_preview_is_only_readable_commands(options):
         "pixi run --locked autos --waterbeheercode 12 --run-id hhnk-proef",
         "pixi run --locked afwateringseenheden --waterbeheercode 12 --run-id hhnk-proef --workers 8",
     ]
+
+
+@pytest.mark.parametrize("mode", ["resume", "overwrite"])
+def test_existing_layers_get_run_flag_and_missing_layers_start_new(
+    tmp_path, monkeypatch, options, mode
+):
+    run = tmp_path / "dem/waterschap_12/hhnk-proef"
+    run.mkdir(parents=True)
+    (run / "run.json").write_text("{}")
+    monkeypatch.setattr(
+        generator, "DataStore", lambda: SimpleNamespace(processed_data_dir=tmp_path)
+    )
+    selected = replace(options, **{mode: True})
+    commands = generator._window_commands(selected)
+    assert len(commands) == 5
+    for layer, command in zip(options.layers, commands):
+        assert (f"--{mode}" in command) == (layer == "dem")
+
+
+def test_incomplete_existing_folder_does_not_get_overwritten(
+    tmp_path, monkeypatch, options
+):
+    run = tmp_path / "dem/waterschap_12/hhnk-proef"
+    run.mkdir(parents=True)
+    marker = run / "tegel.tif"
+    marker.write_bytes(b"bestaande uitvoer")
+    monkeypatch.setattr(
+        generator, "DataStore", lambda: SimpleNamespace(processed_data_dir=tmp_path)
+    )
+    with pytest.raises(ValueError, match="geen run.json"):
+        generator._window_commands(replace(options, overwrite=True))
+    assert marker.read_bytes() == b"bestaande uitvoer"
+
+
+def test_new_run_selection_does_not_get_existing_run_flags(
+    tmp_path, monkeypatch, options
+):
+    monkeypatch.setattr(
+        generator, "DataStore", lambda: SimpleNamespace(processed_data_dir=tmp_path)
+    )
+    commands = generator._window_commands(replace(options, resume=True))
+    assert all(
+        "--resume" not in command and "--overwrite" not in command
+        for command in commands
+    )
 
 
 def test_old_package_does_not_generate_unsupported_polygon_commands(
@@ -80,9 +125,9 @@ def test_preview_includes_selected_run_option(options, option):
 
 
 @pytest.mark.parametrize("start", [False, True])
-def test_save_before_starting_exact_saved_script(tmp_path, monkeypatch, start):
+def test_save_before_starting_commands_directly(tmp_path, monkeypatch, start):
     path = tmp_path / "Aa's $proef.ps1"
-    script = "# Opgeslagen keuzes\nWrite-Output 'proef'\n"
+    script = "pixi run --locked inwoners --waterbeheercode 12 --run-id proef\n"
     calls = []
     process = object()
     monkeypatch.setattr(script_helpers.shutil, "which", lambda name: "powershell.exe")
@@ -101,9 +146,10 @@ def test_save_before_starting_exact_saved_script(tmp_path, monkeypatch, start):
     assert path.read_text(encoding="utf-8-sig") == script
     if start:
         assert result is process
-        assert calls == [
-            ["powershell.exe", "-NoProfile", "-NoExit", "-File", str(path)]
-        ]
+        assert len(calls) == 1
+        assert calls[0][:4] == ["powershell.exe", "-NoProfile", "-NoExit", "-Command"]
+        assert script.strip() in calls[0][4]
+        assert str(path) not in calls[0][4]
     else:
         assert result is None
         assert calls == []
@@ -128,92 +174,6 @@ def test_missing_powershell_preserves_saved_script(tmp_path, monkeypatch):
     with pytest.raises(OSError, match="Script opgeslagen.*PowerShell"):
         script_helpers.save_script("test", path, tmp_path, start=True)
     assert path.read_text(encoding="utf-8-sig") == "test"
-
-
-@pytest.mark.parametrize("cancel", [False, True])
-@pytest.mark.parametrize("selection", ["Heel Nederland", "Polygoonbestand"])
-def test_window_saves_and_starts_selection_or_cancels(
-    tmp_path, monkeypatch, cancel, selection
-):
-    tk = pytest.importorskip("tkinter")
-    from tkinter import filedialog, messagebox
-
-    try:
-        root = tk.Tk()
-    except tk.TclError:
-        pytest.skip("Geen grafische omgeving beschikbaar")
-    root.withdraw()
-    monkeypatch.setattr(tk, "Tk", lambda: root)
-    path = tmp_path / "nederland.ps1"
-    monkeypatch.setattr(
-        filedialog, "asksaveasfilename", lambda **kwargs: "" if cancel else str(path)
-    )
-    monkeypatch.setattr(script_helpers.shutil, "which", lambda name: "powershell.exe")
-    polygon_path = tmp_path / "gebied.gpkg"
-    if selection == "Polygoonbestand":
-        gpd.GeoDataFrame(geometry=[box(0, 0, 1, 1)], crs=28992).to_file(
-            polygon_path, layer="gebied"
-        )
-        monkeypatch.setattr(
-            filedialog, "askopenfilename", lambda **kwargs: str(polygon_path)
-        )
-    expected_argument = (
-        "--area nederland" if selection == "Heel Nederland" else "--area-file"
-    )
-    calls = []
-    errors = []
-    monkeypatch.setattr(
-        messagebox, "showerror", lambda *args, **kwargs: errors.append(args)
-    )
-
-    def launch(command, **kwargs):
-        calls.append(command)
-        assert path.is_file()
-        return SimpleNamespace(poll=lambda: None)
-
-    monkeypatch.setattr(generator.subprocess, "Popen", launch)
-
-    def widgets(parent):
-        for child in parent.winfo_children():
-            yield child
-            yield from widgets(child)
-
-    def interact():
-        controls = {
-            str(widget.cget("text")): widget
-            for widget in widgets(root)
-            if "text" in widget.keys()  # noqa: SIM118 - Tk widgets zijn geen dictionaries
-        }
-        assert "Voorbeeldgebied" not in controls
-        controls[selection].invoke()
-        if selection == "Polygoonbestand":
-            controls["Bestand kiezen"].invoke()
-        controls["Script bekijken"].invoke()
-        preview_text = next(
-            widget for widget in widgets(root) if isinstance(widget, tk.Text)
-        )
-        preview_lines = preview_text.get("1.0", "end").strip().splitlines()
-        assert len(preview_lines) == 5
-        assert all(line.startswith("pixi run --locked ") for line in preview_lines)
-        assert all(expected_argument in line for line in preview_lines)
-        assert "runscript_maken" not in "\n".join(preview_lines)
-        button = controls["Opslaan en starten"]
-        button.invoke()
-        assert not errors
-        if cancel:
-            assert not path.exists()
-            assert calls == []
-            assert not button.instate(["disabled"])
-        else:
-            assert len(calls) == 1
-            assert expected_argument in path.read_text(encoding="utf-8-sig")
-            assert button.instate(["disabled"])
-
-    monkeypatch.setattr(root, "mainloop", interact)
-    try:
-        generator._window(tmp_path)
-    finally:
-        root.destroy()
 
 
 @pytest.mark.parametrize(
@@ -317,8 +277,8 @@ def test_failure_stops_remaining_layers(production, options, monkeypatch):
 
 @pytest.mark.parametrize("exit_code", [0, 7])
 @pytest.mark.parametrize("polygon", [False, True])
-def test_saved_powershell_runs_layers_in_order_and_stops_on_error(
-    tmp_path, options, exit_code, polygon
+def test_start_calls_pixi_directly_in_order_and_stops_on_error(
+    tmp_path, monkeypatch, options, exit_code, polygon
 ):
     powershell = shutil.which("powershell") or shutil.which("pwsh")
     if powershell is None:
@@ -335,10 +295,20 @@ def test_saved_powershell_runs_layers_in_order_and_stops_on_error(
             area_arguments=("--area-file", str(polygon_path), "--area-layer", "gebied"),
         )
     script = tmp_path / "productie.ps1"
-    script.write_text(
-        script_helpers.build_script(generator._commands(options), project),
-        encoding="utf-8-sig",
+    launches = []
+    monkeypatch.setattr(
+        script_helpers.subprocess,
+        "Popen",
+        lambda arguments, **kwargs: launches.append(arguments),
     )
+    commands = generator._commands(options)
+    script_helpers.save_script(
+        script_helpers.build_script(commands), script, project, start=True
+    )
+    assert script.read_text(encoding="utf-8-sig").splitlines() == commands
+    startup = launches[0][4]
+    assert str(script) not in startup
+    monkeypatch.undo()
     trace = tmp_path / "calls.json"
     harness = tmp_path / "test.ps1"
     # Vervang alleen pixi, zodat er geen productie of download start.
@@ -349,7 +319,7 @@ function pixi {{
     $global:LASTEXITCODE = {exit_code}
 }}
 try {{
-    & {script_helpers.quote(str(script))}
+    {startup}
 }} catch {{
     Write-Output $_
 }} finally {{
@@ -360,6 +330,7 @@ try {{
     )
     result = subprocess.run(
         [powershell, "-NoProfile", "-NonInteractive", "-File", str(harness)],
+        cwd=project,
         capture_output=True,
         text=True,
         check=False,

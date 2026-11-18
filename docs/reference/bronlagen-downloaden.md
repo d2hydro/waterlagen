@@ -2,236 +2,249 @@
 editorial_status: ai
 ---
 
-# Bronlagen downloaden met Python
+# Een bron downloaden met Python
 
-Elk voorbeeld is een zelfstandig script. Volg eerst [Aan de slag](gebruik.md)
-voor installatie, de opslagmap en het uitvoeren van een script.
-Instellingen staan bovenaan: pas de gegevensmap en het hergebruik aan, en
-bij AHN/BGT ook het gebied, de AHN-versie of de objecttypen.
-Bestaande bestanden worden zoveel mogelijk hergebruikt. Voor een nieuwe bronversie
-kan bewust opnieuw downloaden nodig zijn; zie het cachegedrag in de API-referentie.
+[Kies en voer een script uit](gebruik.md#een-script-uitvoeren). Bij landelijke bestanden wordt de volledige bron opgehaald, ook als u later een klein gebied gebruikt.
 
-Waar een download ruimtelijk kan worden beperkt, gebruiken de voorbeelden
-**Alkmaar-centrum**. Landelijke bestanden worden volledig opgehaald:
-een klein voorbeeldgebied maakt die downloads niet kleiner.
-Een volledige productie haalt de benodigde bronnen zelf op; het is niet nodig
-alle onderstaande scripts eerst uit te voeren.
+## Voor een gebied
 
-## Rijkswateren
+??? info "AHN"
 
-De volledige handmatig gepubliceerde GeoPackage is ook voor kleine gebieden nodig.
-Het voorbeeld hergebruikt een geldige lokale bron zonder netwerkverkeer.
+    <span id="ahn"></span>
 
-[Over deze bron](../bronlagen/rijkswateren.md) · [API-referentie](rijkswateren.md)
+    Download de AHN4-DTM-tegels die Alkmaar-centrum raken, met resolutie 0,5 m. Hele AHN-tegels worden opgehaald; de download is groter dan het voorbeeldgebied. Het resultaat is een VRT met bijbehorende GeoTIFFs.
 
-```python
---8<-- "docs/reference/voorbeelden/download_rijkswateren.py"
-```
+    [Download voorbeeldscript](voorbeelden/download_ahn.py){ .md-button .md-button--primary download="download_ahn.py" }
 
-[Download het script](voorbeelden/download_rijkswateren.py).
+    ```python
+    --8<-- "docs/reference/voorbeelden/download_ahn.py"
+    ```
 
-## AHN
+    - [Over deze bron](../bronlagen/ahn.md)
+    - [API-referentie](ahn.md)
 
-Download de AHN4-DTM-tegels die Alkmaar-centrum raken, met resolutie 0,5 m. Hele AHN-tegels worden opgehaald; de download is groter dan het voorbeeldgebied. Het resultaat is een VRT met bijbehorende GeoTIFFs.
+??? info "BGT"
 
-[Over deze bron](../bronlagen/ahn.md) · [API-referentie](ahn.md)
+    <span id="bgt"></span>
 
-[Download het Python-script](voorbeelden/download_ahn.py).
+    Vraag voor Alkmaar-centrum de objecttypen waterdeel en pand op. Het resultaat bestaat uit afzonderlijke GeoPackages in een eigen map. Dit is een klein voorbeeld van een BGT-aanvraag; de volledige landgebruikproductie gebruikt een landelijk BGT-bestand met meer objecttypen. Dit voorbeeld vervangt die bron niet.
 
-```python
---8<-- "docs/reference/voorbeelden/download_ahn.py"
-```
+    [Download voorbeeldscript](voorbeelden/download_bgt.py){ .md-button .md-button--primary download="download_bgt.py" }
 
-## BAG
+    ```python
+    --8<-- "docs/reference/voorbeelden/download_bgt.py"
+    ```
 
-Download de landelijke BAG-light als GeoPackage. Dit is een groot bestand; de download wordt niet beperkt tot Alkmaar-centrum. De productievoorbeelden gebruiken deze bron voor panden en woon-VBO's.
+    - [Over deze bron](../bronlagen/bgt.md)
+    - [API-referentie](bgt.md)
 
-[Over deze bron](../bronlagen/bag.md) · [API-referentie](bag.md)
+??? info "OSM-waterlopen en duikers"
 
-[Download het Python-script](voorbeelden/download_bag.py).
+    <span id="osm-kanalen"></span>
 
-```python
---8<-- "docs/reference/voorbeelden/download_bag.py"
-```
+    Haalt kanalen, sloten, afvoerwatergangen, beken en duikers op voor de grenzen in `BOUNDS`. Standaard is dat Aa en Maas inclusief tegelbuffers.
 
-## Bestuurlijke gebieden
+    [Download voorbeeldscript](voorbeelden/download_osm_canals.py){ .md-button .md-button--primary download="download_osm_canals.py" }
 
-Download het landelijke GeoPackage met bestuurlijke gebieden voor het standaardjaar. Het bestand bevat onder meer de landsgrens die de rasterproducties gebruiken. De gebiedsselectie volgt pas bij het verwerken.
+    ```python
+    --8<-- "docs/reference/voorbeelden/download_osm_canals.py"
+    ```
 
-[Over deze bron](../bronlagen/bestuurlijke-gebieden.md) · [API-referentie](administratieve_gebieden.md)
+    - [Over deze bron](../bronlagen/osm-waterlopen.md)
+    - [API-referentie](osm_waterlopen.md)
 
-[Download het Python-script](voorbeelden/download_bestuurlijke_gebieden.py).
+## Landelijke bestanden
 
-```python
---8<-- "docs/reference/voorbeelden/download_bestuurlijke_gebieden.py"
-```
+??? info "BAG"
 
-## BGT
+    <span id="bag"></span>
 
-Vraag voor Alkmaar-centrum de objecttypen waterdeel en pand op. Het resultaat bestaat uit afzonderlijke GeoPackages in een eigen map. Dit is een klein voorbeeld van een BGT-aanvraag; de volledige landgebruikproductie gebruikt een landelijk BGT-bestand met meer objecttypen. Dit voorbeeld vervangt die bron niet.
+    Download de landelijke BAG-light als GeoPackage. Dit is een groot bestand; de download wordt niet beperkt tot Alkmaar-centrum. De productievoorbeelden gebruiken deze bron voor panden en woon-VBO's.
 
-[Over deze bron](../bronlagen/bgt.md) · [API-referentie](bgt.md)
+    [Download voorbeeldscript](voorbeelden/download_bag.py){ .md-button .md-button--primary download="download_bag.py" }
 
-[Download het Python-script](voorbeelden/download_bgt.py).
+    ```python
+    --8<-- "docs/reference/voorbeelden/download_bag.py"
+    ```
 
-```python
---8<-- "docs/reference/voorbeelden/download_bgt.py"
-```
+    - [Over deze bron](../bronlagen/bag.md)
+    - [API-referentie](bag.md)
 
-## BGT-duikers voorbereiden
+??? info "Bestuurlijke gebieden"
 
-Voor automatische voorbereiding via `openbare_bron` is dit losse script niet nodig;
-zie [de productiehandleiding](../produceren/afwateringseenheden.md#proef-met-eigen-gebied-en-brandlagen).
+    <span id="bestuurlijke-gebieden"></span>
 
-Dit script selecteert duikers uit het bestaande `data/source_data/bgt/bgt.gpkg`.
-Voer eerst [BGT-vlakken voorbereiden](../produceren/bgt-vlakken.md#voorbereiden) uit;
-de duikers komen uit de laag `bgt_kunstwerkdeel`, met `plus-type = duiker`.
-De oorspronkelijke vlakgeometrieën en attributen blijven behouden, met het
-oorspronkelijke objectnummer in `bron_fid`.
-Deze losse route gebruikt de al voorbereide vlakken en kan eerder weggefilterde
-lijngeometrieën niet herstellen. De automatische route leest de algemene BGT-conversie.
+    Download het landelijke GeoPackage met bestuurlijke gebieden voor het standaardjaar. Het bestand bevat onder meer de landsgrens die de rasterproducties gebruiken. De gebiedsselectie volgt pas bij het verwerken.
 
-Standaard wordt Aa en Maas geselecteerd, inclusief volledige rekentegels van
-10 × 10 km en 2 km buffer. De selectie dekt ook de bounds-proef in de
-[productiehandleiding](../produceren/afwateringseenheden.md#proef-met-eigen-gebied-en-brandlagen).
-De uitvoer is `data/processed_data/brandlagen/aa_en_maas/bgt_duikers.gpkg`,
-laag `bgt_duiker`; dit pad sluit aan op de voorbeeld-TOML.
+    [Download voorbeeldscript](voorbeelden/download_bestuurlijke_gebieden.py){ .md-button .md-button--primary download="download_bestuurlijke_gebieden.py" }
 
-Pas `DATA_DIR`, `AREA` en `OUTPUT_SUBDIR` aan voor een andere gegevensmap of
-waterschap. Een ontbrekende waterschapsgrens wordt opgehaald; BGT moet al
-voorbereid zijn. Een bestaand uitvoerbestand blijft behouden en geeft een melding:
-kies een nieuwe uitvoermap of zet bewust `OVERWRITE = True` om het te vervangen.
-Zie [Een script uitvoeren](gebruik.md#een-script-uitvoeren) voor starten met Pixi.
+    ```python
+    --8<-- "docs/reference/voorbeelden/download_bestuurlijke_gebieden.py"
+    ```
 
-[Download het voorbereidingsscript](voorbeelden/bereid_bgt_duikers.py).
+    - [Over deze bron](../bronlagen/bestuurlijke-gebieden.md)
+    - [API-referentie](administratieve_gebieden.md)
 
-```python
---8<-- "docs/reference/voorbeelden/bereid_bgt_duikers.py"
-```
+??? info "BRP"
 
-## BRP
+    <span id="brp"></span>
 
-Zoek de nieuwste definitieve BRP-release en download het landelijke GeoPackage. Dit kan een groot bestand zijn. Een bestaand doelbestand wordt hergebruikt; de releasefeed wordt wel geraadpleegd.
+    Zoek de nieuwste definitieve BRP-release en download het landelijke GeoPackage. Dit kan een groot bestand zijn. Een bestaand doelbestand wordt hergebruikt; de releasefeed wordt wel geraadpleegd.
 
-[Over deze bron](../bronlagen/brp.md) · [API-referentie](brp.md)
+    [Download voorbeeldscript](voorbeelden/download_brp.py){ .md-button .md-button--primary download="download_brp.py" }
 
-[Download het Python-script](voorbeelden/download_brp.py).
+    ```python
+    --8<-- "docs/reference/voorbeelden/download_brp.py"
+    ```
 
-```python
---8<-- "docs/reference/voorbeelden/download_brp.py"
-```
+    - [Over deze bron](../bronlagen/brp.md)
+    - [API-referentie](brp.md)
 
-## CBS
+??? info "CBS"
 
-Download de landelijke Wijk- en Buurtkaart 2025 als GeoPackage en de benodigde kerncijfers als JSON. Ook voor Alkmaar-centrum zijn dit landelijke bronnen. De producties voor inwoners en auto's selecteren later volledige CBS-buurten.
+    <span id="cbs"></span>
 
-[Over deze bron](../bronlagen/cbs.md) · [API-referentie](cbs.md)
+    Download de landelijke Wijk- en Buurtkaart 2025 als GeoPackage en de benodigde kerncijfers als JSON. Ook voor Alkmaar-centrum zijn dit landelijke bronnen. De producties voor inwoners en auto's selecteren later volledige CBS-buurten.
 
-[Download het Python-script](voorbeelden/download_cbs.py).
+    [Download voorbeeldscript](voorbeelden/download_cbs.py){ .md-button .md-button--primary download="download_cbs.py" }
 
-```python
---8<-- "docs/reference/voorbeelden/download_cbs.py"
-```
+    ```python
+    --8<-- "docs/reference/voorbeelden/download_cbs.py"
+    ```
 
-## Dijkringen
+    - [Over deze bron](../bronlagen/cbs.md)
+    - [API-referentie](cbs.md)
 
-Download de landelijke historische dijkringen als GeoPackage. Deze bron is niet tot Alkmaar-centrum beperkt. Zie de bronpagina voor het peiljaar en de interpretatie.
+??? info "Dijkringen"
 
-[Over deze bron](../bronlagen/dijkringen.md) · [API-referentie](dijkringen.md)
+    <span id="dijkringen"></span>
 
-[Download het Python-script](voorbeelden/download_dijkringen.py).
+    Download de landelijke historische dijkringen als GeoPackage. Deze bron is niet tot Alkmaar-centrum beperkt. Zie de bronpagina voor het peiljaar en de interpretatie.
 
-```python
---8<-- "docs/reference/voorbeelden/download_dijkringen.py"
-```
+    [Download voorbeeldscript](voorbeelden/download_dijkringen.py){ .md-button .md-button--primary download="download_dijkringen.py" }
 
-## GKW HYDAMO
+    ```python
+    --8<-- "docs/reference/voorbeelden/download_dijkringen.py"
+    ```
 
-Download het landelijke HYDAMO-archief en haal het GeoPackage daaruit. Het archief kan groot zijn. De selectie van het watersysteem rond Alkmaar-centrum gebeurt in de afwateringseenhedenproductie.
+    - [Over deze bron](../bronlagen/dijkringen.md)
+    - [API-referentie](dijkringen.md)
 
-[Over deze bron](../bronlagen/hydamo.md) · [API-referentie](hydamo.md)
+??? info "GKW HYDAMO"
 
-[Download het Python-script](voorbeelden/download_hydamo.py).
+    <span id="gkw-hydamo"></span>
 
-```python
---8<-- "docs/reference/voorbeelden/download_hydamo.py"
-```
+    Download het landelijke HYDAMO-archief en haal het GeoPackage daaruit. Het archief kan groot zijn. De selectie van het watersysteem rond Alkmaar-centrum gebeurt in de afwateringseenhedenproductie.
 
-## LIWO
+    [Download voorbeeldscript](voorbeelden/download_hydamo.py){ .md-button .md-button--primary download="download_hydamo.py" }
 
-Download het landelijke raster met overstromingsgevoelige gebieden als GeoTIFF. Deze functie haalt de volledige dekking op, ook wanneer later alleen Alkmaar-centrum wordt verwerkt.
+    ```python
+    --8<-- "docs/reference/voorbeelden/download_hydamo.py"
+    ```
 
-[Over deze bron](../bronlagen/liwo.md) · [API-referentie](liwo.md)
+    - [Over deze bron](../bronlagen/hydamo.md)
+    - [API-referentie](hydamo.md)
 
-[Download het Python-script](voorbeelden/download_liwo.py).
+??? info "LIWO"
 
-```python
---8<-- "docs/reference/voorbeelden/download_liwo.py"
-```
+    <span id="liwo"></span>
 
-## OSM-drinkwaterlocaties
+    Download het landelijke raster met overstromingsgevoelige gebieden als GeoTIFF. Deze functie haalt de volledige dekking op, ook wanneer later alleen Alkmaar-centrum wordt verwerkt.
 
-Haal de geometrieën van de beoordeelde drinkwaterlocaties uit OSM op en schrijf ze naar een GeoPackage. Dit is de landelijke selectie van beoordeelde locaties, geen volledige OSM-download en geen selectie rond Alkmaar-centrum.
+    [Download voorbeeldscript](voorbeelden/download_liwo.py){ .md-button .md-button--primary download="download_liwo.py" }
 
-[Over deze bron](../bronlagen/osm-drinkwater.md) · [API-referentie](osm_drinkwater.md)
+    ```python
+    --8<-- "docs/reference/voorbeelden/download_liwo.py"
+    ```
 
-[Download het Python-script](voorbeelden/download_osm_drinkwater.py).
+    - [Over deze bron](../bronlagen/liwo.md)
+    - [API-referentie](liwo.md)
 
-```python
---8<-- "docs/reference/voorbeelden/download_osm_drinkwater.py"
-```
+??? info "OSM-drinkwaterlocaties"
 
-## OSM-kanalen
+    <span id="osm-drinkwaterlocaties"></span>
 
-Download open kanalen, sloten, afvoerwatergangen, beken en duikers voor het ingestelde gebied.
-Het voorbeeld gebruikt Aa en Maas inclusief tegelbuffers. Onder `source_data/osm/`
-komen vijf bestanden: `osm_canals.gpkg`, `osm_ditches.gpkg`, `osm_drains.gpkg`,
-`osm_streams.gpkg` en `osm_culverts.gpkg`.
-Pas `DATA_DIR` en `BOUNDS` aan voor een ander gebied. Een bestaande download
-wordt alleen hergebruikt bij dezelfde selectie; kies anders een ander uitvoerpad
-of zet `OVERWRITE = True`.
+    Haal de geometrieën van de beoordeelde drinkwaterlocaties uit OSM op en schrijf ze naar een GeoPackage. Dit is de landelijke selectie van beoordeelde locaties, geen volledige OSM-download en geen selectie rond Alkmaar-centrum.
 
-[Over deze bron](../bronlagen/osm-waterlopen.md) · [API-referentie](osm_waterlopen.md)
+    [Download voorbeeldscript](voorbeelden/download_osm_drinkwater.py){ .md-button .md-button--primary download="download_osm_drinkwater.py" }
 
-[Download het Python-script](voorbeelden/download_osm_canals.py).
+    ```python
+    --8<-- "docs/reference/voorbeelden/download_osm_drinkwater.py"
+    ```
 
-```python
---8<-- "docs/reference/voorbeelden/download_osm_canals.py"
-```
+    - [Over deze bron](../bronlagen/osm-drinkwater.md)
+    - [API-referentie](osm_drinkwater.md)
 
-## TOP10NL
+??? info "Rijkswateren"
 
-Download het landelijke TOP10NL-GeoPackage. Dit is een grote download die niet door het voorbeeldgebied wordt begrensd.
+    <span id="rijkswateren"></span>
 
-[Over deze bron](../bronlagen/top10nl.md) · [API-referentie](top10nl.md)
+    Download het landelijke GeoPackage met voorbereide waterlopen. Het script hergebruikt een geldige lokale kopie.
 
-[Download het Python-script](voorbeelden/download_top10nl.py).
+    [Download voorbeeldscript](voorbeelden/download_rijkswateren.py){ .md-button .md-button--primary download="download_rijkswateren.py" }
 
-```python
---8<-- "docs/reference/voorbeelden/download_top10nl.py"
-```
+    ```python
+    --8<-- "docs/reference/voorbeelden/download_rijkswateren.py"
+    ```
 
-## Waterketen DAMO
+    - [Over deze bron](../bronlagen/rijkswateren.md)
+    - [API-referentie](rijkswateren.md)
 
-Download de landelijke Waterketen DAMO als GeoPackage. De bron blijft landelijk; de ruimtelijke selectie volgt bij het verwerken.
+??? info "TOP10NL"
 
-[Over deze bron](../bronlagen/waterketen-damo.md) · [API-referentie](waterketen_damo.md)
+    <span id="top10nl"></span>
 
-[Download het Python-script](voorbeelden/download_waterketen_damo.py).
+    Download het landelijke TOP10NL-GeoPackage. Dit is een grote download die niet door het voorbeeldgebied wordt begrensd.
 
-```python
---8<-- "docs/reference/voorbeelden/download_waterketen_damo.py"
-```
+    [Download voorbeeldscript](voorbeelden/download_top10nl.py){ .md-button .md-button--primary download="download_top10nl.py" }
 
-## Waterschapsgrenzen
+    ```python
+    --8<-- "docs/reference/voorbeelden/download_top10nl.py"
+    ```
 
-Download het GeoPackage met alle waterschapsgrenzen. Voor het vaste voorbeeldgebied Alkmaar-centrum is geen waterschapsgrens nodig; dit voorbeeld laat zien hoe deze bron afzonderlijk wordt opgehaald.
+    - [Over deze bron](../bronlagen/top10nl.md)
+    - [API-referentie](top10nl.md)
 
-[Over deze bron](../bronlagen/waterschapsgrenzen.md) · [API-referentie](administratieve_gebieden.md)
+??? info "Waterketen DAMO"
 
-[Download het Python-script](voorbeelden/download_waterschapsgrenzen.py).
+    <span id="waterketen-damo"></span>
 
-```python
---8<-- "docs/reference/voorbeelden/download_waterschapsgrenzen.py"
-```
+    Download de landelijke Waterketen DAMO als GeoPackage. De bron blijft landelijk; de ruimtelijke selectie volgt bij het verwerken.
 
+    [Download voorbeeldscript](voorbeelden/download_waterketen_damo.py){ .md-button .md-button--primary download="download_waterketen_damo.py" }
+
+    ```python
+    --8<-- "docs/reference/voorbeelden/download_waterketen_damo.py"
+    ```
+
+    - [Over deze bron](../bronlagen/waterketen-damo.md)
+    - [API-referentie](waterketen_damo.md)
+
+??? info "Waterschapsgrenzen"
+
+    <span id="waterschapsgrenzen"></span>
+
+    Download het GeoPackage met alle waterschapsgrenzen. Voor het vaste voorbeeldgebied Alkmaar-centrum is geen waterschapsgrens nodig; dit voorbeeld laat zien hoe deze bron afzonderlijk wordt opgehaald.
+
+    [Download voorbeeldscript](voorbeelden/download_waterschapsgrenzen.py){ .md-button .md-button--primary download="download_waterschapsgrenzen.py" }
+
+    ```python
+    --8<-- "docs/reference/voorbeelden/download_waterschapsgrenzen.py"
+    ```
+
+    - [Over deze bron](../bronlagen/waterschapsgrenzen.md)
+    - [API-referentie](administratieve_gebieden.md)
+
+## Uit een bestaand bestand
+
+??? info "BGT-duikers voorbereiden"
+
+    <span id="bgt-duikers-voorbereiden"></span>
+
+    Selecteert duikervlakken voor Aa en Maas uit een [voorbereid BGT-GeoPackage](../produceren/bgt-vlakken.md#voorbereiden).
+
+    [Download voorbeeldscript](voorbeelden/bereid_bgt_duikers.py){ .md-button .md-button--primary download="bereid_bgt_duikers.py" }
+
+    ```python
+    --8<-- "docs/reference/voorbeelden/bereid_bgt_duikers.py"
+    ```

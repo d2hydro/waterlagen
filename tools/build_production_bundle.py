@@ -20,14 +20,34 @@ PRODUCTION_SCRIPTS = (
     "functioneel_landgebruik.py",
     "inwoners.py",
 )
-UPDATER_FILES = ("code_bijwerken.py", "code_bijwerken.cmd", "code_bijwerken.sh")
+UPDATER_FILES = ("tools/code_bijwerken.py", "code_bijwerken.bat", "code_bijwerken.sh")
 RUNSCRIPT_FILES = (
-    "runscript_maken.py",
-    "runscript-maken.cmd",
+    "tools/runscript_maken/web/LUCIDE-LICENSE.txt",
+    "tools/runscript_maken/browser_app.py",
+    "tools/runscript_maken/dem_preview.py",
+    "tools/runscript_maken/browser_server.py",
+    "tools/runscript_maken/map_data.py",
+    "tools/runscript_maken/map_tiles.py",
+    "tools/runscript_maken/native_dialogs.py",
+    "tools/runscript_maken/web/app.js",
+    "tools/runscript_maken/web/appearance.json",
+    "tools/runscript_maken/web/D3-LICENSE.txt",
+    "tools/runscript_maken/web/d3.min.js",
+    "tools/runscript_maken/web/favicon.png",
+    "tools/runscript_maken/web/index.html",
+    "tools/runscript_maken/web/style.css",
+    "tools/runscript_maken.py",
+    "run-maken.bat",
     "tools/runscript_maken/__init__.py",
     "tools/runscript_maken/script.py",
     "tools/runscript_maken/window.py",
     "tools/runscript_maken/waterlagen.py",
+    "tools/runscript_maken/waterlagen_options.py",
+    "tools/runscript_maken/waterlagen_runfile.py",
+    "tools/runscript_maken/brandlagen.py",
+    "docs/reference/voorbeelden/brandlagen.toml",
+    "docs/icons/logo.png",
+    "docs/icons/favicon.png",
 )
 
 
@@ -130,7 +150,9 @@ def build_bundle(tag: str, output_dir: Path, repository: Path = REPO_ROOT) -> Pa
             shutil.copyfile(source, project_dir / relative_path)
         included.extend(f"scripts/{name}" for name in PRODUCTION_SCRIPTS)
         for name in (*UPDATER_FILES, *RUNSCRIPT_FILES):
-            relative_path = name if name.startswith("tools/") else f"envs/{name}"
+            relative_path = (
+                name if name.startswith(("tools/", "docs/")) else f"envs/{name}"
+            )
             source = repository / relative_path
             if source.is_symlink() or not source.resolve().is_relative_to(repository):
                 raise ValueError(f"Source must be a repository file: {relative_path}")

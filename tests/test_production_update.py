@@ -12,7 +12,7 @@ from test_production_bundle import builder, public_lock
 
 REPOSITORY = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location(
-    "production_update", REPOSITORY / "envs/code_bijwerken.py"
+    "production_update", REPOSITORY / "tools/code_bijwerken.py"
 )
 updater = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(updater)
@@ -29,7 +29,9 @@ def release_files(version, *, legacy=False):
     if not legacy:
         files.update(
             {
-                name: (REPOSITORY / "envs" / name).read_bytes()
+                name: (
+                    REPOSITORY / (name if name.startswith("tools/") else f"envs/{name}")
+                ).read_bytes()
                 for name in updater.UPDATER_FILES
             }
         )
@@ -92,9 +94,13 @@ def test_update_adds_runscript_window_without_touching_user_scripts(
     project, monkeypatch
 ):
     root, private = project
+    private["runscript_maken.py"] = b"# Eigen startbestand\n"
+    (root / "runscript_maken.py").write_bytes(private["runscript_maken.py"])
     files = release_files(NEW)
     for name in updater.RUNSCRIPT_FILES:
-        source = REPOSITORY / (name if name.startswith("tools/") else f"envs/{name}")
+        source = REPOSITORY / (
+            name if name.startswith(("tools/", "docs/")) else f"envs/{name}"
+        )
         files[name] = source.read_bytes()
     files[updater.METADATA] = json.dumps(
         {"version": NEW, "files": updater._hashes(files)}
@@ -332,3 +338,84 @@ def test_old_unversioned_project_is_rejected_without_changing_files(project):
         updater.update(root, yes=True)
     assert (root / "pixi.toml").read_text() == manifest
     assert_private_unchanged(root, private)
+
+
+@pytest.mark.parametrize("old_launcher", ["runscript-maken.cmd", "runscript-maken.bat"])
+@pytest.mark.parametrize("failure", [False, True])
+def test_root_python_files_move_to_tools_and_restore_on_failure(
+    project, monkeypatch, failure, old_launcher
+):
+    root, private = project
+    old_files = release_files(OLD)
+    old_files["code_bijwerken.py"] = old_files.pop("tools/code_bijwerken.py")
+    old_files["code_bijwerken.cmd"] = old_files.pop("code_bijwerken.bat").replace(
+        b"tools\\code_bijwerken.py", b"code_bijwerken.py"
+    )
+    old_files["code_bijwerken.sh"] = old_files["code_bijwerken.sh"].replace(
+        b"tools/code_bijwerken.py", b"code_bijwerken.py"
+    )
+    old_files["runscript_maken.py"] = (
+        REPOSITORY / "tools/runscript_maken.py"
+    ).read_bytes()
+    old_files[old_launcher] = (
+        (REPOSITORY / "envs/run-maken.bat")
+        .read_bytes()
+        .replace(b"tools\\runscript_maken.py", b"runscript_maken.py")
+    )
+    old_files[updater.METADATA] = json.dumps(
+        {"version": OLD, "files": updater._hashes(old_files)}
+    ).encode()
+    (root / "tools/code_bijwerken.py").unlink()
+    (root / "code_bijwerken.bat").unlink()
+    install(root, old_files)
+    new_files = release_files(NEW)
+    for name in updater.RUNSCRIPT_FILES:
+        source = REPOSITORY / (
+            name if name.startswith(("tools/", "docs/")) else f"envs/{name}"
+        )
+        new_files[name] = source.read_bytes()
+    new_files[updater.METADATA] = json.dumps(
+        {"version": NEW, "files": updater._hashes(new_files)}
+    ).encode()
+    monkeypatch.setattr(updater, "_bundle", lambda tag: new_files)
+    checks = updater._checks
+
+    def check(folder):
+        if (
+            failure
+            and updater._manifest_version((folder / "pixi.toml").read_bytes()) == NEW
+        ):
+            raise RuntimeError("test failure")
+        checks(folder)
+
+    monkeypatch.setattr(updater, "_checks", check)
+    if failure:
+        with pytest.raises(RuntimeError, match="vorige versie is hersteld"):
+            updater.update(root, yes=True)
+        for name, content in old_files.items():
+            assert (root / name).read_bytes() == content
+        assert not (root / "tools/code_bijwerken.py").exists()
+        assert not (root / "tools/runscript_maken.py").exists()
+        assert not (root / "code_bijwerken.bat").exists()
+        assert not (root / "run-maken.bat").exists()
+    else:
+        updater.update(root, yes=True)
+        assert not (root / "code_bijwerken.py").exists()
+        assert not (root / "runscript_maken.py").exists()
+        assert not (root / "code_bijwerken.cmd").exists()
+        assert not (root / old_launcher).exists()
+        for name, content in new_files.items():
+            assert (root / name).read_bytes() == content
+    assert_private_unchanged(root, private)
+
+
+@pytest.mark.parametrize("relative", ["code_bijwerken.py", "tools/code_bijwerken.py"])
+def test_updater_entrypoint_uses_the_project_folder(tmp_path, monkeypatch, relative):
+    calls = []
+    monkeypatch.setattr(updater, "__file__", str(tmp_path / relative))
+    monkeypatch.setattr(updater.sys, "argv", ["code_bijwerken.py", "--ja"])
+    monkeypatch.setattr(
+        updater, "update", lambda root, **kwargs: calls.append((root, kwargs))
+    )
+    assert updater.main() == 0
+    assert calls == [(tmp_path, {"version": None, "yes": True})]

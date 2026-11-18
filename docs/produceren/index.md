@@ -4,22 +4,21 @@ editorial_status: ai
 
 # Zelf produceren
 
-Download het **productiepakket van een Waterlagen-release** om zelf
-afwateringseenheden, functioneel landgebruik, DEM, inwoners en personenauto's te
-produceren. De ZIP bevat de Pixi-configuratie, het lockbestand en de bijbehorende
-openbare scripts. Pixi installeert de releaseversie van Waterlagen uit PyPI.
-U hebt geen Git of toegang tot een private repository nodig.
+[Eerste keer? Installeer het productiepakket](installatie.md){ .md-button .md-button--primary }
 
-1. [Download en installeer het productiepakket](installatie.md).
-2. Bekijk de [gedeelde commando's, gebieden en migratie](cli.md) en kies zo nodig een andere [opslaglocatie](configuratie.md).
-3. Volg [Afwateringseenheden](afwateringseenheden.md),
-   [Landgebruik](landgebruik.md) of [Inwoners en personenauto's](inwoners-personenautos.md).
+1. Open in de uitgepakte map **`run-maken.bat`**.
+2. Kies een gebied en de gewenste kaartlagen.
+3. Kies **Opslaan en starten** om direct te rekenen, of **Alleen opslaan** om het `.bat`-bestand later te starten.
 
-Andere workflows in de broncoderepository staan bij [Voorbeelden](voorbeelden.md).
-[DEM-productie](dem.md) verwerkt de gedeelde gebieden en vindt of
-produceert automatisch het benodigde functionele landgebruik.
-Voor losse bronlagen in QGIS: [Actuele BGT-vlakken voorbereiden](bgt-vlakken.md).
-Waterketengegevens kunt u ophalen met [Waterketen DAMO downloaden](waterketen-damo.md).
+De resultaten staan in `data/processed_data/`. Kies uw kaartlaag voor de uitvoer en controles.
 
-Lees over de betekenis van de ingangen en resultaten bij
-[Bronlagen](../bronlagen/index.md) en [Bewerkte lagen](../bewerkte-lagen/index.md).
+- [Afwateringseenheden](afwateringseenheden.md)
+- [Functioneel landgebruik](landgebruik.md)
+- [Hoogtemodel (DEM)](dem.md)
+- [Inwoners en personenauto’s](inwoners-personenautos.md)
+
+## Hulp en naslag
+
+- [Werken via de terminal of op Linux](cli.md)
+- [Hulp bij installatie](installatie.md#als-een-opdracht-niet-werkt)
+- [Probleem melden](https://github.com/d2hydro/waterlagen/issues)

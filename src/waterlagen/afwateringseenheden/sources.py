@@ -11,6 +11,7 @@ from shapely.geometry.base import BaseGeometry
 
 from waterlagen import _geopandas as wgpd
 from waterlagen._production import _file_identity
+from waterlagen.areas import parse_authority_codes
 from waterlagen.logger import get_logger
 from waterlagen.settings import settings
 
@@ -72,7 +73,7 @@ def validate_authority_options(
         raise ValueError(
             "overige_waterschappen en eigen_hydamo vereisen een waterbeheercode"
         )
-    if waterbeheercode == "80":
+    if waterbeheercode is not None and "80" in parse_authority_codes(waterbeheercode):
         raise ValueError(
             "Code 80 is Rijkswaterstaat; kies een gebied zonder waterschapscode"
         )
@@ -91,7 +92,7 @@ def _check_identifiers(
     )
     invalid = codes.isna()
     if code is not None:
-        invalid = invalid | codes.ne(code).fillna(True)
+        invalid = invalid | ~codes.isin(parse_authority_codes(code))
     if invalid.any():
         fids = (
             features["bron_fid"]
@@ -198,12 +199,13 @@ def read_watersysteem_sources(
     spatial_selection : shapely.geometry.base.BaseGeometry
         Complete calculation grids and buffers in ``settings.crs``; no clipping.
     waterbeheercode : str, optional
-        Selected authority. Without a code, all authorities including RWS supply
-        primary targets. With a code, RWS supplies only burn context.
+        One or more comma-separated authority codes. Without a code, all
+        authorities including RWS supply primary targets. With selected codes,
+        RWS supplies only burn context.
     overige_waterschappen : bool, optional
         Include other water authorities as targets, default False. Requires a code.
     eigen_hydamo : pathlib.Path, optional
-        Completely replaces the selected authority's hydroobject, gemaal, stuw
+        Completely replaces the selected authorities' hydroobject, gemaal, stuw
         and required duikersifonhevel
         layers. All identifiers are checked before spatial selection; no fallback.
 
@@ -222,8 +224,9 @@ def read_watersysteem_sources(
         Invalid identifiers, categories, missing CRS or own-source layers.
     """
     validate_authority_options(waterbeheercode, overige_waterschappen, eigen_hydamo)
-    if waterbeheercode is not None and not re.fullmatch(r"[0-9]+", waterbeheercode):
-        raise ValueError("waterbeheercode must contain digits")
+    codes = (
+        parse_authority_codes(waterbeheercode) if waterbeheercode is not None else ()
+    )
     if eigen_hydamo is not None:
         _validate_own_source(eigen_hydamo, waterbeheercode)
     hydro = read_hydroobjecten(hydamo_path, spatial_selection=spatial_selection)
@@ -232,9 +235,9 @@ def read_watersysteem_sources(
     culverts = culverts.loc[culverts.waterbeheercode.ne("80")].copy()
     hydro = hydro.loc[hydro.waterbeheercode.ne("80")].copy()
     if eigen_hydamo is not None:
-        hydro = hydro.loc[hydro.waterbeheercode.ne(waterbeheercode)].copy()
-        points = points.loc[points.waterbeheercode.ne(waterbeheercode)].copy()
-        culverts = culverts.loc[culverts.waterbeheercode.ne(waterbeheercode)].copy()
+        hydro = hydro.loc[~hydro.waterbeheercode.isin(codes)].copy()
+        points = points.loc[~points.waterbeheercode.isin(codes)].copy()
+        culverts = culverts.loc[~culverts.waterbeheercode.isin(codes)].copy()
         own_culverts = read_duikersifonhevel(
             eigen_hydamo, spatial_selection=spatial_selection
         )
@@ -303,8 +306,8 @@ def read_watersysteem_sources(
             targets = targets.loc[targets.waterbeheercode.ne("80")].copy()
             points = points.loc[points.waterbeheercode.ne("80")].copy()
         else:
-            targets = targets.loc[targets.waterbeheercode.eq(waterbeheercode)].copy()
-            points = points.loc[points.waterbeheercode.eq(waterbeheercode)].copy()
+            targets = targets.loc[targets.waterbeheercode.isin(codes)].copy()
+            points = points.loc[points.waterbeheercode.isin(codes)].copy()
     logger.info(
         "Selected %s primary burn lines, %s secondary lines, %s targets and %s points",
         len(primary),

@@ -9,9 +9,11 @@ editorial_status: ai
 De Basisregistratie Grootschalige Topografie (BGT) beschrijft grootschalige
 topografische objecten, waaronder wegen, waterdelen en panden.
 
-## Leverancier
+<span id="leverancier"></span>
 
-Kadaster, ontsloten via PDOK.
+## Herkomst
+
+De bronhouder verschilt per object. Gemeenten, provincies, waterschappen, ProRail en de ministeries van Defensie, IenW en LVVN houden elk hun eigen deel bij. Het Kadaster beheert de landelijke voorziening. [Bronhouders van de BGT](https://www.kadaster.nl/zakelijk/registraties/basisregistraties/bgt)
 
 ## Dataset of service
 

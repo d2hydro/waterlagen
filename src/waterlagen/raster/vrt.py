@@ -104,7 +104,18 @@ def create_vrt_file(
 
 
 def list_tif_files_in_vrt_file(vrt_file: Path):
-    """Return a list of files within a vrt-file."""
+    """Vraag de bronbestanden van een VRT op.
+
+    Parameters
+    ----------
+    vrt_file : pathlib.Path
+        Pad naar het virtuele rastermozaïek.
+
+    Returns
+    -------
+    list[pathlib.Path]
+        De bestanden waar het mozaïek naar verwijst, zonder het VRT-bestand zelf.
+    """
     vrt_file = Path(vrt_file)
 
     info = gdal.Info(vrt_file.as_posix(), format="json")

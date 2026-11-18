@@ -6,67 +6,37 @@ editorial_status: human
 
 ## Doel
 
-Deze bewerking verdeelt het aantal inwoners vanuit de CBS buurtstatistiek buurt gelijkmatig over de verblijfsobjecten (VBO's) met functie wonen binnen de buurt. Het resultaat wordt op de punt-geometrie van een verblijfsobject weergegeven
+De kaart geeft per verblijfsobject met woonfunctie (woon-VBO) een schatting van het aantal inwoners, op basis van het CBS-totaal voor de buurt.
+
+<span id="zelf-produceren"></span>
+
+[Deze inwonerskaart maken](../produceren/inwoners-personenautos.md){ .md-button .md-button--primary }
 
 ## Bronlagen
 
-| Bron | Gebruik |
-| --- | --- |
-| [BAG](../bronlagen/bag.md) | Verblijfsobjecten met woonfunctie en status in gebruik. |
-| [CBS Wijk- en Buurtkaart en Kerncijfers](../bronlagen/cbs.md) | `aantal_inwoners` en `aantal_huishoudens` per buurt. |
+[BAG](../bronlagen/bag.md) levert de woon-VBO’s met status in gebruik. [CBS](../bronlagen/cbs.md) levert de buurtgrenzen en de aantallen inwoners en huishoudens.
 
 ## Werkwijze
 
-Hieronder wordt het berekenen van deze laag beschreven
+[Koppel de woon-VBO’s aan hun CBS-buurt](vbo-buurt.md). Elk punt in dezelfde buurt krijgt twee schattingen:
 
-### Woon-VBO's voorbereiden
+- `inwoners_obv_woonvbo` deelt het aantal inwoners door het aantal woon-VBO’s. Samen tellen de punten op tot het CBS-buurttotaal als alle woon-VBO’s aanwezig zijn.
+- `inwoners_obv_huishoudens` deelt het aantal inwoners door het aantal huishoudens. Elk woon-VBO telt als één huishouden. Het totaal over alle punten kan daardoor afwijken.
 
-De selectie van woon-VBO's, de koppeling aan CBS-buurten en de gedeelde
-tussenbestanden staan beschreven bij [Woon-VBO's per CBS-buurt](vbo-buurt.md).
-Deze voorbereiding wordt gedeeld met de productie van [auto's](autos.md).
+??? info "Rekenvoorbeeld met 100 inwoners"
 
-### Inwoners verdelen
+    Bij 50 woon-VBO’s krijgt elk punt 2 inwoners, samen 100. Zijn er 40 huishoudens, dan geeft de huishoudensmethode 2,5 inwoners per punt, samen 125.
 
-Voor iedere buurt worden twee waarden berekend:
-
-- `inwoners_obv_huishoudens` is `aantal_inwoners / aantal_huishoudens`. Deze
-  volgt de oorspronkelijke methode waarin ieder woon-VBO als één huishouden
-  wordt beschouwd. De som hoeft daarom niet gelijk te zijn aan het CBS-aantal
-  inwoners.
-- `inwoners_obv_woonvbo` is `aantal_inwoners / aantal_woonvbo`. Als alle
-  woon-VBO's van een buurt aanwezig zijn, is de som hiervan wel gelijk aan het
-  CBS-aantal inwoners.
-
-Het CBS-aantal inwoners wordt op twee manieren verdeeld over de woon-VBO’s in een buurt: op basis van het aantal woon-VBO’s en op basis van het aantal huishoudens.
-
-Bijvoorbeeld: een buurt heeft 100 inwoners, 50 woon-VBO’s en 40 huishoudens.
-
-- Verdeling over woon-VBO’s: ieder woon-VBO krijgt 100 ÷ 50 = 2 inwoners. Samen tellen de waarden op tot het CBS-totaal van 100 inwoners.
-- Verdeling op basis van huishoudens: de gemiddelde huishoudensgrootte is 100 ÷ 40 = 2,5 personen. Ieder woon-VBO krijgt daarom 2,5 inwoners. Samen tellen de waarden op tot 125 inwoners. Het totaal wijkt hier af van het CBS-totaal, omdat het aantal woon-VBO’s niet gelijk is aan het aantal huishoudens.
-
-Beide methoden geven een geschatte verdeling, niet het werkelijke aantal bewoners per adres.
-
-Er zijn twee uitzonderingen:
-
-- Als benodigde CBS-gegevens ontbreken, blijft de bijbehorende uitkomst leeg. Onbekend betekent niet dat er geen inwoners zijn.
-- Als het aantal huishoudens nul is, kan de verdeling op basis van huishoudens niet worden berekend. Zonder woon-VBO’s zijn er geen objecten waarover de inwoners kunnen worden verdeeld.
+Ontbreekt een benodigd CBS-cijfer, dan blijft die uitkomst leeg. Bij nul huishoudens blijft de huishoudensschatting leeg. Zonder woon-VBO’s zijn er geen punten om het buurttotaal over te verdelen.
 
 ## Uitvoer
 
-De productie schrijft `inwoners.gpkg`, laag
-`inwoners`. Deze bevat de oorspronkelijke VBO-puntgeometrie en minimaal `identificatie`,
-eventueel `pand_identificatie`, `buurtcode`, `aantal_inwoners`,
-`aantal_huishoudens`, `aantal_woonvbo`, `inwoners_obv_huishoudens` en
-`inwoners_obv_woonvbo`
+`inwoners.gpkg` (laag `inwoners`) en `inwoners.parquet` bevatten de oorspronkelijke VBO-punten.
 
-De kolom `__hilbert` bevat de [ruimtelijke sortering](vbo-buurt.md#ruimtelijke-sortering) die gebruikt kan worden om uitsnedes via de cloud uit te lezen.
+??? info "Welke velden staan in de uitvoer?"
 
-Bij de standaardproductie verschijnt daarnaast `inwoners.parquet` in dezelfde runmap bedoeld voor een cloud-native gebruik van deze laag.
+    Elk punt heeft `identificatie`, `buurtcode`, `aantal_woonvbo`, `aantal_inwoners`, `aantal_huishoudens`, `inwoners_obv_huishoudens` en `inwoners_obv_woonvbo`. Waar beschikbaar is ook `pand_identificatie` opgenomen. De [ruimtelijke sorteersleutel](vbo-buurt.md#ruimtelijke-sortering) is `_hilbert`.
 
 ## Aandachtspunten en beperkingen
 
-Een een nationale, of regionale (bijvoorbeeld voor 1 waterschap) selecteert volledige CBS-buurten en behoudt alle bijbehorende woon-VBO's voor het betreffende gebied. Daardoor blijft de verdeling per VBO gelijk aan de landelijke berekening. De uitvoer wordt niet op de gekozen gebiedsgrens geknipt.
-
-## Zelf produceren
-
-Zie [Inwoners en personenauto's produceren](../produceren/inwoners-personenautos.md).
+De uitkomsten zijn schattingen per woon-VBO. Een regionale selectie omvat hele CBS-buurten. Daardoor kunnen punten buiten de gekozen grens liggen en blijft de waarde per punt gelijk aan die in de landelijke kaart.

@@ -594,19 +594,6 @@ def prepare_watersysteem_rasters(
         watersysteem_path or data_store.afwateringseenheden_path / "watersysteem.gpkg"
     )
     output_dir = Path(output_dir or data_store.afwateringseenheden_path / "rasters")
-    if (
-        brandlagen is not None
-        and any(layer.rol in {"water", "duiker"} for layer in brandlagen.lagen)
-        and not (
-            watersysteem_path.parent
-            / "berekening"
-            / "waterlopen_duikers"
-            / "manifest.json"
-        ).exists()
-    ):
-        raise ValueError(
-            "waternet requires joint preparation through the production workflow"
-        )
     prepared = _prepare_brandlagen(
         brandlagen, [grid], output_dir / "brandlagen_voorbereid.gpkg"
     )
@@ -719,7 +706,7 @@ def _prepare_rasters(
                 -2 * burn_depth,
                 np.where(secondary_mask, -burn_depth, optional_values),
             )
-            source_codes = optional.sources
+            source_codes = optional.sources.copy()
             source_codes[secondary_mask] = 2
             source_codes[primary_mask] = 1
             waternet = read_waternet(watersysteem_path, grid)
@@ -735,6 +722,11 @@ def _prepare_rasters(
                 shallow_cells = treatment == 3
                 burn_values[shallow_cells] = -shallow[shallow_cells] / scale
                 source_codes[active] = network_codes[active]
+                # Excluded HYDAMO routes remove that network's burn, but do not
+                # veto an explicitly configured optional correction.
+                excluded_burn = treatment == 4
+                burn_values[excluded_burn] = optional_values[excluded_burn]
+                source_codes[excluded_burn] = optional.sources[excluded_burn]
                 del treatment, network_codes, waternet
             source_codes[~np.isfinite(dem_data)] = -1
             legend = {

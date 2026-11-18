@@ -10,9 +10,11 @@ TOP10NL is de topografische dataset op schaalniveau 1:10.000, onderdeel van de
 Basisregistratie Topografie (BRT). Waterlagen leest functionele gebieden uit de
 landelijke GeoPackage.
 
-## Leverancier
+<span id="leverancier"></span>
 
-Kadaster, ontsloten via PDOK.
+## Herkomst
+
+Het Kadaster is bronhouder van de Basisregistratie Topografie (BRT), waarvan TOP10NL deel uitmaakt. PDOK verzorgt de download. [Kadaster over de BRT](https://www.kadaster.nl/zakelijk/registraties/basisregistraties/brt)
 
 ## Dataset of service
 

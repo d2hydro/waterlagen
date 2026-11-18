@@ -9,9 +9,11 @@ editorial_status: ai
 De waterschapsgrenzenbron bevat de laag `waterschap` met grenzen van
 waterschappen in het IMWA-formaat.
 
-## Leverancier
+<span id="leverancier"></span>
 
-Het Waterschapshuis (HWH), ontsloten via PDOK.
+## Herkomst
+
+De waterschappen leveren de gebiedsgrenzen. Het Waterschapshuis stelt het landelijke bestand via PDOK beschikbaar. [PDOK over Waterschapsgrenzen IMSO](https://www.pdok.nl/ogc-webservices/-/article/waterschappen-waterschapsgrenzen-imso)
 
 ## Dataset of service
 

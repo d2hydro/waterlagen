@@ -231,7 +231,20 @@ def find_latest_brp_geopackage(
     *,
     timeout: int = 30,
 ) -> BrpRelease:
-    """Find the latest definitive BRP GeoPackage download in the Atom feed."""
+    """Zoek de nieuwste definitieve BRP-levering op.
+
+    Parameters
+    ----------
+    feed_url : str
+        Adres van de Atom-feed met definitieve BRP-leveringen.
+    timeout : int
+        HTTP-time-out in seconden voor het ophalen van de feed.
+
+    Returns
+    -------
+    BrpRelease
+        De gekozen levering met download_url, bestandsnaam en beschikbare versie- en datuminformatie.
+    """
     response = http_get(feed_url, timeout=timeout)
     response.raise_for_status()
 
@@ -251,7 +264,24 @@ def download_brp(
     overwrite: bool = True,
     feed_url: str = ATOM_FEED_URL,
 ) -> BrpDownload:
-    """Download the latest definitive BRP GeoPackage from the Atom feed."""
+    """Zoek de nieuwste definitieve BRP-levering op en sla het GeoPackage lokaal op.
+
+    Parameters
+    ----------
+    download_dir : pathlib.Path
+        Map waarin de download wordt opgeslagen.
+    filename : str, optional
+        Lokale bestandsnaam. Zonder naam wordt de naam uit de feed gebruikt.
+    overwrite : bool
+        Vervang het uitvoerbestand. Bij False wordt een geldig bestaand bestand hergebruikt.
+    feed_url : str
+        Adres van de Atom-feed met definitieve BRP-leveringen.
+
+    Returns
+    -------
+    BrpDownload
+        path verwijst naar het GeoPackage en release bevat de leveringsgegevens.
+    """
     release = find_latest_brp_geopackage(feed_url=feed_url)
 
     download_dir = Path(download_dir)

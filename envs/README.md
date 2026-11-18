@@ -9,11 +9,9 @@ in een map naar keuze. De bestanden staan direct
 in de ZIP, zonder extra bovenliggende map. De gekozen map met `pixi.toml`,
 `pixi.lock` en `scripts` is uw **projectfolder**.
 
-Open die map in Windows Verkenner. Klik in de adresbalk, typ `powershell` en
-druk op Enter. Op Linux opent u een shell in dezelfde map.
-Voer de volgende opdrachten uit, steeds gevolgd door Enter:
+Open de projectmap in Windows Verkenner. Typ `cmd` (opdrachtprompt) of `powershell` in de adresbalk en druk op Enter. Open op Linux een terminal in de projectmap. Voer beide opdrachten één voor één uit:
 
-```powershell
+```text
 pixi install --locked
 pixi run --locked controleer
 ```
@@ -21,51 +19,19 @@ pixi run --locked controleer
 De controle toont de Waterlagen-versie, importeert de scripts en test een klein
 raster met GDAL, Rasterio en PCRaster. Er worden geen brongegevens gedownload.
 
-## Bijwerken
-
-Stop lopende berekeningen. Dubbelklik op Windows op `code_bijwerken.cmd`; voer op Linux
-`sh ./code_bijwerken.sh` uit. Bevestig de update en wacht op **Bijwerken geslaagd**.
-Instellingen en data blijven behouden. Hervat een onderbroken run met de
-oorspronkelijke softwareversie.
-
 ## Een productie starten
 
-Kies één opdracht en voer die vanuit uw projectfolder uit:
+1. Dubbelklik op Windows in de projectmap op `run-maken.bat`. De Run Maker opent in uw browser.
+2. Kies het gebied en de kaartlagen die u wilt maken. Bij **Extra opties** ziet u de instellingen voor de gekozen kaartlaag. De Run Maker zet uw keuzes om in een runscript.
+3. Kies **Opslaan en starten** om de berekening direct uit te voeren. Met **Alleen opslaan** bewaart u het script voor later. Dubbelklik dan op het opgeslagen `.bat`-bestand om de berekening te starten.
 
-| Productie | Opdracht | Meegeleverd script |
-|---|---|---|
-| Afwateringseenheden (landelijk) | `pixi run --locked afwateringseenheden` | `scripts/afwateringseenheden.py` |
-| Functioneel landgebruik (landelijk) | `pixi run --locked functioneel_landgebruik` | `scripts/functioneel_landgebruik.py` |
-| DEM (landelijk) | `pixi run --locked dem` | `scripts/dem.py` |
-| Inwoners per woon-VBO (landelijk) | `pixi run --locked inwoners` | `scripts/inwoners.py` |
-| Personenauto's per woon-VBO (landelijk) | `pixi run --locked autos` | `scripts/autos.py` |
+Voor Linux of geautomatiseerde runs kunt u de [Pixi-productiecommando’s](https://d2hydro.github.io/waterlagen/produceren/cli/) gebruiken.
 
-Voor afwateringseenheden kiest u een waterschap met de waterbeheercode.
-Met `--workers` kunt u het aantal werkprocessen beperken:
+## Bronnen en resultaten
 
-```powershell
-pixi run --locked afwateringseenheden --waterbeheercode 38 --workers 2
-```
+De productie hergebruikt beschikbare bronnen en haalt ontbrekende gegevens op. Ook voor een klein gebied kan een landelijke download nodig zijn. Het gebied bepaalt welke invoer wordt gebruikt. De resultaten kunnen buiten die grens vallen.
 
-Hier worden voor Aa en Maas maximaal twee rekentegels tegelijk verwerkt. Gebruik
-`--workers 1` bij weinig werkgeheugen; de productie kan dan langer duren.
-De overige rekeninstellingen liggen vast. Zie
-[Afwateringseenheden produceren](https://d2hydro.github.io/waterlagen/produceren/afwateringseenheden/)
-voor uitleg; `pixi run --locked afwateringseenheden --help` toont de beschikbare
-opties.
-
-Alle vijf producties halen ontbrekende bronnen zelf op. Alle ondersteunen
-`--area nederland`, `--area alkmaar` en `--area 38`. Het gebied selecteert
-invoer; resultaten worden niet afgeknipt.
-Bestaande bronbestanden worden waar mogelijk hergebruikt. Dit zijn volledige
-producties: landelijke downloads en berekeningen kunnen veel tijd en schijfruimte
-vragen.
-Controleer de geproduceerde datasets inhoudelijk voordat u ze gebruikt.
-
-Elke productie schrijft `productie.log` en `run.json` in haar runmap.
-`--refresh-sources` vernieuwt bronnen voor een nieuwe run. `--overwrite` betreft
-uitvoer van een compatibele bestaande run en vereist `--run-id`. `--resume`
-hervat zo'n run. `--offline` vereist lokale bronnen. `--help` toont alle opties.
+Elke runmap bevat `productie.log` en `run.json`. Controleer de resultaten voordat u ze gebruikt.
 
 De meegeleverde `.datastore` bevat `DATA_DIR=./data`. Daardoor staan downloads en
 resultaten onder `data` in uw projectfolder. Pas alleen deze instelling aan als
@@ -74,9 +40,13 @@ de projectfolder. Start opdrachten vanuit de map met `pixi.toml`.
 
 Bewaar `pixi.toml` en `pixi.lock` samen en gebruik `--locked`: het lockbestand legt
 de dependencyversies voor Windows en Linux vast. Internet is nodig voor de eerste
-installatie en voor brongegevens. De scripts zijn dunne CLI-ingangen; Pixi
-installeert het Waterlagen-pakket van de release, niet een lokale ontwikkelversie.
+installatie en voor het downloaden van brongegevens.
 
-Zie [Zelf produceren](https://d2hydro.github.io/waterlagen/produceren/) voor de
-handleiding en toelichting op inputs en resultaten. De online handleiding kan
-nieuwer zijn dan dit pakket; deze README hoort bij de gedownloade release.
+## Code bijwerken
+
+Werk tussen producties bij naar een nieuwe release van Waterlagen. Hervat onderbroken runs eerst met de oorspronkelijke versie.
+
+- **Windows:** dubbelklik op `code_bijwerken.bat`.
+- **Linux:** voer `sh ./code_bijwerken.sh` uit.
+
+Bevestig de update. Uw instellingen en gegevens blijven behouden.

@@ -13,6 +13,7 @@ from pathlib import Path
 from xml.etree import ElementTree
 
 from waterlagen._filesystem import replace_file
+from waterlagen._run_lock import production_lock, run_is_locked
 from waterlagen._run_logging import run_log
 from waterlagen.logger import get_logger
 
@@ -137,12 +138,15 @@ def validate_run_target(
         return
     path = processed_data_dir / dataset / scope / run_id
     if not resume and not overwrite and path.exists():
-        raise ValueError(f"Runfolder '{path}' bestaat al. Kies een nieuwe --run-id.")
+        raise ValueError(
+            f"Runfolder '{path}' bestaat al. Gebruik --resume om verder te gaan, "
+            "of kies een nieuwe --run-id."
+        )
     if (resume or overwrite) and not (path / "run.json").is_file():
         raise ValueError(
             f"Runfolder '{path}' heeft geen run.json. Kies een nieuwe --run-id."
         )
-    if (path / ".run.lock").exists():
+    if run_is_locked(path):
         raise ValueError(
             f"Runfolder '{path}' is vergrendeld; er is mogelijk nog een productie actief."
         )
@@ -187,14 +191,7 @@ def production_run(
             raise ValueError(
                 f"Runfolder '{path}' bestaat al. Kies een andere --run-id, of gebruik --resume of --overwrite met dezelfde instellingen."
             ) from error
-    lock = path / ".run.lock"
-    try:
-        lock.touch(exist_ok=False)
-    except FileExistsError as error:
-        raise ValueError(
-            f"Runfolder '{path}' is vergrendeld. Verwijder '{lock}' alleen als er geen productie meer actief is."
-        ) from error
-    try:
+    with production_lock(path):
         if resume or overwrite:
             metadata = json.loads((path / "run.json").read_text(encoding="utf-8"))
             if any(metadata.get(key) != value for key, value in identity.items()):
@@ -211,6 +208,10 @@ def production_run(
         run.metadata.pop("error", None)
         run._save()
         logger.info("Productie-uitvoermap: %s", path)
+        if overwrite:
+            logger.info("Productiemodus: Overschrijven")
+        elif resume:
+            logger.info("Productiemodus: Hervatten")
         try:
             with run_log(path):
                 yield run
@@ -221,5 +222,3 @@ def production_run(
         else:
             run.metadata["status"] = "complete"
             run._save()
-    finally:
-        lock.unlink()

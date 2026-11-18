@@ -12,10 +12,11 @@ Gegevenswoordenboek Stedelijk Water (GWSW). De objecten omvatten onder meer
 RWZI's, rioolgemalen, pompen, leidingen, leidingsegmenten, putten,
 overnamepunten en rioleringsgebieden.
 
-## Leverancier
+<span id="leverancier"></span>
 
-De individuele waterschappen leveren hun gegevens via het Gegevensknooppunt
-waterschappen (GkW) van Het Waterschapshuis. PDOK publiceert de landelijke bron.
+## Herkomst
+
+De waterschappen leveren hun waterketengegevens via het Gegevensknooppunt waterschappen (GkW) van Het Waterschapshuis. PDOK publiceert het landelijke bestand. [PDOK over Waterketen DAMO](https://api.pdok.nl/hwh/waterschappen-waterketen-damo/ogc/v1)
 
 ## Dataset of service
 
@@ -32,9 +33,10 @@ De waterschapscode bij een object verwijst naar de betreffende gegevensleveranci
 
 De bron is beschikbaar als afzonderlijke download onder `waterketen_damo` in
 de DataStore. De laag `rwzi` bevestigt TOP10NL-zuiveringsterreinen voor de
-[RWZI-gebouwclassificatie bij functioneel landgebruik](../bewerkte-lagen/functioneel-landgebruik.md#bijzondere-gebouwen-en-gemalen-stap-6). Zie
-[Waterketen DAMO downloaden](../produceren/waterketen-damo.md) voor het gebruik
-en de [API-referentie](../reference/waterketen_damo.md).
+[RWZI-gebouwclassificatie bij functioneel landgebruik](../bewerkte-lagen/functioneel-landgebruik.md#bijzondere-gebouwen-en-gemalen-stap-6).
+
+[Waterketen DAMO downloaden](../produceren/waterketen-damo.md){ .md-button }
+[API-referentie](../reference/waterketen_damo.md){ .meerlink }
 
 ## Externe verwijzingen
 

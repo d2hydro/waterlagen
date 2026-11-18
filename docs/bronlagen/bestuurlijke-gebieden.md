@@ -7,12 +7,13 @@ editorial_status: ai
 ## Beschrijving
 
 Bestuurlijke Gebieden bevat de gemeente-, provincie- en landgebieden van
-Nederland. De bron is afgeleid uit de Basisregistratie Kadaster (BRK) en wordt
-jaarlijks bijgewerkt.
+Nederland en wordt jaarlijks bijgewerkt.
 
-## Leverancier
+<span id="leverancier"></span>
 
-Kadaster, ontsloten via PDOK.
+## Herkomst
+
+Het Kadaster levert de grenzen op basis van de Basisregistratie Kadaster (BRK). PDOK verzorgt de download.
 
 ## Dataset of service
 

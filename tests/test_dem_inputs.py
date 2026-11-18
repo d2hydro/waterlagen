@@ -52,12 +52,86 @@ def fake_input(path, area):
     return inputs.LanduseInput(path, select_area_tiles(grid(), area), [], 0.5)
 
 
-def test_latest_uses_creation_not_folder_name_and_does_not_hide_running(tmp_path):
+def test_latest_uses_creation_not_folder_name(tmp_path):
     old = record(tmp_path, "nederland", "zzz")
-    new = record(tmp_path, "nederland", "aaa", "2026-02-01T00:00:00+00:00", "running")
+    new = record(tmp_path, "nederland", "aaa", "2026-02-01T00:00:00+00:00")
     assert inputs.latest_run(old.parent) == new
-    with pytest.raises(RuntimeError, match="running"):
+
+
+@pytest.mark.parametrize(
+    "status,locked",
+    [("running", True), ("running", False), ("failed", False), ("complete", True)],
+)
+def test_latest_prefers_completed_unlocked_run(tmp_path, status, locked):
+    completed = record(tmp_path, "nederland", "afgerond")
+    unfinished = record(
+        tmp_path, "nederland", "later-gestart", "2026-02-01T00:00:00+00:00", status
+    )
+    if locked:
+        (unfinished / ".run.lock").touch()
+    assert inputs.latest_run(completed.parent) == completed
+    assert (unfinished / ".run.lock").exists() == locked
+
+
+def test_running_run_still_blocks_when_no_completed_run_is_available(tmp_path):
+    new = record(tmp_path, "nederland", "bezig", status="running")
+    assert inputs.latest_run(new.parent) == new
+    with pytest.raises(RuntimeError, match="staat nog op 'bezig'"):
         inputs.validate_landuse_run(new, Area.nederland, 5)
+
+
+def test_dem_reuses_completed_landuse_beside_abandoned_run(tmp_path, monkeypatch):
+    completed = record(tmp_path, "alkmaar", "afgerond")
+    abandoned = record(
+        tmp_path, "alkmaar", "afgebroken", "2026-02-01T00:00:00+00:00", "running"
+    )
+    (abandoned / ".run.lock").touch()
+    checked = []
+
+    def validate(path, area, context):
+        checked.append(path)
+        assert path == completed
+        return fake_input(path, area)
+
+    monkeypatch.setattr(inputs, "validate_landuse_run", validate)
+    monkeypatch.setattr(
+        inputs.landuse_production,
+        "main",
+        lambda *args, **kwargs: pytest.fail("Onnodige landgebruikproductie"),
+    )
+    with production_run(
+        tmp_path, "dem", "alkmaar", run_id="proef", parameters={}
+    ) as run:
+        result = inputs.resolve_landuse(
+            SimpleNamespace(processed_data_dir=tmp_path), run, Area.alkmaar, 5
+        )
+    assert result.path == completed
+    assert checked == [completed]
+    assert run.metadata["landuse_dependency"] == {
+        "path": str(completed.resolve()),
+        "created_by_dem": False,
+    }
+
+
+@pytest.mark.parametrize("locked", [False, True])
+def test_blocked_landuse_explains_possible_interruption_and_next_step(tmp_path, locked):
+    path = record(tmp_path, "nederland", "afgebroken", status="running")
+    lock = path / ".run.lock"
+    if locked:
+        lock.touch()
+    original = (path / "run.json").read_bytes()
+
+    with pytest.raises(RuntimeError) as error:
+        inputs.validate_landuse_run(path, Area.nederland, 5)
+
+    message = str(error.value)
+    assert "afgebroken" in message
+    assert str(path) in message
+    assert "is vergrendeld" in message if locked else "staat nog op 'bezig'" in message
+    assert "kan nog draaien of eerder zijn afgebroken" in message
+    assert "afgeronde run met --landuse-run" in message
+    assert (path / "run.json").read_bytes() == original
+    assert lock.exists() == locked
 
 
 @pytest.mark.parametrize(
@@ -224,3 +298,25 @@ def test_explicit_invalid_dependency_does_not_fallback(tmp_path, monkeypatch):
             5,
             tmp_path / "explicit",
         )
+
+
+@pytest.mark.parametrize("locked", [True, False])
+def test_automatic_search_skips_busy_other_scope(tmp_path, monkeypatch, locked):
+    other = record(tmp_path, "waterschappen_12_25", "proef", status="running")
+    if locked:
+        (other / ".run.lock").touch()
+    store = SimpleNamespace(processed_data_dir=tmp_path)
+    area = Area.alkmaar
+    assert inputs.find_landuse_input(store, area, 5) is None
+    with pytest.raises(inputs.LanduseRunBusy):
+        inputs.validate_landuse_run(other, area, 5)
+    later = record(tmp_path, "waterschappen_2_12_59", "klaar")
+    original = inputs.validate_landuse_run
+
+    def validate(path, selected, context):
+        if path == later:
+            return fake_input(path, selected)
+        return original(path, selected, context)
+
+    monkeypatch.setattr(inputs, "validate_landuse_run", validate)
+    assert inputs.find_landuse_input(store, area, 5).path == later

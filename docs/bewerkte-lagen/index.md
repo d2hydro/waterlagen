@@ -4,19 +4,19 @@ editorial_status: human
 
 # Bewerkte lagen
 
-Deze pagina's beschrijven de geproduceerde lagen en de bewerkingsstappen die
-daarvoor nodig zijn. De gegevens zelf en hun leveranciers staan op
-[Bronlagen](../bronlagen/index.md).
+Gegevens en leveranciers staan bij [Bronlagen](../bronlagen/index.md).
 
-## Hydrologische en hydraulische toepassingen
-Voor hydrologische toepassingen zijn de volgende lagen ontwikkeld:
+## Voor de nieuwe WaterSchadeSchatter
 
-- [Afwateringseenheden](afwateringseenheden.md): afvoergebieden gekoppeld aan hydroobjecten bedoeld voor hydrologische berekeningen.
-- [Hoogtemodel](dem.md): terreinmodel met geïnterpoleerde AHN-hoogten en gebouwhoogten bedoeld voor het berekenen van overstroming van maaiveld
+<div class="laagoverzicht" markdown="1">
 
-## Waterschade schatting (WSWO)
-De volgende lagen zijn ontwikkeld voor het berekenen van schade door overstromingen/wateroverlast:
+- [Auto's (punten)](autos.md) <span>Geschat aantal personenauto’s per verblijfsobject met woonfunctie.</span>
+- [DEM (WSWO, raster)](dem.md) <span>Maaiveldhoogte en geschat vloerpeil per pand, voor overstromingsberekeningen.</span>
+- [Functioneel landgebruik (raster)](functioneel-landgebruik.md) <span>Landgebruiksklasse per rastercel.</span>
+- [Inwoners (punten)](inwoners.md) <span>Geschat aantal inwoners per verblijfsobject met woonfunctie.</span>
 
-- [Auto's](autos.md): personenauto's verdeeld over verblijfobjecten
-- [Functioneel landgebruik](functioneel-landgebruik.md): geclassificeerd landgebruikraster.
-- [Inwoners](inwoners.md): inwoners verdeeld over het aantal verblijfsobjecten
+</div>
+
+## Voor hydrologische analyses/modellering
+
+[Afwateringseenheden (vlakken)](afwateringseenheden.md) geven aan welk gebied volgens de berekende afstroming afwatert naar hetzelfde primaire waterloopsegment.

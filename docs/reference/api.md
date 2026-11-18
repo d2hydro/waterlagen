@@ -4,23 +4,25 @@ editorial_status: ai
 
 # API-referentie
 
-Deze referentie wordt tijdens de documentatiebuild uit de Python-module opgebouwd.
-De functies, parameters en docstrings volgen daardoor de gebruikte moduleversie.
-Voor uitvoerbare voorbeelden begint u bij [Python gebruiken](gebruik.md).
+Kies uw taak en open een functie. U ziet wat de functie teruggeeft en welke invoer nodig is. Bij elke parameter staat de standaardwaarde of **Verplicht**.
 
-## Productie en hulpmiddelen
+<span id="productie-en-hulpmiddelen"></span>
 
-- [Productie-ingangen, gebieden en logging](productie.md)
+## Kaartlagen berekenen
+
+[Een volledige productie starten](productie.md) of functies opzoeken voor een afzonderlijke kaartlaag:
+
 - [Afwateringseenheden](afwateringseenheden.md)
-- [Auto's](autos.md)
-- [Hoogtemodel](dem.md)
 - [Functioneel landgebruik](functioneel_landgebruik.md)
+- [Hoogtemodel (DEM)](dem.md)
 - [Inwoners](inwoners.md)
-- [Gedeelde VBO-buurtvoorbereiding](vbo_buurt.md)
-- [Gegevensopslag](datastore.md)
-- [Rasters](raster.md)
+- [Personenauto's](autos.md)
 
-## Bronnen
+<span id="bronnen"></span>
+
+## Brongegevens ophalen
+
+<div class="bronindex" markdown="1">
 
 - [AHN](ahn.md)
 - [BAG](bag.md)
@@ -32,5 +34,15 @@ Voor uitvoerbare voorbeelden begint u bij [Python gebruiken](gebruik.md).
 - [HYDAMO](hydamo.md)
 - [LIWO](liwo.md)
 - [OSM-drinkwaterlocaties](osm_drinkwater.md)
+- [OSM-waterlopen](osm_waterlopen.md)
+- [Rijkswateren](rijkswateren.md)
 - [TOP10NL](top10nl.md)
 - [Waterketen DAMO](waterketen_damo.md)
+
+</div>
+
+## Gedeelde bewerkingen en opslag
+
+- [Woonverblijfsobjecten aan CBS-buurten koppelen](vbo_buurt.md)
+- [Rasters verwerken](raster.md)
+- [Gegevensmappen opvragen](datastore.md)

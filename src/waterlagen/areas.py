@@ -206,6 +206,48 @@ def area_from_file(path: Path, *, layer: str | None = None) -> ProductionArea:
     return ProductionArea(_polygon_name(geometry), geometry, settings.crs)
 
 
+def parse_authority_codes(value: str) -> tuple[str, ...]:
+    """Read one or more comma-separated water authority codes.
+
+    Parameters
+    ----------
+    value : str
+        Numeric codes, for example "12,13".
+
+    Returns
+    -------
+    tuple of str
+        Unique codes in numeric order.
+    """
+    parts = [part.strip() for part in value.split(",")]
+    if any(not part.isascii() or not part.isdigit() for part in parts):
+        raise ValueError("Gebruik waterschapscodes met komma's, bijvoorbeeld 12,13.")
+    return tuple(sorted({str(int(part)) for part in parts}, key=int))
+
+
+def area_authority_codes(value: str | Area | ProductionArea) -> tuple[str, ...]:
+    """Return the selected authorities, or an empty tuple for another area.
+
+    Parameters
+    ----------
+    value : str or Area or ProductionArea
+        A supported production area.
+
+    Returns
+    -------
+    tuple of str
+        Unique selected authority codes in numeric order.
+    """
+    name = area_name(value)
+    if name.startswith("waterschappen_"):
+        return parse_authority_codes(
+            name.removeprefix("waterschappen_").replace("_", ",")
+        )
+    if name.startswith("waterschap_"):
+        return parse_authority_codes(name.removeprefix("waterschap_"))
+    return ()
+
+
 def area_name(value: str | Area | ProductionArea) -> str:
     """Validate a known name, authority code or constructed selection without I/O."""
     name = value.value if isinstance(value, ProductionArea) else str(value)
@@ -221,12 +263,19 @@ def area_name(value: str | Area | ProductionArea) -> str:
         rectangle = area_from_bounds(value.geometry.bounds)
         if name == rectangle.value and value.geometry.equals(rectangle.geometry):
             return name
-    code = name.removeprefix("waterschap_")
-    if code.isascii() and code.isdigit():
-        return f"waterschap_{code}"
-    raise ValueError(
-        f"Onbekend gebied: {name}; kies nederland, {', '.join(NAMED_AREAS)} of een waterschapscode"
-    )
+    codes_text = name.removeprefix("waterschap_")
+    if name.startswith("waterschappen_"):
+        codes_text = name.removeprefix("waterschappen_").replace("_", ",")
+    try:
+        codes = parse_authority_codes(codes_text)
+    except ValueError:
+        raise ValueError(
+            f"Onbekend gebied: {name}; kies nederland, {', '.join(NAMED_AREAS)} "
+            "of waterschapscodes met komma's, bijvoorbeeld 12,13."
+        ) from None
+    if len(codes) == 1:
+        return f"waterschap_{codes[0]}"
+    return "waterschappen_" + "_".join(codes)
 
 
 def resolve_area(
@@ -237,7 +286,7 @@ def resolve_area(
     Parameters
     ----------
     area : str or Area or ProductionArea
-        Named polygon, Nederland, a water authority code, or a rectangle made
+        Named polygon, Nederland, comma-separated water authority codes, or a rectangle made
         with ``area_from_bounds`` or polygon selection from ``area_from_file``.
     store : DataStore
         Source cache locations.
@@ -274,7 +323,14 @@ def resolve_area(
             ),
         )
         frame = normaliseer_waterschapsgrenzen(read_waterschapsgrenzen_layer(path=path))
-        frame = frame.loc[frame.waterbeheercode.eq(name.removeprefix("waterschap_"))]
+        codes = area_authority_codes(name)
+        missing = set(codes) - set(frame.waterbeheercode)
+        if missing:
+            raise ValueError(
+                f"Geen gebied gevonden voor waterschapscode(s): {', '.join(sorted(missing, key=int))}"
+            )
+        # Voeg alleen de gekozen vlakken samen; behoud losse delen en gaten.
+        frame = frame.loc[frame.waterbeheercode.isin(codes)]
     if frame.empty or frame.crs is None:
         raise ValueError(f"Geen gebied met geldig CRS gevonden: {name}")
     if not same_crs(frame.crs, settings.crs):

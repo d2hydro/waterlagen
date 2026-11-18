@@ -1,27 +1,22 @@
-"""Kies een productie en bewaar de opdrachten als aanpasbaar PowerShell-script."""
+"""Kies een productie en bewaar de opdrachten als aanpasbare runfile."""
 
 from __future__ import annotations
 
 import argparse
+import os
+import re
 import subprocess
 import sys
-from collections.abc import Callable
-from dataclasses import dataclass
-from datetime import UTC, datetime
+from dataclasses import dataclass, replace
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from waterlagen import areas
 from waterlagen._production import validate_run_options, validate_run_target
 from waterlagen.areas import Area, area_from_bounds, area_name
 from waterlagen.datastore import DataStore
-from waterlagen.settings import settings
 
-from .script import ScriptPlan, format_command
-from .window import open_window
-
-if TYPE_CHECKING:
-    from tkinter import ttk
+from .script import format_command, start_commands
+from .waterlagen_options import HelpText, OptionValue, extra_arguments
 
 LAYERS = {
     "functioneel_landgebruik": "Functioneel landgebruik",
@@ -57,6 +52,35 @@ AUTHORITIES = {
 }
 
 
+LAYER_HELP = {
+    "functioneel_landgebruik": HelpText(
+        "Maakt een kaart met het gebruik van grond en gebouwen.",
+        "functioneel-landgebruik",
+        category="bewerkte-lagen",
+    ),
+    "dem": HelpText(
+        "Maakt een hoogtemodel met terreinhoogtes en afgeleide gebouwhoogtes.",
+        "dem",
+        category="bewerkte-lagen",
+    ),
+    "inwoners": HelpText(
+        "Verdeelt de CBS-inwonersaantallen over woonadressen per buurt.",
+        "inwoners",
+        category="bewerkte-lagen",
+    ),
+    "autos": HelpText(
+        "Verdeelt de CBS-aantallen personenauto's over woonadressen per buurt.",
+        "autos",
+        category="bewerkte-lagen",
+    ),
+    "afwateringseenheden": HelpText(
+        "Berekent welke gebieden naar hetzelfde deel van een primaire waterloop afwateren.",
+        "afwateringseenheden",
+        category="bewerkte-lagen",
+    ),
+}
+
+
 @dataclass(frozen=True)
 class RunSettings:
     """Keuzes voor één gebied en een of meer producties."""
@@ -67,6 +91,10 @@ class RunSettings:
     workers: int = 8
     resume: bool = False
     refresh_sources: bool = False
+    brandlagen_config: Path | None = None
+    extra_options: tuple[OptionValue, ...] = ()
+    overwrite: bool = False
+    debug: bool = False
 
 
 def _scope(arguments: tuple[str, ...]) -> str:
@@ -83,8 +111,8 @@ def _scope(arguments: tuple[str, ...]) -> str:
         return area_name(area_from_bounds(arguments[1:]))
     if len(arguments) == 2:
         flag, value = arguments
-        if flag == "--waterbeheercode" and value.isascii() and value.isdigit():
-            return area_name(value)
+        if flag == "--waterbeheercode":
+            return area_name(",".join(areas.parse_authority_codes(value)))
         if flag == "--area" and value in {area.value for area in Area}:
             return area_name(value)
     raise ValueError(
@@ -96,11 +124,136 @@ def _validate(options: RunSettings) -> None:
     if not options.layers or any(layer not in LAYERS for layer in options.layers):
         raise ValueError("Kies minstens één basislaag.")
     _scope(options.area_arguments)
-    validate_run_options(options.run_id, resume=options.resume, overwrite=False)
+    validate_run_options(
+        options.run_id, resume=options.resume, overwrite=options.overwrite
+    )
+    if (
+        options.brandlagen_config is not None
+        and "afwateringseenheden" in options.layers
+    ):
+        from waterlagen.afwateringseenheden.config import read_brandlagen_config
+
+        try:
+            read_brandlagen_config(options.brandlagen_config)
+        except (ValueError, TypeError, OSError) as error:
+            raise ValueError(f"Kan de brandlagen-TOML niet lezen: {error}") from error
     if options.workers < 1:
         raise ValueError("Workers moet minstens 1 zijn.")
-    if options.resume and options.refresh_sources:
-        raise ValueError("Bronnen opnieuw ophalen kan niet samen met hervatten.")
+    if options.refresh_sources and (options.resume or options.overwrite):
+        raise ValueError("Bronnen opnieuw ophalen vereist een nieuwe run.")
+    for layer in options.layers:
+        extra_arguments(
+            layer,
+            options.extra_options,
+            authority=options.area_arguments[0] == "--waterbeheercode",
+        )
+
+
+def _existing_layers(options: RunSettings) -> tuple[str, ...]:
+    """Zoek alleen bij de geselecteerde lagen en het gekozen gebied."""
+    validate_run_options(options.run_id, resume=False, overwrite=False)
+    scope = _scope(options.area_arguments)
+    store = DataStore()
+    return tuple(
+        layer
+        for layer in options.layers
+        if (store.processed_data_dir / layer / scope / options.run_id).exists()
+    )
+
+
+def _window_commands(options: RunSettings) -> list[str]:
+    """Hervat of vervang bestaande lagen; ontbrekende lagen beginnen nieuw."""
+    existing = _existing_layers(options)
+    store = DataStore()
+    scope = _scope(options.area_arguments)
+    commands = []
+    for layer in options.layers:
+        present = layer in existing
+        target = store.processed_data_dir / layer / scope / options.run_id
+        if present and not (target / "run.json").is_file():
+            raise ValueError(
+                f"De map voor {LAYERS[layer]} bestaat, maar bevat geen run.json. "
+                "Kies een nieuwe runnaam."
+            )
+        if present and not (options.resume or options.overwrite):
+            raise ValueError(
+                "Deze run bestaat al. Kies hervatten of opnieuw berekenen."
+            )
+        commands.extend(
+            _commands(
+                replace(
+                    options,
+                    layers=(layer,),
+                    resume=present and options.resume,
+                    overwrite=present and options.overwrite,
+                )
+            )
+        )
+    if not commands:
+        raise ValueError("Kies minstens één basislaag.")
+    return commands
+
+
+def _start_code_update(project: Path) -> subprocess.Popen:
+    """Start de bestaande updater buiten de actieve productieomgeving."""
+    launcher = project / (
+        "code_bijwerken.bat" if sys.platform == "win32" else "code_bijwerken.sh"
+    )
+    if not launcher.is_file():
+        raise ValueError("Code bijwerken is beschikbaar in de uitgepakte productiemap.")
+    environment = os.environ.copy()
+    for name in tuple(environment):
+        if name.startswith("CONDA_") or name in {
+            "PIXI_ENVIRONMENT_NAME",
+            "PIXI_ENVIRONMENT_PLATFORMS",
+            "PIXI_IN_SHELL",
+            "PIXI_PROJECT_MANIFEST",
+            "PIXI_PROJECT_ROOT",
+            "PIXI_PROJECT_NAME",
+            "PIXI_PROJECT_VERSION",
+            "PIXI_PROMPT",
+            "GDAL_DATA",
+            "GDAL_DRIVER_PATH",
+            "PROJ_DATA",
+        }:
+            environment.pop(name)
+        elif name.upper() in {"SSL_CERT_DIR", "SSL_CERT_FILE"} and re.search(
+            r"\.pixi[\\/]envs[\\/]", environment[name], re.IGNORECASE
+        ):
+            environment.pop(name)
+        elif name.upper() == "PATH":
+            environment[name] = os.pathsep.join(
+                part
+                for part in environment[name].split(os.pathsep)
+                if not re.search(r"\.pixi[\\/]envs[\\/]", part, re.IGNORECASE)
+            )
+    arguments = [launcher] if sys.platform == "win32" else ["sh", launcher]
+    return start_commands(format_command(arguments), project, env=environment)
+
+
+def _layer_flags(layer: str, options: RunSettings, *, resume: bool) -> list[str | Path]:
+    """Gebruik dezelfde productieopties voor een opgeslagen script en een directe start."""
+    arguments: list[str | Path] = []
+    if layer in WORKER_LAYERS:
+        arguments.extend(["--workers", str(options.workers)])
+    if resume:
+        arguments.append("--resume")
+    if options.refresh_sources:
+        arguments.append("--refresh-sources")
+    if options.overwrite:
+        arguments.append("--overwrite")
+    if options.debug:
+        arguments.append("--debug")
+    if layer == "afwateringseenheden" and options.brandlagen_config is not None:
+        arguments.extend(["--brandlagen-config", options.brandlagen_config.resolve()])
+    arguments.extend(
+        extra_arguments(
+            layer,
+            options.extra_options,
+            authority=options.area_arguments[0] == "--waterbeheercode",
+        )
+    )
+    return arguments
 
 
 def _commands(options: RunSettings) -> list[str]:
@@ -125,12 +278,7 @@ def _commands(options: RunSettings) -> list[str]:
             "--run-id",
             options.run_id,
         ]
-        if layer in WORKER_LAYERS:
-            arguments.extend(["--workers", str(options.workers)])
-        if options.resume:
-            arguments.append("--resume")
-        if options.refresh_sources:
-            arguments.append("--refresh-sources")
+        arguments.extend(_layer_flags(layer, options, resume=options.resume))
         commands.append(format_command(arguments))
     return commands
 
@@ -149,7 +297,7 @@ def _start(options: RunSettings, project: Path) -> int:
             scope,
             options.run_id,
             resume=resume,
-            overwrite=False,
+            overwrite=options.overwrite,
         )
         command = [
             sys.executable,
@@ -158,228 +306,19 @@ def _start(options: RunSettings, project: Path) -> int:
             "--run-id",
             options.run_id,
         ]
-        if layer in WORKER_LAYERS:
-            command.extend(["--workers", str(options.workers)])
+        command.extend(
+            str(flag) for flag in _layer_flags(layer, options, resume=resume)
+        )
+        action = "Nieuwe run"
         if resume:
-            command.append("--resume")
-        if options.refresh_sources:
-            command.append("--refresh-sources")
-        action = "Hervatten" if resume else "Nieuwe run"
+            action = "Hervatten"
+        elif options.overwrite:
+            action = "Overschrijven"
         print(f"{action}: {LAYERS[layer]} ({options.run_id})", flush=True)
         result = subprocess.run(command, cwd=project, check=False)
         if result.returncode:
             return result.returncode
     return 0
-
-
-def _build_form(frame: ttk.Frame) -> Callable[[], ScriptPlan]:
-    """Vul het venster met Waterlagen-keuzes; lees ze pas bij bekijken of opslaan."""
-    import tkinter as tk
-    from tkinter import filedialog, messagebox, ttk
-
-    root = frame.winfo_toplevel()
-    ttk.Label(frame, text="1. Gebied", style="Heading.TLabel").pack(anchor="w")
-    mode = tk.StringVar(value="waterschap")
-    modes = ttk.Frame(frame)
-    modes.pack(fill="x", pady=8)
-    selection = ttk.Frame(frame)
-    authority = tk.StringVar(value="Hollands Noorderkwartier (HHNK)")
-    authority_input = ttk.Combobox(
-        selection, textvariable=authority, values=list(AUTHORITIES), state="readonly"
-    )
-    national_hint = ttk.Label(
-        selection,
-        text="De gekozen lagen worden voor heel Nederland gemaakt.",
-        style="Hint.TLabel",
-    )
-    bounds_frame = ttk.Frame(selection)
-    bounds = [tk.StringVar() for _ in range(4)]
-    for index, (label, value) in enumerate(
-        zip(("X min", "Y min", "X max", "Y max"), bounds)
-    ):
-        ttk.Label(bounds_frame, text=label).grid(row=0, column=index, sticky="w")
-        ttk.Entry(bounds_frame, textvariable=value, width=13).grid(
-            row=1, column=index, padx=(0, 10)
-        )
-    ttk.Label(
-        bounds_frame,
-        text=f"Coördinaten in {settings.crs}; gebruik een punt voor decimalen.",
-        style="Hint.TLabel",
-    ).grid(row=2, column=0, columnspan=4, sticky="w", pady=4)
-
-    polygon_frame = ttk.Frame(selection)
-    polygon_frame.columnconfigure(0, weight=1)
-    polygon_path = tk.StringVar()
-    polygon_layer = tk.StringVar()
-    ttk.Entry(polygon_frame, textvariable=polygon_path, state="readonly").grid(
-        row=0, column=0, sticky="ew", padx=(0, 8)
-    )
-    layer_row = ttk.Frame(polygon_frame)
-    layer_row.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(8, 0))
-    ttk.Label(layer_row, text="Laag").pack(side="left", padx=(0, 8))
-    layer_input = ttk.Combobox(layer_row, textvariable=polygon_layer, state="readonly")
-    layer_input.pack(side="left", fill="x", expand=True)
-    ttk.Label(
-        polygon_frame,
-        text="Alle polygonen in deze laag vormen samen het gebied.",
-        style="Hint.TLabel",
-    ).grid(row=2, column=0, columnspan=2, sticky="w", pady=4)
-
-    def choose_polygon() -> None:
-        filename = filedialog.askopenfilename(
-            parent=root,
-            title="Polygoonbestand kiezen",
-            filetypes=[("GeoPackage of GeoJSON", "*.gpkg *.geojson *.json")],
-        )
-        if not filename:
-            return
-        try:
-            names = areas.area_file_layers(Path(filename))
-        except ValueError as error:
-            messagebox.showerror(
-                "Polygoonbestand niet bruikbaar", str(error), parent=root
-            )
-            return
-        polygon_path.set(str(Path(filename).resolve()))
-        layer_input.configure(values=names)
-        polygon_layer.set(names[0] if len(names) == 1 else "")
-
-    choose_button = ttk.Button(
-        polygon_frame, text="Bestand kiezen", command=choose_polygon
-    )
-    choose_button.grid(row=0, column=1)
-    if not hasattr(areas, "area_from_file"):
-        choose_button.state(["disabled"])
-        ttk.Label(
-            polygon_frame,
-            text="De geïnstalleerde versie ondersteunt polygoonbestanden nog niet.",
-            style="Hint.TLabel",
-        ).grid(row=3, column=0, columnspan=2, sticky="w")
-
-    def show_area() -> None:
-        for child in selection.winfo_children():
-            child.pack_forget()
-        widgets = {
-            "waterschap": authority_input,
-            "nederland": national_hint,
-            "bounds": bounds_frame,
-            "polygoon": polygon_frame,
-        }
-        widgets[mode.get()].pack(fill="x")
-
-    for label, value in (
-        ("Waterschap", "waterschap"),
-        ("Heel Nederland", "nederland"),
-        ("Eigen rechthoek", "bounds"),
-        ("Polygoonbestand", "polygoon"),
-    ):
-        ttk.Radiobutton(
-            modes, text=label, variable=mode, value=value, command=show_area
-        ).pack(side="left", padx=(0, 16))
-    selection.pack(fill="x")
-    show_area()
-    ttk.Label(
-        frame,
-        text="De gebiedsgrens selecteert de invoer; de uitvoer kan daarbuiten liggen.",
-        style="Hint.TLabel",
-    ).pack(anchor="w", pady=(8, 18))
-
-    ttk.Label(frame, text="2. Basislagen", style="Heading.TLabel").pack(anchor="w")
-    layers = {}
-    for layer, label in LAYERS.items():
-        layers[layer] = tk.BooleanVar(value=True)
-        ttk.Checkbutton(frame, text=label, variable=layers[layer]).pack(
-            anchor="w", pady=3
-        )
-
-    ttk.Label(frame, text="3. Uitvoering", style="Heading.TLabel").pack(
-        anchor="w", pady=(18, 8)
-    )
-    execution = ttk.Frame(frame)
-    execution.pack(fill="x")
-    execution.columnconfigure(0, weight=1)
-    run_id = tk.StringVar(
-        value=datetime.now(UTC).astimezone().strftime("proef-%Y%m%d-%H%M%S")
-    )
-    workers = tk.StringVar(value="8")
-    ttk.Label(execution, text="Runnaam").grid(row=0, column=0, sticky="w")
-    ttk.Label(execution, text="Workers").grid(row=0, column=1, sticky="w")
-    ttk.Entry(execution, textvariable=run_id).grid(
-        row=1, column=0, sticky="ew", padx=(0, 20)
-    )
-    ttk.Spinbox(execution, from_=1, to=256, textvariable=workers, width=7).grid(
-        row=1, column=1
-    )
-    resume = tk.BooleanVar(value=False)
-    refresh = tk.BooleanVar(value=False)
-
-    def toggle_resume() -> None:
-        if resume.get():
-            refresh.set(False)
-            refresh_input.state(["disabled"])
-        else:
-            refresh_input.state(["!disabled"])
-
-    ttk.Checkbutton(
-        frame, text="Hervatten", variable=resume, command=toggle_resume
-    ).pack(anchor="w", pady=(14, 0))
-    ttk.Label(
-        frame,
-        text="Hervat bestaande runs met dezelfde runnaam.",
-        style="Hint.TLabel",
-    ).pack(anchor="w", padx=23)
-    refresh_input = ttk.Checkbutton(
-        frame, text="Bronnen opnieuw ophalen", variable=refresh
-    )
-    refresh_input.pack(anchor="w", pady=(10, 0))
-    ttk.Label(
-        frame,
-        text="Alleen voor een nieuwe run. Niet samen met hervatten.",
-        style="Hint.TLabel",
-    ).pack(anchor="w", padx=23)
-
-    def read_plan() -> ScriptPlan:
-        if mode.get() == "waterschap":
-            arguments = ("--waterbeheercode", AUTHORITIES[authority.get()])
-        elif mode.get() == "nederland":
-            arguments = ("--area", "nederland")
-        elif mode.get() == "polygoon":
-            if not polygon_path.get():
-                raise ValueError("Kies een polygoonbestand.")
-            if not polygon_layer.get():
-                raise ValueError("Kies een polygoonlaag.")
-            arguments = (
-                "--area-file",
-                polygon_path.get(),
-                "--area-layer",
-                polygon_layer.get(),
-            )
-        else:
-            arguments = ("--bounds", *(value.get().strip() for value in bounds))
-        try:
-            worker_count = int(workers.get())
-        except ValueError:
-            raise ValueError("Vul voor workers een geheel getal in.") from None
-        options = RunSettings(
-            tuple(layer for layer in LAYERS if layers[layer].get()),
-            arguments,
-            run_id.get().strip(),
-            worker_count,
-            resume.get(),
-            refresh.get(),
-        )
-        return ScriptPlan(options.run_id, tuple(_commands(options)))
-
-    return read_plan
-
-
-def _window(project: Path) -> None:
-    open_window(
-        project,
-        _build_form,
-        title="Waterlagen · Runscript maken",
-        description="Kies je gebied en lagen. Sla het script op of start meteen.",
-    )
 
 
 def main() -> int:
@@ -389,7 +328,10 @@ def main() -> int:
     parser.add_argument("--run-id")
     parser.add_argument("--workers", type=int, default=8)
     parser.add_argument("--resume", action="store_true")
+    parser.add_argument("--overwrite", action="store_true")
+    parser.add_argument("--debug", action="store_true")
     parser.add_argument("--refresh-sources", action="store_true")
+    parser.add_argument("--brandlagen-config", type=Path)
     group = parser.add_mutually_exclusive_group()
     group.add_argument("--waterbeheercode")
     group.add_argument("--area", choices=[area.value for area in Area])
@@ -401,7 +343,9 @@ def main() -> int:
     if not (project / "pixi.toml").is_file():
         parser.error("Start vanuit de projectmap waar pixi.toml staat.")
     if not args.start:
-        _window(project)
+        from .browser_server import open_browser
+
+        open_browser(project)
         return 0
     if not args.run_id:
         parser.error("Geef een runnaam op met --run-id.")
@@ -426,6 +370,9 @@ def main() -> int:
                 args.workers,
                 args.resume,
                 args.refresh_sources,
+                args.brandlagen_config,
+                overwrite=args.overwrite,
+                debug=args.debug,
             ),
             project,
         )

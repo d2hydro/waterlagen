@@ -2,111 +2,34 @@
 editorial_status: ai
 ---
 
-# Aan de slag met Python
+# Waterlagen gebruiken in Python
 
-Stel een eigen workflow samen met de publieke Python-functies: bronnen ophalen,
-een selectie maken, bewerken en het resultaat verder gebruiken of opslaan.
-De voorbeelden tonen de afzonderlijke stappen en instelbare parameters.
-Voor een complete standaardproductie zijn er de
-[productiecommando's](../produceren/cli.md).
+<span id="losse-bronnen-en-bewerkingen"></span>
+<span id="het-voorbeeldgebied"></span>
+<span id="in-eigen-code-gebruiken"></span>
+<span id="voorbeeldscripts"></span>
 
-## Losse bronnen en bewerkingen
+Kies een voorbeeldscript:
 
-- [Bronlagen downloaden](bronlagen-downloaden.md): één script per bronlaag.
-- [Bewerkte lagen samenstellen](bewerkte-lagen-produceren.md): één workflow per laag.
-- [API-referentie](api.md): functies, parameters en teruggegeven resultaten,
-  opgebouwd uit de actuele modulecode.
+- [Een bron downloaden](bronlagen-downloaden.md), bijvoorbeeld AHN-hoogtetegels of BGT-waterdelen.
+- [Een kaartlaag berekenen](bewerkte-lagen-produceren.md), bijvoorbeeld functioneel landgebruik of afwateringseenheden.
 
-## Voorbereiden
+??? info "Een gedownload script uitvoeren"
 
-Gebruik een geïnstalleerde [productieomgeving](../produceren/installatie.md)
-of de [ontwikkelomgeving](../bijdragen/ontwikkelomgeving.md).
-Download het gewenste `.py`-bestand vanaf de voorbeeldpagina en plaats het
-in de map met `pixi.toml`. Pas bovenaan het script `DATA_DIR` aan naar de
-gewenste gegevensmap. Alle voorbeelden gebruiken daar dezelfde submappen
-`source_data` en `processed_data`, zodat bronnen kunnen worden hergebruikt.
-Pas ook de gebiedskeuze, rekeninstellingen en experimentnaam aan. De invoer
-en tussenresultaten staan expliciet in het script: vervang bijvoorbeeld een
-downloadaanroep door een pad naar een eigen bestand met hetzelfde schema.
+    <span id="een-script-uitvoeren"></span>
+    <span id="voorbereiden"></span>
 
-De voorbeelden horen bij de moduleversie waarmee deze documentatie is gebouwd.
-Gebruik bij een oudere release de bijbehorende voorbeelden of werk de installatie bij.
+    1. Sla het script op naast `pixi.toml` in het [geïnstalleerde productiepakket](../produceren/installatie.md).
+    2. Open een terminal in die map en voer het script uit. Voor [download_bgt.py](voorbeelden/download_bgt.py) is de opdracht:
 
-## Een script uitvoeren
+    ```console
+    pixi run --locked python download_bgt.py
+    ```
 
-Open een terminal in de map met `pixi.toml` en het gedownloade `.py`-bestand.
-Het downloaden van het script haalt nog geen brongegevens op; dat gebeurt
-wanneer u het script uitvoert. `pixi run` kiest zelf de standaardomgeving,
-dus u hoeft die niet vooraf te activeren. Gebruik in het releasepakket `--locked`.
+    Voor een ander script vervangt u `download_bgt.py` door de bestandsnaam.
 
-Begin bijvoorbeeld met het BGT-voorbeeld. Dat vraagt alleen waterdelen en panden
-voor het voorbeeldgebied op:
+<span id="api-referentie"></span>
 
-```console
-pixi run --locked python download_bgt.py
-```
+Parameters, standaardwaarden en resultaten per functie vindt u in de [API-referentie](api.md).
 
-Een bewerkte laag maakt u bijvoorbeeld met:
-
-```console
-pixi run --locked python produceer_autos.py
-```
-
-Vanuit een repositorycheckout staan de scripts onder `docs/reference/voorbeelden/`:
-
-```console
-pixi run python docs/reference/voorbeelden/download_bgt.py
-pixi run python docs/reference/voorbeelden/produceer_autos.py
-```
-
-Afwateringseenheden vereist PCRaster. Gebruik daarvoor vanuit de repository:
-
-```console
-pixi run --environment afwateringseenheden python docs/reference/voorbeelden/produceer_afwateringseenheden.py
-```
-
-In het productiepakket is PCRaster onderdeel van de productieomgeving; gebruik
-daar `pixi run --locked python produceer_afwateringseenheden.py`.
-
-## Het voorbeeldgebied
-
-Waar een gebiedsselectie mogelijk is, gebruiken alle scripts **Alkmaar-centrum**
-(`alkmaar_centrum`). Dat is een selectie van 1 × 1 km. Het landgebruikvoorbeeld
-berekent deze rechthoek; het DEM volgt dat raster. Afwateringseenheden gebruikt
-een kerntegel van 1 km met buffer en knipt het samengevoegde resultaat op het
-gebied. Inwoners en auto's behouden complete CBS-buurten met alle woon-VBO's.
-Dit zijn eigen workflows; de [standaardproductie](../produceren/cli.md#gebieden)
-gebruikt grotere tegels en behoudt de volledige tegelkernen.
-
-Een klein voorbeeldgebied betekent niet dat alle voorbeelden snel klaar zijn.
-BAG, TOP10NL en andere bronnen worden landelijk gedownload. Ook de voorbereiding
-van BAG/CBS is landelijk. Op iedere voorbeeldpagina staat welke gegevens nodig
-zijn; de volledige productie kan veel schijfruimte, geheugen en tijd vragen.
-
-## In eigen code gebruiken
-
-Importeer de benodigde functies uit `waterlagen`. De scripts bevatten geen
-extra `main()`-functie. Instellingen staan bovenaan, gevolgd door de stappen
-binnen `if __name__ == "__main__":`. Dat blok voorkomt dat importeren de
-workflow start en maakt multiprocessing veilig, ook op Windows.
-
-In een notebook kunt u de imports, instellingen en stappen als losse cellen
-gebruiken. Laat daarbij de buitenste `__main__`-voorwaarde en de bijbehorende
-inspringing weg. Begin met één werkproces; start parallelle workflows vanuit
-het script. Bekijk tussenresultaten voordat u ze aan de volgende functie doorgeeft.
-
-`production_logging()` toont de voortgang en herstelt na afloop de eerdere
-loggingconfiguratie. De voorbeelden hergebruiken bronbestanden en schrijven
-naar `data/processed_data/voorbeelden/alkmaar_centrum/<experiment>/`.
-Kies een nieuwe experimentnaam bij gewijzigde invoer of rekeninstellingen:
-de losse functies bieden niet dezelfde bewaking van wijzigingen als de
-[productie-API](productie.md). Een bestaand bestand kan worden hergebruikt
-zonder dat gewijzigde parameters opnieuw worden toegepast.
-
-## Verdelingen controleren
-
-Voor het controleren van resultaten zijn ook
-`waterlagen.vbo_buurt.statistiek.lees_verdelingstatistieken` en de
-[BAG-controlefuncties](functioneel_landgebruik.md) beschikbaar.
-Vergelijk regionale verdelingen alleen met de bijbehorende CBS-buurten:
-de standaardstatistiek leest landelijke CBS-totalen.
+Een standaardkaart maken zonder Python te schrijven? Gebruik de [Run Maker](../produceren/index.md).

@@ -21,7 +21,8 @@ from zipfile import BadZipFile, ZipFile
 REPOSITORY = "d2hydro/waterlagen"
 METADATA = "productiepakket.json"
 PENDING = ".bijwerken-herstel.json"
-UPDATER_FILES = ("code_bijwerken.py", "code_bijwerken.cmd", "code_bijwerken.sh")
+UPDATER_FILES = ("tools/code_bijwerken.py", "code_bijwerken.bat", "code_bijwerken.sh")
+ROOT_UPDATER_FILES = ("code_bijwerken.py", "code_bijwerken.cmd", "code_bijwerken.sh")
 LEGACY_UPDATER_FILES = ("bijwerken.py", "bijwerken.cmd", "bijwerken.sh")
 BASE_FILES = (
     "pixi.toml",
@@ -35,17 +36,40 @@ BASE_FILES = (
     "scripts/inwoners.py",
 )
 RUNSCRIPT_FILES = (
-    "runscript_maken.py",
-    "runscript-maken.cmd",
+    "tools/runscript_maken/web/LUCIDE-LICENSE.txt",
+    "tools/runscript_maken/browser_app.py",
+    "tools/runscript_maken/browser_server.py",
+    "tools/runscript_maken/map_data.py",
+    "tools/runscript_maken/map_tiles.py",
+    "tools/runscript_maken/native_dialogs.py",
+    "tools/runscript_maken/web/app.js",
+    "tools/runscript_maken/web/appearance.json",
+    "tools/runscript_maken/web/D3-LICENSE.txt",
+    "tools/runscript_maken/web/d3.min.js",
+    "tools/runscript_maken/web/favicon.png",
+    "tools/runscript_maken/web/index.html",
+    "tools/runscript_maken/web/style.css",
+    "tools/runscript_maken.py",
+    "run-maken.bat",
     "tools/runscript_maken/__init__.py",
     "tools/runscript_maken/script.py",
     "tools/runscript_maken/window.py",
     "tools/runscript_maken/waterlagen.py",
+    "tools/runscript_maken/waterlagen_options.py",
+    "tools/runscript_maken/waterlagen_runfile.py",
+    "tools/runscript_maken/brandlagen.py",
+    "docs/reference/voorbeelden/brandlagen.toml",
+    "docs/icons/logo.png",
+    "docs/icons/favicon.png",
 )
 MANAGED_FILES = (
     *BASE_FILES,
     *UPDATER_FILES,
     *LEGACY_UPDATER_FILES,
+    *ROOT_UPDATER_FILES,
+    "runscript_maken.py",
+    "runscript-maken.cmd",
+    "runscript-maken.bat",
     *RUNSCRIPT_FILES,
     METADATA,
 )
@@ -299,14 +323,28 @@ def _restore(root: Path) -> None:
 
 
 def _apply(root: Path, files: dict[str, bytes]) -> None:
-    # De oude namen verdwijnen zodra de release de nieuwe namen bevat.
-    obsolete = []
+    # Oude starters verdwijnen zodra hun vervangers zijn meegeleverd.
+    obsolete_names = set()
     if set(UPDATER_FILES).issubset(files):
-        obsolete = [
-            name
-            for name in LEGACY_UPDATER_FILES
-            if name not in files and _target(root, name).exists()
-        ]
+        obsolete_names.update(LEGACY_UPDATER_FILES)
+        obsolete_names.update(("code_bijwerken.py", "code_bijwerken.cmd"))
+    elif set(ROOT_UPDATER_FILES).issubset(files):
+        obsolete_names.update(LEGACY_UPDATER_FILES)
+    if "tools/runscript_maken.py" in files:
+        obsolete_names.add("runscript_maken.py")
+    if "run-maken.bat" in files:
+        obsolete_names.update(("runscript-maken.cmd", "runscript-maken.bat"))
+    elif "runscript-maken.bat" in files:
+        obsolete_names.add("runscript-maken.cmd")
+    metadata = root / METADATA
+    previous_files = {}
+    if metadata.is_file():
+        previous_files = json.loads(metadata.read_text(encoding="utf-8"))["files"]
+    obsolete = sorted(
+        name
+        for name in obsolete_names
+        if name in previous_files and name not in files and _target(root, name).exists()
+    )
     backup_root = root / ".updates"
     if not backup_root.resolve().is_relative_to(root):
         raise ValueError("De herstelmap verwijst buiten de projectmap")
@@ -349,7 +387,7 @@ def update(root: Path, *, version: str | None = None, yes: bool = False) -> None
     root = root.resolve()
     if Path(sys.prefix).resolve().is_relative_to(root / ".pixi"):
         raise RuntimeError(
-            "Start de updater via code_bijwerken.cmd of code_bijwerken.sh, buiten de productieomgeving"
+            "Start de updater via code_bijwerken.bat of code_bijwerken.sh, buiten de productieomgeving"
         )
     _manifest_version((root / "pixi.toml").read_bytes())
     with _update_lock(root):
@@ -377,9 +415,10 @@ def update(root: Path, *, version: str | None = None, yes: bool = False) -> None
         _check_idle(root)
         print("Productiepakket downloaden...", flush=True)
         files = _bundle(tag)
-        has_updater = set(UPDATER_FILES).issubset(files) or set(
-            LEGACY_UPDATER_FILES
-        ).issubset(files)
+        has_updater = any(
+            set(names).issubset(files)
+            for names in (UPDATER_FILES, ROOT_UPDATER_FILES, LEGACY_UPDATER_FILES)
+        )
         if not {*BASE_FILES, METADATA}.issubset(files) or not has_updater:
             raise ValueError("Deze release ondersteunt automatisch bijwerken nog niet")
         _check_local_files(root, current, files)
@@ -398,7 +437,10 @@ def main() -> int:
     )
     args = parser.parse_args()
     try:
-        update(Path(__file__).resolve().parent, version=args.versie, yes=args.ja)
+        project = Path(__file__).resolve().parent
+        if project.name == "tools":
+            project = project.parent
+        update(project, version=args.versie, yes=args.ja)
     except (
         OSError,
         ValueError,

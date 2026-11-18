@@ -57,7 +57,7 @@ def production_parser(
     )
     selection.add_argument(
         "--waterbeheercode",
-        help="Waterschapscode als gebiedsselectie; bij afwateringseenheden ook selectie van doelen",
+        help="Eén of meer waterschapscodes met komma's, bijvoorbeeld 12,13; samen één gebied en bij afwateringseenheden ook selectie van doelen",
     )
     parser.add_argument(
         "--data-dir", type=Path, help="Gegevensmap; standaard uit DataStore/.datastore"
@@ -142,7 +142,7 @@ def run_cli(
     with production_logging(debug=debug):
         try:
             result = workflow(data_store=DataStore(**options), **arguments)
-        except Exception:  # noqa: BLE001 - application boundary reports errors with a nonzero exit
-            get_logger(__name__).exception("Productie mislukt")
+        except Exception as error:  # noqa: BLE001 - application boundary reports errors with a nonzero exit
+            get_logger(__name__).error("Productie gestopt: %s", error, exc_info=debug)
             raise SystemExit(1) from None
         get_logger(__name__).info("Productie voltooid: %s", result)

@@ -32,7 +32,7 @@ from waterlagen.settings import settings
 from .config import BrandlagenConfig, _brand_number
 
 logger = get_logger(__name__)
-BRAND_POLICY = "relative_priority_abs_sources_polygon_touch_v3"
+BRAND_POLICY = "direct_optional_burn_without_roles_v4"
 BRAND_LAYER = "brandlagen"
 SOURCE_COLUMNS = ["bronbestand", "bronlaag", "bron_fid"]
 
@@ -63,6 +63,8 @@ def _digest(values: object) -> str:
 def _brand_identity(config: BrandlagenConfig | None) -> dict:
     """Track configured sources, SQLite edits, defaults and the burn policy."""
     config = config or BrandlagenConfig()
+    if any(layer.path is None for layer in config.lagen):
+        raise ValueError("Openbare bron eerst voorbereiden met prepare_brand_sources")
     return {
         "policy": BRAND_POLICY,
         "crs": format_crs(settings.crs),
@@ -76,13 +78,7 @@ def _brand_identity(config: BrandlagenConfig | None) -> dict:
                 "layer": layer.layer,
                 "brandwaarde": layer.brandwaarde,
                 "prioriteit": layer.prioriteit,
-                "rol": layer.rol,
                 "bron": layer.bron,
-                **(
-                    {"openbare_bron": layer.openbare_bron}
-                    if layer.openbare_bron
-                    else {}
-                ),
             }
             for layer in config.lagen
         ],
@@ -123,6 +119,10 @@ def _read_brandlagen(
     for source_code, source in enumerate(config.lagen, start=3):
         label = f"{source.path} / {source.layer}"
         try:
+            if source.path is None:
+                raise ValueError(
+                    "Openbare bron eerst voorbereiden met prepare_brand_sources"
+                )
             info = pyogrio.read_info(source.path, layer=source.layer)
             if info["crs"] is None:
                 raise ValueError("layer has no CRS")
@@ -179,7 +179,6 @@ def _read_brandlagen(
                         "bronbestand": str(source.path),
                         "bronlaag": source.layer,
                         "bron_fid": int(fid),
-                        "rol": source.rol,
                         "bron": source.bron,
                         "geometry": force_2d(geometry),
                     }
@@ -380,8 +379,6 @@ def _optional_burn_raster(
     if prepared is None:
         return empty
     features = wgpd.read_file(prepared.path, layer=BRAND_LAYER, bbox=grid.bounds)
-    if "rol" in features:
-        features = features.loc[features.rol != "duiker"].copy()
     if features.empty:
         return empty
     del empty

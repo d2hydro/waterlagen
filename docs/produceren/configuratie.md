@@ -6,176 +6,25 @@ editorial_status: ai
 
 ## Beginnen zonder instellingen
 
-**U hoeft niets in te stellen.** Het productiepakket bevat al een bestand
-`.datastore` met `DATA_DIR=./data`. Daardoor maakt Waterlagen automatisch een
-map `data` aan in uw projectfolder
-
-- `data/source_data`: gedownloade brongegevens;
-- `data/processed_data`: verwerkte resultaten.
-
-Open PowerShell in uw projectfolder,
-waar `pixi.toml` en `pixi.lock` staan.
-Controleer de installatie en de gebruikte gegevensmap met:
-
-```powershell
-pixi run --locked controleer
-```
-
-Kies daarna een productie bij [Zelf produceren](index.md).
-
-## Productiemappen
-
-De huidige productiescripts voor `autos`, `inwoners`, `afwateringseenheden` en
-`functioneel_landgebruik` en `dem` gebruiken één conventie:
-
-```text
-processed_data/<dataset>/<werkgebied>/<run-id>/
-```
-
-Alle vijf producten ondersteunen `nederland`, `alkmaar`, `alkmaar_centrum` en
-`waterschap_<code>`.
-Zie [gebieden en CLI-opties](cli.md) voor hun betekenis.
-
-Bij `--bounds` heet de gebiedsmap `xmin_ymin_xmax_ymax`, bijvoorbeeld
-`184285_392054_185285_393054`. Deze naam gebruikt de ingevoerde grenzen,
-niet de geselecteerde tegelkernen. Gehele waarden krijgen geen `.0`;
-equivalente invoer krijgt dezelfde mapnaam. Geometrie en CRS worden daarnaast
-in de runidentiteit vastgelegd.
-
-Zonder opties maakt iedere opdracht een nieuwe run met een UTC-tijdstempel
-`YYYYMMDDTHHMMSSZ`. Die tijd duidt de productie aan, niet het peiljaar van de
-bron. Een opdracht verwerkt een gebied. Een naamconflict geeft een foutmelding;
-een bestaande map wordt nooit stilzwijgend hergebruikt.
-
-Deze scripts accepteren dezelfde opties:
-
-| Optie | Gedrag |
-| --- | --- |
-| `--run-id NAAM` | Maak een nieuwe run met een eigen naam, bijvoorbeeld `20260925T120000Z_alternatieve_mapping`. |
-| `--run-id NAAM --resume` | Hervat die bestaande run en hergebruik aanwezige resultaten waar de workflow dat ondersteunt. |
-| `--run-id NAAM --overwrite` | Bereken de uitvoer in die bestaande run opnieuw, met dezelfde instellingen en bronnen. |
-
-Gebruik voor een naam 1–100 letters, cijfers, underscores of koppeltekens,
-beginnend met een letter of cijfer; geef geen pad op. `--resume` en `--overwrite`
-vereisen een expliciete run-ID en kunnen niet samen worden gebruikt.
-
-Bijvoorbeeld, vanuit de repositoryhoofdmap:
-
-```console
-pixi run python scripts/functioneel_landgebruik.py --run-id proef
-pixi run python scripts/functioneel_landgebruik.py --run-id proef --resume
-pixi run python scripts/functioneel_landgebruik.py --run-id proef --overwrite
-```
-
-De uitvoermap wordt bij aanvang gelogd. `productie.log` en `run.json` staan bij
-de resultaten. `run.json` registreert de geïnstalleerde pakketversie,
-rekeninstellingen, bronpaden, bronidentiteit en de status `running`, `complete`
-of `failed`. Landgebruik bewaart daarnaast de CSV en registreert zijn SHA-256.
-Herstarten met andere instellingen, een andere pakketversie, gewijzigde
-bronbestanden of een andere mapping vereist een **nieuwe run-ID**, ook met
-`--overwrite`. Het aantal workers mag bij hervatten wel veranderen.
-
-Voor grote bronbestanden vergelijkt de controle pad, grootte en wijzigingstijd;
-het is geen volledige inhoudscontrole. Lokale VRT's worden op inhoud en hun
-bronverwijzingen gecontroleerd. Codewijzigingen binnen dezelfde pakketversie
-worden niet automatisch herkend: kies daarvoor zelf een nieuwe run-ID.
-Een achtergebleven `.run.lock` mag alleen worden verwijderd als er geen
-productie meer actief is.
-
-Downloads en gedeelde tussenproducten, zoals `processed_data/vbo_buurt`, blijven
-op hun bestaande locaties en worden niet per run gekopieerd. De runcontrole
-registreert die bestanden, maar vervangt hun eigen cachevoorwaarden niet.
-De volledige producties vergelijken bronidentiteiten en vernieuwen afhankelijke
-bronvoorbereiding bij gewijzigde invoer. `--refresh-sources` vernieuwt bronnen
-voor een nieuwe run; `--overwrite` betreft alleen uitvoer. Een afgeleide cache
-zonder opgeslagen bronidentiteit wordt bij aanwezige ruwe invoer eenmalig
-opnieuw opgebouwd om later wijzigingen te kunnen herkennen.
-
-Bestaande uitvoermappen worden niet verplaatst of automatisch als nieuwe run
-overgenomen. De Python-pakketfuncties en vaste `DataStore`-paden blijven
-beschikbaar voor bestaande workflows. Geef in vervolganalyses expliciet de
-resultaten van de gewenste run op. Een uitzondering is [DEM-productie](dem.md):
-die ontdekt een geschikte landgebruikproductie en legt de keuze vast voor hervatten.
-Deze conventie geldt voor de huidige scripts; oudere gedownloade
-productiepakketten kunnen nog de eerdere mapindeling gebruiken.
-
-## Openbare brandbronnen
-
-Bij [afwateringseenheden](afwateringseenheden.md#test-met-eigen-gebied-en-brandlagen)
-kiest `openbare_bron` in de TOML voor automatische bronvoorbereiding. De
-bijbehorende JSON-bestanden leggen herkomst, bestandsidentiteit en dekking vast.
-Een bron is herbruikbaar als die gegevens en de benodigde laag passen; ook
-aantoonbaar ruimere dekking kan worden hergebruikt.
-
-`path` geeft het gewenste bronbestand aan. Een bestaand bestand zonder passende
-herkomstmetadata blijft behouden. In dat geval wordt een afzonderlijke beheerde
-broncache gebruikt; het productielog vermeldt het werkelijk gebruikte pad.
-Ook een gewijzigd bestand in die cache wordt niet stilzwijgend vervangen.
-Zonder `openbare_bron` blijft het opgegeven bestand eigen lokale invoer.
-
-Bewaar bronnen en hun JSON-bestanden samen. Wijzigingen in bronbestanden maken
-afhankelijke voorbereidingen ongeldig. Bij hervatten moeten de passende bronnen
-en metadata nog beschikbaar zijn: er wordt dan niets opnieuw voorbereid.
-Zie [productiemappen](#productiemappen) voor de runcompatibiliteit.
+Standaard staan downloads in `data/source_data/` en resultaten in `data/processed_data/` onder de projectmap.
 
 ## Gegevens ergens anders bewaren
 
-Wilt u bijvoorbeeld een andere schijf gebruiken omdat daar meer ruimte is?
-Dan kunt u de opslaglocatie opgeven in **`.datastore`**. Dat is een gewoon
-tekstbestand met instellingen, geen map en geen Python-script.
-De naam begint met een punt en heeft geen `.txt` erachter.
-
-1. Open uw projectfolder in VS Code.
-2. Open het meegeleverde bestand **`.datastore`**, direct naast
-   `pixi.toml` en `pixi.lock`.
-3. De instelling voor de standaardmap ziet er zo uit:
-
-    ```text
-    DATA_DIR=./data
-    ```
-
-   `./data` verwijst naar `data` in uw projectfolder.
-   Wilt u gegevens ergens anders bewaren, vervang dan `./data` door het
-   volledige pad naar de gewenste opslagmap. Laat `DATA_DIR=` staan.
-
-4. Sla het bestand op als **UTF-8 zonder BOM** (in VS Code heet dit `UTF-8`).
-5. Start uw script opnieuw vanuit uw projectfolder.
-
-Met `DATA_DIR=./data` blijft de opslaglocatie `<projectfolder>/data`.
-Bij een ander pad komen `source_data` en
-`processed_data` onder die gekozen opslagmap. Uw Pixi-bestanden, `.datastore`
-en scripts blijven in uw projectfolder staan:
+Open `.datastore` naast `pixi.toml` in een teksteditor. Vervang `./data` door uw eigen map, bijvoorbeeld:
 
 ```text
-<projectfolder>/
-├── pixi.toml
-├── pixi.lock
-├── .datastore              # meegeleverd: bevat de gekozen opslaglocatie
-└── scripts/
-    └── afwateringseenheden.py
+DATA_DIR=D:/waterdata
 ```
 
-U hoeft `.datastore` niet zelf te openen of uit te voeren bij elke start.
-Waterlagen leest het automatisch uit de map van waaruit u de opdracht uitvoert.
-Zet het daarom in uw projectfolder, boven de submap `scripts`.
+Sla op als UTF-8 zonder BOM en start de volgende productie. Om bestaande gegevens te blijven gebruiken, moet u ze zelf naar de nieuwe locatie verplaatsen. Met `SOURCE_DATA_DIR` en `PROCESSED_DATA_DIR` kunt u bron en uitvoer apart instellen. Gelijknamige omgevingsvariabelen hebben voorrang.
 
-**Bestaande gegevens worden niet automatisch verplaatst.** Als u een andere
-opslaglocatie kiest, blijven eerdere downloads op hun oude plek staan.
-Gebruik steeds dezelfde opslaglocatie om downloads te hergebruiken.
+## Productiemappen
 
-??? info "Meer instellingen en technische details"
-    Met `SOURCE_DATA_DIR` en `PROCESSED_DATA_DIR` kunt u brongegevens en
-    resultaten afzonderlijke opslaglocaties geven. Omgevingsvariabelen met
-    dezelfde namen hebben voorrang op de instellingen in `.datastore`.
+Elke productie heeft een eigen map: `processed_data/<product>/<gebied>/<run-id>/`. Bekijk `run.json` voor de status en instellingen en `productie.log` voor het verloop. Gebruik een nieuwe runnaam bij gewijzigde invoer, softwareversie of rekeninstellingen. Bewaar de tussenbestanden om te kunnen hervatten.
 
-    Neem geen `.env` over uit een ontwikkelomgeving met nieuwere workflows.
-    Voor de meegeleverde producties hoeft u geen `.env` te maken. Bij
-    [afwateringseenheden](afwateringseenheden.md) stelt u het aantal
-    werkprocessen zo nodig in met `--workers`.
+## Openbare brandbronnen
 
-    In de Python-code heet het onderdeel dat de opslaglocaties beheert
-    `DataStore`. De [API-referentie](../reference/datastore.md) beschrijft de
-    huidige broncode en kan nieuwer zijn dan uw gedownloade release.
+BGT en OSM worden per gebied bewaard; TOP10NL wordt landelijk gedeeld. Het productielog vermeldt het gebruikte pad. Houd de bronbestanden en hun JSON bij elkaar, ook voor hervatten. [Brandlagen kiezen](afwateringseenheden.md#test-met-eigen-gebied-en-brandlagen)
 
 ## Workers voor landgebruik en DEM
 

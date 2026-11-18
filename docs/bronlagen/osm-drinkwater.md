@@ -9,9 +9,11 @@ editorial_status: ai
 Waterlagen gebruikt beoordeelde OpenStreetMap-vlakken van
 drinkwaterzuiveringen om BAG-panden aan deze locaties te koppelen.
 
-## Leverancier
+<span id="leverancier"></span>
 
-OpenStreetMap-bijdragers. Waterlagen leest de gegevens via de Overpass API.
+## Herkomst
+
+OpenStreetMap-bijdragers onderhouden de kaartobjecten. De selectie wordt opgehaald via de Overpass API.
 
 ## Dataset of service
 
@@ -26,8 +28,8 @@ OSM-ID en controledatum.
 
 De vlakken worden gebruikt bij
 [functioneel landgebruik](../bewerkte-lagen/functioneel-landgebruik.md).
-Voor het aanmaken van het GeoPackage zie
-[Functioneel landgebruik produceren](../produceren/landgebruik.md).
+
+[Functioneel landgebruik produceren](../produceren/landgebruik.md){ .md-button }
 
 ## Externe verwijzingen
 

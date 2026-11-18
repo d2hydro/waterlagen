@@ -104,11 +104,19 @@ def read_landsgrens(
     year: int = DEFAULT_BESTUURLIJKE_GEBIEDEN_YEAR,
     path: Path | None = None,
 ) -> gpd.GeoDataFrame:
-    """Read the national boundary from the downloaded landgebied layer.
+    """Lees de landsgrens uit een lokaal GeoPackage.
 
-    This function never downloads data. Use
-    :func:`download_bestuurlijke_gebieden` before calling it when the source
-    GeoPackage is not available locally.
+    Parameters
+    ----------
+    year : int
+        Jaargang van de lokaal opgeslagen bestuurlijke gebieden. Wordt gebruikt als path ontbreekt.
+    path : pathlib.Path, optional
+        Eigen GeoPackage met de laag landgebied.
+
+    Returns
+    -------
+    geopandas.GeoDataFrame
+        De attributen en geometrie uit de laag landgebied.
     """
     return read_bestuurlijke_gebieden_layer(
         LANDSGRENS_LAYER,

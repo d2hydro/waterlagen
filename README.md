@@ -46,7 +46,7 @@ De volgende bewerkingen zijn beschikbaar:
 
 * Dichtinterpoleren van AHN DTM
 * Branden van BAG-panden op basis van AHN-hoogte
-* Productie van lagen voor de waterschadeschatter (functioneel_landgebruik, inwoners en autos)
+* Lagen voor de nieuwe WaterSchadeSchatter: auto's (punten), DEM (WSWO, raster), functioneel landgebruik (raster) en inwoners (punten)
 * Afwateringseenheden
 
 Lees verder in de [documentatie](https://d2hydro.github.io/waterlagen/bewerkte-lagen/)
