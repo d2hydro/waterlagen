@@ -27,7 +27,7 @@ if TYPE_CHECKING:
 TEMPLATE = (
     Path(__file__).resolve().parents[2] / "docs/reference/voorbeelden/brandlagen.toml"
 )
-HELP_URL = "https://d2hydro.github.io/waterlagen/produceren/afwateringseenheden/#test-met-eigen-gebied-en-brandlagen"
+HELP_URL = "https://d2hydro.github.io/waterlagen/produceren/afwateringseenheden/#extra-brandlagen-kiezen"
 LABELS = {
     "bgt_waterdelen": "BGT – water",
     "bgt_duikers": "BGT – duikers",

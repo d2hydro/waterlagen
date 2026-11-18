@@ -7,10 +7,10 @@ editorial_status: ai
 
 Kies **Functioneel landgebruik** in de [Run Maker](index.md). Ook voor een klein gebied kunnen landelijke bronbestanden nodig zijn. Zorg dat de BAG-bronmap schrijfbaar is voor de pandindex.
 
-<span id="vooraf"></span>
-<span id="starten"></span>
-
 ??? info "Een eigen BGT-bestand of gebouwcontext gebruiken?"
+
+    <span id="vooraf"></span>
+    <span id="starten"></span>
 
     Een eigen BGT-GeoPackage moet de voorbereide wegdelen, ondersteunende wegdelen, begroeide en onbegroeide terreindelen en waterdelen met einddatumvelden bevatten. [BGT-vlakken voorbereiden](bgt-vlakken.md)
 

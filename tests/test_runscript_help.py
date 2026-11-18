@@ -26,15 +26,15 @@ def test_manual_page_and_section_still_exist(key):
         f"Werk de handleidinglink voor {key} bij en behoud het oude adres."
     )
     if help_text.section:
-        headings = re.findall(
-            r"^#+ (.+)$", path.read_text(encoding="utf-8"), re.MULTILINE
-        )
+        markdown = path.read_text(encoding="utf-8")
+        headings = re.findall(r"^#+ (.+)$", markdown, re.MULTILINE)
         anchors = {
             re.sub(r"[^a-z0-9 -]", "", heading.lower()).replace(" ", "-")
             for heading in headings
         }
+        anchors.update(re.findall(r'<span id="([^"]+)"></span>', markdown))
         assert help_text.section in anchors, (
-            f"Het kopje voor {key} ontbreekt: {help_text.url}"
+            f"Het anker voor {key} ontbreekt: {help_text.url}"
         )
 
 

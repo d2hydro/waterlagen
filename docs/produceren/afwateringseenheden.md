@@ -53,9 +53,9 @@ Ga bij de extra opties naar **Brandlagen instellen**. Maak een nieuwe TOML of ki
 [Download een voorbeeld-TOML](../reference/voorbeelden/brandlagen.toml){ .md-button .md-button--primary download="brandlagen.toml" }
 [Hoogte en voorrang bij overlap](../bewerkte-lagen/afwateringseenheden.md#optionele-brandlagen){ .md-button }
 
-<span id="dem-resampling-kiezen"></span>
-
 ??? info "De hoogte per rekencel kiezen"
+
+    <span id="dem-resampling-kiezen"></span>
 
     Standaard gebruikt het rekenraster de laagste AHN-waarde (`min`) per cel van 2 × 2 meter. Met een andere methode kunnen ook de afwateringsgrenzen veranderen. Kies daarvoor een nieuwe runnaam.
 

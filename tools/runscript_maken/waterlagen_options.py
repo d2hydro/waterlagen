@@ -66,8 +66,7 @@ EXTRA_OPTIONS = {
             "Eigen landgebruikscodetabel (.csv)",
             HelpText(
                 "Gebruik een eigen tabel voor de indeling en kleuren van landgebruik.",
-                "landgebruik",
-                "de-codetabel-aanpassen",
+                "landgebruik-codetabel",
             ),
             "file",
             file_pattern="*.csv",
@@ -236,7 +235,7 @@ EXTRA_OPTIONS = {
             HelpText(
                 "Open, maak of bewerk de instellingen voor extra brandlagen.",
                 "afwateringseenheden",
-                "test-met-eigen-gebied-en-brandlagen",
+                "extra-brandlagen-kiezen",
             ),
             "toml",
             file_pattern="*.toml",
