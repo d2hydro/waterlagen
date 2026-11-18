@@ -7,6 +7,7 @@ import threading
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import Mock
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
@@ -379,7 +380,12 @@ def test_another_file_after_unsuitable_area(http_server, application, tmp_path, 
 
 def test_native_dialog_recovers_after_cancel_and_error(tmp_path, monkeypatch):
     native = importlib.import_module("runscript_tool_tests.native_dialogs")
-    root = native.tk.Tk()
+    try:
+        root = native.tk.Tk()
+    except native.tk.TclError as error:
+        if "display" not in str(error).lower():
+            raise
+        pytest.skip("Voor de venstercontrole is een grafisch scherm nodig")
     root.withdraw()
     dialogs = native.NativeDialogs(root, tmp_path)
     monkeypatch.setattr(dialogs, "_call", lambda action: action())
@@ -411,6 +417,25 @@ def test_native_dialog_recovers_after_cancel_and_error(tmp_path, monkeypatch):
         assert all(not owner.winfo_exists() for owner in owners)
     finally:
         root.destroy()
+
+
+def test_file_dialog_disposes_owner_after_cancel_and_error(tmp_path, monkeypatch):
+    native = importlib.import_module("runscript_tool_tests.native_dialogs")
+    dialogs = native.NativeDialogs(Mock(), tmp_path)
+    owners = [Mock(), Mock(), Mock()]
+    monkeypatch.setattr(native.tk, "Toplevel", Mock(side_effect=owners))
+    monkeypatch.setattr(dialogs, "_call", lambda action: action())
+    selected = tmp_path / "gebied.gpkg"
+    choose = Mock(side_effect=["", OSError("Geen toegang"), str(selected)])
+    monkeypatch.setattr(native.filedialog, "askopenfilename", choose)
+
+    assert dialogs.open("Gebied", "*.gpkg") is None
+    with pytest.raises(OSError, match="Geen toegang"):
+        dialogs.open("Gebied", "*.gpkg")
+    assert dialogs.open("Gebied", "*.gpkg") == selected
+    assert [call.kwargs["parent"] for call in choose.call_args_list] == owners
+    for owner in owners:
+        owner.destroy.assert_called_once_with()
 
 
 def test_native_dialog_rejects_second_request_and_accepts_retry(monkeypatch):
