@@ -59,11 +59,14 @@ function svgElement(tag, attrs, parent) {
 const geo = q("#rm-geography"),
   drawing = q("#rm-drawing");
 const country = svgElement("path", { d: path(data.country), class: "country" }, geo);
+const boundaryCasings = svgElement("g", { "aria-hidden": "true", "pointer-events": "none" }, geo);
 const paths = new Map();
 for (const f of features) {
+  const outline = path(f);
+  svgElement("path", { d: outline, class: "authority-casing" }, boundaryCasings);
   const el = svgElement(
     "path",
-    { d: path(f), class: "authority", "data-code": f.properties.code },
+    { d: outline, class: "authority", "data-code": f.properties.code },
     geo,
   );
   const title = svgElement("title", {}, el);
@@ -915,7 +918,6 @@ function renderDrawingControls() {
     svgElement("polyline", { id: "rm-drawing-guide", points: "", class: "drawing-guide" }, drawing);
   }
 }
-setBackground("streets");
 let selectionExpanded = false;
 const selectionCard = q(".selection");
 const selectionIcon = document.createElement("span");
@@ -1027,7 +1029,7 @@ selectionToggle.onclick = () => {
 new ResizeObserver(updateSelectionDetails).observe(selectionCard);
 
 // Haal alleen tegels op voor het zichtbare kaartgebied.
-const liveTiles = svgElement("g", { "pointer-events": "none" }, geo);
+const liveTiles = svgElement("g", { class: "map-tiles", "pointer-events": "none" }, geo);
 geo.insertBefore(liveTiles, country);
 let tileProvider = "streets",
   tileTimer,
@@ -1056,24 +1058,27 @@ function tileCorner(x, y, level) {
 }
 function scheduleTiles() {
   clearTimeout(tileTimer);
-  tileTimer = setTimeout(updateTiles, 160);
+  const matrix = geo.getScreenCTM();
+  if (!matrix) {
+    return;
+  }
+  const screenScale = Math.hypot(matrix.a, matrix.b);
+  // De zichtbare schaal bepaalt het contrast, ook op een scherm met hoge pixeldichtheid.
+  const displayLevel = Math.log2((2 * Math.PI * projection.scale() * screenScale) / 256);
+  const detail = Math.max(0, Math.min(1, (displayLevel - 8) / 6));
+  liveTiles.style.opacity = String(0.18 + 0.82 * detail);
+  tileTimer = setTimeout(() => updateTiles(displayLevel), 160);
 }
-function updateTiles() {
+function updateTiles(displayLevel) {
   const matrix = geo.getScreenCTM(),
     rectangle = q("#rm-map").getBoundingClientRect();
   if (!matrix || rectangle.width === 0 || rectangle.height === 0) {
     return;
   }
-  const screenScale = Math.hypot(matrix.a, matrix.b);
   const maximumLevel = tileProvider === "satellite" ? 21 : 19;
   const level = Math.max(
     0,
-    Math.min(
-      maximumLevel,
-      Math.ceil(
-        Math.log2((2 * Math.PI * projection.scale() * screenScale * window.devicePixelRatio) / 256),
-      ),
-    ),
+    Math.min(maximumLevel, Math.ceil(displayLevel + Math.log2(window.devicePixelRatio))),
   );
   const point = q("#rm-map").createSVGPoint();
   point.x = rectangle.left;
@@ -1172,7 +1177,7 @@ new ResizeObserver(() => {
   }
   scheduleTiles();
 }).observe(q("#rm-map"));
-setBackground("satellite");
+setBackground("streets");
 
 // Dezelfde keuzes maken zowel het voorbeeldcommando als het opgeslagen BAT-bestand.
 let actionPending = false,
@@ -1292,7 +1297,6 @@ function renderForm() {
     radio.checked = mode === radio.value;
   }
   for (const [code, element] of paths) {
-    element.style.display = mode === "country" ? "none" : "";
     element.classList.toggle("selected", mode === "authorities" && selected.has(code));
   }
   country.classList.toggle("selected", mode === "country");

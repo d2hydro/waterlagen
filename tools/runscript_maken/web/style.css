@@ -1295,11 +1295,25 @@
 #run-map-preview {
   --selection-line: #ffd600;
 }
+#run-map-preview .authority-casing {
+  fill: none;
+  stroke: #fff;
+  stroke-opacity: .85;
+  stroke-width: 3.5;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+#run-map-preview .map-tiles {
+  opacity: .18;
+}
+@media (prefers-reduced-motion: no-preference) {
+  #run-map-preview .map-tiles { transition: opacity 140ms ease-out; }
+}
 #run-map-preview .authority,
 #run-map-preview.with-basemap .authority,
 #run-map-preview.satellite-map .authority {
-  stroke: #007db8;
-  stroke-width: 1.5;
+  stroke: #205474;
+  stroke-width: 2;
 }
 #run-map-preview .authority:hover,
 #run-map-preview.with-basemap .authority:hover,
