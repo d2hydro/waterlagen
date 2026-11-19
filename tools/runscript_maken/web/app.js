@@ -745,8 +745,8 @@ function chooseAreaMode(value) {
     fitCountry();
   }
   render();
-  if (mode !== "country") {
-    openAreaPopover(mode === "authorities" ? "choose" : "custom");
+  if (mode !== "country" && mode !== "authorities") {
+    openAreaPopover("custom");
   }
   remember();
 }
@@ -1738,9 +1738,6 @@ async function loadRun() {
   closeAreaPopovers();
   closeOptions();
   render();
-  if (mode === "authorities") {
-    openAreaPopover("choose");
-  }
 }
 
 async function saveRun(start) {

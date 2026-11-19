@@ -275,7 +275,9 @@ const checks=`
  assert.equal(selectionPopup.parentElement,q('.map'));assert(areaPopovers.get('custom').hidden);
  closeSelectionPopup();
  modeChange('country');assert.equal(mode,'country');assert(listPanel.hidden);
- modeChange('authorities');assert(!listPanel.hidden);
+ modeChange('authorities');assert(listPanel.hidden);
+ authoritiesChoice.click();assert(listPanel.hidden);
+ listButton.click();assert(!listPanel.hidden);
  // De hele gebiedskeuze is één venster: aanwijzen of binnenin klikken sluit niets.
  listPanel.dispatchEvent(new MouseEvent('mouseleave'));
  await new Promise(resolve=>setTimeout(resolve,250));
@@ -294,7 +296,7 @@ const checks=`
  q('#rm-choose-authorities').click();assert(!listPanel.hidden);
  q('.form').dispatchEvent(new MouseEvent('pointerdown',{bubbles:true}));
  assert(listPanel.hidden);
- authoritiesChoice.click();
+ listButton.click();assert(!listPanel.hidden);
  q('#rm-list input').dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));
  assert(listPanel.hidden);
  modeChange('country');assert.equal(collectValues().mode,'country');assert(country.classList.contains('selected'));
@@ -400,6 +402,7 @@ const checks=`
  assert.equal(runNotice.querySelector('.toast-detail').textContent,'proef.bat');
  assert(!runNotice.querySelector('button'),'Een bevestiging verdwijnt vanzelf');
  q('#rm-load').click();await settle();assert.equal(q('#rm-run-name').value,'aa-en-maas');assert.equal(selected.size,1);assert(selected.has('38'));
+ assert(listPanel.hidden,'De lijst blijft dicht bij het laden van een run');
  assert(runNotice.hidden,'De gewijzigde velden bevestigen dat de run geladen is');
  assert(q('#rm-list input[value="38"]').checked);assert.equal(q('#rm-run-mode').value,'overwrite');
  assert(landuseStatus.hidden);
