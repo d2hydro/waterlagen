@@ -206,7 +206,7 @@ const checks=`
  for(let i=0;i<20;i++){q('#rm-zoom-in').click();}
  assert(zoom>32);q('#rm-reset').click();assert.equal(zoom,overviewZoom);
  // Gebied kiezen staat boven de kaart. De kaartbediening blijft op de kaart.
- assert.equal(q('.area-toolbar').nextElementSibling,q('.map'));
+ assert.equal(q('.area-toolbar').nextElementSibling,q('.map-pane'));
  assert.equal(q('.map').nextElementSibling,q('.map-footer'));
  assert.equal(q('#rm-background').parentElement,q('.map'));
  assert.equal(q('.map-controls').parentElement,q('.map'));

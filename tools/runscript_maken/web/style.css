@@ -1466,7 +1466,9 @@ body {
 #run-map-preview #rm-draw-panel { display: none; }
 #run-map-preview .area-controls { display: contents; }
 #run-map-preview .area-toolbar {
-  display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 10px;
+  grid-column: 1 / -1;
+  display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+  padding: 10px 10px 0; background: var(--soft);
 }
 #run-map-preview .area-toolbar button {
   min-height: 44px; padding: 6px 12px; font-weight: 600; color: var(--action);
@@ -1771,26 +1773,25 @@ body {
   border: 0; border-radius: 7px; background: transparent;
 }
 #run-map-preview .top .tools button:hover { background: var(--soft); }
+#run-map-preview .settings-group {
+  min-width: 0;
+  background: var(--paper);
+  border: 1px solid #aac8d9;
+  border-radius: 10px;
+}
+#run-map-preview .settings-group + .settings-group { margin-top: 12px; }
 #run-map-preview .settings-group > h2 {
-  margin: 0 0 10px;
-  color: var(--heading);
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 9px 9px 0 0;
+  background: #e3eff6;
+  color: #214760;
   font-size: 1.0625rem;
   font-weight: 600;
   line-height: 1.4;
 }
-#run-map-preview .settings-group {
-  min-width: 0;
-  padding: 10px 12px;
-  background: var(--paper);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-}
-#run-map-preview .settings-group + .settings-group { margin-top: 12px; }
-#run-map-preview .settings-group:has(#rm-layers) { padding: 0; border-color: #aac8d9; }
-#run-map-preview #rm-layers-title {
-  padding-inline: 12px; margin-bottom: 0; border-radius: 9px 9px 0 0;
-  background: #e3eff6; color: #214760;
-}
+#run-map-preview .settings-group > .execution-fields { padding: 10px 12px 0; }
+#run-map-preview .settings-group > .checks { padding: 0 12px 10px; }
 #run-map-preview #rm-layers { border-top: 1px solid var(--line); }
 #run-map-preview #rm-layers .layer { padding-inline: 12px; }
 #run-map-preview #rm-layers .layer:last-child { border-radius: 0 0 9px 9px; }
@@ -1916,13 +1917,12 @@ body {
 #run-map-preview .map-credits .legend { gap: 6px; }
 #run-map-preview .map-credits .legend .swatch { width: 9px; height: 9px; }
 @media (min-width: 761px) {
-  #run-map-preview .map-pane { grid-template-rows: auto minmax(0, 1fr) auto; }
-  /* De gebiedskeuze en de laagtitel delen een rij boven kaart en lijst. */
-  #run-map-preview #rm-layers-title { min-height: 53px; display: flex; align-items: center; }
+  #run-map-preview > .workspace { grid-template-rows: auto minmax(0, 1fr); }
+  #run-map-preview .map-pane { grid-template-rows: minmax(0, 1fr) auto; }
 }
 @media (max-width: 760px) {
   #run-map-preview .form { min-height: 460px; }
-  #run-map-preview #rm-layers-title { padding-block: 10px; }
+  #run-map-preview .area-toolbar,
   #run-map-preview .map-pane,
   #run-map-preview .form-content,
   #run-map-preview .form > .footer { padding-inline: 12px; }
