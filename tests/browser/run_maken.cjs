@@ -205,12 +205,14 @@ const checks=`
  const overviewZoom=zoom;
  for(let i=0;i<20;i++){q('#rm-zoom-in').click();}
  assert(zoom>32);q('#rm-reset').click();assert.equal(zoom,overviewZoom);
- // Gebied kiezen staat boven de kaart. De kaartbediening blijft op de kaart.
- assert.equal(q('.area-toolbar').nextElementSibling,q('.map-pane'));
+ // De gebiedskeuze en de samenvatting horen bij dezelfde groep.
+ assert.equal(q('.area-setup').nextElementSibling,q('.map-pane'));
+ assert.equal(q('.area-toolbar').parentElement,q('.area-setup'));
+ assert.equal(q('#rm-custom-menu').parentElement,q('.area-setup'));
  assert.equal(q('.map').nextElementSibling,q('.map-footer'));
  assert.equal(q('#rm-background').parentElement,q('.map'));
  assert.equal(q('.map-controls').parentElement,q('.map'));
- assert.equal(q('.selection').parentElement,q('.map'));
+ assert.equal(q('.area-summary').parentElement,q('.area-setup'));
  q('#rm-choose-area').click();assert(!areaPopovers.get('choose').hidden);
  q('#rm-custom-area').click();assert(areaPopovers.get('choose').hidden);
  assert(!areaPopovers.get('custom').hidden);
@@ -226,13 +228,13 @@ const checks=`
   assert.equal(window.getComputedStyle(icon).position,'static','Tekenicoontjes blijven in hun knop');
   assert.equal(window.getComputedStyle(icon).height,'26px');
  }
- // Een lange selectie klapt over de kaart open, zonder de kaart kleiner te maken.
+ // Een lange selectie opent bij de gebiedskeuze.
  const detail=q('#rm-selection-detail');
  Object.defineProperty(detail,'scrollWidth',{configurable:true,value:600});
  Object.defineProperty(detail,'clientWidth',{configurable:true,value:300});
  updateSelectionDetails();assert(!selectionToggle.hidden);
  selectionToggle.click();assert(!selectionPopup.hidden);
- assert.equal(selectionPopup.parentElement,q('.map'));assert(areaPopovers.get('custom').hidden);
+ assert.equal(selectionPopup.parentElement,q('.area-setup'));assert(areaPopovers.get('custom').hidden);
  closeSelectionPopup();q('#rm-custom-area').click();
  assert(!q('[data-area-mode="bounds"]').textContent.includes('XY'));
  root.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));

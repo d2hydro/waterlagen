@@ -8,7 +8,6 @@ let filePath = "",
   boundsFeature = null,
   savedDrawing = "";
 q(".top").insertBefore(q(".tools"), q(".tag"));
-q(".map").append(q(".selection"));
 const formContent = document.createElement("div");
 formContent.className = "form-content";
 while (q(".form").firstChild) {
@@ -250,7 +249,7 @@ q("#rm-reset").onclick = () => fitCountry();
 q(".map").addEventListener(
   "wheel",
   (event) => {
-    if (event.target.closest(".area-popover, .selection, .drawing-toolbar")) {
+    if (event.target.closest(".drawing-toolbar")) {
       return;
     }
     event.preventDefault();
@@ -919,18 +918,7 @@ function renderDrawingControls() {
   }
 }
 let selectionExpanded = false;
-const selectionCard = q(".selection");
-const selectionIcon = document.createElement("span");
-selectionIcon.className = "selection-icon";
-selectionIcon.setAttribute("aria-hidden", "true");
-const mapIcon = document.createElement("span");
-mapIcon.style.maskImage = `url("${data.icons.map}")`;
-mapIcon.style.webkitMaskImage = `url("${data.icons.map}")`;
-selectionIcon.append(mapIcon);
-const selectionText = document.createElement("div");
-selectionText.className = "selection-text";
-selectionText.append(q("#rm-selection-title"), q("#rm-selection-detail"));
-selectionCard.append(selectionIcon, selectionText);
+const selectionSummary = q(".area-summary");
 const selectionToggle = document.createElement("button");
 selectionToggle.className = "selection-toggle";
 selectionToggle.setAttribute("aria-controls", "rm-selection-popup");
@@ -944,7 +932,7 @@ function setDrawingToolsCollapsed(collapsed) {
   renderDrawingControls();
   updateSelectionDetails();
 }
-selectionText.append(selectionToggle, drawingToolsToggle);
+selectionSummary.append(selectionToggle, drawingToolsToggle);
 const selectionPopup = document.createElement("section");
 selectionPopup.id = "rm-selection-popup";
 selectionPopup.className = "selection-popup";
@@ -959,24 +947,19 @@ popupClose.textContent = "×";
 popupClose.setAttribute("aria-label", "Selectie sluiten");
 popupHeader.append(popupTitle, popupClose);
 selectionPopup.append(popupHeader, popupList);
-q(".map").append(selectionPopup);
+q(".area-setup").append(selectionPopup);
 function updateSelectionDetails() {
   const detail = q("#rm-selection-detail");
   drawingToolsToggle.hidden = mode !== "draw" || !drawingIsSaved();
   drawingToolsToggle.textContent = drawingToolsCollapsed ? "Gebied bewerken" : "Tekenpaneel inklappen";
   drawingToolsToggle.setAttribute("aria-expanded", String(!drawingToolbar.hidden));
-  q(".selection").classList.remove("expanded");
   selectionToggle.hidden =
     !selectionExpanded &&
     !(mode === "authorities" && selected.size > 1) &&
     !(mode === "draw" && finished) &&
     detail.scrollHeight <= detail.clientHeight + 1 &&
     detail.scrollWidth <= detail.clientWidth + 1;
-  selectionToggle.textContent = selectionExpanded ? "Selectie sluiten ↑" : "Bekijk selectie ↑";
-  const cardHeight = selectionCard.getBoundingClientRect().height;
-  if (cardHeight) {
-    selectionPopup.style.bottom = cardHeight + 44 + "px";
-  }
+  selectionToggle.textContent = selectionExpanded ? "Selectie sluiten" : "Bekijk selectie";
   selectionToggle.setAttribute("aria-expanded", String(selectionExpanded));
   selectionPopup.hidden = !selectionExpanded;
   popupTitle.textContent = q("#rm-selection-title").textContent;
@@ -1026,7 +1009,7 @@ selectionToggle.onclick = () => {
   }
   updateSelectionDetails();
 };
-new ResizeObserver(updateSelectionDetails).observe(selectionCard);
+new ResizeObserver(updateSelectionDetails).observe(selectionSummary);
 
 // Haal alleen tegels op voor het zichtbare kaartgebied.
 const liveTiles = svgElement("g", { class: "map-tiles", "pointer-events": "none" }, geo);

@@ -25,27 +25,32 @@
         ><button id="rm-update">Code bijwerken</button>
       </div>
       <div class="workspace">
-        <div class="area-toolbar" role="group" aria-label="Gebiedsselectie">
-          <button id="rm-choose-area" aria-expanded="false" aria-controls="rm-area-menu">Gebied kiezen</button>
-          <button id="rm-custom-area" aria-expanded="false" aria-controls="rm-custom-menu">Eigen gebied</button>
-        </div>
-        <section class="map-pane" aria-label="Gebied op de kaart">
-          <div class="map">
-            <section id="rm-area-menu" class="area-popover" aria-label="Gebied kiezen" hidden>
-              <header><h3>Gebied kiezen</h3><button data-close-area aria-label="Sluiten">×</button></header>
-              <label class="area-choice"><input type="radio" name="area-kind" value="country"> Heel Nederland</label>
-              <label class="area-choice"><input type="radio" name="area-kind" value="authorities" checked> Waterschappen</label>
-              <div id="rm-authority-slot"></div>
-              <button data-close-area class="primary">Gereed</button>
-            </section>
-            <section id="rm-custom-menu" class="area-popover" aria-label="Eigen gebied" hidden>
-              <header><h3>Eigen gebied</h3><button data-close-area aria-label="Sluiten">×</button></header>
-              <div class="custom-choices">
-                <button data-area-mode="draw" data-shape="polygon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 9 7-4 11H7L3 10Z"/><circle cx="12" cy="3" r="1.5"/><circle cx="21" cy="10" r="1.5"/><circle cx="7" cy="21" r="1.5"/></svg><span>Polygoon tekenen<small>Klik de hoekpunten op de kaart</small></span></button>
-                <button data-area-mode="bounds"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 3v17h17M1 7h6m-6 6h6m2 4v6m6-6v6"/></svg><span>Coördinaten invoeren<small>Rechthoek met X- en Y-coördinaten</small></span></button>
-                <button data-area-mode="file"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 19V5h7l2 3h9v3M3 19h16l3-8H6Z"/></svg><span>Gebied uit bestand<small>GeoPackage (.gpkg)</small></span></button>
-              </div>
-            </section>
+        <section class="area-setup" aria-label="Gebied">
+          <div class="area-toolbar" role="group" aria-label="Gebiedsselectie">
+            <button id="rm-choose-area" aria-expanded="false" aria-controls="rm-area-menu">Gebied kiezen</button>
+            <button id="rm-custom-area" aria-expanded="false" aria-controls="rm-custom-menu">Eigen gebied</button>
+          </div>
+          <div class="area-summary" aria-live="polite">
+            <div class="summary-line">
+              <strong id="rm-selection-title"></strong>
+              <span id="rm-selection-detail"></span>
+            </div>
+          </div>
+          <section id="rm-area-menu" class="area-popover" aria-label="Gebied kiezen" hidden>
+            <header><h3>Gebied kiezen</h3><button data-close-area aria-label="Sluiten">×</button></header>
+            <label class="area-choice"><input type="radio" name="area-kind" value="country"> Heel Nederland</label>
+            <label class="area-choice"><input type="radio" name="area-kind" value="authorities" checked> Waterschappen</label>
+            <div id="rm-authority-slot"></div>
+            <button data-close-area class="primary">Gereed</button>
+          </section>
+          <section id="rm-custom-menu" class="area-popover" aria-label="Eigen gebied" hidden>
+            <header><h3>Eigen gebied</h3><button data-close-area aria-label="Sluiten">×</button></header>
+            <div class="custom-choices">
+              <button data-area-mode="draw" data-shape="polygon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 9 7-4 11H7L3 10Z"/><circle cx="12" cy="3" r="1.5"/><circle cx="21" cy="10" r="1.5"/><circle cx="7" cy="21" r="1.5"/></svg><span>Polygoon tekenen<small>Klik de hoekpunten op de kaart</small></span></button>
+              <button data-area-mode="bounds"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 3v17h17M1 7h6m-6 6h6m2 4v6m6-6v6"/></svg><span>Coördinaten invoeren<small>Rechthoek met X- en Y-coördinaten</small></span></button>
+              <button data-area-mode="file"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 19V5h7l2 3h9v3M3 19h16l3-8H6Z"/></svg><span>Gebied uit bestand<small>GeoPackage (.gpkg)</small></span></button>
+            </div>
+          </section>
           <div class="area-controls">
             <label class="field" hidden
               ><select id="rm-mode" aria-label="Gebied kiezen">
@@ -123,7 +128,9 @@
               </div>
             </div>
           </div>
-
+        </section>
+        <section class="map-pane" aria-label="Gebied op de kaart">
+          <div class="map">
             <svg
               id="rm-map"
               viewBox="0 0 400 530"
@@ -182,12 +189,6 @@
               <div class="legend"><span class="swatch"></span> Geselecteerd &middot; Grenzen: HWH / Kadaster</div>
               <div class="attribution" id="rm-attribution"></div>
             </div>
-          </div>
-          <div class="selection" aria-live="polite">
-            <strong id="rm-selection-title">2 waterschappen geselecteerd</strong
-            ><span id="rm-selection-detail"
-              >Hollands Noorderkwartier en Rijnland</span
-            >
           </div>
         </section>
         <section class="form" aria-label="Basislagen en runinstellingen">
