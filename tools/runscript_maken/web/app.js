@@ -1066,7 +1066,7 @@ function scheduleTiles() {
   // De zichtbare schaal bepaalt het contrast, ook op een scherm met hoge pixeldichtheid.
   const displayLevel = Math.log2((2 * Math.PI * projection.scale() * screenScale) / 256);
   const detail = Math.max(0, Math.min(1, (displayLevel - 8) / 6));
-  liveTiles.style.opacity = String(0.18 + 0.82 * detail);
+  liveTiles.style.opacity = String(0.26 + 0.74 * detail);
   tileTimer = setTimeout(() => updateTiles(displayLevel), 160);
 }
 function updateTiles(displayLevel) {
