@@ -1587,13 +1587,13 @@ async function updateLandusePreview() {
       status.dataset.state = result.state;
       if (result.state === "recorded") {
         const location = document.createElement("details");
-        const name = document.createElement("summary");
+        const label = document.createElement("summary");
+        label.textContent = "Gekoppelde landgebruikrun";
+        const name = document.createElement("div");
         name.textContent = result.message;
-        name.title = "Toon de map van deze landgebruikrun";
-        const path = document.createElement("div");
-        path.textContent = result.path;
-        location.append(name, path);
-        status.replaceChildren("Gekoppelde landgebruikrun", location);
+        name.title = result.path;
+        location.append(label, name);
+        status.replaceChildren(location);
         return;
       }
       status.textContent = result.message;

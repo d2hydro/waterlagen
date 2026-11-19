@@ -114,11 +114,14 @@ const checks=`
  window.landuseResult={state:'recorded',message:longName,path:'/data/waterschap_12/'+longName};
  scheduleLandusePreview(true);await updateLandusePreview();
  assert(!landuseStatus.hidden);
- assert.equal(landuseStatus.querySelector('summary').textContent,longName);
+ assert.equal(landuseStatus.querySelector('summary').textContent,'Gekoppelde landgebruikrun');
  assert(!landuseStatus.querySelector('details').open);
  landuseStatus.querySelector('summary').click();
  assert(landuseStatus.querySelector('details').open);
- assert.equal(landuseStatus.querySelector('details div').textContent,window.landuseResult.path);
+ assert.equal(landuseStatus.querySelector('details div').textContent,longName);
+ assert.equal(landuseStatus.querySelector('details div').title,window.landuseResult.path);
+ landuseStatus.querySelector('summary').click();
+ assert(!landuseStatus.querySelector('details').open);
  delete window.landuseResult;
  landuseMode.value='manual';landuseMode.dispatchEvent(new Event('change',{bubbles:true}));
  assert(!landuseField.disabled && !landuseField.closest('label').hidden);
