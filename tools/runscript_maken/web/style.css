@@ -1304,7 +1304,7 @@
   vector-effect: non-scaling-stroke;
 }
 #run-map-preview .map-tiles {
-  opacity: .26;
+  opacity: .30;
 }
 @media (prefers-reduced-motion: no-preference) {
   #run-map-preview .map-tiles { transition: opacity 140ms ease-out; }
