@@ -171,7 +171,7 @@ def test_missing_boundary_does_not_download(store, options, monkeypatch):
     assert result.state == "unknown"
 
 
-def test_manual_selection_requires_path_but_auto_preserves_old_scripts():
+def test_empty_landuse_folder_uses_automatic_selection():
     values = {
         "mode": "bounds",
         "bounds": [110100, 515100, 110900, 515900],
@@ -179,5 +179,6 @@ def test_manual_selection_requires_path_but_auto_preserves_old_scripts():
         "run_id": "test",
     }
     assert app.run_settings(values).layers == ("dem",)
-    with pytest.raises(ValueError, match="Kies een landgebruikrun"):
-        app.run_settings({**values, "dem_landuse_mode": "manual"})
+    values["extra_options"] = [{"layer": "dem", "flag": "landuse-run", "value": ""}]
+    settings = app.run_settings(values)
+    assert "--landuse-run" not in generator._commands(settings)[0]

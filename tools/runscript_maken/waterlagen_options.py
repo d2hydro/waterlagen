@@ -98,9 +98,9 @@ EXTRA_OPTIONS = {
     "dem": (
         ExtraOption(
             "landuse-run",
-            "Landgebruikrun kiezen",
+            "Landgebruikrun (optioneel)",
             HelpText(
-                "Kies de map van een bestaande, geschikte landgebruikrun voor de DEM.",
+                "Kies de map van een afgeronde landgebruikrun. Leeg laten voor automatische keuze.",
                 "dem",
                 "landgebruik-vinden-of-produceren",
             ),

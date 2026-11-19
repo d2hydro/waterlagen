@@ -1217,7 +1217,6 @@ function collectValues() {
     area_file: mode === "draw" ? drawingPath : filePath,
     area_layer: mode === "draw" ? "gebied" : fileLayer,
     drawing_saved: !!drawingIsSaved(),
-    dem_landuse_mode: q("#rm-dem-landuse-mode").value,
     layers: [...q("#rm-layers").querySelectorAll("input:checked")].map((input) => input.value),
     run_id: q("#rm-run-name").value,
     workers: q("#rm-workers").value,
@@ -1308,9 +1307,6 @@ function renderForm() {
   for (const input of root.querySelectorAll("[data-flag]")) {
     // Opties mogen vooraf worden ingevuld, ook als de basislaag nog uit staat.
     input.disabled = input.dataset.authority === "true" && mode !== "authorities";
-    if (input.dataset.layer === "dem" && input.dataset.flag === "landuse-run") {
-      input.disabled = q("#rm-dem-landuse-mode").value === "auto";
-    }
     for (const button of input.closest("label").querySelectorAll(".option-actions button")) {
       button.disabled = input.disabled;
     }
@@ -1482,50 +1478,8 @@ function addOptionActions(label, input, option, layer) {
     addBrandlagenControls(label, input, choose, actions);
   }
   if (layer === "dem" && option.flag === "landuse-run") {
-    addLanduseControls(label, input, choose, actions);
+    input.placeholder = "Automatisch";
   }
-}
-
-function addLanduseControls(label, input, choose, actions) {
-  const group = document.createElement("section");
-  group.className = "dem-landuse-group option-wide";
-  const heading = document.createElement("label");
-  heading.htmlFor = "rm-dem-landuse-mode";
-  heading.textContent = "Landgebruik als basis";
-  const explanation = document.createElement("p");
-  explanation.className = "dem-landuse-explanation";
-  explanation.textContent = "DEM gebruikt gebouwen en de tegelindeling uit een landgebruikrun.";
-  const mode = document.createElement("select");
-  mode.id = "rm-dem-landuse-mode";
-  for (const [value, text] of [["auto", "Automatisch"], ["manual", "Zelf kiezen"]]) {
-    const option = document.createElement("option");
-    option.value = value;
-    option.textContent = text;
-    mode.append(option);
-  }
-  const hint = document.createElement("p");
-  hint.className = "dem-landuse-explanation";
-  hint.textContent = "Gebruikt een geschikte afgeronde run. Ontbreekt die, dan wordt landgebruik eerst berekend.";
-  label.replaceWith(group);
-  group.append(heading, explanation, mode, hint, label);
-  choose.classList.remove("file-browse");
-  choose.textContent = "Landgebruikrun kiezen";
-  actions.classList.remove("file-control");
-  actions.classList.add("landuse-file-choice");
-  label.querySelector("span").hidden = true;
-  input.setAttribute("aria-label", "Map van de landgebruikrun");
-  const update = () => {
-    label.hidden = mode.value === "auto";
-    hint.hidden = mode.value !== "auto";
-    input.disabled = label.hidden;
-    choose.disabled = label.hidden;
-  };
-  mode.addEventListener("change", () => {
-    update();
-    scheduleLandusePreview();
-  });
-  group.updateMode = update;
-  update();
 }
 
 let landuseTimer;
@@ -1536,7 +1490,7 @@ let landusePending = null;
 
 function scheduleLandusePreview(force = false) {
   const status = q("#rm-dem-landuse-status");
-  if (!status || !q("#rm-dem-landuse-mode")) {
+  if (!status) {
     return;
   }
   const enabled = q('#rm-layers input[value="dem"]').checked;
@@ -1719,9 +1673,6 @@ async function loadRun() {
       return value !== input.dataset.default;
     });
   }
-  const landuseInput = q('[data-layer="dem"][data-flag="landuse-run"]');
-  q("#rm-dem-landuse-mode").value = landuseInput.value.trim() ? "manual" : "auto";
-  landuseInput.closest(".dem-landuse-group").updateMode();
   if (mode === "file") {
     filePath = run.area_file;
     await showFileLayer(run.area_layer);

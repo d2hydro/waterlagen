@@ -65,6 +65,7 @@ window.fetch=async(url,init)=>{
  else if(action==='browse' && window.failBrowse){throw new TypeError('Failed to fetch');}
  else if(action==='browse' && window.invalidBrowse){result={path:'tekst.txt',error:'Kies een TOML-bestand.'};}
  else if(action==='validate_path' && values.path==='tekst.txt'){result={error:'Kies een TOML-bestand.'};}
+ else if(action==='browse' && values.flag==='landuse-run'){result={path:'D:/gekozen-run'};}
  else if(action==='browse'){result={path:'D:\\brandlagen.toml'};}
  else if(action==='brand_edit'){result={path:window.cancelBrandEdit?'':'D:\\brandlagen-nieuw.toml'};}
  return {ok:true,json:async()=>result};
@@ -102,12 +103,13 @@ const checks=`
  assert.equal(Number(liveTiles.style.opacity),overviewOpacity);
  assert.equal(q('.authority-casing').parentElement.getAttribute('pointer-events'),'none');
  q('#rm-background').click();assert.equal(tileProvider,'streets');setZoom(originalZoom);
- const landuseMode=q('#rm-dem-landuse-mode');
  const landuseField=q('[data-layer="dem"][data-flag="landuse-run"]');
  const landuseStatus=q('#rm-dem-landuse-status');
- assert.equal(landuseMode.value,'auto');
- assert(landuseField.disabled && landuseField.closest('label').hidden);
- assert(!collectValues().extra_options.some(o=>o.flag==='landuse-run'));
+ assert.equal(landuseField.placeholder,'Automatisch');
+ const folderButton=landuseField.closest('.file-control').querySelector('button');
+ assert(!folderButton.disabled && folderButton.querySelector('svg'));
+ assert(!q('#rm-dem-landuse-mode'));
+ assert(q('[data-flag="ahn-vrt"]').closest('label').textContent.includes('Eigen DTM-VRT (.vrt)'));
  await updateLandusePreview();
  assert.equal(landuseStatus.textContent,'Automatisch: landgebruikrun afgerond');
  for(const state of ['error','create','planned','unknown']){
@@ -133,15 +135,11 @@ const checks=`
  landuseStatus.querySelector('summary').click();
  assert(!landuseStatus.querySelector('details').open);
  delete window.landuseResult;
- landuseMode.value='manual';landuseMode.dispatchEvent(new Event('change',{bubbles:true}));
- assert(!landuseField.disabled && !landuseField.closest('label').hidden);
- assert(!landuseField.closest('label').querySelector('button').disabled);
- assert.equal(collectValues().dem_landuse_mode,'manual');
- landuseField.value='gekozen-run';
- assert(collectValues().extra_options.some(o=>o.flag==='landuse-run'&&o.value==='gekozen-run'));
- landuseMode.value='auto';landuseMode.dispatchEvent(new Event('change',{bubbles:true}));
- assert(!collectValues().extra_options.some(o=>o.flag==='landuse-run'));
- render();assert(landuseField.disabled,'Kaartbediening mag de verborgen map niet opnieuw activeren');
+ folderButton.click();await settle();
+ assert.equal(landuseField.value,'D:/gekozen-run');
+ assert(collectValues().extra_options.some(o=>o.flag==='landuse-run'&&o.value==='D:/gekozen-run'));
+ landuseField.value='';landuseField.dispatchEvent(new Event('input',{bubbles:true}));
+ assert(!collectValues().extra_options.some(o=>o.flag==='landuse-run'&&o.value));
  window.deferLanduse=true;
  scheduleLandusePreview(true);const pendingPreview=updateLandusePreview();
  q('#rm-refresh').checked=true;q('#rm-refresh').dispatchEvent(new Event('change',{bubbles:true}));
@@ -150,10 +148,6 @@ const checks=`
  q('#rm-refresh').checked=false;q('#rm-refresh').dispatchEvent(new Event('change',{bubbles:true}));
  landuseField.value='';
  for(const button of root.querySelectorAll('.option-actions button')){
-  if(button.closest('.dem-landuse-group') && landuseMode.value==='auto'){
-   assert(button.disabled && button.closest('label').hidden);
-   continue;
-  }
   assert(!button.disabled,'Bestanden kiezen moet ook voor niet-aangevinkte lagen werken');
  }
  for(const control of root.querySelectorAll('.file-control')){
@@ -409,12 +403,12 @@ const checks=`
  assert(landuseStatus.hidden);
  window.loadedRun={mode:'authorities',authorities:['38'],layers:['dem'],run_id:'met-bron',workers:8,run_mode:'resume',extra_options:[{layer:'dem',flag:'landuse-run',value:'D:/afgerond'}]};
  q('#rm-load').click();await settle();
- assert.equal(landuseMode.value,'manual');assert(!landuseField.closest('label').hidden);
+ assert(!landuseField.closest('label').hidden);
  assert.equal(landuseField.value,'D:/afgerond');
  assert(collectValues().extra_options.some(o=>o.flag==='landuse-run'&&o.value==='D:/afgerond'));
  window.loadedRun={...window.loadedRun,extra_options:[]};
  q('#rm-load').click();await settle();
- assert.equal(landuseMode.value,'auto');assert(landuseField.disabled);
+ assert.equal(landuseField.value,'');assert(!landuseField.disabled);
  const duiker=q('[data-flag="duiker-tolerance"]');
  const rekeninstellingen=duiker.closest('details');
  const bronnen=q('[data-flag="rijkswateren-url"]').closest('details');

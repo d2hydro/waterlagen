@@ -68,17 +68,6 @@ def run_settings(values: dict) -> RunSettings:
         for item in values.get("extra_options", [])
         if item.get("layer") in layers
     )
-    if (
-        "dem" in layers
-        and values.get("dem_landuse_mode") == "manual"
-        and not any(
-            item.layer == "dem"
-            and item.flag == "landuse-run"
-            and str(item.value).strip()
-            for item in choices
-        )
-    ):
-        raise ValueError("Kies een landgebruikrun of schakel terug naar Automatisch.")
     options = RunSettings(
         layers,
         area,

@@ -1889,18 +1889,6 @@ body {
   font-size: 0.9375rem;
   font-weight: 600;
 }
-#run-map-preview .dem-landuse-group > label { font-size: 15px; font-weight: 500; }
-#run-map-preview .dem-landuse-explanation {
-  margin: 5px 0 8px;
-  font-size: 14px;
-  line-height: 1.45;
-  color: #4b6372;
-}
-#run-map-preview .dem-landuse-group select { width: 100%; }
-#run-map-preview .landuse-file-choice { display: flex; flex-direction: column; }
-#run-map-preview .landuse-file-choice button { align-self: flex-start; }
-#run-map-preview .dem-landuse-group .field { margin: 8px 0 0; }
-#run-map-preview .dem-landuse-group [hidden],
 #run-map-preview .dem-landuse-status[hidden] { display: none; }
 #run-map-preview #rm-script-preview {
   width: min(700px, calc(100% - 32px));

@@ -10,7 +10,7 @@ Kies **DEM (hoogte)** in de [Run Maker](index.md). Het gebied selecteert volledi
 
 ## Landgebruik vinden of produceren
 
-Laat **Landgebruik als basis** op **Automatisch** staan. Een geschikte afgeronde landgebruikrun wordt hergebruikt. Ontbreekt die, dan wordt landgebruik eerst berekend. Wilt u een specifieke run gebruiken? Kies **Zelf kiezen** en vervolgens **Landgebruikrun kiezen**. Een zelfgekozen run moet alle benodigde tegels en voldoende ruimte rond de gebouwen bevatten.
+Laat **Landgebruikrun (optioneel)** leeg voor automatische keuze. DEM gebruikt een geschikte afgeronde run of berekent eerst landgebruik. Wilt u zelf kiezen? Open bij **DEM → Laagopties** het mapicoon naast dit veld en kies de runmap. Die moet alle benodigde tegels en voldoende ruimte rond de gebouwen bevatten.
 
 ## Hoogtebron
 
