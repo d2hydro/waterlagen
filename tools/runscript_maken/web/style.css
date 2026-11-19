@@ -188,13 +188,6 @@
   vector-effect: non-scaling-stroke;
   pointer-events: none;
 }
-#run-map-preview .map-controls {
-  position: absolute;
-  top: 10px;
-  left: 10px;
-  display: flex;
-  gap: 5px;
-}
 #run-map-preview .north {
   position: absolute;
   right: 14px;
@@ -528,36 +521,6 @@
 #run-map-preview .map-note {
   font-size: 11px;
   padding: 6px 8px;
-}
-#run-map-preview .map-controls {
-  gap: 4px;
-  top: 8px;
-  left: 8px;
-}
-#run-map-preview .map-controls button {
-  padding: 5px 8px;
-}
-#run-map-preview .backgrounds {
-  display: flex;
-  gap: 0;
-  margin-bottom: 8px;
-}
-#run-map-preview .backgrounds button {
-  flex: 1;
-  border-radius: 0;
-  font-size: 12px;
-  padding: 5px 7px;
-}
-#run-map-preview .backgrounds button:first-child {
-  border-radius: 5px 0 0 5px;
-}
-#run-map-preview .backgrounds button:last-child {
-  border-radius: 0 5px 5px 0;
-}
-#run-map-preview .backgrounds button[aria-pressed="true"] {
-  background: var(--action);
-  color: #fff;
-  border-color: var(--action);
 }
 #run-map-preview.with-basemap .country,
 #run-map-preview.with-basemap .authority {
@@ -906,7 +869,7 @@
     width: 100%;
   }
 }
-@media (max-width: 560px) {
+@media (max-width: 760px) {
   #run-map-preview .workspace {
     grid-template-columns: 1fr;
   }
@@ -1010,45 +973,35 @@
 #run-map-preview {
   --selection-line: #e5333f;
 }
-#run-map-preview .map .backgrounds {
+/* De twee knopgroepen laten het midden en de onderrand van de kaart vrij. */
+#run-map-preview .map :is(.backgrounds, .map-controls) {
   position: absolute;
-  z-index: 2;
-  right: 10px;
   top: 10px;
+  z-index: 2;
   display: flex;
-  flex-direction: column;
-  gap: 5px;
-  margin: 0;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--paper);
+  box-shadow: 0 2px 6px #20364426;
 }
-#run-map-preview .map .backgrounds button,
-#run-map-preview .map-controls button {
+#run-map-preview .map .backgrounds { left: 10px; }
+#run-map-preview .map .map-controls { right: 10px; }
+#run-map-preview .map :is(.backgrounds, .map-controls) button {
   display: grid;
   place-items: center;
-  flex: none;
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   padding: 0;
-  border-radius: 6px;
-  border: 1px solid var(--line);
-  box-shadow: 0 1px 4px #0002;
-  background: var(--paper);
-  color: var(--ink);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
 }
-#run-map-preview .map .backgrounds button[aria-pressed="true"] {
-  background: var(--action);
-  border-color: var(--action);
-  color: #fff;
-  box-shadow:
-    0 0 0 2px var(--paper),
-    0 0 0 3px var(--action);
-}
-#run-map-preview .map-controls {
-  flex-direction: column;
-  left: 10px;
-  top: 10px;
-  gap: 5px;
-  z-index: 2;
-}
+#run-map-preview .map :is(.backgrounds, .map-controls) button:first-child { border-radius: 9px 0 0 9px; }
+#run-map-preview .map :is(.backgrounds, .map-controls) button:last-child { border-radius: 0 9px 9px 0; }
+#run-map-preview .map :is(.backgrounds, .map-controls) button + button { border-left: 1px solid var(--line); }
+#run-map-preview .map :is(.backgrounds, .map-controls) button:hover { background: var(--soft); }
+#run-map-preview .map :is(.backgrounds, .map-controls) button:active { background: #dfedf7; }
+#run-map-preview .map .backgrounds button[aria-pressed="true"] { background: var(--action); color: #fff; }
 #run-map-preview .map .backgrounds svg,
 #run-map-preview .map-controls svg {
   position: static;
@@ -1089,19 +1042,6 @@
   height: 11px;
   box-shadow: 0 0 0 1px #fff;
 }
-#run-map-preview .map .backgrounds button,
-#run-map-preview .map-controls button {
-  width: 38px;
-  height: 38px;
-  min-width: 38px;
-  min-height: 38px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  line-height: 1;
-  padding: 0;
-  box-sizing: border-box;
-}
 #run-map-preview .map .backgrounds button::after,
 #run-map-preview .map-controls button::after {
   content: none;
@@ -1118,17 +1058,6 @@
   -webkit-mask-repeat: no-repeat;
   -webkit-mask-position: center;
   -webkit-mask-size: 20px 20px;
-}
-#run-map-preview .map-controls,
-#run-map-preview .map .backgrounds {
-  top: 10px;
-  gap: 6px;
-}
-#run-map-preview .map-controls {
-  left: 10px;
-}
-#run-map-preview .map .backgrounds {
-  right: 10px;
 }
 #run-map-preview .north {
   top: auto;
@@ -1345,7 +1274,7 @@
   font-size: 12px;
   text-align: left;
 }
-@media (min-width: 561px) {
+@media (min-width: 761px) {
   #run-map-preview {
     height: 760px;
     display: grid;
@@ -1444,7 +1373,7 @@
   color: var(--action);
   font-weight: 600;
 }
-@media (max-width: 560px) {
+@media (max-width: 760px) {
   #run-map-preview .selection-popup ul {
     grid-template-columns: 1fr;
   }
@@ -1549,7 +1478,7 @@ body {
 #run-map-preview .extra-panel .field > span {
   white-space: normal;
 }
-@media (max-width: 560px) {
+@media (max-width: 760px) {
   #run-map-preview > .workspace {
     min-height: 0;
     overflow-y: auto;
@@ -1566,21 +1495,19 @@ body {
   }
 }
 
-/* Gebiedskeuze zweeft boven de kaart en verandert de vensterindeling niet. */
+/* Gebied kiezen gebeurt boven de kaart. De keuzemenu's openen eroverheen. */
 #run-map-preview .map-title, #run-map-preview #rm-country-panel,
 #run-map-preview #rm-draw-panel { display: none; }
 #run-map-preview .area-controls { display: contents; }
 #run-map-preview .area-toolbar {
-  position: absolute; z-index: 12; top: 12px; left: 65px; right: 16px;
-  display: flex; justify-content: flex-start; gap: 8px; pointer-events: none;
+  display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px;
 }
 #run-map-preview .area-toolbar button {
-  pointer-events: auto; display: flex; gap: 12px; align-items: center;
-  box-shadow: 0 2px 8px #20364418; padding: 9px 13px;
+  display: flex; align-items: center; gap: 6px; min-height: 44px; padding: 7px 10px;
 }
 #run-map-preview .area-toolbar button[aria-expanded="true"] { border-color: var(--action); }
 #run-map-preview .area-popover {
-  position: absolute; top: 65px; left: 65px; right: 16px; max-width: 350px;
+  position: absolute; top: 65px; left: 10px; right: 16px; max-width: 350px;
   max-height: calc(100% - 85px); overflow: auto; padding: 14px;
   background: #fff; border: 1px solid var(--line); border-radius: 9px;
   box-shadow: 0 6px 22px #0002; z-index: 20;
@@ -1606,8 +1533,6 @@ body {
 #run-map-preview .area-popover .authorities { max-height: 220px; overflow-y: auto; }
 #run-map-preview .picker-caption { display: none; }
 #run-map-preview #rm-authority-slot { margin-bottom: 12px; }
-#run-map-preview .map-controls { top: 70px; left: 12px; }
-#run-map-preview .map .backgrounds { top: 70px; right: 12px; }
 #run-map-preview .north { top: auto; bottom: 14px; right: 12px; left: auto; }
 #run-map-preview .map > .selection {
   position: absolute; bottom: 12px; left: 12px; right: auto; z-index: 5;
@@ -1628,8 +1553,8 @@ body {
 #run-map-preview .drawing-toolbar { bottom: 90px; }
 #run-map-preview .map-note { display: none; }
 #run-map-preview .extra-panel { border-radius: 9px; box-shadow: 0 6px 22px #0002; }
-#run-map-preview .map-pane { position: relative; }
-@media (min-width: 561px) {
+#run-map-preview .map-pane { position: relative; container-type: inline-size; }
+@media (min-width: 761px) {
   #run-map-preview > .workspace { grid-template-columns: minmax(0, 1fr) minmax(320px, 380px); }
   #run-map-preview .map-pane { grid-template-rows: minmax(0, 1fr) auto auto; padding: 12px; }
   #run-map-preview .map { min-height: 0; }
@@ -1713,7 +1638,7 @@ body {
 #run-map-preview .drawing-toolbar {
   top: 65px;
   bottom: auto;
-  left: 65px;
+  left: 10px;
   right: 16px;
   max-width: 350px;
   max-height: calc(100% - 85px);
@@ -1955,7 +1880,7 @@ body {
 #run-map-preview .extra-panel .option-actions { gap: 8px; margin-top: 8px; }
 #run-map-preview .extra-panel .option-actions button { min-height: 34px; padding: 6px 11px; font-size: 14px; border-radius: 7px; color: #246386; background: #f5f9fc; border-color: #d9e5ed; }
 #run-map-preview .extra-panel .option-actions button:hover { background: #e8f3fa; border-color: #a4c8dc; }
-@media (min-width: 561px) {
+@media (min-width: 761px) {
   #run-map-preview > .workspace { grid-template-columns: minmax(0, 1fr) minmax(320px, 420px); }
 }
 
@@ -2007,10 +1932,14 @@ body {
 #run-map-preview .map-credits .attribution { pointer-events: auto; }
 #run-map-preview .map > .selection { bottom: 32px; }
 #run-map-preview .north { bottom: 34px; }
-@media (min-width: 561px) {
-  #run-map-preview .map-pane { grid-template-rows: minmax(0, 1fr); }
+@container (max-width: 480px) {
+  #run-map-preview .map > .selection { bottom: 48px; }
+  #run-map-preview .north { bottom: 50px; }
 }
-@media (max-width: 560px) {
+@media (min-width: 761px) {
+  #run-map-preview .map-pane { grid-template-rows: auto minmax(0, 1fr); }
+}
+@media (max-width: 760px) {
   #run-map-preview .form { min-height: 460px; }
   #run-map-preview .map-credits { justify-content: flex-end; }
   #run-map-preview .map-credits .legend { display: none; }

@@ -203,8 +203,10 @@ const checks=`
  const overviewZoom=zoom;
  for(let i=0;i<20;i++){q('#rm-zoom-in').click();}
  assert(zoom>32);q('#rm-reset').click();assert.equal(zoom,overviewZoom);
- // De goedgekeurde keuzemenu's staan op de kaart en nemen geen kaarthoogte in.
- assert.equal(q('.area-toolbar').parentElement,q('.map'));
+ // Gebied kiezen staat boven de kaart. De kaartbediening blijft op de kaart.
+ assert.equal(q('.area-toolbar').nextElementSibling,q('.map'));
+ assert.equal(q('.backgrounds').parentElement,q('.map'));
+ assert.equal(q('.map-controls').parentElement,q('.map'));
  assert.equal(q('.selection').parentElement,q('.map'));
  q('#rm-choose-area').click();assert(!areaPopovers.get('choose').hidden);
  q('#rm-custom-area').click();assert(areaPopovers.get('choose').hidden);

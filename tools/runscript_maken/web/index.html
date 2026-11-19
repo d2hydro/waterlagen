@@ -30,37 +30,37 @@
             <h3>Jouw gebied</h3>
             <span class="muted">Nederland</span>
           </div>
-          <div class="backgrounds" role="group" aria-label="Kaartachtergrond">
-            <button
-              data-background="streets"
-              aria-pressed="true"
-              aria-label="Stratenkaart"
-              title="Stratenkaart"
-              data-tooltip="Stratenkaart"
-            >
-              <span
-                class="map-icon"
-                data-icon="map"
-                aria-hidden="true"
-              ></span></button
-            ><button
-              data-background="satellite"
-              aria-pressed="false"
-              aria-label="Luchtfoto · PDOK actueel"
-              title="Luchtfoto · PDOK actueel"
-              data-tooltip="Luchtfoto · PDOK actueel"
-            >
-              <span
-                class="map-icon"
-                data-icon="satellite"
-                aria-hidden="true"
-              ></span>
-            </button>
+          <div class="area-toolbar" role="group" aria-label="Gebied kiezen">
+            <button id="rm-choose-area" aria-expanded="false" aria-controls="rm-area-menu">Gebied kiezen</button>
+            <button id="rm-custom-area" aria-expanded="false" aria-controls="rm-custom-menu">Eigen gebied</button>
           </div>
           <div class="map">
-            <div class="area-toolbar" role="group" aria-label="Gebied kiezen">
-              <button id="rm-choose-area" aria-expanded="false" aria-controls="rm-area-menu">Gebied kiezen</button>
-              <button id="rm-custom-area" aria-expanded="false" aria-controls="rm-custom-menu">Eigen gebied</button>
+            <div class="backgrounds" role="group" aria-label="Kaartachtergrond">
+              <button
+                data-background="streets"
+                aria-pressed="true"
+                aria-label="Stratenkaart"
+                title="Stratenkaart"
+                data-tooltip="Stratenkaart"
+              >
+                <span
+                  class="map-icon"
+                  data-icon="map"
+                  aria-hidden="true"
+                ></span></button
+              ><button
+                data-background="satellite"
+                aria-pressed="false"
+                aria-label="Luchtfoto · PDOK actueel"
+                title="Luchtfoto · PDOK actueel"
+                data-tooltip="Luchtfoto · PDOK actueel"
+              >
+                <span
+                  class="map-icon"
+                  data-icon="satellite"
+                  aria-hidden="true"
+                ></span>
+              </button>
             </div>
             <section id="rm-area-menu" class="area-popover" aria-label="Gebied kiezen" hidden>
               <header><h3>Gebied kiezen</h3><button data-close-area aria-label="Sluiten">×</button></header>
@@ -164,7 +164,7 @@
               <g id="rm-geography"></g>
               <g id="rm-drawing"></g>
             </svg>
-            <div class="map-controls">
+            <div class="map-controls" role="group" aria-label="Kaartweergave">
               <button
                 id="rm-zoom-in"
                 aria-label="Inzoomen"

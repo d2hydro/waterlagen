@@ -9,7 +9,6 @@ let filePath = "",
   savedDrawing = "";
 q(".top").insertBefore(q(".tools"), q(".tag"));
 q(".map").append(q(".selection"));
-q(".map").append(q(".backgrounds"));
 const formContent = document.createElement("div");
 formContent.className = "form-content";
 while (q(".form").firstChild) {
