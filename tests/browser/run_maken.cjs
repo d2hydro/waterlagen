@@ -124,6 +124,7 @@ const checks=`
  scheduleLandusePreview(true);await updateLandusePreview();
  assert(!landuseStatus.hidden);
  assert.equal(landuseStatus.querySelector('summary').textContent,'Gekoppelde landgebruikrun');
+ assert.match(landuseStatus.querySelector('summary').title,/gebouwen en de tegelindeling/);
  assert(!landuseStatus.querySelector('details').open);
  landuseStatus.querySelector('summary').click();
  assert(landuseStatus.querySelector('details').open);

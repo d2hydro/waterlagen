@@ -1593,6 +1593,7 @@ async function updateLandusePreview() {
         const location = document.createElement("details");
         const label = document.createElement("summary");
         label.textContent = "Gekoppelde landgebruikrun";
+        label.title = "Voor dit hoogtemodel worden de gebouwen en de tegelindeling uit deze landgebruikrun gebruikt.";
         const name = document.createElement("div");
         name.textContent = result.message;
         name.title = result.path;
