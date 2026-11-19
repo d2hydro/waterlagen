@@ -1877,7 +1877,6 @@ body {
 
 #run-map-preview .dem-landuse-status {
   grid-column: 1 / -1;
-  padding-inline-start: 25px;
   font-size: 13px;
   line-height: 1.45;
   color: #4b6372;

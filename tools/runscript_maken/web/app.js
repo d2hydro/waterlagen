@@ -151,14 +151,6 @@ for (const [key, name] of layers) {
   extra.title = "Laagopties voor " + name;
   extra.setAttribute("aria-label", extra.title);
   row.append(extra);
-  if (key === "dem") {
-    const status = document.createElement("div");
-    status.id = "rm-dem-landuse-status";
-    status.className = "dem-landuse-status";
-    status.hidden = true;
-    status.setAttribute("aria-live", "polite");
-    row.append(status);
-  }
   q("#rm-layers").append(row);
 }
 function toggle(code) {
@@ -1479,6 +1471,12 @@ function addOptionActions(label, input, option, layer) {
   }
   if (layer === "dem" && option.flag === "landuse-run") {
     input.placeholder = "Automatisch";
+    const status = document.createElement("div");
+    status.id = "rm-dem-landuse-status";
+    status.className = "dem-landuse-status";
+    status.hidden = true;
+    status.setAttribute("aria-live", "polite");
+    label.after(status);
   }
 }
 

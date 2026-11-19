@@ -124,7 +124,12 @@ const checks=`
  const longName='hhnk-landgebruik-20261119-103026';
  window.landuseResult={state:'recorded',message:longName,path:'/data/waterschap_12/'+longName};
  scheduleLandusePreview(true);await updateLandusePreview();
- assert(!landuseStatus.hidden);
+ const demPanel=q('#rm-extra-dem');
+ assert(!q('#rm-layers').contains(landuseStatus));
+ assert.equal(landuseField.closest('label').nextElementSibling,landuseStatus);
+ assert(demPanel.hidden && demPanel.contains(landuseStatus));
+ q('[aria-controls="rm-extra-dem"]').click();
+ assert(!demPanel.hidden && !landuseStatus.hidden);
  assert.equal(landuseStatus.querySelector('summary').textContent,'Gekoppelde landgebruikrun');
  assert.match(landuseStatus.querySelector('summary').title,/gebouwen en de tegelindeling/);
  assert(!landuseStatus.querySelector('details').open);
@@ -134,6 +139,7 @@ const checks=`
  assert.equal(landuseStatus.querySelector('details div').title,window.landuseResult.path);
  landuseStatus.querySelector('summary').click();
  assert(!landuseStatus.querySelector('details').open);
+ demPanel.querySelector('header button').click();assert(demPanel.hidden);
  delete window.landuseResult;
  folderButton.click();await settle();
  assert.equal(landuseField.value,'D:/gekozen-run');
