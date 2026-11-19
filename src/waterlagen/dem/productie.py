@@ -848,7 +848,7 @@ def bouw_dem_tiles(
     target_dir : pathlib.Path
         Dedicated output folder. Matching completed tiles/heights are reused.
     ahn_vrt_path : pathlib.Path
-        Original AHN-DTM mosaic covering cores and donor halos.
+        Terrain-model mosaic covering tile cores and the surrounding search area.
     landuse_tiles : list of pathlib.Path
         Land-use cores with matching bronnen, gebouw_ids and gebouwen companions.
         Complete prepared geometries are used for building sampling; only source

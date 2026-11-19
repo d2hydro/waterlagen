@@ -6,8 +6,8 @@ editorial_status: human
 
 ## Doel
 
-Dit hoogtemodel voor de nieuwe WaterSchadeSchatter combineert het AHN-terreinmodel (DTM) met één geschat vloerpeil per pand. Het is bedoeld voor berekeningen van overstroming op het maaiveld. De gebouwcellen zijn gedefinieerd in het bronnenraster van
-[functioneel landgebruik](functioneel-landgebruik.md).
+Dit hoogtemodel voor de nieuwe WaterSchadeSchatter combineert een terreinmodel (standaard AHN) met één geschat vloerpeil per pand. Het is bedoeld voor berekeningen van overstroming op het maaiveld. De gebouwcellen zijn gedefinieerd in het bronnenraster van
+[functioneel landgebruik](functioneel-landgebruik.md). Bij een [eigen DTM-VRT](../produceren/dem.md#hoogtebron) komen de maaiveldhoogtes en de hoogtes voor de vloerpeilschatting uit uw eigen raster.
 
 <span id="zelf-produceren"></span>
 
@@ -27,13 +27,13 @@ meters, met schaalfactor 1.
 
     - dem.vrt en dem.tif (COG): hoogtemodel, bij standaardinvoer als Int16.
     - dem_float.tif (COG): dezelfde hoogtes als Float32.
-    - dem_bron en ahn_bron, beide als VRT en COG: herkomst van de hoogtes, respectievelijk na en vóór toevoeging van gebouwhoogtes. Codes: 0 = ontbrekend, 1 = origineel AHN, 2 = gebouwhoogte (alleen dem_bron), 3 = interpolatie.
-    - nodata.gpkg, laag nodata: ontbrekende gebouwhoogtes en resterende AHN-gaten.
+    - dem_bron en ahn_bron, beide als VRT en COG: herkomst van de hoogtes, respectievelijk na en vóór toevoeging van gebouwhoogtes. Codes: 0 = ontbrekend, 1 = oorspronkelijke terreinhoogte, 2 = gebouwhoogte (alleen dem_bron), 3 = interpolatie.
+    - nodata.gpkg, laag nodata: ontbrekende gebouwhoogtes en gaten in het terreinmodel.
     - gebouwhoogten.gpkg: berekende hoogtes per gebouw.
     - tiles.gpkg: tegelkernen van het productiegebied.
     Per tegel staan in `tiles/<xmin_ymin_xmax_ymax>/` de rasters ahn_aangevuld.tif, ahn_bron.tif, gebouwhoogten.tif en dem_bron.tif, plus nodata.gpkg, status.json en workflow.log.
 
-    nodata.gpkg vermeldt per plek de bron, categorie en reden waarom een hoogte ontbreekt. Bij gebouwen worden ook de BAG-identificatie, zoekafstand en het aantal gebruikte AHN-cellen vastgelegd. Gebouwen staan eenmaal met hun volledige vorm in het bestand en kunnen buiten het uitvoergebied uitsteken; AHN-gaten volgen de rastercellen.
+    nodata.gpkg vermeldt per plek de bron, categorie en reden waarom een hoogte ontbreekt. Bij gebouwen worden ook de BAG-identificatie, zoekafstand en het aantal gebruikte terreincellen vastgelegd. Gebouwen staan eenmaal met hun volledige vorm in het bestand en kunnen buiten het uitvoergebied uitsteken. Gaten in het terreinmodel volgen de rastercellen.
 
     dem_coverage.json bevat de aantallen resterende lege cellen na het combineren van terrein- en gebouwhoogtes, uitgesplitst naar buiten het landgebied, water binnen het landgebied en overig landgebied. Ook als er gaten overblijven, worden de uitvoerbestanden aangemaakt.
 
@@ -45,15 +45,15 @@ Gaten kunnen overblijven. Waar een vloerpeil ontbreekt, kan wel een terreinhoogt
 
 ## Werkwijze
 
-Ontbrekende terreinhoogtes worden per tegel aangevuld met AHN-waarden, ook van buiten de tegelgrens. Op gebouwcellen krijgt het geschatte vloerpeil voorrang als het kon worden bepaald.
+Ontbrekende terreinhoogtes worden per tegel aangevuld met hoogtes uit het gekozen terreinmodel, ook van buiten de tegelgrens. Op gebouwcellen krijgt het geschatte vloerpeil voorrang als het kon worden bepaald.
 
 <span id="ahn-interpoleren"></span>
 
-??? info "Ontbrekende AHN-hoogtes aanvullen"
+??? info "Ontbrekende terreinhoogtes aanvullen"
 
-    Ontbrekende AHN-hoogtes worden geschat op basis van omliggende, oorspronkelijke AHN-hoogtes met inverse-distance-weighting. De maximale zoekafstand is instelbaar en bedraagt standaard 250 meter. Zonder bruikbare hoogtes binnen die afstand blijft een gat open. Eerder geschatte hoogtes worden niet gebruikt om andere gaten te vullen.
+    Ontbrekende terreinhoogtes worden geschat op basis van omliggende, oorspronkelijke terreinhoogtes met inverse-distance-weighting. De maximale zoekafstand is instelbaar en bedraagt standaard 250 meter. Zonder bruikbare hoogtes binnen die afstand blijft een gat open. Eerder geschatte hoogtes worden niet gebruikt om andere gaten te vullen.
 
-    Bestaande AHN-hoogtes blijven behouden. Het aanvullen gebeurt los van de berekening van gebouwhoogtes en kan ook buiten het landgebied plaatsvinden. Daarna krijgen de gebouwhoogtes voorrang op de plekken die als gebouw zijn aangemerkt.
+    Bestaande terreinhoogtes blijven behouden. Het aanvullen gebeurt los van de berekening van gebouwhoogtes en kan ook buiten het landgebied plaatsvinden. Daarna krijgen de gebouwhoogtes voorrang op de plekken die als gebouw zijn aangemerkt.
     AHN-tegels kunnen ook afzonderlijk worden aangevuld en opgeslagen, zonder de rest van het hoogtemodel te produceren. Daarbij kan worden aangegeven waar gaten mogen worden gevuld. Dezelfde maximale zoekafstand blijft gelden.
 
 <span id="pandhoogtes-bepalen"></span>
@@ -62,11 +62,11 @@ Ontbrekende terreinhoogtes worden per tegel aangevuld met AHN-waarden, ook van b
 
     Alleen rastercellen waarvoor BAG de bron is in het functionele landgebruik, tellen mee als gebouw. Aangrenzende panden blijven afzonderlijk herkenbaar, ook als hun gebruik onbekend is.
 
-    De gebouwhoogte wordt afgeleid uit de oorspronkelijke AHN-hoogtes rondom het volledige pand, ook als dat over een tegelgrens ligt. Hoogtes binnen het pand of buurpanden tellen niet mee. De zoekafstand begint bij 1 meter en wordt zo nodig in stappen van 1 meter vergroot tot maximaal 5 meter.
+    De gebouwhoogte wordt afgeleid uit de oorspronkelijke terreinhoogtes rondom het volledige pand, ook als dat over een tegelgrens ligt. Hoogtes binnen het pand of buurpanden tellen niet mee. De zoekafstand begint bij 1 meter en wordt zo nodig in stappen van 1 meter vergroot tot maximaal 5 meter.
 
     Voor bruikbare hoogtes wordt het 75e percentiel bepaald. Hierbij wordt standaard 0,05 m (5 cm) opgeteld als schatting van het vloerpeil boven maaiveld. Deze toeslag is instelbaar (0 = geen toeslag) en geldt alleen voor succesvol geschatte gebouwhoogtes.
 
-    De hoogte, BAG-identificatie, zoekafstand en het aantal donors (gebruikte AHN-hoogtes) worden bewaard in `gebouwhoogten.gpkg`.
+    De hoogte, BAG-identificatie, zoekafstand en het aantal donors (gebruikte terreinhoogtes) worden bewaard in `gebouwhoogten.gpkg`.
 
 <span id="bronnen"></span>
 
@@ -74,7 +74,7 @@ Ontbrekende terreinhoogtes worden per tegel aangevuld met AHN-waarden, ook van b
 
     Per cel wordt de bron van de hoogte-waarde bijgehouden op twee niveaus:
 
-    - `ahn_bron` geeft per rastercel aan waar de terreinhoogte vandaan komt: oorspronkelijk AHN-DTM (1), inverse-distance-interpolatie (3) of ontbrekend (0).
+    - `ahn_bron` geeft per rastercel aan waar de terreinhoogte vandaan komt: het gekozen terreinmodel (1), inverse-distance-interpolatie (3) of ontbrekend (0).
     - `dem_bron` geeft de herkomst van de hoogte in het uiteindelijke hoogtemodel. Daarin krijgen cellen met een geslaagde gebouwhoogte code 2. De overige cellen behouden de code uit ahn_bron.
 
 <span id="ontbrekende-hoogtes-nodata"></span>
@@ -84,9 +84,9 @@ Ontbrekende terreinhoogtes worden per tegel aangevuld met AHN-waarden, ook van b
     Per tegel wordt vastgelegd waar geen hoogte kon worden bepaald. Deze plekken worden samengevoegd in `nodata.gpkg`, met drie categorieën:
     - **AHN bij water**: ontbrekende terreinhoogtes die na het aanvullen overblijven op plekken die in het functionele landgebruik als water zijn ingedeeld.
     - **AHN bij overig landgebruik**: dezelfde ontbrekende terreinhoogtes, maar buiten de als water ingedeelde plekken.
-    - **Gebouwen**: panden waarvoor binnen de maximale zoekafstand geen bruikbare AHN-hoogtes zijn gevonden om een gebouwhoogte te bepalen.
+    - **Gebouwen**: panden waarvoor binnen de maximale zoekafstand geen bruikbare terreinhoogtes zijn gevonden om een gebouwhoogte te bepalen.
 
-    **Let op (!)**: Een melding betekent niet altijd dat het uiteindelijke hoogtemodel daar leeg is. Een ontbrekende AHN terreinhoogte kan alsnog worden bedekt door een gebouwhoogte. En ook; waar geen pandhoogte bepaald kan worden kunnen deze cellen alsnog opgevuld zijn door terrein-interpolatie.
+    **Let op (!)**: Een melding betekent niet altijd dat het uiteindelijke hoogtemodel daar leeg is. Een ontbrekende terreinhoogte kan alsnog worden bedekt door een gebouwhoogte. En ook; waar geen pandhoogte bepaald kan worden kunnen deze cellen alsnog opgevuld zijn door terrein-interpolatie.
 
 <span id="samenvoegen-tegels"></span>
 
@@ -98,4 +98,4 @@ Ontbrekende terreinhoogtes worden per tegel aangevuld met AHN-waarden, ook van b
 
 ## Bronlagen
 
-[AHN-DTM](../bronlagen/ahn.md) levert terreinhoogtes in en rond de tegels. [Functioneel landgebruik](functioneel-landgebruik.md) levert het bronnenraster, de gebouw-ID’s en volledige pandvormen met hun [BAG-identificatie](../bronlagen/bag.md).
+Standaard levert het [AHN-DTM](../bronlagen/ahn.md) de terreinhoogtes in en rond de tegels. [Functioneel landgebruik](functioneel-landgebruik.md) levert het bronnenraster, de gebouw-ID’s en volledige pandvormen met hun [BAG-identificatie](../bronlagen/bag.md).

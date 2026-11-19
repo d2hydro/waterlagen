@@ -108,11 +108,11 @@ EXTRA_OPTIONS = {
         ),
         ExtraOption(
             "ahn-vrt",
-            "Eigen AHN-VRT (.vrt)",
+            "Eigen DTM-VRT (.vrt)",
             HelpText(
-                "Gebruik een eigen AHN-mozaïek dat ook de omliggende zoekgebieden dekt.",
+                "Kies uw eigen maaiveldmodel. Laat dit veld leeg voor AHN.",
                 "dem",
-                "landgebruik-vinden-of-produceren",
+                "hoogtebron",
             ),
             "file",
             file_pattern="*.vrt",
@@ -193,7 +193,7 @@ EXTRA_OPTIONS = {
             "interpolation-max-distance-m",
             "Gaten vullen tot (m)",
             HelpText(
-                "Schat ontbrekende AHN-hoogtes met metingen binnen deze afstand; 0 schakelt dit uit.",
+                "Schat ontbrekende terreinhoogtes met metingen binnen deze afstand; 0 schakelt dit uit.",
                 "dem",
                 "instellingen-en-workers",
             ),
@@ -423,9 +423,9 @@ def validate_option_path(option: ExtraOption, value: str | Path) -> Path:
         try:
             with rasterio.open(path) as raster:
                 if raster.driver != "VRT" or not raster.count or raster.crs is None:
-                    raise ValueError("Kies een AHN-VRT met een coördinatenstelsel.")
+                    raise ValueError("Kies een DTM-VRT met een coördinatenstelsel.")
         except rasterio.errors.RasterioIOError as error:
-            raise ValueError("Kan de AHN-VRT niet openen.") from error
+            raise ValueError("Kan de DTM-VRT niet openen.") from error
     elif suffix == ".csv":
         from waterlagen.functioneel_landgebruik.landgebruikstabel import (
             load_landuse_table,

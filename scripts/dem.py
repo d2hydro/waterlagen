@@ -23,7 +23,7 @@ def cli() -> None:
     parser.add_argument(
         "--landuse-run", type=Path, help="Expliciete bestaande landgebruikrun"
     )
-    parser.add_argument("--ahn-vrt", type=Path, help="Expliciete lokale AHN-VRT")
+    parser.add_argument("--ahn-vrt", type=Path, help="Eigen maaiveldmodel (.vrt), standaard AHN")
     parser.add_argument(
         "--building-workers", type=positive_int, help="Werkprocessen voor gebouwhoogten"
     )

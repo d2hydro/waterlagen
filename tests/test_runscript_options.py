@@ -26,7 +26,7 @@ options = importlib.import_module("runscript_tool_tests.waterlagen_options")
             "Ongeldige brandlagen-TOML",
         ),
         ("functioneel_landgebruik", "mapping-csv", ".csv", "Ongeldige codetabel"),
-        ("dem", "ahn-vrt", ".vrt", "AHN-VRT niet openen"),
+        ("dem", "ahn-vrt", ".vrt", "DTM-VRT niet openen"),
     ],
 )
 def test_manual_input_with_wrong_type_or_content_is_rejected(
