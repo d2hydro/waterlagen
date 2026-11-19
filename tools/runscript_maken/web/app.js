@@ -15,11 +15,6 @@ while (q(".form").firstChild) {
   formContent.append(q(".form").firstChild);
 }
 q(".form").append(formContent, q(".footer"));
-const mapCredits = document.createElement("div");
-mapCredits.className = "map-credits";
-mapCredits.append(q(".legend"), q(".attribution"));
-q(".map").append(mapCredits);
-
 for (const icon of root.querySelectorAll("[data-icon]")) {
   const source = `url("${data.icons[icon.dataset.icon]}")`;
   icon.style.maskImage = source;
@@ -662,6 +657,9 @@ q("#rm-picker").onclick = () => {
 // Sluiten loopt via het hele gebiedsvenster, niet via muisbewegingen in de lijst.
 function render() {
   renderForm();
+  const standardArea = mode === "country" || mode === "authorities";
+  q("#rm-choose-area").setAttribute("aria-current", String(standardArea));
+  q("#rm-custom-area").setAttribute("aria-current", String(!standardArea));
   const names = features
     .filter((f) => selected.has(f.properties.code))
     .map((f) => f.properties.name);
@@ -694,8 +692,7 @@ function renderSelectionOutline() {
     svgElement("path", { d: path(feature), class: "selection-outline selection-color" }, parent);
 }
 function setBackground(kind) {
-  for (const button of root.querySelectorAll("[data-background]"))
-    button.setAttribute("aria-pressed", String(button.dataset.background === kind));
+  q("#rm-background").value = kind;
   root.classList.toggle("with-basemap", kind !== "plain");
   root.classList.toggle("satellite-map", kind === "satellite");
   const label = q("#rm-attribution");
@@ -715,8 +712,7 @@ function setBackground(kind) {
     kind === "streets" ? "© OpenStreetMap contributors" : "PDOK · Beeldmateriaal Nederland";
   label.append(link, document.createTextNode(" · overzichtsbeeld"));
 }
-for (const button of root.querySelectorAll("[data-background]"))
-  button.onclick = () => setBackground(button.dataset.background);
+q("#rm-background").onchange = (event) => setBackground(event.target.value);
 const areaPopovers = new Map([
   ["choose", q("#rm-area-menu")],
   ["custom", q("#rm-custom-menu")],

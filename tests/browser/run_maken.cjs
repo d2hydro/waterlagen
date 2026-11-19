@@ -78,7 +78,7 @@ const checks=`
  assert.equal(q('#rm-run-name').value,'kaartproef');
  assert.equal(root.querySelectorAll('[data-flag]').length,Object.values(data.options).flat().length);
  assert.equal(q('#rm-layers').children.length,5);
- assert.equal(q('[data-background="streets"]').getAttribute('aria-pressed'),'true');
+ assert.equal(q('#rm-background').value,'streets');
  assert(q('#rm-attribution a').href.includes('openstreetmap.org'));
  const originalZoom=zoom;
  setZoom(1);
@@ -88,7 +88,8 @@ const checks=`
  setZoom(128);
  assert(overviewOpacity < middleOpacity && middleOpacity < Number(liveTiles.style.opacity));
  assert.equal(Number(liveTiles.style.opacity),1);
- setBackground('satellite');setZoom(1);
+ q('#rm-background').value='satellite';q('#rm-background').dispatchEvent(new Event('change'));
+ assert.equal(tileProvider,'satellite');setZoom(1);
  assert.equal(Number(liveTiles.style.opacity),overviewOpacity);
  assert.equal(q('.authority-casing').parentElement.getAttribute('pointer-events'),'none');
  setBackground('streets');setZoom(originalZoom);
@@ -205,7 +206,8 @@ const checks=`
  assert(zoom>32);q('#rm-reset').click();assert.equal(zoom,overviewZoom);
  // Gebied kiezen staat boven de kaart. De kaartbediening blijft op de kaart.
  assert.equal(q('.area-toolbar').nextElementSibling,q('.map'));
- assert.equal(q('.backgrounds').parentElement,q('.map'));
+ assert.equal(q('.map').nextElementSibling,q('.map-footer'));
+ assert(q('.map-footer').contains(q('#rm-background')));
  assert.equal(q('.map-controls').parentElement,q('.map'));
  assert.equal(q('.selection').parentElement,q('.map'));
  q('#rm-choose-area').click();assert(!areaPopovers.get('choose').hidden);

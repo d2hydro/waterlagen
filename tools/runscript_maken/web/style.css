@@ -973,8 +973,8 @@
 #run-map-preview {
   --selection-line: #e5333f;
 }
-/* De twee knopgroepen laten het midden en de onderrand van de kaart vrij. */
-#run-map-preview .map :is(.backgrounds, .map-controls) {
+/* Zoom en landelijk overzicht delen een knoppenbalk rechtsboven. */
+#run-map-preview .map .map-controls {
   position: absolute;
   top: 10px;
   z-index: 2;
@@ -984,9 +984,8 @@
   background: var(--paper);
   box-shadow: 0 2px 6px #20364426;
 }
-#run-map-preview .map .backgrounds { left: 10px; }
 #run-map-preview .map .map-controls { right: 10px; }
-#run-map-preview .map :is(.backgrounds, .map-controls) button {
+#run-map-preview .map .map-controls button {
   display: grid;
   place-items: center;
   width: 44px;
@@ -996,25 +995,11 @@
   border-radius: 0;
   background: transparent;
 }
-#run-map-preview .map :is(.backgrounds, .map-controls) button:first-child { border-radius: 9px 0 0 9px; }
-#run-map-preview .map :is(.backgrounds, .map-controls) button:last-child { border-radius: 0 9px 9px 0; }
-#run-map-preview .map :is(.backgrounds, .map-controls) button + button { border-left: 1px solid var(--line); }
-#run-map-preview .map :is(.backgrounds, .map-controls) button:hover { background: var(--soft); }
-#run-map-preview .map :is(.backgrounds, .map-controls) button:active { background: #dfedf7; }
-#run-map-preview .map .backgrounds button[aria-pressed="true"] { background: var(--action); color: #fff; }
-#run-map-preview .map .backgrounds svg,
-#run-map-preview .map-controls svg {
-  position: static;
-  display: block;
-  width: 19px;
-  height: 19px;
-  min-height: 0;
-  touch-action: auto;
-}
-#run-map-preview .map button:not(:has(svg))::after {
-  content: attr(data-short);
-  font-size: 12px;
-}
+#run-map-preview .map .map-controls button:first-child { border-radius: 9px 0 0 9px; }
+#run-map-preview .map .map-controls button:last-child { border-radius: 0 9px 9px 0; }
+#run-map-preview .map .map-controls button + button { border-left: 1px solid var(--line); }
+#run-map-preview .map .map-controls button:hover { background: var(--soft); }
+#run-map-preview .map .map-controls button:active { background: #dfedf7; }
 #run-map-preview .north {
   top: 143px;
   right: 21px;
@@ -1041,10 +1026,6 @@
   width: 15px;
   height: 11px;
   box-shadow: 0 0 0 1px #fff;
-}
-#run-map-preview .map .backgrounds button::after,
-#run-map-preview .map-controls button::after {
-  content: none;
 }
 #run-map-preview .map-icon {
   display: block;
@@ -1500,12 +1481,24 @@ body {
 #run-map-preview #rm-draw-panel { display: none; }
 #run-map-preview .area-controls { display: contents; }
 #run-map-preview .area-toolbar {
-  display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px;
+  display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 10px;
+}
+#run-map-preview .area-toolbar h2 {
+  margin: 0 8px 0 0; color: var(--heading); font-size: 17px; font-weight: 600;
 }
 #run-map-preview .area-toolbar button {
-  display: flex; align-items: center; gap: 6px; min-height: 44px; padding: 7px 10px;
+  min-height: 44px; padding: 6px 12px; font-weight: 600; color: var(--action);
+  border: 1px solid #a7bdc9; border-radius: 8px;
 }
-#run-map-preview .area-toolbar button[aria-expanded="true"] { border-color: var(--action); }
+#run-map-preview .area-toolbar button[aria-current="true"] {
+  background: var(--action); border-color: var(--action); color: white;
+}
+#run-map-preview .area-toolbar button[aria-expanded="true"] {
+  box-shadow: inset 0 0 0 2px var(--action);
+}
+@container (max-width: 480px) {
+  #run-map-preview .area-toolbar h2 { flex-basis: 100%; }
+}
 #run-map-preview .area-popover {
   position: absolute; top: 65px; left: 10px; right: 16px; max-width: 350px;
   max-height: calc(100% - 85px); overflow: auto; padding: 14px;
@@ -1687,13 +1680,13 @@ body {
 #run-map-preview .drawing-toolbar button {
   transition: background-color 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
 }
-#run-map-preview .area-toolbar button:hover,
+#run-map-preview .area-toolbar button:not([aria-current="true"]):hover,
 #run-map-preview .area-popover button:not(.primary):hover,
 #run-map-preview .drawing-toolbar button:not(.primary):not(:disabled):hover {
   background: #eff7fc;
   border-color: #a9cadc;
 }
-#run-map-preview .area-toolbar button:active,
+#run-map-preview .area-toolbar button:not([aria-current="true"]):active,
 #run-map-preview .area-popover button:not(.primary):active,
 #run-map-preview .drawing-toolbar button:not(.primary):not(:disabled):active {
   background: #dfedf7;
@@ -1918,31 +1911,23 @@ body {
 #run-map-preview .footer #rm-preview:active,
 #run-map-preview .footer #rm-save:active { background: #dfedf7; }
 #run-map-preview .map-pane { padding: 10px; }
-#run-map-preview .map-credits {
-  position: absolute; bottom: 5px; right: 8px; left: 8px; z-index: 4;
-  display: flex; justify-content: space-between; align-items: end; flex-wrap: wrap;
-  gap: 3px 10px; pointer-events: none;
+#run-map-preview .map-footer {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-top: 4px;
 }
+#run-map-preview .map-footer #rm-background {
+  width: auto; min-height: 44px; flex: none; font-size: 14px;
+}
+#run-map-preview .map-credits { min-width: 0; }
 #run-map-preview .map-credits > * {
-  margin: 0; padding: 2px 4px; border-radius: 3px; background: #fffffff0;
-  font-size: 10px; line-height: 1.3; color: #5d707d;
+  margin: 0; font-size: 11px; line-height: 1.4; color: var(--sub);
 }
 #run-map-preview .map-credits .legend { gap: 6px; }
 #run-map-preview .map-credits .legend .swatch { width: 9px; height: 9px; }
-#run-map-preview .map-credits .attribution { pointer-events: auto; }
-#run-map-preview .map > .selection { bottom: 32px; }
-#run-map-preview .north { bottom: 34px; }
-@container (max-width: 480px) {
-  #run-map-preview .map > .selection { bottom: 48px; }
-  #run-map-preview .north { bottom: 50px; }
-}
 @media (min-width: 761px) {
-  #run-map-preview .map-pane { grid-template-rows: auto minmax(0, 1fr); }
+  #run-map-preview .map-pane { grid-template-rows: auto minmax(0, 1fr) auto; }
 }
 @media (max-width: 760px) {
   #run-map-preview .form { min-height: 460px; }
-  #run-map-preview .map-credits { justify-content: flex-end; }
-  #run-map-preview .map-credits .legend { display: none; }
 }
 
 /* Compacte laagkeuze: namen blijven leesbaar, instellingen zijn ondergeschikt. */

@@ -26,42 +26,12 @@
       </div>
       <div class="workspace">
         <section class="map-pane" aria-label="Gebied op de kaart">
-          <div class="map-title">
-            <h3>Jouw gebied</h3>
-            <span class="muted">Nederland</span>
-          </div>
-          <div class="area-toolbar" role="group" aria-label="Gebied kiezen">
-            <button id="rm-choose-area" aria-expanded="false" aria-controls="rm-area-menu">Gebied kiezen</button>
+          <div class="area-toolbar" role="group" aria-labelledby="rm-area-title">
+            <h2 id="rm-area-title">Gebied kiezen</h2>
+            <button id="rm-choose-area" aria-expanded="false" aria-controls="rm-area-menu">Land of waterschap</button>
             <button id="rm-custom-area" aria-expanded="false" aria-controls="rm-custom-menu">Eigen gebied</button>
           </div>
           <div class="map">
-            <div class="backgrounds" role="group" aria-label="Kaartachtergrond">
-              <button
-                data-background="streets"
-                aria-pressed="true"
-                aria-label="Stratenkaart"
-                title="Stratenkaart"
-                data-tooltip="Stratenkaart"
-              >
-                <span
-                  class="map-icon"
-                  data-icon="map"
-                  aria-hidden="true"
-                ></span></button
-              ><button
-                data-background="satellite"
-                aria-pressed="false"
-                aria-label="Luchtfoto · PDOK actueel"
-                title="Luchtfoto · PDOK actueel"
-                data-tooltip="Luchtfoto · PDOK actueel"
-              >
-                <span
-                  class="map-icon"
-                  data-icon="satellite"
-                  aria-hidden="true"
-                ></span>
-              </button>
-            </div>
             <section id="rm-area-menu" class="area-popover" aria-label="Gebied kiezen" hidden>
               <header><h3>Gebied kiezen</h3><button data-close-area aria-label="Sluiten">×</button></header>
               <label class="area-choice"><input type="radio" name="area-kind" value="country"> Heel Nederland</label>
@@ -205,12 +175,15 @@
               Klik op een waterschap om het aan of uit te zetten.
             </div>
           </div>
-          <div class="legend">
-            <span class="swatch"></span> Geselecteerd
-            <span style="margin-left: auto">Grenzen: HWH / Kadaster</span>
-          </div>
-          <div class="attribution" id="rm-attribution">
-            Achtergrond zonder straten
+          <div class="map-footer">
+            <div class="map-credits">
+              <div class="legend"><span class="swatch"></span> Geselecteerd &middot; Grenzen: HWH / Kadaster</div>
+              <div class="attribution" id="rm-attribution"></div>
+            </div>
+            <select id="rm-background" aria-label="Kaartachtergrond" title="Kaartachtergrond">
+              <option value="streets">Stratenkaart</option>
+              <option value="satellite">Luchtfoto</option>
+            </select>
           </div>
           <div class="selection" aria-live="polite">
             <strong id="rm-selection-title">2 waterschappen geselecteerd</strong
