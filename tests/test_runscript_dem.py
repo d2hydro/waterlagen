@@ -94,6 +94,7 @@ def test_existing_dependency_has_priority_over_refresh_and_selected_landuse(
         replace(options, layers=("functioneel_landgebruik", "dem")), mode
     )
     assert result.state == "recorded"
+    assert result.message == "vastgelegde-bron"
     assert result.path == dependency
 
 

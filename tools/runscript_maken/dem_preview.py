@@ -49,9 +49,7 @@ def preview_landuse(options: RunSettings, run_mode: str) -> LandusePreview:
         dependency = metadata.get("landuse_dependency")
         if dependency:
             path = Path(dependency["path"])
-            return LandusePreview(
-                "recorded", f"Vastgelegde landgebruikrun: {path.name}", str(path)
-            )
+            return LandusePreview("recorded", path.name, str(path))
     if not explicit:
         if options.refresh_sources:
             return LandusePreview(

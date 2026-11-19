@@ -1883,6 +1883,12 @@ body {
   color: #4b6372;
   overflow-wrap: anywhere;
 }
+#run-map-preview .dem-landuse-status summary {
+  color: #005e8c;
+  cursor: pointer;
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
 #run-map-preview .dem-landuse-status[data-state="error"] { color: #a12020; }
 #run-map-preview .dem-landuse-group > label { font-size: 15px; font-weight: 500; }
 #run-map-preview .dem-landuse-explanation {

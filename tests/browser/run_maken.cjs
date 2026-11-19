@@ -41,7 +41,7 @@ window.fetch=async(url,init)=>{
    window.deferLanduse=false;
    return new Promise(resolve=>window.finishLanduse=()=>resolve({ok:true,json:async()=>({state:'reuse',message:'Verouderde selectie',path:''})}));
   }
-  result={state:'reuse',message:'Automatisch: landgebruikrun afgerond',path:'D:\\data\\afgerond'};
+  result=window.landuseResult||{state:'reuse',message:'Automatisch: landgebruikrun afgerond',path:'D:\\data\\afgerond'};
  }
  else if(action==='polygon_file'){result={path:window.pickPath||'D:\\gebieden.gpkg',layers:['west','oost']};}
  else if(action==='polygon_layer'){
@@ -74,7 +74,14 @@ const checks=`
  const assert=window.assert;
  const settle=()=>new Promise(resolve=>setTimeout(resolve,0));
  assert.equal(root.hidden,false);
- assert(!q('#rm-area-menu').hidden,'De waterschapslijst opent direct bij het starten');
+ const listButton=q('#rm-choose-authorities');
+ assert(q('#rm-area-menu').hidden,'De waterschapslijst start ingeklapt');
+ assert.equal(listButton.getAttribute('aria-expanded'),'false');
+ listButton.click();
+ assert(!q('#rm-area-menu').hidden);
+ assert.equal(listButton.getAttribute('aria-expanded'),'true');
+ listButton.click();
+ assert(q('#rm-area-menu').hidden);
  assert.equal(q('#rm-workers').value,'8');
  assert.equal(q('#rm-run-name').value,'kaartproef');
  assert.equal(root.querySelectorAll('[data-flag]').length,Object.values(data.options).flat().length);
@@ -103,6 +110,16 @@ const checks=`
  assert(!collectValues().extra_options.some(o=>o.flag==='landuse-run'));
  await updateLandusePreview();
  assert.equal(landuseStatus.textContent,'Automatisch: landgebruikrun afgerond');
+ const longName='hhnk-landgebruik-20261119-103026';
+ window.landuseResult={state:'recorded',message:longName,path:'/data/waterschap_12/'+longName};
+ scheduleLandusePreview(true);await updateLandusePreview();
+ assert(!landuseStatus.hidden);
+ assert.equal(landuseStatus.querySelector('summary').textContent,longName);
+ assert(!landuseStatus.querySelector('details').open);
+ landuseStatus.querySelector('summary').click();
+ assert(landuseStatus.querySelector('details').open);
+ assert.equal(landuseStatus.querySelector('details div').textContent,window.landuseResult.path);
+ delete window.landuseResult;
  landuseMode.value='manual';landuseMode.dispatchEvent(new Event('change',{bubbles:true}));
  assert(!landuseField.disabled && !landuseField.closest('label').hidden);
  assert(!landuseField.closest('label').querySelector('button').disabled);

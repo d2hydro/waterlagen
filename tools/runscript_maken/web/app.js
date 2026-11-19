@@ -1584,8 +1584,19 @@ async function updateLandusePreview() {
   try {
     const result = await api("dem_landuse", values);
     if (version === landuseRequest) {
-      status.textContent = result.message;
       status.dataset.state = result.state;
+      if (result.state === "recorded") {
+        const location = document.createElement("details");
+        const name = document.createElement("summary");
+        name.textContent = result.message;
+        name.title = "Toon de map van deze landgebruikrun";
+        const path = document.createElement("div");
+        path.textContent = result.path;
+        location.append(name, path);
+        status.replaceChildren("Gekoppelde landgebruikrun", location);
+        return;
+      }
+      status.textContent = result.message;
       status.title = [result.path, "Bij uitvoering wordt de keuze opnieuw gecontroleerd."].filter(Boolean).join("\n");
     }
   } catch (error) {
@@ -1786,7 +1797,6 @@ function initializeForm() {
   document.getElementById("loading").remove();
   root.hidden = false;
   render();
-  openAreaPopover("choose");
   fitCountry();
   scheduleTiles();
 }
