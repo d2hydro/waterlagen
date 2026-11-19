@@ -115,8 +115,10 @@ for (const [key, name] of layers) {
   check.value = key;
   check.checked = key === "dem";
   check.addEventListener("change", render);
-  label.append(check, document.createTextNode(" " + name));
-  row.append(label);
+  const layerTitle = document.createElement("span");
+  layerTitle.className = "layer-title";
+  layerTitle.textContent = name;
+  label.append(check, layerTitle);
   const info = document.createElement("a");
   info.href = data.layer_help[key].url;
   info.target = "_blank";
@@ -138,9 +140,9 @@ for (const [key, name] of layers) {
   svgElement("path", { d: "M4 7h3m6 0h7M4 17h7m6 0h3" }, settingsIcon);
   svgElement("circle", { cx: 10, cy: 7, r: 3 }, settingsIcon);
   svgElement("circle", { cx: 14, cy: 17, r: 3 }, settingsIcon);
-  extra.append(document.createTextNode("Opties"));
-  extra.title = "Extra opties voor " + name;
-  extra.setAttribute("aria-label", "Extra opties voor " + name);
+  extra.append(document.createTextNode("Laagopties"));
+  extra.title = "Laagopties voor " + name;
+  extra.setAttribute("aria-label", extra.title);
   row.append(extra);
   if (key === "dem") {
     const status = document.createElement("div");

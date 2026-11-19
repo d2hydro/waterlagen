@@ -1786,12 +1786,19 @@ body {
   border-radius: 10px;
 }
 #run-map-preview .settings-group + .settings-group { margin-top: 12px; }
-#run-map-preview .settings-group:has(#rm-layers) { padding: 0; }
-#run-map-preview #rm-layers-title { padding-inline: 12px; margin-bottom: 0; }
+#run-map-preview .settings-group:has(#rm-layers) { padding: 0; border-color: #aac8d9; }
+#run-map-preview #rm-layers-title {
+  padding-inline: 12px; margin-bottom: 0; border-radius: 9px 9px 0 0;
+  background: #e3eff6; color: #214760;
+}
 #run-map-preview #rm-layers { border-top: 1px solid var(--line); }
 #run-map-preview #rm-layers .layer { padding-inline: 12px; }
 #run-map-preview #rm-layers .layer:last-child { border-radius: 0 0 9px 9px; }
-#run-map-preview #rm-layers .layer:has(input:checked) { background: var(--soft); }
+#run-map-preview #rm-layers .layer:has(input:checked) {
+  background: light-dark(#f0f7fb, #233947);
+  box-shadow: inset 3px 0 var(--action);
+}
+#run-map-preview #rm-layers input:checked + .layer-title { font-weight: 600; }
 #run-map-preview .layer {
   display: grid; grid-template-columns: minmax(0, 1fr) 30px 112px;
   gap: 6px; align-items: center; min-height: 48px;
@@ -1871,7 +1878,8 @@ body {
 /* Uitleg hoort bij de naam; de kaart loopt door naast de vaste actieknoppen. */
 #run-map-preview .layer { grid-template-columns: minmax(0, 1fr) 112px; gap: 8px; }
 #run-map-preview .layer-name { display: flex; align-items: center; gap: 3px; min-width: 0; }
-#run-map-preview .layer-name label { flex: 0 1 auto; }
+#run-map-preview .layer-name label { flex: 0 1 auto; white-space: normal; }
+#run-map-preview .layer-title { min-width: 0; hyphens: auto; overflow-wrap: anywhere; }
 #run-map-preview .layer-name .info { flex: 0 0 28px; }
 #run-map-preview .extra-panel .field > span { justify-content: flex-start; gap: 4px; }
 #run-map-preview .extra-panel .info { margin-left: 0; }
@@ -1922,19 +1930,19 @@ body {
 
 /* Compacte laagkeuze: namen blijven leesbaar, instellingen zijn ondergeschikt. */
 #run-map-preview .layer {
-  grid-template-columns: minmax(0, 1fr) 82px;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 8px;
   min-height: 40px;
   padding: 3px 0;
 }
 #run-map-preview .layer .extra {
-  width: 82px;
+  width: auto;
   min-height: 32px;
-  padding: 6px 8px;
-  background: transparent;
-  border-color: transparent;
+  padding: 5px 8px;
+  background: var(--paper);
+  border-color: var(--line);
   font-size: 13px;
-  color: #4f7084;
+  color: var(--action);
 }
 #run-map-preview .layer .extra:hover {
   background: #edf5fa;
@@ -2090,6 +2098,7 @@ body {
 
 #run-map-preview .dem-landuse-status {
   grid-column: 1 / -1;
+  padding-inline-start: 25px;
   font-size: 13px;
   line-height: 1.45;
   color: #4b6372;
