@@ -155,6 +155,7 @@ for (const [key, name] of layers) {
     const status = document.createElement("div");
     status.id = "rm-dem-landuse-status";
     status.className = "dem-landuse-status";
+    status.hidden = true;
     status.setAttribute("aria-live", "polite");
     row.append(status);
   }
@@ -1539,8 +1540,8 @@ function scheduleLandusePreview(force = false) {
     return;
   }
   const enabled = q('#rm-layers input[value="dem"]').checked;
-  status.hidden = !enabled;
   if (!enabled) {
+    status.hidden = true;
     landuseRequest += 1;
     landuseSignature = "";
     landusePending = null;
@@ -1566,8 +1567,8 @@ function scheduleLandusePreview(force = false) {
   }
   landuseSignature = signature;
   landusePending = { values, version: ++landuseRequest };
-  status.textContent = "Landgebruik controleren…";
-  status.dataset.state = "checking";
+  status.hidden = true;
+  status.replaceChildren();
   status.removeAttribute("title");
   clearTimeout(landuseTimer);
   landuseTimer = setTimeout(updateLandusePreview, 350);
@@ -1584,7 +1585,10 @@ async function updateLandusePreview() {
   try {
     const result = await api("dem_landuse", values);
     if (version === landuseRequest) {
-      status.dataset.state = result.state;
+      if (!["recorded", "chosen", "reuse"].includes(result.state)) {
+        return;
+      }
+      status.hidden = false;
       if (result.state === "recorded") {
         const location = document.createElement("details");
         const label = document.createElement("summary");
@@ -1599,10 +1603,10 @@ async function updateLandusePreview() {
       status.textContent = result.message;
       status.title = [result.path, "Bij uitvoering wordt de keuze opnieuw gecontroleerd."].filter(Boolean).join("\n");
     }
-  } catch (error) {
+  } catch {
+    // Een mislukte voorvertoning zegt niets over de uitvoerbaarheid van de run.
     if (version === landuseRequest) {
-      status.textContent = error.message;
-      status.dataset.state = "error";
+      status.hidden = true;
     }
   } finally {
     landuseBusy = false;

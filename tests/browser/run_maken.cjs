@@ -110,6 +110,15 @@ const checks=`
  assert(!collectValues().extra_options.some(o=>o.flag==='landuse-run'));
  await updateLandusePreview();
  assert.equal(landuseStatus.textContent,'Automatisch: landgebruikrun afgerond');
+ for(const state of ['error','create','planned','unknown']){
+  window.landuseResult={state,message:"Landgebruikrun staat nog op 'bezig'.",path:''};
+  scheduleLandusePreview(true);
+  assert(landuseStatus.hidden);
+  await updateLandusePreview();
+  scheduleLandusePreview();
+  assert(landuseStatus.hidden);
+  assert.equal(landuseStatus.textContent,'');
+ }
  const longName='hhnk-landgebruik-20261119-103026';
  window.landuseResult={state:'recorded',message:longName,path:'/data/waterschap_12/'+longName};
  scheduleLandusePreview(true);await updateLandusePreview();

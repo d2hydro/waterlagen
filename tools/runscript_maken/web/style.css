@@ -1889,7 +1889,6 @@ body {
   font-size: 0.9375rem;
   font-weight: 600;
 }
-#run-map-preview .dem-landuse-status[data-state="error"] { color: #a12020; }
 #run-map-preview .dem-landuse-group > label { font-size: 15px; font-weight: 500; }
 #run-map-preview .dem-landuse-explanation {
   margin: 5px 0 8px;
