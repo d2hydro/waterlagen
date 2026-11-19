@@ -71,8 +71,7 @@
   padding: 12px 22px;
   background: var(--paper);
   color: var(--heading);
-  border-top: 3px solid var(--brand);
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--brand);
 }
 #run-map-preview .top img {
   padding: 3px;
