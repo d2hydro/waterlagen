@@ -84,7 +84,7 @@ EXTRA_OPTIONS = {
         ),
         ExtraOption(
             "building-context-m",
-            "Marge voor buurpanden (m)",
+            "Buurpanden meenemen tot (m)",
             HelpText(
                 "Neemt ook buurpanden buiten de tegel mee, zodat DEM daar geen maaiveldhoogtes meet. Kies minstens de maximale zoekafstand rond een pand.",
                 "landgebruik",

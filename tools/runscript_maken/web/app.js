@@ -475,26 +475,20 @@ q("#rm-undo").onclick = () => {
 q("#rm-finish").onclick = finishPolygon;
 const optionPanels = new Map(),
   optionButtons = new Map();
-function groupDrainageOptions(fields) {
-  const groups = [
-    ["HyDAMO en Rijkswateren", ["eigen-hydamo", "rijkswateren-url"]],
-    ["Afstroming en duikers", ["dem-resampling", "duiker-tolerance", "max-aansluitlengte",
-      "max-complex-routelengte", "overige-waterschappen"]],
-  ];
-  for (const [name, flags] of groups) {
-    const details = document.createElement("details");
-    details.className = "option-group";
-    const summary = document.createElement("summary");
-    summary.textContent = name;
-    const grid = document.createElement("div");
-    grid.className = "option-grid";
-    for (const flag of flags) {
-      const field = fields.querySelector(`[data-flag="${flag}"]`);
-      grid.append(field.closest("label"));
-    }
-    details.append(summary, grid);
-    fields.append(details);
+function addOptionGroup(fields, title, flags) {
+  const details = document.createElement("details");
+  details.className = "option-group";
+  const summary = document.createElement("summary");
+  summary.textContent = title;
+  const grid = document.createElement("div");
+  grid.className = "option-grid";
+  for (const flag of flags) {
+    const field = fields.querySelector(`[data-flag="${flag}"]`);
+    grid.append(field.closest("label"));
   }
+  details.append(summary, grid);
+  fields.append(details);
+  return details;
 }
 
 function closeOptions() {
@@ -606,25 +600,19 @@ for (const [index, [key, name]] of layers.entries()) {
     }
   }
   if (key === "dem") {
-    const floor = document.createElement("fieldset");
-    floor.className = "floor-settings";
-    const legend = document.createElement("legend");
-    legend.textContent = "Vloerpeil van gebouwen";
-    const grid = document.createElement("div");
-    grid.className = "floor-fields";
-    const buildingInputs = fields.querySelectorAll('[data-flag^="building-"]');
-    buildingInputs[0].closest("label").before(floor);
-    for (const input of buildingInputs) {
-      grid.append(input.closest("label"));
-    }
-    floor.append(legend, grid);
-
-    const heading = document.createElement("h4");
-    heading.textContent = "Ontbrekende terreinhoogtes aanvullen";
-    fields.querySelector('[data-flag="interpolation-max-distance-m"]').closest("label").before(heading);
+    const floor = addOptionGroup(fields, "Vloerpeil van gebouwen", [
+      "building-initial-buffer-m", "building-buffer-step-m", "building-max-search-distance-m",
+      "building-percentile", "building-offset-m", "building-workers",
+    ]);
+    floor.classList.add("floor-settings");
+    addOptionGroup(fields, "Ontbrekende terreinhoogtes aanvullen", ["interpolation-max-distance-m"]);
   }
   if (key === "afwateringseenheden") {
-    groupDrainageOptions(fields);
+    addOptionGroup(fields, "HyDAMO en Rijkswateren", ["eigen-hydamo", "rijkswateren-url"]);
+    addOptionGroup(fields, "Afstroming en duikers", [
+      "dem-resampling", "duiker-tolerance", "max-aansluitlengte",
+      "max-complex-routelengte", "overige-waterschappen",
+    ]);
   }
   root.append(panel);
   button.setAttribute("aria-expanded", "false");

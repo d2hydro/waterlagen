@@ -1556,33 +1556,16 @@ body {
   overscroll-behavior: contain;
 }
 #run-map-preview .extra-panel .extra-fields > label { min-width: 0; margin: 0; }
-#run-map-preview .extra-fields > h4 {
-  grid-column: 1 / -1;
-  margin: 4px 0 0;
-  font-size: 1rem;
-  line-height: 1.4;
-}
-#run-map-preview .floor-settings {
+#run-map-preview .extra-fields > .option-group {
   grid-column: 1 / -1;
   min-width: 0;
-  margin: 4px 0 0;
-  padding: 6px 12px 12px;
-  border: 1px solid #c4d9e5;
-  border-radius: 9px;
-  background: #f4f8fb;
-  container-type: inline-size;
 }
-#run-map-preview .floor-settings legend {
-  padding: 0 5px;
-  color: #214b63;
-  font-size: 1rem;
-  font-weight: 600;
-}
-#run-map-preview .floor-fields {
-  display: grid;
+#run-map-preview .floor-settings { container-type: inline-size; }
+#run-map-preview .floor-settings .option-grid {
+  grid-template-columns: minmax(0, 1fr);
   gap: 8px 12px;
 }
-#run-map-preview .floor-fields .field {
+#run-map-preview .floor-settings .option-grid .field {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 5rem;
   align-items: center;
@@ -1590,10 +1573,10 @@ body {
   min-width: 0;
   margin: 0;
 }
-#run-map-preview .floor-fields .field > span { margin: 0; }
+#run-map-preview .floor-settings .option-grid .field > span { margin: 0; }
 @container (min-width: 29rem) {
-  #run-map-preview .floor-fields { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  #run-map-preview .floor-fields .field {
+  #run-map-preview .floor-settings .option-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  #run-map-preview .floor-settings .option-grid .field {
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: 1fr auto;
     align-items: end;

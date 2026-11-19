@@ -7,14 +7,14 @@ editorial_status: ai
 
 Kies **Functioneel landgebruik** in de [Run Maker](index.md). Ook voor een klein gebied kunnen landelijke bronbestanden nodig zijn. Zorg dat de BAG-bronmap schrijfbaar is voor de pandindex.
 
-??? info "Eigen BGT-bestand of marge voor buurpanden instellen?"
+??? info "Een eigen BGT-bestand kiezen of buurpanden meenemen?"
 
     <span id="vooraf"></span>
     <span id="starten"></span>
 
     Een eigen BGT-GeoPackage moet de voorbereide wegdelen, ondersteunende wegdelen, begroeide en onbegroeide terreindelen en waterdelen met einddatumvelden bevatten. [BGT-vlakken voorbereiden](bgt-vlakken.md)
 
-    Met **Marge voor buurpanden (m)** neemt u ook panden buiten de tegel mee. Zo kan DEM die panden uitsluiten bij het zoeken naar maaiveld. Gebruik minstens de maximale zoekafstand rond een pand. Beide afstanden zijn standaard 5 m.
+    Met **Buurpanden meenemen tot (m)** neemt u ook panden buiten de tegel mee. Zo kan DEM die panden uitsluiten bij het zoeken naar maaiveld. Gebruik minstens de maximale zoekafstand rond een pand. Beide afstanden zijn standaard 5 m.
 
 ## Resultaten
 
