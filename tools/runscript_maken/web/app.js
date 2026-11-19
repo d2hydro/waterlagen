@@ -7,13 +7,6 @@ let filePath = "",
   fileFeature = null,
   boundsFeature = null,
   savedDrawing = "";
-q(".top").insertBefore(q(".tools"), q(".tag"));
-const formContent = document.createElement("div");
-formContent.className = "form-content";
-while (q(".form").firstChild) {
-  formContent.append(q(".form").firstChild);
-}
-q(".form").append(formContent, q(".footer"));
 for (const icon of root.querySelectorAll("[data-icon]")) {
   const source = `url("${data.icons[icon.dataset.icon]}")`;
   icon.style.maskImage = source;

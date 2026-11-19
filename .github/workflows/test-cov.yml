@@ -33,10 +33,15 @@ jobs:
           environments: afwateringseenheden
           cache: true
 
+      - name: Install Run Maker browser test dependencies
+        if: matrix.group == 'offline'
+        working-directory: tests/browser
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
       - name: Run tests with coverage
         run: |
           mkdir -p coverage-data test-results
-          /usr/bin/time -v -o test-results/resources.txt \
+          xvfb-run -a /usr/bin/time -v -o test-results/resources.txt \
             pixi run --environment afwateringseenheden pytest \
             -m "${{ matrix.marker }}" --strict-markers \
             --cov=src/waterlagen --cov-report= --cov-fail-under=0 \

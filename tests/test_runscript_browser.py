@@ -290,7 +290,9 @@ def http_server(application, tmp_path):
 def test_http_preview_and_actual_layout(http_server, values):
     with urlopen(http_server.url) as response:
         text = response.read().decode()
-        assert "Welk gebied wil je gebruiken?" in text and 'id="rm-map"' in text
+        assert response.headers.get_content_type() == "text/html"
+        for control in ("rm-choose-authorities", "rm-map", "rm-preview"):
+            assert f'id="{control}"' in text
     request = Request(
         http_server.url + "api/preview",
         json.dumps(values).encode(),

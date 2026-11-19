@@ -24,6 +24,8 @@ pixi install
 
 Vervang bij het testen het voorbeeldpad door uw testbestand. Gebruik voor tests met PCRaster `pixi run --environment afwateringseenheden pytest <testbestand>`.
 
+Voor de Run Maker-bedieningstest hebt u Node.js nodig. Installeer de testpakketten met `npm ci --prefix tests/browser` en voer `pixi run pytest tests/test_runscript_dom.py` uit.
+
 De volledige testsuite met dekkingscontrole draait met `pixi run --environment afwateringseenheden test-cov`.
 
 Bij een pull request naar `main` draaien de offline en online tests zodra de PR klaar is voor beoordeling. Lokaal kiest u met `pytest -m "not online"` of `pytest -m online` dezelfde groepen. De online tests downloaden AHN-, BAG- en BGT-gegevens.

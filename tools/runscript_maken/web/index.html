@@ -18,12 +18,11 @@
           <div class="brand">WATERLAGEN</div>
           <h1>Run maken</h1>
         </div>
-        <span class="tag"></span>
+        <div class="tools">
+          <button id="rm-load">Run laden…</button>
+          <button id="rm-update">Code bijwerken</button>
+        </div>
       </header>
-      <div class="tools">
-        <button id="rm-load">Run laden…</button
-        ><button id="rm-update">Code bijwerken</button>
-      </div>
       <div class="workspace">
         <section class="area-setup" aria-labelledby="rm-area-title">
           <div class="settings-group area-box">
@@ -67,11 +66,6 @@
                 <button type="button" data-method="file">Gebied uit bestand</button>
               </div>
             <div class="area-controls">
-              <div id="rm-country-panel" hidden>
-                <div class="notice">
-                  Het hele Nederlandse landgebied is geselecteerd.
-                </div>
-              </div>
               <div id="rm-draw-panel" hidden>
                 <div class="notice">
                   Klik hoekpunten op de kaart. Rond af om je gebied als GeoPackage
@@ -182,48 +176,50 @@
           </div>
         </section>
         <section class="form" aria-label="Basislagen en runinstellingen">
-          <section class="settings-group" aria-labelledby="rm-layers-title">
-            <h2 id="rm-layers-title">Welke basislagen wil je maken?</h2>
-            <div id="rm-layers"></div>
-          </section>
-          <section class="settings-group" aria-labelledby="rm-run-settings-title">
-            <h2 id="rm-run-settings-title">Instellingen voor de hele run</h2>
-            <div class="execution-fields">
-              <div class="run-field">
-                <div class="run-caption"><label for="rm-run-name">Runnaam</label><button class="info" type="button" aria-label="Uitleg over runnaam" aria-controls="rm-run-name-help" aria-expanded="false"></button></div>
-                <input id="rm-run-name" type="text" value="" />
-                <p id="rm-run-name-help" hidden>De naam van de uitvoermap voor deze run. Gebruik dezelfde naam om een bestaande run te hervatten.</p>
+          <div class="form-content">
+            <section class="settings-group" aria-labelledby="rm-layers-title">
+              <h2 id="rm-layers-title">Welke basislagen wil je maken?</h2>
+              <div id="rm-layers"></div>
+            </section>
+            <section class="settings-group" aria-labelledby="rm-run-settings-title">
+              <h2 id="rm-run-settings-title">Instellingen voor de hele run</h2>
+              <div class="execution-fields">
+                <div class="run-field">
+                  <div class="run-caption"><label for="rm-run-name">Runnaam</label><button class="info" type="button" aria-label="Uitleg over runnaam" aria-controls="rm-run-name-help" aria-expanded="false"></button></div>
+                  <input id="rm-run-name" type="text" value="" />
+                  <p id="rm-run-name-help" hidden>De naam van de uitvoermap voor deze run. Gebruik dezelfde naam om een bestaande run te hervatten.</p>
+                </div>
+                <div class="run-field">
+                  <div class="run-caption"><label for="rm-workers">Workers</label><button class="info" type="button" aria-label="Uitleg over workers" aria-controls="rm-workers-help" aria-expanded="false"></button></div>
+                  <input id="rm-workers" type="number" min="1" value="8" />
+                  <p id="rm-workers-help" hidden>Het maximale aantal tegels dat tegelijk wordt berekend bij landgebruik, DEM en afwateringseenheden.</p>
+                </div>
+                <label class="field"><span>Als de run al bestaat</span
+                  ><select id="rm-run-mode">
+                    <option value="resume">Hervatten</option>
+                    <option value="overwrite">Overschrijven</option>
+                  </select></label
+                >
               </div>
-              <div class="run-field">
-                <div class="run-caption"><label for="rm-workers">Workers</label><button class="info" type="button" aria-label="Uitleg over workers" aria-controls="rm-workers-help" aria-expanded="false"></button></div>
-                <input id="rm-workers" type="number" min="1" value="8" />
-                <p id="rm-workers-help" hidden>Het maximale aantal tegels dat tegelijk wordt berekend bij landgebruik, DEM en afwateringseenheden.</p>
+              <div class="checks">
+                <div class="run-field">
+                  <div class="run-caption"><label><input id="rm-refresh" type="checkbox" /> Bronnen opnieuw ophalen</label><button class="info" type="button" aria-label="Uitleg over bronnen opnieuw ophalen" aria-controls="rm-refresh-help" aria-expanded="false"></button></div>
+                  <p id="rm-refresh-help" hidden>Haal de brongegevens opnieuw op voor een nieuwe run. Dit kan extra downloadtijd kosten.</p>
+                </div>
+                <div class="run-field">
+                  <div class="run-caption"><label><input id="rm-debug" type="checkbox" /> Debug-optie</label><button class="info" type="button" aria-label="Uitleg over de debug-optie" aria-controls="rm-debug-help" aria-expanded="false"></button></div>
+                  <p id="rm-debug-help" hidden>Schrijf extra details naar het productielog om de oorzaak van een fout te achterhalen.</p>
+                </div>
               </div>
-              <label class="field"><span>Als de run al bestaat</span
-                ><select id="rm-run-mode">
-                  <option value="resume">Hervatten</option>
-                  <option value="overwrite">Overschrijven</option>
-                </select></label
-              >
-            </div>
-            <div class="checks">
-              <div class="run-field">
-                <div class="run-caption"><label><input id="rm-refresh" type="checkbox" /> Bronnen opnieuw ophalen</label><button class="info" type="button" aria-label="Uitleg over bronnen opnieuw ophalen" aria-controls="rm-refresh-help" aria-expanded="false"></button></div>
-                <p id="rm-refresh-help" hidden>Haal de brongegevens opnieuw op voor een nieuwe run. Dit kan extra downloadtijd kosten.</p>
-              </div>
-              <div class="run-field">
-                <div class="run-caption"><label><input id="rm-debug" type="checkbox" /> Debug-optie</label><button class="info" type="button" aria-label="Uitleg over de debug-optie" aria-controls="rm-debug-help" aria-expanded="false"></button></div>
-                <p id="rm-debug-help" hidden>Schrijf extra details naar het productielog om de oorzaak van een fout te achterhalen.</p>
-              </div>
-            </div>
-          </section>
+            </section>
+          </div>
+          <footer class="footer">
+            <button id="rm-preview">Script bekijken</button
+            ><button id="rm-save">Alleen opslaan</button
+            ><button class="primary" id="rm-start">Opslaan en starten</button>
+          </footer>
         </section>
       </div>
-      <footer class="footer">
-        <button id="rm-preview">Script bekijken</button
-        ><button id="rm-save">Alleen opslaan</button
-        ><button class="primary" id="rm-start">Opslaan en starten</button>
-      </footer>
       <dialog id="rm-script-preview" aria-labelledby="rm-script-title">
         <section>
           <header>

@@ -91,13 +91,6 @@
   font-size: 11px;
   letter-spacing: 1px;
 }
-#run-map-preview .tag {
-  margin-left: auto;
-  font-size: 12px;
-  border: 1px solid #ffffff70;
-  padding: 3px 8px;
-  border-radius: 4px;
-}
 #run-map-preview .tools {
   display: flex;
   justify-content: space-between;
@@ -555,9 +548,6 @@
 #run-map-preview #rm-draw-panel .notice {
   font-size: 11px;
 }
-#run-map-preview #rm-country-panel {
-  padding-top: 23px;
-}
 @media (max-width: 780px) {
   #run-map-preview .workspace {
     grid-template-columns: minmax(235px, 35%) minmax(0, 1fr);
@@ -627,10 +617,6 @@
   padding: 5px 9px;
   font-size: 12px;
 }
-#run-map-preview .tag {
-  margin-left: 0;
-  font-size: 10px;
-}
 #run-map-preview .execution-fields {
   display: grid;
   grid-template-columns: minmax(0, 1.2fr) 70px minmax(0, 1fr);
@@ -654,9 +640,6 @@
     grid-column: 1/-1;
   }
   #run-map-preview .top .brand {
-    display: none;
-  }
-  #run-map-preview .tag {
     display: none;
   }
   #run-map-preview .checks {
@@ -721,9 +704,6 @@
 #run-map-preview .top .brand {
   display: none;
 }
-#run-map-preview .tag {
-  display: none;
-}
 #run-map-preview .footer .state {
   font-size: 11px;
 }
@@ -733,9 +713,6 @@
 }
 #run-map-preview .legend {
   margin-top: 5px;
-}
-#run-map-preview #rm-country-panel {
-  padding-top: 0;
 }
 @media (max-width: 700px) {
   #run-map-preview .workspace {
@@ -977,9 +954,6 @@
 }
 #run-map-preview .map-note {
   display: none;
-}
-#run-map-preview #rm-country-panel {
-  display: none !important;
 }
 #run-map-preview #rm-map {
   cursor: grab;
@@ -1291,7 +1265,7 @@ body {
 }
 
 /* De gebiedskeuze deelt de bediening voor waterschappen en eigen gebieden. */
-#run-map-preview .map-title, #run-map-preview #rm-country-panel,
+#run-map-preview .map-title,
 #run-map-preview #rm-draw-panel { display: none; }
 #run-map-preview .area-controls { display: contents; }
 #run-map-preview .area-popover {
