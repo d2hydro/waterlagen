@@ -10,7 +10,10 @@ Kies **DEM (hoogte)** in de [Run Maker](index.md). Het gebied selecteert volledi
 
 ## Landgebruik vinden of produceren
 
-Laat **Landgebruikrun (optioneel)** leeg voor automatische keuze. DEM gebruikt een geschikte afgeronde run of berekent eerst landgebruik. Wilt u zelf kiezen? Open bij **DEM → Laagopties** het mapicoon naast dit veld en kies de runmap. Die moet alle benodigde tegels en voldoende ruimte rond de gebouwen bevatten.
+DEM gebruikt het landgebruik voor de tegelindeling en de ligging van gebouwen. Kies bij **DEM → Laagopties**:
+
+- **Automatisch:** laat **Landgebruikrun (optioneel)** leeg. DEM zoekt eerst in het gekozen gebied naar een geschikte afgeronde run. Vindt DEM geen geschikte run, dan wordt landgebruik eerst berekend.
+- **Eigen run:** kies met het mapicoon een afgeronde run die alle tegels en de zoekruimte rond gebouwen dekt.
 
 ## Hoogtebron
 
@@ -26,7 +29,8 @@ Open `dem_float.tif` voor hoogtes direct in meters. `dem.tif` bevat dezelfde hoo
 
 - Bekijk `dem_bron.tif` om te zien of een hoogte uit het terreinmodel, interpolatie of een gebouwschatting komt.
 - Bekijk `nodata.gpkg` voor ontbrekende terrein- en gebouwhoogtes. In `dem_coverage.json` staat hoeveel cellen in het **eindraster** leeg zijn. Een afgeronde productie kan gaten bevatten.
-- Hervat met dezelfde runnaam, invoer en rekeninstellingen. De eerder gekozen landgebruikrun blijft gekoppeld. Het aantal workers mag wijzigen.
+- Hervat met dezelfde runnaam, invoer en rekeninstellingen. Het aantal workers mag wijzigen.
+- Bij hervatten of overschrijven blijft de eerder gekoppelde landgebruikrun in gebruik. Kies een nieuwe DEM-runnaam om van landgebruikrun te wisselen.
 
 <span id="tijdelijk-vergrendelde-uitvoerbestanden"></span>
 
