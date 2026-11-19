@@ -409,54 +409,6 @@
 #run-map-preview .area-controls .notice {
   margin: 0 0 5px;
 }
-#run-map-preview .picker {
-  position: relative;
-  padding-top: 21px;
-}
-#run-map-preview .picker > button {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  width: 100%;
-  min-height: 34px;
-  padding: 6px 8px;
-  text-align: left;
-}
-#run-map-preview #rm-picker-label {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-#run-map-preview .picker-caption {
-  position: absolute;
-  top: 0;
-  left: 0;
-  font-size: 12px;
-}
-#run-map-preview .picker-popup {
-  position: absolute;
-  top: calc(100% + 3px);
-  right: 0;
-  z-index: 10;
-  width: 330px;
-  max-width: calc(100vw - 55px);
-  border: 1px solid var(--line);
-  border-radius: 7px;
-  background: var(--paper);
-  box-shadow: 0 8px 28px #0002;
-  padding: 6px;
-}
-#run-map-preview .picker-popup .authorities {
-  max-height: 270px;
-  border: 0;
-  margin: 0;
-}
-#run-map-preview .picker-popup .muted {
-  padding: 5px 8px;
-  border-bottom: 1px solid var(--line);
-  margin-bottom: 4px;
-}
 #run-map-preview .authority-row {
   padding: 6px 8px;
 }
@@ -619,12 +571,6 @@
     gap: 0;
     min-height: 0;
   }
-  #run-map-preview .picker {
-    padding-top: 0;
-  }
-  #run-map-preview .picker-caption {
-    display: none;
-  }
   #run-map-preview .run-bottom {
     grid-template-columns: 1fr;
     gap: 4px;
@@ -650,12 +596,6 @@
   #run-map-preview .area-controls {
     grid-template-columns: 1fr 1fr;
     gap: 10px;
-  }
-  #run-map-preview .picker {
-    padding-top: 21px;
-  }
-  #run-map-preview .picker-caption {
-    display: block;
   }
   #run-map-preview .run-bottom {
     grid-template-columns: 1fr 1fr;
@@ -768,13 +708,6 @@
   grid-template-columns: 1fr;
   min-height: 0;
   gap: 0;
-}
-#run-map-preview .picker {
-  padding-top: 0;
-  margin-bottom: 5px;
-}
-#run-map-preview .picker-caption {
-  display: none;
 }
 #run-map-preview .layer {
   grid-template-columns: minmax(0, 1fr) 18px 90px;
@@ -944,9 +877,9 @@
   background: var(--paper);
   box-shadow: 0 2px 6px #20364426;
 }
-#run-map-preview .map .map-controls { right: 10px; }
+#run-map-preview .map .map-controls { left: 10px; }
 #run-map-preview #rm-background {
-  position: absolute; right: 10px; bottom: 12px; z-index: 2;
+  position: absolute; left: 10px; bottom: 12px; z-index: 2;
   display: grid; place-items: center; width: 44px; height: 44px; padding: 0;
   border-radius: 10px; box-shadow: 0 2px 6px #20364426;
 }
@@ -1361,19 +1294,6 @@ body {
 #run-map-preview .map-title, #run-map-preview #rm-country-panel,
 #run-map-preview #rm-draw-panel { display: none; }
 #run-map-preview .area-controls { display: contents; }
-#run-map-preview .area-toolbar {
-  display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
-}
-#run-map-preview .area-toolbar button {
-  min-height: 44px; padding: 6px 12px; font-weight: 600; color: var(--action);
-  border: 1px solid #a7bdc9; border-radius: 8px;
-}
-#run-map-preview .area-toolbar button[aria-current="true"] {
-  background: var(--action); border-color: var(--action); color: white;
-}
-#run-map-preview .area-toolbar button[aria-expanded="true"] {
-  box-shadow: inset 0 0 0 2px var(--action);
-}
 #run-map-preview .area-popover {
   position: absolute; top: 65px; left: 10px; right: 16px; max-width: 350px;
   max-height: calc(100% - 85px); overflow: auto; padding: 14px;
@@ -1385,22 +1305,7 @@ body {
 }
 #run-map-preview .area-popover header h3 { margin: 0; }
 #run-map-preview .area-popover header button { border: 0; padding: 3px 8px; font-size: 20px; }
-#run-map-preview .area-choice { display: flex; align-items: center; gap: 8px; padding: 9px 0; }
-#run-map-preview .custom-choices { display: grid; gap: 6px; }
-#run-map-preview .custom-choices button { display: flex; align-items: center; gap: 12px; text-align: left; padding: 10px; }
-#run-map-preview .custom-choices small { display: block; font-size: 12px; color: var(--sub); margin-top: 2px; }
-#run-map-preview .custom-choices svg {
-  position: static; inset: auto; min-height: 0;
-  width: 26px; height: 26px; flex: 0 0 26px; fill: none; stroke: #007db8;
-  stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round;
-}
-#run-map-preview .area-popover .picker-popup {
-  position: static; width: auto; max-height: none; box-shadow: none;
-  border: 0; padding: 8px 0; margin: 0;
-}
 #run-map-preview .area-popover .authorities { max-height: 220px; overflow-y: auto; }
-#run-map-preview .picker-caption { display: none; }
-#run-map-preview #rm-authority-slot { margin-bottom: 12px; }
 #run-map-preview .selection-popup {
   left: 12px; right: 12px; bottom: 90px; max-height: calc(100% - 160px);
   z-index: 24; border-radius: 9px; box-shadow: 0 6px 22px #0002;
@@ -1416,7 +1321,6 @@ body {
   #run-map-preview .map > svg { height: 100%; }
 }
 
-#run-map-preview .custom-choices svg { touch-action: auto; }
 
 /* De gebiedsvensters delen dezelfde rustige opmaak en duidelijke hoofdactie. */
 #run-map-preview .area-popover,
@@ -1451,27 +1355,6 @@ body {
   display: grid;
   place-items: center;
   border-radius: 6px;
-}
-#run-map-preview .custom-choices { gap: 8px; }
-#run-map-preview .custom-choices button {
-  width: 100%;
-  padding: 12px;
-  gap: 12px;
-  border-color: #e4ebf0;
-  border-radius: 8px;
-  background: #fff;
-  font-weight: 500;
-  line-height: 1.4;
-}
-#run-map-preview .custom-choices button:hover {
-  background: #f2f8fc;
-  border-color: #8ebbd3;
-}
-#run-map-preview .custom-choices small {
-  font-weight: 400;
-  color: #647986;
-  margin-top: 4px;
-  line-height: 1.45;
 }
 #run-map-preview .area-popover button:focus-visible,
 #run-map-preview .drawing-toolbar button:focus-visible {
@@ -1536,18 +1419,15 @@ body {
   order: 2;
 }
 
-#run-map-preview .area-toolbar button,
 #run-map-preview .area-popover button,
 #run-map-preview .drawing-toolbar button {
   transition: background-color 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
 }
-#run-map-preview .area-toolbar button:not([aria-current="true"]):hover,
 #run-map-preview .area-popover button:not(.primary):hover,
 #run-map-preview .drawing-toolbar button:not(.primary):not(:disabled):hover {
   background: #eff7fc;
   border-color: #a9cadc;
 }
-#run-map-preview .area-toolbar button:not([aria-current="true"]):active,
 #run-map-preview .area-popover button:not(.primary):active,
 #run-map-preview .drawing-toolbar button:not(.primary):not(:disabled):active {
   background: #dfedf7;
@@ -1561,7 +1441,6 @@ body {
   box-shadow: inset 0 1px 3px #00354c33;
 }
 @media (prefers-reduced-motion: reduce) {
-  #run-map-preview .area-toolbar button,
   #run-map-preview .area-popover button,
   #run-map-preview .drawing-toolbar button { transition: none; }
 }
@@ -1663,7 +1542,6 @@ body {
 #run-map-preview .drawing-toolbar header h3 { font-size: 16px; }
 #run-map-preview .area-popover button,
 #run-map-preview .drawing-toolbar button { font-size: 14px; }
-#run-map-preview .custom-choices small { font-size: 13px; }
 #run-map-preview .drawing-toolbar p { font-size: 14px; }
 #run-map-preview .extra-panel {
   border: 1px solid #dce5eb; border-radius: 12px;
@@ -1738,7 +1616,42 @@ body {
 #run-map-preview .area-setup {
   position: relative; min-width: 0; padding: 10px 10px 0; background: var(--soft);
 }
-#run-map-preview .area-summary { margin-top: 6px; font-size: 13px; color: var(--sub); }
+#run-map-preview .area-choices { padding-inline: 12px; }
+#run-map-preview .area-row {
+  display: flex; gap: 8px; align-items: center;
+}
+#run-map-preview .area-row + .area-row { border-top: 1px solid var(--line); }
+#run-map-preview .area-row label {
+  display: flex; flex: 1; gap: 8px; align-items: center; min-height: 32px; cursor: pointer;
+}
+#run-map-preview .area-row input { margin: 0; }
+#run-map-preview .area-row:has(:checked) label { font-weight: 600; }
+#run-map-preview .area-box [data-area-panel] {
+  color: var(--action); padding: 4px 8px; font-size: 13px;
+}
+#run-map-preview #rm-method-title { flex: 1; }
+#run-map-preview #rm-change-method {
+  width: auto; height: auto; padding: 4px; font-size: 13px; color: var(--action);
+}
+#run-map-preview #rm-methods { display: grid; gap: 4px; }
+#run-map-preview #rm-methods button {
+  display: flex; align-items: center; justify-content: space-between;
+  min-height: 36px; text-align: left; font-size: 14px;
+}
+#run-map-preview #rm-methods button::after {
+  content: ""; width: 7px; height: 7px; margin-inline: 8px;
+  border: solid var(--sub); border-width: 1px 1px 0 0; transform: rotate(45deg);
+}
+#run-map-preview .area-summary {
+  padding: 6px 12px 8px; font-size: 13px; color: var(--sub);
+}
+#run-map-preview .run-field { min-width: 0; }
+#run-map-preview .run-caption { display: flex; align-items: center; gap: 3px; }
+#run-map-preview .execution-fields .run-caption { font-size: 13px; color: var(--sub); }
+#run-map-preview .run-field > p {
+  margin: 4px 0 0; font-size: 13px; line-height: 1.45; color: var(--sub);
+}
+#run-map-preview .execution-fields .run-field:has(p:not([hidden])) { grid-column: 1 / -1; }
 #run-map-preview .summary-line { display: flex; align-items: baseline; gap: 5px; }
 #run-map-preview #rm-selection-title { flex: none; font-weight: 600; color: var(--heading); }
 #run-map-preview #rm-selection-detail {
@@ -1748,9 +1661,29 @@ body {
 #run-map-preview .area-summary .selection-toggle {
   margin: 3px 6px 0 0; padding: 3px 0; border: 0; background: transparent; color: var(--action);
 }
-#run-map-preview .area-setup :is(.area-popover, .selection-popup) {
-  top: calc(100% + 4px); bottom: auto; left: 10px; right: 10px;
-  width: auto; max-width: none; max-height: min(48dvh, 380px);
+/* Kaartkeuzes openen naast de zoomknoppen en scrollen binnen het kaartvlak. */
+#run-map-preview .map { container-type: inline-size; }
+#run-map-preview .map > :is(.area-popover, .selection-popup) {
+  top: 10px; right: 10px; left: auto; bottom: auto;
+  width: min(310px, calc(100% - 20px)); max-width: none;
+  max-height: calc(100% - 20px); overflow: auto;
+}
+#run-map-preview #rm-custom-editor .drawing-toolbar {
+  position: static; max-height: none; padding: 0; overflow: visible;
+  border: 0; box-shadow: none; background: transparent;
+}
+#run-map-preview #rm-custom-editor .drawing-toolbar header { margin-bottom: 6px; }
+@container (max-width: 500px) {
+  #run-map-preview .map .map-controls { flex-direction: column; }
+  #run-map-preview .map .map-controls button:first-child { border-radius: 9px 9px 0 0; }
+  #run-map-preview .map .map-controls button:last-child { border-radius: 0 0 9px 9px; }
+  #run-map-preview .map .map-controls button + button { border-left: 0; border-top: 1px solid var(--line); }
+  #run-map-preview .map > :is(.area-popover, .selection-popup) {
+    width: min(310px, calc(100% - 76px)); padding: 10px;
+  }
+  #run-map-preview #rm-custom-editor > header { gap: 4px; flex-wrap: wrap; }
+  #run-map-preview #rm-method-title { min-width: 72px; }
+  #run-map-preview #rm-methods button { padding: 5px 7px; }
 }
 @media (min-width: 761px) {
   #run-map-preview > .workspace {
@@ -1904,6 +1837,11 @@ body {
 @media (max-width: 520px) {
   #run-map-preview .brandlagen-choices { grid-template-columns: minmax(0, 1fr); }
 }
+#run-map-preview #rm-file-prompt { cursor: pointer; font-size: 13px; }
+#run-map-preview #rm-file-status:empty { margin: 0; }
+#run-map-preview .map .file-browse svg {
+  position: static; inset: auto; width: 18px; height: 18px; min-height: 0; touch-action: auto;
+}
 #run-map-preview .file-choice-row:focus-within { border-color: #75aac8; }
 
 /* De naam van de basislaag is het herkenningspunt in het optievenster. */
@@ -2002,6 +1940,8 @@ body {
 }
 
 @media (pointer: coarse) {
+  #run-map-preview .area-row label,
+  #run-map-preview .area-box [data-area-panel] { min-height: 44px; }
   #run-map-preview .top .tools button,
   #run-map-preview .form > .footer button,
   #run-map-preview .layer .extra,

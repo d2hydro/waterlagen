@@ -92,6 +92,14 @@ function addInfoIcon(link) {
   svgElement("circle", { cx: 12, cy: 12, r: 9 }, icon);
   svgElement("path", { d: "M12 11v6m0-10v.5" }, icon);
 }
+for (const button of root.querySelectorAll(".run-field .info")) {
+  addInfoIcon(button);
+  const help = document.getElementById(button.getAttribute("aria-controls"));
+  button.onclick = () => {
+    help.hidden = !help.hidden;
+    button.setAttribute("aria-expanded", String(!help.hidden));
+  };
+}
 function addFileIcon(button, description) {
   button.replaceChildren();
   button.classList.add("file-browse");
@@ -249,7 +257,7 @@ q("#rm-reset").onclick = () => fitCountry();
 q(".map").addEventListener(
   "wheel",
   (event) => {
-    if (event.target.closest(".drawing-toolbar")) {
+    if (event.target.closest(".area-popover, .selection-popup")) {
       return;
     }
     event.preventDefault();
@@ -273,16 +281,6 @@ q(".map").addEventListener(
   },
   { passive: false },
 );
-q("#rm-mode").onchange = (e) => {
-  mode = e.target.value;
-  rectangleStart = null;
-  q("#rm-message").hidden = true;
-  if (mode === "country") {
-    fitCountry();
-  }
-  render();
-  remember();
-};
 function mapPosition(event, element = geo) {
   const point = q("#rm-map").createSVGPoint();
   point.x = event.clientX;
@@ -304,7 +302,6 @@ function finishPolygon() {
   }
   finished = true;
   render();
-  closeAreaPopovers();
   q("#rm-message").hidden = true;
   remember();
 }
@@ -335,7 +332,7 @@ function previewRectangle(first, last) {
   );
 }
 q("#rm-map").addEventListener("click", (event) => {
-  if (suppressMapClick || mode !== "draw" || finished || event.detail > 1) {
+  if (suppressMapClick || !root.classList.contains("is-drawing") || finished || event.detail > 1) {
     return;
   }
   if (drawingShape === "rectangle") {
@@ -359,7 +356,7 @@ q("#rm-map").addEventListener("click", (event) => {
   remember();
 });
 q("#rm-map").addEventListener("dblclick", (event) => {
-  if (mode === "draw" && drawingShape === "polygon" && !finished) {
+  if (root.classList.contains("is-drawing") && drawingShape === "polygon" && !finished) {
     event.preventDefault();
     finishPolygon();
   }
@@ -369,7 +366,7 @@ q("#rm-map").addEventListener("pointerdown", (event) => {
     return;
   }
   suppressMapClick = false;
-  if (mode === "draw" && drawingShape === "rectangle" && !finished && event.button === 0) {
+  if (root.classList.contains("is-drawing") && drawingShape === "rectangle" && !finished && event.button === 0) {
     const position = mapPosition(event);
     rectangleStart = {
       id: event.pointerId,
@@ -391,7 +388,7 @@ q("#rm-map").addEventListener("pointerdown", (event) => {
   };
 });
 q("#rm-map").addEventListener("pointermove", (event) => {
-  if (mode === "draw" && drawingShape === "rectangle" && !finished && !panStart) {
+  if (root.classList.contains("is-drawing") && drawingShape === "rectangle" && !finished && !panStart) {
     const first = rectangleStart?.corner || points[0];
     if (first) {
       const position = mapPosition(event);
@@ -483,8 +480,6 @@ q("#rm-undo").onclick = () => {
   remember();
 };
 q("#rm-finish").onclick = finishPolygon;
-const picker = q("#rm-authority-panel"),
-  popup = q("#rm-picker-popup");
 const optionPanels = new Map(),
   optionButtons = new Map();
 function groupDrainageOptions(fields) {
@@ -647,26 +642,8 @@ root.addEventListener("keydown", (event) => {
     }
   }
 });
-function closePicker() {
-  popup.hidden = true;
-  q("#rm-picker").setAttribute("aria-expanded", "false");
-}
-q("#rm-picker").onclick = () => {
-  popup.hidden = !popup.hidden;
-  q("#rm-picker").setAttribute("aria-expanded", String(!popup.hidden));
-};
-// Sluiten loopt via het hele gebiedsvenster, niet via muisbewegingen in de lijst.
 function render() {
   renderForm();
-  const standardArea = mode === "country" || mode === "authorities";
-  q("#rm-choose-area").setAttribute("aria-current", String(standardArea));
-  q("#rm-custom-area").setAttribute("aria-current", String(!standardArea));
-  const names = features
-    .filter((f) => selected.has(f.properties.code))
-    .map((f) => f.properties.name);
-  q("#rm-picker-label").textContent =
-    names.length === 1 ? names[0] : names.length + " geselecteerd";
-  q("#rm-picker").title = names.join(", ");
   renderSelectionOutline();
   renderDrawingControls();
   updateSelectionDetails();
@@ -719,110 +696,100 @@ const backgroundButton = q("#rm-background");
 backgroundButton.onclick = () => setBackground(tileProvider === "satellite" ? "streets" : "satellite");
 const areaPopovers = new Map([
   ["choose", q("#rm-area-menu")],
-  ["custom", q("#rm-custom-menu")],
-  ["file", q("#rm-file-panel")],
-  ["bounds", q("#rm-bounds-panel")],
+  ["custom", q("#rm-custom-editor")],
 ]);
-q("#rm-authority-slot").append(picker);
-for (const [key, title] of [
-  ["file", "Gebied uit bestand"],
-  ["bounds", "Coördinaten invoeren"],
-]) {
-  const panel = areaPopovers.get(key);
-  panel.classList.add("area-popover");
-  panel.setAttribute("aria-label", title);
-  const header = document.createElement("header");
-  const heading = document.createElement("h3");
-  heading.textContent = title;
-  const close = document.createElement("button");
-  close.textContent = "×";
-  close.setAttribute("aria-label", "Sluiten");
-  close.onclick = closeAreaPopovers;
-  header.append(heading, close);
-  panel.prepend(header);
-}
 const coordinateHint = document.createElement("p");
 coordinateHint.className = "muted";
 coordinateHint.textContent = data.crs + " · coördinaten in meters";
 q("#rm-bounds-panel").append(coordinateHint);
+const chooseAuthorities = q("#rm-choose-authorities");
+chooseAuthorities.onclick = () => {
+  if (areaPopovers.get("choose").hidden) {
+    openAreaPopover("choose");
+    q("#rm-area-menu header button").focus({ preventScroll: true });
+  } else {
+    closeAreaPopovers();
+  }
+};
 function closeAreaPopovers() {
+  chooseAuthorities.setAttribute("aria-expanded", "false");
   for (const panel of areaPopovers.values()) {
     panel.hidden = true;
   }
-  q("#rm-choose-area").setAttribute("aria-expanded", "false");
-  q("#rm-custom-area").setAttribute("aria-expanded", "false");
-  closePicker();
+  renderDrawingControls();
 }
 function openAreaPopover(key) {
   closeAreaPopovers();
   closeOptions();
   closeSelectionPopup();
   areaPopovers.get(key).hidden = false;
-  q(key === "choose" ? "#rm-choose-area" : "#rm-custom-area").setAttribute("aria-expanded", "true");
+  chooseAuthorities.setAttribute("aria-expanded", String(key === "choose"));
+  renderDrawingControls();
 }
-for (const [id, key] of [
-  ["rm-choose-area", "choose"],
-  ["rm-custom-area", "custom"],
-]) {
-  const trigger = q("#" + id);
-  trigger.onclick = () => {
-    if (key === "custom" && mode === "draw" && drawingIsSaved() && !drawingToolbar.hidden) {
-      closeAreaPopovers();
-      setDrawingToolsCollapsed(true);
-      return;
-    }
-    if (trigger.getAttribute("aria-expanded") === "true") {
-      closeAreaPopovers();
-    } else {
-      openAreaPopover(key);
-    }
-  };
+function closeAreaAndFocusChoice() {
+  closeAreaPopovers();
+  q('[name="area-kind"]:checked').focus({ preventScroll: true });
 }
 for (const button of root.querySelectorAll("[data-close-area]")) {
-  button.onclick = closeAreaPopovers;
+  button.onclick = closeAreaAndFocusChoice;
 }
 function chooseAreaMode(value) {
-  q("#rm-mode").value = value;
-  q("#rm-mode").dispatchEvent(new Event("change", { bubbles: true }));
+  mode = value;
+  q("#rm-methods").hidden = mode !== "custom";
+  rectangleStart = null;
+  q("#rm-message").hidden = true;
+  closeAreaPopovers();
+  closeSelectionPopup();
+  if (mode === "country") {
+    fitCountry();
+  }
+  render();
+  if (mode !== "country") {
+    openAreaPopover(mode === "authorities" ? "choose" : "custom");
+  }
+  remember();
+}
+function showMethodList() {
+  q("#rm-methods").hidden = false;
+  openAreaPopover("custom");
+  render();
+  q("#rm-methods button").focus({ preventScroll: true });
 }
 for (const radio of root.querySelectorAll('[name="area-kind"]')) {
-  radio.onchange = () => {
-    chooseAreaMode(radio.value);
-    if (radio.value === "authorities") {
-      openAreaPopover("choose");
-      popup.hidden = false;
-      q("#rm-picker").setAttribute("aria-expanded", "true");
+  radio.onclick = () => {
+    if (radio.value === "custom" && mode !== "country" && mode !== "authorities") {
+      if (q("#rm-custom-editor").hidden) {
+        showMethodList();
+      } else {
+        closeAreaPopovers();
+      }
+    } else {
+      chooseAreaMode(radio.value);
+      if (mode === "custom") {
+        q("#rm-methods button").focus({ preventScroll: true });
+      }
     }
   };
 }
-for (const button of root.querySelectorAll("[data-area-mode]")) {
+q("#rm-change-method").onclick = showMethodList;
+for (const button of root.querySelectorAll("[data-method]")) {
   button.onclick = () => {
-    if (button.dataset.shape && drawingShape !== button.dataset.shape) {
-      points = [];
-      finished = false;
-      drawingShape = button.dataset.shape;
-    }
-    chooseAreaMode(button.dataset.areaMode);
+    chooseAreaMode(button.dataset.method);
+    q("#rm-change-method").focus({ preventScroll: true });
   };
 }
-q("#rm-mode").addEventListener("change", () => {
-  closeAreaPopovers();
-  if (mode === "file" || mode === "bounds") {
-    openAreaPopover(mode);
-  }
-});
 document.addEventListener("pointerdown", (event) => {
-  if (!event.target.closest(".area-popover, .area-toolbar")) {
+  if ((mode === "draw" || mode === "authorities") && event.target.closest(".map")) {
+    return;
+  }
+  if (!event.target.closest('.area-popover, .area-choices')) {
     closeAreaPopovers();
   }
 });
 root.addEventListener("keydown", (event) => {
   if (event.key === "Escape") {
-    const open = [...areaPopovers.values()].find((panel) => !panel.hidden);
-    if (open) {
-      const button = open.id === "rm-area-menu" ? q("#rm-choose-area") : q("#rm-custom-area");
-      closeAreaPopovers();
-      button.focus();
+    if ([...areaPopovers.values()].some((panel) => !panel.hidden)) {
+      closeAreaAndFocusChoice();
     }
   }
 });
@@ -831,20 +798,17 @@ useBounds.textContent = "Gebied gebruiken";
 useBounds.className = "primary";
 useBounds.onclick = readBounds;
 q("#rm-bounds-panel").append(useBounds);
-let drawingToolsCollapsed = false;
 const drawingToolbar = document.createElement("div");
 drawingToolbar.id = "rm-drawing-toolbar";
 drawingToolbar.className = "drawing-toolbar";
 drawingToolbar.hidden = true;
 drawingToolbar.setAttribute("role", "region");
-drawingToolbar.setAttribute("aria-labelledby", "rm-drawing-title");
+drawingToolbar.setAttribute("aria-label", "Gebied tekenen");
 const drawingHeader = document.createElement("header");
-const drawingTitle = document.createElement("h3");
-drawingTitle.id = "rm-drawing-title";
 const drawingStatus = document.createElement("span");
 drawingStatus.className = "drawing-status";
 drawingStatus.setAttribute("aria-live", "polite");
-drawingHeader.append(drawingTitle, drawingStatus);
+drawingHeader.append(drawingStatus);
 const drawingActions = document.createElement("div");
 drawingActions.className = "drawing-actions";
 const undoDrawing = document.createElement("button");
@@ -870,12 +834,13 @@ drawingActions.append(undoDrawing, closeDrawing, saveDrawing, restartDrawing);
 const drawingHint = document.createElement("p");
 drawingHint.textContent = "Klik voor punten · sleep om te verschuiven · muiswiel om te zoomen";
 drawingToolbar.append(drawingHeader, drawingHint, drawingActions);
-q(".map").append(drawingToolbar);
+q("#rm-custom-editor").append(drawingToolbar);
 function renderDrawingControls() {
-  const active = mode === "draw" && !finished;
+  const editing = mode === "draw" && !q("#rm-custom-editor").hidden && q("#rm-methods").hidden;
+  const active = editing && !finished;
   root.classList.toggle("is-drawing", active);
   const saved = drawingIsSaved();
-  drawingToolbar.hidden = mode !== "draw" || (saved && drawingToolsCollapsed);
+  drawingToolbar.hidden = !editing;
   undoDrawing.hidden = drawingShape === "rectangle";
   closeDrawing.hidden = finished || drawingShape === "rectangle";
   saveDrawing.hidden = !finished;
@@ -883,13 +848,11 @@ function renderDrawingControls() {
   undoDrawing.disabled = !points.length;
   closeDrawing.disabled = points.length < 3;
   undoDrawing.title = finished ? "Sluiting ongedaan maken" : "Laatste punt verwijderen";
-  drawingTitle.textContent = drawingShape === "rectangle" ? "Rechthoek tekenen" : "Polygoon tekenen";
   drawingStatus.textContent = finished
     ? saved ? "Opgeslagen" : "Gesloten"
     : points.length + (points.length === 1 ? " punt" : " punten");
   drawingStatus.classList.toggle("is-complete", !!saved);
   if (finished) {
-    drawingTitle.textContent = saved ? "Gebied opgeslagen" : "Gebied opslaan";
     drawingHint.textContent = saved
       ? "Je gebied is klaar voor de run."
       : "Bewaar je gebied als GeoPackage om het voor de run te gebruiken.";
@@ -922,17 +885,7 @@ const selectionSummary = q(".area-summary");
 const selectionToggle = document.createElement("button");
 selectionToggle.className = "selection-toggle";
 selectionToggle.setAttribute("aria-controls", "rm-selection-popup");
-const drawingToolsToggle = document.createElement("button");
-drawingToolsToggle.className = "selection-toggle";
-drawingToolsToggle.hidden = true;
-drawingToolsToggle.setAttribute("aria-controls", drawingToolbar.id);
-drawingToolsToggle.onclick = () => setDrawingToolsCollapsed(!drawingToolsCollapsed);
-function setDrawingToolsCollapsed(collapsed) {
-  drawingToolsCollapsed = collapsed;
-  renderDrawingControls();
-  updateSelectionDetails();
-}
-selectionSummary.append(selectionToggle, drawingToolsToggle);
+selectionSummary.append(selectionToggle);
 const selectionPopup = document.createElement("section");
 selectionPopup.id = "rm-selection-popup";
 selectionPopup.className = "selection-popup";
@@ -947,18 +900,16 @@ popupClose.textContent = "×";
 popupClose.setAttribute("aria-label", "Selectie sluiten");
 popupHeader.append(popupTitle, popupClose);
 selectionPopup.append(popupHeader, popupList);
-q(".area-setup").append(selectionPopup);
+q(".map").append(selectionPopup);
 function updateSelectionDetails() {
   const detail = q("#rm-selection-detail");
-  drawingToolsToggle.hidden = mode !== "draw" || !drawingIsSaved();
-  drawingToolsToggle.textContent = drawingToolsCollapsed ? "Gebied bewerken" : "Tekenpaneel inklappen";
-  drawingToolsToggle.setAttribute("aria-expanded", String(!drawingToolbar.hidden));
-  selectionToggle.hidden =
-    !selectionExpanded &&
-    !(mode === "authorities" && selected.size > 1) &&
-    !(mode === "draw" && finished) &&
-    detail.scrollHeight <= detail.clientHeight + 1 &&
-    detail.scrollWidth <= detail.clientWidth + 1;
+  const custom = mode !== "country" && mode !== "authorities";
+  q(".summary-line").hidden = custom;
+  const hasCustomSelection = (mode === "draw" && finished) ||
+    (mode === "file" && fileFeature !== null) || (mode === "bounds" && boundsFeature !== null);
+  const hasMore = selected.size > 1 || detail.scrollWidth > detail.clientWidth + 1;
+  selectionToggle.hidden = !selectionExpanded && !(custom ? hasCustomSelection : mode === "authorities" && hasMore);
+  selectionSummary.hidden = custom && selectionToggle.hidden;
   selectionToggle.textContent = selectionExpanded ? "Selectie sluiten" : "Bekijk selectie";
   selectionToggle.setAttribute("aria-expanded", String(selectionExpanded));
   selectionPopup.hidden = !selectionExpanded;
@@ -996,7 +947,6 @@ root.addEventListener("keydown", (event) => {
     selectionToggle.focus();
   }
 });
-q("#rm-mode").addEventListener("change", closeSelectionPopup);
 selectionToggle.onclick = () => {
   const show = !selectionExpanded;
   closeAreaPopovers();
@@ -1236,6 +1186,9 @@ function drawingIsSaved() {
 }
 
 function collectValues() {
+  if (mode === "custom") {
+    throw new Error("Kies hoe je het eigen gebied wilt opgeven.");
+  }
   if (mode === "draw" && !drawingIsSaved()) {
     throw new Error("Sluit de polygoon en sla hem eerst op als GeoPackage.");
   }
@@ -1275,9 +1228,16 @@ function collectValues() {
 }
 
 function renderForm() {
-  q("#rm-authority-panel").hidden = mode !== "authorities";
+  chooseAuthorities.hidden = mode !== "authorities";
+  const custom = mode !== "country" && mode !== "authorities";
+  const editing = q("#rm-methods").hidden;
+  q("#rm-file-panel").hidden = !editing || mode !== "file";
+  q("#rm-bounds-panel").hidden = !editing || mode !== "bounds";
+  q("#rm-change-method").hidden = !editing;
+  q("#rm-method-title").textContent = editing && custom && mode !== "custom"
+    ? q(`[data-method="${mode}"]`).textContent : "Eigen gebied";
   for (const radio of root.querySelectorAll('[name="area-kind"]')) {
-    radio.checked = mode === radio.value;
+    radio.checked = radio.value === (custom ? "custom" : mode);
   }
   for (const [code, element] of paths) {
     element.classList.toggle("selected", mode === "authorities" && selected.has(code));
@@ -1333,15 +1293,16 @@ function renderForm() {
     points.length + " punten" + (finished ? " · gesloten" : " · nog niet gesloten");
   q("#rm-finish").disabled = points.length < 3 || finished;
   q("#rm-undo").disabled = !points.length;
-  q("#rm-file-name").textContent = filePath ? filePath.split(/[\\/]/).pop() : "Geen bestand gekozen";
-  q("#rm-file-name").title = filePath ? "Volledig pad bekijken: " + filePath : "Kies een gebiedsbestand";
-  q("#rm-file-path").textContent = filePath || "Nog geen bestand gekozen.";
-  const fileAction = filePath ? "Ander bestand openen" : "Bestand openen";
+  q("#rm-file-prompt").hidden = !!filePath;
+  q("#rm-file-location").hidden = !filePath;
+  q("#rm-file-name").textContent = filePath.split(/[\\/]/).pop();
+  q("#rm-file-name").title = filePath;
+  q("#rm-file-path").textContent = filePath;
+  const fileAction = "Polygoonbestand openen (.gpkg, .geojson, .json)";
   q("#rm-file-demo").setAttribute("aria-label", fileAction);
   q("#rm-file-demo").dataset.tooltip = fileAction;
-  q("#rm-file-status").textContent = fileFeature
-    ? "Alle polygonen in deze laag vormen samen het gebied."
-    : filePath ? "Kies een laag om het gebied op de kaart te zien." : "Kies een bestand en daarna een laag.";
+  q("#rm-file-status").textContent = "";
+  q("#rm-file-layer").closest("label").hidden = !filePath;
   q("#rm-file-layer").disabled = !filePath;
   for (const input of root.querySelectorAll("[data-flag]")) {
     // Opties mogen vooraf worden ingevuld, ook als de basislaag nog uit staat.
@@ -1415,7 +1376,7 @@ async function showFileLayer(layer) {
     if (version === fileRequestVersion) {
       render();
       if (mode === "file") {
-        openAreaPopover("file");
+        openAreaPopover("custom");
       }
       message(error.message);
     }
@@ -1438,7 +1399,7 @@ async function choosePolygon() {
   showLayerChoices(result.layers);
   render();
   if (mode === "file") {
-    openAreaPopover("file");
+    openAreaPopover("custom");
   }
 }
 
@@ -1467,11 +1428,9 @@ async function saveDrawnArea() {
     }
     drawingPath = result.path;
     savedDrawing = JSON.stringify(points);
-    drawingToolsCollapsed = true;
+    closeAreaPopovers();
     render();
-    if (!drawingToolsToggle.hidden) {
-      drawingToolsToggle.focus();
-    }
+    q('[name="area-kind"][value="custom"]').focus();
   });
 }
 
@@ -1596,7 +1555,8 @@ function scheduleLandusePreview(force = false) {
     landuseSignature = "";
     landusePending = null;
     clearTimeout(landuseTimer);
-    status.textContent = error.message;
+    status.hidden = true;
+    status.textContent = "";
     status.removeAttribute("title");
     return;
   }
@@ -1716,8 +1676,8 @@ async function loadRun() {
     return;
   }
   mode = run.mode;
+  q("#rm-methods").hidden = true;
   selected = new Set(run.authorities);
-  q("#rm-mode").value = mode;
   q("#rm-run-name").value = run.run_id;
   q("#rm-workers").value = run.workers;
   q("#rm-run-mode").value = run.run_mode;
@@ -1763,6 +1723,9 @@ async function loadRun() {
   closeAreaPopovers();
   closeOptions();
   render();
+  if (mode === "authorities") {
+    openAreaPopover("choose");
+  }
 }
 
 async function saveRun(start) {
@@ -1823,6 +1786,7 @@ function initializeForm() {
   document.getElementById("loading").remove();
   root.hidden = false;
   render();
+  openAreaPopover("choose");
   fitCountry();
   scheduleTiles();
 }

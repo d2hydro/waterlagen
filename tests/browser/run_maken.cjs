@@ -74,6 +74,7 @@ const checks=`
  const assert=window.assert;
  const settle=()=>new Promise(resolve=>setTimeout(resolve,0));
  assert.equal(root.hidden,false);
+ assert(!q('#rm-area-menu').hidden,'De waterschapslijst opent direct bij het starten');
  assert.equal(q('#rm-workers').value,'8');
  assert.equal(q('#rm-run-name').value,'kaartproef');
  assert.equal(root.querySelectorAll('[data-flag]').length,Object.values(data.options).flat().length);
@@ -207,64 +208,66 @@ const checks=`
  assert(zoom>32);q('#rm-reset').click();assert.equal(zoom,overviewZoom);
  // De gebiedskeuze en de samenvatting horen bij dezelfde groep.
  assert.equal(q('.area-setup').nextElementSibling,q('.map-pane'));
- assert.equal(q('.area-toolbar').parentElement,q('.area-setup'));
- assert.equal(q('#rm-custom-menu').parentElement,q('.area-setup'));
- assert.equal(q('.map').nextElementSibling,q('.map-footer'));
+ assert.equal(q('.area-choices').closest('section'),q('.area-setup'));
  assert.equal(q('#rm-background').parentElement,q('.map'));
  assert.equal(q('.map-controls').parentElement,q('.map'));
- assert.equal(q('.area-summary').parentElement,q('.area-setup'));
- q('#rm-choose-area').click();assert(!areaPopovers.get('choose').hidden);
- q('#rm-custom-area').click();assert(areaPopovers.get('choose').hidden);
- assert(!areaPopovers.get('custom').hidden);
- const customTrigger=q('#rm-custom-area');
- customTrigger.click();assert(areaPopovers.get('custom').hidden);
- customTrigger.click();assert(!areaPopovers.get('custom').hidden);
- q('[data-area-mode="bounds"]').click();assert(!areaPopovers.get('bounds').hidden);
- customTrigger.click();assert(areaPopovers.get('bounds').hidden);assert(areaPopovers.get('custom').hidden);
- assert.equal(customTrigger.getAttribute('aria-expanded'),'false');
- customTrigger.click();assert(!areaPopovers.get('custom').hidden);
- assert.equal(q('.custom-choices').children.length,3);
- for(const icon of root.querySelectorAll('.custom-choices svg')){
-  assert.equal(window.getComputedStyle(icon).position,'static','Tekenicoontjes blijven in hun knop');
-  assert.equal(window.getComputedStyle(icon).height,'26px');
+ assert.equal(q('.area-summary').closest('section'),q('.area-setup'));
+ const authoritiesChoice=q('[name="area-kind"][value="authorities"]');
+ const customChoice=q('[name="area-kind"][value="custom"]');
+ const editor=q('#rm-custom-editor'), listPanel=q('#rm-area-menu');
+ function modeChange(value) {
+  if (['authorities','country'].includes(value)) {
+   q('[name="area-kind"][value="'+value+'"]').click();
+  } else {
+   if (editor.hidden) customChoice.click();
+   if (q('#rm-methods').hidden) q('#rm-change-method').click();
+   q('[data-method="'+value+'"]').click();
+  }
  }
- // Een lange selectie opent bij de gebiedskeuze.
+ assert.equal(root.querySelectorAll('#rm-methods button').length,3);
+ modeChange('country');customChoice.click();
+ assert(!editor.hidden&&!q('#rm-methods').hidden);
+ assert.throws(()=>collectValues(),/Kies hoe/);
+ modeChange('bounds');assert(!editor.hidden&&!q('#rm-bounds-panel').hidden);
+ customChoice.click();assert(editor.hidden);
+ customChoice.click();assert(!editor.hidden&&!q('#rm-methods').hidden);
+ for(const control of root.querySelectorAll('.run-field .info')) {
+  const help=document.getElementById(control.getAttribute('aria-controls'));
+  assert(help.hidden);control.click();assert(!help.hidden);control.click();assert(help.hidden);
+ }
+ assert.equal(root.querySelectorAll('.run-field .info').length,4);
+ modeChange('authorities');
+ // Een lange selectie opent op de kaart.
  const detail=q('#rm-selection-detail');
  Object.defineProperty(detail,'scrollWidth',{configurable:true,value:600});
  Object.defineProperty(detail,'clientWidth',{configurable:true,value:300});
  updateSelectionDetails();assert(!selectionToggle.hidden);
  selectionToggle.click();assert(!selectionPopup.hidden);
- assert.equal(selectionPopup.parentElement,q('.area-setup'));assert(areaPopovers.get('custom').hidden);
- closeSelectionPopup();q('#rm-custom-area').click();
- assert(!q('[data-area-mode="bounds"]').textContent.includes('XY'));
- root.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));
- assert(areaPopovers.get('custom').hidden);
- q('#rm-choose-area').click();q('[name="area-kind"][value="country"]').click();
- assert.equal(mode,'country');assert(areaPopovers.get('choose').hidden);
- q('#rm-choose-area').click();q('[name="area-kind"][value="authorities"]').click();
- assert(!popup.hidden);assert(!areaPopovers.get('choose').hidden);
+ assert.equal(selectionPopup.parentElement,q('.map'));assert(areaPopovers.get('custom').hidden);
+ closeSelectionPopup();
+ modeChange('country');assert.equal(mode,'country');assert(listPanel.hidden);
+ modeChange('authorities');assert(!listPanel.hidden);
  // De hele gebiedskeuze is één venster: aanwijzen of binnenin klikken sluit niets.
- picker.dispatchEvent(new MouseEvent('mouseleave'));
+ listPanel.dispatchEvent(new MouseEvent('mouseleave'));
  await new Promise(resolve=>setTimeout(resolve,250));
- assert(!popup.hidden,'Waterschappen blijven open als de muis de lijst verlaat');
+ assert(!listPanel.hidden,'Waterschappen blijven open als de muis de lijst verlaat');
  q('#rm-area-menu header').dispatchEvent(new MouseEvent('pointerdown',{bubbles:true}));
- assert(!popup.hidden,'Een klik binnen het keuzevenster sluit de lijst niet');
+ assert(!listPanel.hidden,'Een klik binnen het keuzevenster sluit de lijst niet');
  q('#rm-area-menu [data-close-area]').focus();
- picker.dispatchEvent(new FocusEvent('focusout',{bubbles:true}));await settle();
- assert(!popup.hidden,'Focus op een ander onderdeel van het venster sluit de lijst niet');
+ listPanel.dispatchEvent(new FocusEvent('focusout',{bubbles:true}));await settle();
+ assert(!listPanel.hidden,'Focus op een ander onderdeel van het venster sluit de lijst niet');
  const previouslySelected=selected.has('38');
  q('#rm-list input[value="38"]').click();
- assert.equal(selected.has('38'),!previouslySelected);assert(!popup.hidden);
+ assert.equal(selected.has('38'),!previouslySelected);assert(!listPanel.hidden);
  q('#rm-list input[value="38"]').click();
  q('#rm-area-menu [data-close-area]').click();
- assert(popup.hidden);assert(areaPopovers.get('choose').hidden);
- q('#rm-choose-area').click();q('#rm-picker').click();
+ assert(listPanel.hidden);
+ q('#rm-choose-authorities').click();assert(!listPanel.hidden);
  q('.form').dispatchEvent(new MouseEvent('pointerdown',{bubbles:true}));
- assert(popup.hidden);assert(areaPopovers.get('choose').hidden);
- q('#rm-choose-area').click();q('#rm-picker').click();
+ assert(listPanel.hidden);
+ authoritiesChoice.click();
  q('#rm-list input').dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));
- assert(popup.hidden);assert(areaPopovers.get('choose').hidden);
- function modeChange(value){q('#rm-mode').value=value;q('#rm-mode').dispatchEvent(new Event('change',{bubbles:true}));}
+ assert(listPanel.hidden);
  modeChange('country');assert.equal(collectValues().mode,'country');assert(country.classList.contains('selected'));
  setZoom(42,[211,260]);
  const previousView=JSON.stringify(viewCenter);
@@ -275,14 +278,14 @@ const checks=`
  }
  modeChange('file');
  assert(q('#rm-file-demo svg'),'Bestandsknop heeft een mapicoon');
- assert.equal(q('#rm-file-demo').getAttribute('aria-label'),'Bestand openen');
+ assert.equal(q('#rm-file-demo').getAttribute('aria-label'),'Polygoonbestand openen (.gpkg, .geojson, .json)');
  q('#rm-file-demo').click();await settle();
- assert.equal(q('#rm-file-demo').getAttribute('aria-label'),'Ander bestand openen');
+ assert.equal(q('#rm-file-location').hidden,false);
  assert.equal(q('#rm-file-name').textContent,'gebieden.gpkg');
  assert.equal(q('#rm-file-path').textContent,filePath);
  q('#rm-file-location').open=true;
  assert(!q('#rm-file-demo').disabled,'Een uitgeklapt pad mag bestandskeuze niet blokkeren');
- assert.equal(q('#rm-file-layer').options.length,3);assert(!fileFeature);assert(!areaPopovers.get('file').hidden);
+ assert.equal(q('#rm-file-layer').options.length,3);assert(!fileFeature);assert(!areaPopovers.get('custom').hidden);
  assert.equal(window.requests.filter(r=>r.action==='polygon_layer').length,0);
  const choicesBefore=window.requests.filter(r=>r.action==='polygon_file').length;
  q('#rm-file-demo').click();await settle();
@@ -301,8 +304,8 @@ const checks=`
  q('#rm-file-layer').value='west';q('#rm-file-layer').dispatchEvent(new Event('change',{bubbles:true}));await settle();
  assert(q('#rm-message').textContent.includes('geldige polygonen'));
  assert(!fileFeature);
- closeAreaPopovers();q('#rm-custom-area').click();q('[data-area-mode="file"]').click();
- assert(!areaPopovers.get('file').hidden,'Bestand wijzigen blijft opnieuw bereikbaar');
+ closeAreaPopovers();modeChange('file');
+ assert(!areaPopovers.get('custom').hidden,'Bestand wijzigen blijft opnieuw bereikbaar');
  assert(!q('#rm-file-demo').disabled);
  window.pickPath='D:/herstel.gpkg';q('#rm-file-demo').click();await settle();
  assert.equal(filePath,'D:/herstel.gpkg');assert.equal(fileLayer,'');
@@ -329,26 +332,20 @@ const checks=`
  saveDrawing.click();await settle();assert(drawingIsSaved());
  assert(q('#rm-message').hidden,'De kaart bevestigt het opgeslagen gebied zonder melding over de knoppen');
  assert(q('#rm-selection-detail').textContent.includes('eigen-gebied.gpkg'));
- assert(drawingToolbar.hidden);assert(!drawingToolsToggle.hidden);
- drawingToolsToggle.click();assert(!drawingToolbar.hidden);
- drawingToolsToggle.click();assert(drawingToolbar.hidden);
- drawingToolsToggle.click();assert(!drawingToolbar.hidden);
- customTrigger.click();assert(drawingToolbar.hidden);assert(areaPopovers.get('custom').hidden);
- assert(drawingIsSaved());
- customTrigger.click();assert(!areaPopovers.get('custom').hidden);
- customTrigger.click();assert(areaPopovers.get('custom').hidden);
+ assert(drawingToolbar.hidden);
+ customChoice.click();assert(!editor.hidden&&!q('#rm-methods').hidden);
+ q('[data-method="draw"]').click();assert(!drawingToolbar.hidden);
+ customChoice.click();assert(drawingToolbar.hidden);assert(drawingIsSaved());
  const polygonPoints=JSON.stringify(points);
  const expectedPolygonCenter=[0,1].map(axis=>{
   const values=points.map(point=>point[axis]);
   return (Math.min(...values)+Math.max(...values))/2;
  });
- customTrigger.click();
- q('[data-area-mode="bounds"]').click();
+ modeChange('bounds');
  useBounds.click();await settle();
  assert(mode==='bounds' && boundsFeature);
  const rectangleCenter=[...viewCenter];
- customTrigger.click();
- q('[data-area-mode="draw"]').click();
+ modeChange('draw');
  assert(mode==='draw' && drawingIsSaved());
  assert.equal(JSON.stringify(points),polygonPoints);
  selectionToggle.click();assert(!selectionPopup.hidden);
@@ -356,15 +353,15 @@ const checks=`
  assert.deepEqual(viewCenter,expectedPolygonCenter);
  selectionToggle.click();assert(selectionPopup.hidden);
  assert.deepEqual(viewCenter,expectedPolygonCenter);
- drawingToolsToggle.click();assert(!drawingToolbar.hidden);
+ modeChange('draw');assert(!drawingToolbar.hidden);
  assert.equal(collectValues().area_file,'D:\\\\eigen-gebied.gpkg');
  const drawingRequest=window.requests.find(r=>r.action==='draw_save');
  assert(drawingRequest.values.coordinates.every(([x,y])=>x>3&&x<8&&y>50&&y<54));
  undoDrawing.click();assert(!drawingIsSaved());
- // Alleen polygoon tekenen; een rechthoek blijft via co?rdinaten beschikbaar.
+ // Alleen polygoon tekenen; een rechthoek blijft via coördinaten beschikbaar.
  assert.equal(q('[data-shape="rectangle"]'),null);
- assert(q('[data-shape="polygon"]'));
- assert(q('[data-area-mode="bounds"]'));
+ assert(q('[data-method="draw"]'));
+ assert(q('[data-method="bounds"]'));
  modeChange('authorities');assert(drawingToolbar.hidden);
  q('#rm-save').click();await settle();assert.equal(window.requests.filter(r=>r.action==='save').at(-1).values.start,false);
  q('#rm-start').click();await settle();assert.equal(window.requests.filter(r=>r.action==='save').at(-1).values.start,true);

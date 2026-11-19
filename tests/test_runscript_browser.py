@@ -290,7 +290,7 @@ def http_server(application, tmp_path):
 def test_http_preview_and_actual_layout(http_server, values):
     with urlopen(http_server.url) as response:
         text = response.read().decode()
-        assert "Jouw gebied" in text and 'id="rm-map"' in text
+        assert "Welk gebied wil je gebruiken?" in text and 'id="rm-map"' in text
     request = Request(
         http_server.url + "api/preview",
         json.dumps(values).encode(),

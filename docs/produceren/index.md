@@ -7,7 +7,7 @@ editorial_status: ai
 [Eerste keer? Installeer het productiepakket](installatie.md){ .md-button .md-button--primary }
 
 1. Open in de uitgepakte map **`run-maken.bat`**.
-2. Kies een gebied en de gewenste kaartlagen.
+2. Kies **Waterschappen**, **Heel Nederland** of **Eigen gebied**. Vink daarna de gewenste basislagen aan.
 3. Kies **Opslaan en starten** om direct te rekenen, of **Alleen opslaan** om het `.bat`-bestand later te starten.
 
 De resultaten staan in `data/processed_data/`. Kies uw kaartlaag voor de uitvoer en controles.
