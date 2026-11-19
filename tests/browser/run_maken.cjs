@@ -109,7 +109,9 @@ const checks=`
  const folderButton=landuseField.closest('.file-control').querySelector('button');
  assert(!folderButton.disabled && folderButton.querySelector('svg'));
  assert(!q('#rm-dem-landuse-mode'));
- assert(q('[data-flag="ahn-vrt"]').closest('label').textContent.includes('Eigen DTM-VRT (.vrt)'));
+ const dtmInput=q('[data-flag="ahn-vrt"]');
+ const dtmGroup=dtmInput.closest('details.option-group');
+ assert.equal(dtmGroup.querySelector('summary').textContent,'Eigen DTM (.vrt)');
  await updateLandusePreview();
  assert.equal(landuseStatus.textContent,'Automatisch: landgebruikrun afgerond');
  for(const state of ['error','create','planned','unknown']){
@@ -175,7 +177,12 @@ const checks=`
  assert.equal(terrainSettings.querySelector('summary').textContent,'Ontbrekende terreinhoogtes aanvullen');
  assert.equal(terrainSettings.querySelector('input').dataset.flag,'interpolation-max-distance-m');
  assert(!floorSettings.open && !terrainSettings.open);
- assert(!landuseField.closest('details') && !q('[data-flag="ahn-vrt"]').closest('details'));
+ assert(!landuseField.closest('details') && !dtmGroup.open);
+ dtmGroup.querySelector('summary').click();assert(dtmGroup.open && !floorSettings.open);
+ dtmInput.value='D:/terrein.vrt';
+ dtmGroup.querySelector('summary').click();assert(!dtmGroup.open);
+ assert(collectValues().extra_options.some(o=>o.flag==='ahn-vrt' && o.value==='D:/terrein.vrt'));
+ dtmInput.value='';
  terrainSettings.querySelector('summary').click();assert(terrainSettings.open && !floorSettings.open);
  terrainSettings.querySelector('summary').click();assert(!terrainSettings.open);
  floorSettings.querySelector('summary').click();assert(floorSettings.open);
@@ -419,14 +426,16 @@ const checks=`
  assert(runNotice.hidden,'De gewijzigde velden bevestigen dat de run geladen is');
  assert(q('#rm-list input[value="38"]').checked);assert.equal(q('#rm-run-mode').value,'overwrite');
  assert(landuseStatus.hidden);
- window.loadedRun={mode:'authorities',authorities:['38'],layers:['dem'],run_id:'met-bron',workers:8,run_mode:'resume',extra_options:[{layer:'dem',flag:'landuse-run',value:'D:/afgerond'}]};
+ window.loadedRun={mode:'authorities',authorities:['38'],layers:['dem'],run_id:'met-bron',workers:8,run_mode:'resume',extra_options:[{layer:'dem',flag:'landuse-run',value:'D:/afgerond'},{layer:'dem',flag:'ahn-vrt',value:'D:/terrein.vrt'}]};
  q('#rm-load').click();await settle();
  assert(!landuseField.closest('label').hidden);
  assert.equal(landuseField.value,'D:/afgerond');
+ assert(dtmGroup.open && dtmInput.value==='D:/terrein.vrt');
  assert(collectValues().extra_options.some(o=>o.flag==='landuse-run'&&o.value==='D:/afgerond'));
  window.loadedRun={...window.loadedRun,extra_options:[]};
  q('#rm-load').click();await settle();
  assert.equal(landuseField.value,'');assert(!landuseField.disabled);
+ assert(!dtmGroup.open && dtmInput.value==='');
  const duiker=q('[data-flag="duiker-tolerance"]');
  const rekeninstellingen=duiker.closest('details');
  const bronnen=q('[data-flag="rijkswateren-url"]').closest('details');

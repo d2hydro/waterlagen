@@ -17,7 +17,7 @@ DEM gebruikt het landgebruik voor de tegelindeling en de ligging van gebouwen. K
 
 ## Hoogtebron
 
-Standaard wordt AHN gebruikt. Wilt u uw eigen maaiveldhoogtes gebruiken? Kies bij **DEM (hoogte) → Laagopties → Eigen DTM-VRT (.vrt)** uw VRT-bestand.
+Standaard wordt AHN gebruikt. Voor eigen maaiveldhoogtes opent u bij **DEM → Laagopties** de rij **Eigen DTM (.vrt)** en kiest u uw VRT-bestand.
 
 Gebruik één rasterband met hoogtes in meters ten opzichte van NAP. Het raster moet hetzelfde coördinatenstelsel, dezelfde celgrootte en dezelfde celuitlijning hebben als het landgebruik. Zorg voor dekking van de volledige tegels én de zoekruimte eromheen.
 

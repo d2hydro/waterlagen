@@ -541,7 +541,8 @@ for (const [index, [key, name]] of layers.entries()) {
       label.classList.add("option-wide");
     }
     const caption = document.createElement("span");
-    caption.textContent = option.label;
+    const ownDtm = key === "dem" && option.flag === "ahn-vrt";
+    caption.textContent = ownDtm ? "VRT-bestand" : option.label;
     const help = document.createElement("a");
     help.className = "info";
     addInfoIcon(help);
@@ -590,6 +591,9 @@ for (const [index, [key, name]] of layers.entries()) {
     }
     fields.append(label);
     addOptionActions(label, input, option, key);
+    if (ownDtm) {
+      addOptionGroup(fields, option.label, [option.flag]);
+    }
     if (option.hint) {
       const hint = document.createElement("div");
       hint.className = "hint";

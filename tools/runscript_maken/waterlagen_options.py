@@ -108,7 +108,7 @@ EXTRA_OPTIONS = {
         ),
         ExtraOption(
             "ahn-vrt",
-            "Eigen DTM-VRT (.vrt)",
+            "Eigen DTM (.vrt)",
             HelpText(
                 "Kies uw eigen maaiveldmodel. Laat dit veld leeg voor AHN.",
                 "dem",
