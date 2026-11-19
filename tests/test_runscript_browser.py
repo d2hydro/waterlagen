@@ -401,10 +401,12 @@ def test_native_dialog_recovers_after_cancel_and_error(tmp_path, monkeypatch):
         owners.append(owner)
         assert owner.winfo_viewable()
         assert not owner.overrideredirect()
-        assert owner.attributes("-alpha") == 0
+        assert (owner.winfo_width(), owner.winfo_height()) == (1, 1)
         if sys.platform == "win32":
+            # X11 reports window-manager state; Xvfb has no window manager.
+            assert owner.attributes("-alpha") == 0
             assert owner.attributes("-toolwindow")
-        assert owner.attributes("-topmost")
+            assert owner.attributes("-topmost")
         value = next(results)
         if isinstance(value, Exception):
             raise value
@@ -443,6 +445,8 @@ def test_file_dialog_disposes_owner_after_cancel_and_error(tmp_path, monkeypatch
     )
     assert [call.kwargs["parent"] for call in choose.call_args_list] == owners
     for owner in owners:
+        owner.attributes.assert_any_call("-alpha", 0)
+        owner.attributes.assert_any_call("-topmost", True)
         owner.destroy.assert_called_once_with()
 
 
