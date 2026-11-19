@@ -489,6 +489,28 @@ const picker = q("#rm-authority-panel"),
   popup = q("#rm-picker-popup");
 const optionPanels = new Map(),
   optionButtons = new Map();
+function groupDrainageOptions(fields) {
+  const groups = [
+    ["HyDAMO en Rijkswateren", ["eigen-hydamo", "rijkswateren-url"]],
+    ["Afstroming en duikers", ["dem-resampling", "duiker-tolerance", "max-aansluitlengte",
+      "max-complex-routelengte", "overige-waterschappen"]],
+  ];
+  for (const [name, flags] of groups) {
+    const details = document.createElement("details");
+    details.className = "option-group";
+    const summary = document.createElement("summary");
+    summary.textContent = name;
+    const grid = document.createElement("div");
+    grid.className = "option-grid";
+    for (const flag of flags) {
+      const field = fields.querySelector(`[data-flag="${flag}"]`);
+      grid.append(field.closest("label"));
+    }
+    details.append(summary, grid);
+    fields.append(details);
+  }
+}
+
 function closeOptions() {
   for (const [key, panel] of optionPanels) {
     panel.hidden = true;
@@ -520,13 +542,8 @@ for (const [index, [key, name]] of layers.entries()) {
     title = document.createElement("h3"),
     close = document.createElement("button"),
     fields = document.createElement("div");
-  const titleBlock = document.createElement("div");
-  titleBlock.className = "options-title";
-  const context = document.createElement("span");
-  context.textContent = "Extra opties";
   title.textContent = name;
   title.id = panel.id + "-title";
-  titleBlock.append(context, title);
   panel.setAttribute("aria-labelledby", title.id);
   close.textContent = "×";
   close.setAttribute("aria-label", "Extra opties sluiten");
@@ -535,7 +552,7 @@ for (const [index, [key, name]] of layers.entries()) {
     closeOptions();
     button.focus();
   };
-  header.append(titleBlock, close);
+  header.append(title, close);
   panel.append(header, fields);
   for (const option of data.options[key] || []) {
     const label = document.createElement("label");
@@ -589,9 +606,6 @@ for (const [index, [key, name]] of layers.entries()) {
       if (option.maximum !== null) {
         input.max = option.maximum;
       }
-      if (!["file", "directory", "toml"].includes(option.kind)) {
-        input.placeholder = option.hint || "";
-      }
       label.append(caption, input);
     }
     fields.append(label);
@@ -600,8 +614,13 @@ for (const [index, [key, name]] of layers.entries()) {
       const hint = document.createElement("div");
       hint.className = "hint";
       hint.textContent = option.hint;
+      hint.id = `rm-hint-${key}-${option.flag}`;
+      input.setAttribute("aria-describedby", hint.id);
       label.append(hint);
     }
+  }
+  if (key === "afwateringseenheden") {
+    groupDrainageOptions(fields);
   }
   root.append(panel);
   button.setAttribute("aria-expanded", "false");
@@ -1730,6 +1749,12 @@ async function loadRun() {
       input.value = saved ? saved.value : input.dataset.default;
       input.dispatchEvent(new Event("input"));
     }
+  }
+  for (const group of root.querySelectorAll("details.option-group")) {
+    group.open = [...group.querySelectorAll("[data-flag]")].some((input) => {
+      const value = input.type === "checkbox" ? String(input.checked) : input.value;
+      return value !== input.dataset.default;
+    });
   }
   const landuseInput = q('[data-layer="dem"][data-flag="landuse-run"]');
   q("#rm-dem-landuse-mode").value = landuseInput.value.trim() ? "manual" : "auto";

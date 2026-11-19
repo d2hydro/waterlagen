@@ -65,6 +65,8 @@ Ga bij de extra opties naar **Brandlagen instellen**. Maak een nieuwe TOML of ki
 
 ## Aanvullende instellingen
 
+Open **HyDAMO en Rijkswateren** voor een eigen bron. Onder **Afstroming en duikers** staan de rekeninstellingen.
+
 ??? info "Opties voor afwateringseenheden"
 
     | Optie | Gebruik |

@@ -364,6 +364,17 @@ const checks=`
  window.loadedRun={...window.loadedRun,extra_options:[]};
  q('#rm-load').click();await settle();
  assert.equal(landuseMode.value,'auto');assert(landuseField.disabled);
+ const duiker=q('[data-flag="duiker-tolerance"]');
+ const rekeninstellingen=duiker.closest('details');
+ const bronnen=q('[data-flag="rijkswateren-url"]').closest('details');
+ assert(!rekeninstellingen.open && !bronnen.open);
+ window.loadedRun={...window.loadedRun,layers:['afwateringseenheden'],
+   extra_options:[{layer:'afwateringseenheden',flag:'duiker-tolerance',value:'2'}]};
+ q('#rm-load').click();await settle();
+ assert(rekeninstellingen.open && !bronnen.open);
+ rekeninstellingen.querySelector('summary').click();
+ assert(!rekeninstellingen.open);
+ assert(collectValues().extra_options.some(o=>o.flag==='duiker-tolerance'&&o.value==='2'));
  setZoom(234);modeChange('bounds');await settle();assert.equal(zoom,234);useBounds.click();await settle();assert(boundsFeature);assert.equal(collectValues().bounds.length,4);
  const first=q('.bounds-fields input');first.value='105100';first.dispatchEvent(new Event('input',{bubbles:true}));
  assert.throws(()=>collectValues(),/Gebied gebruiken/);useBounds.click();await settle();assert(collectValues().bounds.includes('105100'));
