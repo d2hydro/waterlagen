@@ -692,7 +692,9 @@ function renderSelectionOutline() {
     svgElement("path", { d: path(feature), class: "selection-outline selection-color" }, parent);
 }
 function setBackground(kind) {
-  q("#rm-background").value = kind;
+  const switchLabel = kind === "satellite" ? "Stratenkaart tonen" : "Luchtfoto tonen";
+  backgroundButton.title = switchLabel;
+  backgroundButton.setAttribute("aria-label", switchLabel);
   root.classList.toggle("with-basemap", kind !== "plain");
   root.classList.toggle("satellite-map", kind === "satellite");
   const label = q("#rm-attribution");
@@ -712,7 +714,8 @@ function setBackground(kind) {
     kind === "streets" ? "© OpenStreetMap contributors" : "PDOK · Beeldmateriaal Nederland";
   label.append(link, document.createTextNode(" · overzichtsbeeld"));
 }
-q("#rm-background").onchange = (event) => setBackground(event.target.value);
+const backgroundButton = q("#rm-background");
+backgroundButton.onclick = () => setBackground(tileProvider === "satellite" ? "streets" : "satellite");
 const areaPopovers = new Map([
   ["choose", q("#rm-area-menu")],
   ["custom", q("#rm-custom-menu")],

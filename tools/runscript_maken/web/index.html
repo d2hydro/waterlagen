@@ -26,9 +26,8 @@
       </div>
       <div class="workspace">
         <section class="map-pane" aria-label="Gebied op de kaart">
-          <div class="area-toolbar" role="group" aria-labelledby="rm-area-title">
-            <h2 id="rm-area-title">Gebied kiezen</h2>
-            <button id="rm-choose-area" aria-expanded="false" aria-controls="rm-area-menu">Land of waterschap</button>
+          <div class="area-toolbar" role="group" aria-label="Gebiedsselectie">
+            <button id="rm-choose-area" aria-expanded="false" aria-controls="rm-area-menu">Gebied kiezen</button>
             <button id="rm-custom-area" aria-expanded="false" aria-controls="rm-custom-menu">Eigen gebied</button>
           </div>
           <div class="map">
@@ -170,7 +169,10 @@
                 ></span>
               </button>
             </div>
-            <div class="north">N<br />↑</div>
+            <button type="button" id="rm-background" aria-label="Luchtfoto tonen" title="Luchtfoto tonen">
+              <span class="map-icon" data-icon="satellite" aria-hidden="true"></span>
+              <span class="map-icon" data-icon="map" aria-hidden="true"></span>
+            </button>
             <div class="map-note" id="rm-map-hint">
               Klik op een waterschap om het aan of uit te zetten.
             </div>
@@ -180,10 +182,6 @@
               <div class="legend"><span class="swatch"></span> Geselecteerd &middot; Grenzen: HWH / Kadaster</div>
               <div class="attribution" id="rm-attribution"></div>
             </div>
-            <select id="rm-background" aria-label="Kaartachtergrond" title="Kaartachtergrond">
-              <option value="streets">Stratenkaart</option>
-              <option value="satellite">Luchtfoto</option>
-            </select>
           </div>
           <div class="selection" aria-live="polite">
             <strong id="rm-selection-title">2 waterschappen geselecteerd</strong
