@@ -121,7 +121,10 @@ def validate_landuse_run(
         # Invalid file content, rather than an incorrectly typed API argument.
         raise ValueError(f"Invalid land-use run metadata: {path}")  # noqa: TRY004
     if metadata.get("status") == "running":
-        raise _blocked_landuse(path, "staat nog op 'bezig'")
+        raise ValueError(
+            f"Landgebruikrun '{path.name}' is onvoltooid. "
+            f"Hervat deze run of kies een afgeronde landgebruikrun. Map: {path.resolve()}"
+        )
     _creation_time(metadata)
     scopes = {area.value, Area.nederland.value}
     if (

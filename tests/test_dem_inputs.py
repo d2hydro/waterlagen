@@ -6,6 +6,7 @@ import pytest
 from shapely.geometry import box
 
 from waterlagen._production import production_run
+from waterlagen._run_lock import production_lock
 from waterlagen.areas import Area, area_from_bounds, resolve_workers, select_area_tiles
 from waterlagen.dem import inputs
 
@@ -73,11 +74,46 @@ def test_latest_prefers_completed_unlocked_run(tmp_path, status, locked):
     assert (unfinished / ".run.lock").exists() == locked
 
 
-def test_running_run_still_blocks_when_no_completed_run_is_available(tmp_path):
-    new = record(tmp_path, "nederland", "bezig", status="running")
-    assert inputs.latest_run(new.parent) == new
-    with pytest.raises(RuntimeError, match="staat nog op 'bezig'"):
-        inputs.validate_landuse_run(new, Area.nederland, 5)
+def test_active_same_area_run_still_blocks_automatic_production(tmp_path):
+    path = record(tmp_path, "alkmaar", "proef", status="running")
+    store = SimpleNamespace(processed_data_dir=tmp_path)
+    with (
+        production_lock(path),
+        pytest.raises(inputs.LanduseRunBusy, match="is vergrendeld"),
+    ):
+        inputs.find_landuse_input(store, Area.alkmaar, 5)
+
+
+def test_dem_produces_landuse_beside_interrupted_run_with_same_name(
+    tmp_path, monkeypatch
+):
+    interrupted = record(tmp_path, "alkmaar", "proef", status="running")
+    (interrupted / ".run.guard").touch()
+    (interrupted / ".run.lock").write_bytes(b"waterlagen-run-lock-v2\n")
+    files = {p: p.read_bytes() for p in interrupted.iterdir()}
+    store = SimpleNamespace(processed_data_dir=tmp_path)
+    validate = inputs.validate_landuse_run
+    produced = []
+
+    def produce(store, *, area, run_id, **kwargs):
+        produced.append(record(store.processed_data_dir, area.value, run_id))
+
+    def validate_input(path, area, context):
+        if path in produced:
+            return fake_input(path, area)
+        return validate(path, area, context)
+
+    monkeypatch.setattr(inputs.landuse_production, "main", produce)
+    monkeypatch.setattr(inputs, "validate_landuse_run", validate_input)
+    with production_run(
+        tmp_path, "dem", "alkmaar", run_id="proef", parameters={}
+    ) as run:
+        result = inputs.resolve_landuse(store, run, Area.alkmaar, 5)
+
+    assert produced == [result.path]
+    assert result.path != interrupted
+    assert run.metadata["landuse_dependency"]["created_by_dem"] is True
+    assert {p: p.read_bytes() for p in interrupted.iterdir()} == files
 
 
 def test_dem_reuses_completed_landuse_beside_abandoned_run(tmp_path, monkeypatch):
@@ -121,15 +157,18 @@ def test_blocked_landuse_explains_possible_interruption_and_next_step(tmp_path, 
         lock.touch()
     original = (path / "run.json").read_bytes()
 
-    with pytest.raises(RuntimeError) as error:
+    with pytest.raises(inputs.LanduseRunBusy if locked else ValueError) as error:
         inputs.validate_landuse_run(path, Area.nederland, 5)
 
     message = str(error.value)
     assert "afgebroken" in message
     assert str(path) in message
-    assert "is vergrendeld" in message if locked else "staat nog op 'bezig'" in message
-    assert "kan nog draaien of eerder zijn afgebroken" in message
-    assert "afgeronde run met --landuse-run" in message
+    if locked:
+        assert "is vergrendeld" in message
+        assert "afgeronde run met --landuse-run" in message
+    else:
+        assert "is onvoltooid" in message
+        assert "Hervat deze run" in message
     assert (path / "run.json").read_bytes() == original
     assert lock.exists() == locked
 
@@ -308,7 +347,7 @@ def test_automatic_search_skips_busy_other_scope(tmp_path, monkeypatch, locked):
     store = SimpleNamespace(processed_data_dir=tmp_path)
     area = Area.alkmaar
     assert inputs.find_landuse_input(store, area, 5) is None
-    with pytest.raises(inputs.LanduseRunBusy):
+    with pytest.raises(inputs.LanduseRunBusy if locked else ValueError):
         inputs.validate_landuse_run(other, area, 5)
     later = record(tmp_path, "waterschappen_2_12_59", "klaar")
     original = inputs.validate_landuse_run
