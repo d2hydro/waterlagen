@@ -168,6 +168,14 @@ const checks=`
  const extra=optionButtons.get('dem');extra.click();
  assert.equal(optionPanels.get('dem').parentElement,root);
  assert(!optionPanels.get('dem').hidden);
+ const demGroups={};
+ let demGroup;
+ for(const field of demPanel.querySelector('.extra-fields').children){
+  if(field.tagName==='H4'){demGroup=field.textContent;demGroups[demGroup]=[];}
+  else if(demGroup){demGroups[demGroup].push(field.querySelector('[data-flag]').dataset.flag);}
+ }
+ assert.deepEqual(demGroups['Vloerpeil van gebouwen'],['building-initial-buffer-m','building-buffer-step-m','building-max-search-distance-m','building-percentile','building-offset-m','building-workers']);
+ assert.deepEqual(demGroups['Ontbrekende terreinhoogtes aanvullen'],['interpolation-max-distance-m']);
  q('[data-layer="dem"][data-flag="building-workers"]').value='3';
  optionPanels.get('dem').querySelector('header button').click();extra.click();
  assert.equal(q('[data-layer="dem"][data-flag="building-workers"]').value,'3');

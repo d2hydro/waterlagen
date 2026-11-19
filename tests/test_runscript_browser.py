@@ -429,10 +429,16 @@ def test_file_dialog_disposes_owner_after_cancel_and_error(tmp_path, monkeypatch
     choose = Mock(side_effect=["", OSError("Geen toegang"), str(selected)])
     monkeypatch.setattr(native.filedialog, "askopenfilename", choose)
 
-    assert dialogs.open("Gebied", "*.gpkg") is None
+    assert dialogs.open("Eigen DTM-VRT", "*.vrt") is None
+    assert choose.call_args.kwargs["title"] == "Eigen DTM-VRT"
+    assert choose.call_args.kwargs["filetypes"][0] == ("*.vrt", "*.vrt")
     with pytest.raises(OSError, match="Geen toegang"):
         dialogs.open("Gebied", "*.gpkg")
-    assert dialogs.open("Gebied", "*.gpkg") == selected
+    assert dialogs.open("Gebied", "*.gpkg *.geojson *.json") == selected
+    assert choose.call_args.kwargs["filetypes"][0] == (
+        "*.gpkg; *.geojson; *.json",
+        "*.gpkg *.geojson *.json",
+    )
     assert [call.kwargs["parent"] for call in choose.call_args_list] == owners
     for owner in owners:
         owner.destroy.assert_called_once_with()

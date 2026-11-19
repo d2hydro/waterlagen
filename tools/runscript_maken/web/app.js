@@ -605,6 +605,16 @@ for (const [index, [key, name]] of layers.entries()) {
       label.append(hint);
     }
   }
+  if (key === "dem") {
+    for (const [flag, title] of [
+      ["building-initial-buffer-m", "Vloerpeil van gebouwen"],
+      ["interpolation-max-distance-m", "Ontbrekende terreinhoogtes aanvullen"],
+    ]) {
+      const heading = document.createElement("h4");
+      heading.textContent = title;
+      fields.querySelector(`[data-flag="${flag}"]`).closest("label").before(heading);
+    }
+  }
   if (key === "afwateringseenheden") {
     groupDrainageOptions(fields);
   }

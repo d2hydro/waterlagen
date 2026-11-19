@@ -84,9 +84,9 @@ EXTRA_OPTIONS = {
         ),
         ExtraOption(
             "building-context-m",
-            "Gebouwcontext (m)",
+            "Marge voor buurpanden (m)",
             HelpText(
-                "Extra omgeving rond gebouwen; moet de maximale zoekafstand van de DEM dekken.",
+                "Neemt ook buurpanden buiten de tegel mee, zodat DEM daar geen maaiveldhoogtes meet. Kies minstens de maximale zoekafstand rond een pand.",
                 "landgebruik",
                 "starten",
             ),
@@ -118,20 +118,8 @@ EXTRA_OPTIONS = {
             file_pattern="*.vrt",
         ),
         ExtraOption(
-            "building-workers",
-            "Workers voor gebouwhoogten",
-            HelpText(
-                "Hoeveel groepen gebouwen tegelijk worden verwerkt, vóór de berekening van DEM-tegels.",
-                "dem",
-                "instellingen-en-workers",
-            ),
-            "integer",
-            str(settings.dem_building_workers),
-            minimum=1,
-        ),
-        ExtraOption(
             "building-initial-buffer-m",
-            "Eerste zoekafstand (m)",
+            "Startafstand rond pand (m)",
             HelpText(
                 "Eerste afstand rond een gebouw om bruikbare terreinhoogtes te zoeken.",
                 "dem",
@@ -143,9 +131,9 @@ EXTRA_OPTIONS = {
         ),
         ExtraOption(
             "building-buffer-step-m",
-            "Zoekstap (m)",
+            "Afstand per extra stap (m)",
             HelpText(
-                "Vergroot de zoekafstand met deze stap als er nog geen bruikbare hoogtes zijn.",
+                "Als er rond het pand geen bruikbare terreinhoogte is gevonden, wordt de zoekafstand met deze stap vergroot.",
                 "dem",
                 "instellingen-en-workers",
             ),
@@ -155,9 +143,9 @@ EXTRA_OPTIONS = {
         ),
         ExtraOption(
             "building-max-search-distance-m",
-            "Maximale zoekafstand (m)",
+            "Maximale afstand rond pand (m)",
             HelpText(
-                "Zoek niet verder dan deze afstand rond een gebouw.",
+                "Tot deze afstand vanaf de buitenrand van het pand worden terreinhoogtes gezocht om het vloerpeil te schatten.",
                 "dem",
                 "instellingen-en-workers",
             ),
@@ -190,8 +178,20 @@ EXTRA_OPTIONS = {
             str(DEM.building_offset_m),
         ),
         ExtraOption(
+            "building-workers",
+            "Workers voor gebouwhoogten",
+            HelpText(
+                "Hoeveel groepen gebouwen tegelijk worden verwerkt, vóór de berekening van DEM-tegels.",
+                "dem",
+                "instellingen-en-workers",
+            ),
+            "integer",
+            str(settings.dem_building_workers),
+            minimum=1,
+        ),
+        ExtraOption(
             "interpolation-max-distance-m",
-            "Gaten vullen tot (m)",
+            "Zoekafstand bij ontbrekende hoogte (m)",
             HelpText(
                 "Schat ontbrekende terreinhoogtes met metingen binnen deze afstand; 0 schakelt dit uit.",
                 "dem",

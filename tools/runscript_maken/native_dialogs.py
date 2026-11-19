@@ -65,7 +65,7 @@ class NativeDialogs:
                     parent=owner,
                     title=title,
                     initialdir=self.project,
-                    filetypes=[(title, pattern), ("Alle bestanden", "*")],
+                    filetypes=[("; ".join(pattern.split()), pattern), ("Alle bestanden", "*")],
                 ),
             )
         )

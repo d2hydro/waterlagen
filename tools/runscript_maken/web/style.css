@@ -1556,6 +1556,12 @@ body {
   overscroll-behavior: contain;
 }
 #run-map-preview .extra-panel .extra-fields > label { min-width: 0; margin: 0; }
+#run-map-preview .extra-fields > h4 {
+  grid-column: 1 / -1;
+  margin: 4px 0 0;
+  font-size: 1rem;
+  line-height: 1.4;
+}
 #run-map-preview .extra-fields > .option-wide { grid-column: 1 / -1; }
 @media (min-width: 620px) {
   #run-map-preview .extra-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }

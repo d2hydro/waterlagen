@@ -240,7 +240,7 @@ def open_custom_layer(
             filename = filedialog.askopenfilename(
                 parent=window,
                 title="Eigen brandlaag kiezen",
-                filetypes=[("GeoPackage", "*.gpkg")],
+                filetypes=[("*.gpkg", "*.gpkg")],
             )
             if not filename:
                 return
@@ -481,7 +481,7 @@ def open_options(
 
     def choose_existing() -> None:
         filename = filedialog.askopenfilename(
-            parent=window, title="Brandlagen openen", filetypes=[("TOML", "*.toml")]
+            parent=window, title="Brandlagen openen", filetypes=[("*.toml", "*.toml")]
         )
         if filename:
             load_file(Path(filename))
