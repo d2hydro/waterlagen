@@ -191,31 +191,34 @@
           </div>
         </section>
         <section class="form" aria-label="Basislagen en runinstellingen">
-          <h2 id="rm-layers-title">Welke basislagen wil je maken?</h2>
-          <div id="rm-layers" role="group" aria-labelledby="rm-layers-title"></div>
-          <hr class="sep" />
-          <h2>Instellingen voor de hele run</h2>
-          <div class="execution-fields">
-            <label class="field"
-              ><span>Runnaam</span
-              ><input id="rm-run-name" type="text" value="" /></label
-            ><label class="field"
-              ><span>Workers</span
-              ><input id="rm-workers" type="number" min="1" value="8" /></label
-            ><label class="field"
-              ><span>Als de run al bestaat</span
-              ><select id="rm-run-mode">
-                <option value="resume">Hervatten</option>
-                <option value="overwrite">Overschrijven</option>
-              </select></label
-            >
-          </div>
-          <div class="checks">
-            <label
-              ><input id="rm-refresh" type="checkbox" /> Bronnen opnieuw
-              ophalen</label
-            ><label><input id="rm-debug" type="checkbox" /> Debug-optie</label>
-          </div>
+          <section class="settings-group" aria-labelledby="rm-layers-title">
+            <h2 id="rm-layers-title">Welke basislagen wil je maken?</h2>
+            <div id="rm-layers"></div>
+          </section>
+          <section class="settings-group" aria-labelledby="rm-run-settings-title">
+            <h2 id="rm-run-settings-title">Instellingen voor de hele run</h2>
+            <div class="execution-fields">
+              <label class="field"
+                ><span>Runnaam</span
+                ><input id="rm-run-name" type="text" value="" /></label
+              ><label class="field"
+                ><span>Workers</span
+                ><input id="rm-workers" type="number" min="1" value="8" /></label
+              ><label class="field"
+                ><span>Als de run al bestaat</span
+                ><select id="rm-run-mode">
+                  <option value="resume">Hervatten</option>
+                  <option value="overwrite">Overschrijven</option>
+                </select></label
+              >
+            </div>
+            <div class="checks">
+              <label
+                ><input id="rm-refresh" type="checkbox" /> Bronnen opnieuw
+                ophalen</label
+              ><label><input id="rm-debug" type="checkbox" /> Debug-optie</label>
+            </div>
+          </section>
         </section>
       </div>
       <footer class="footer">

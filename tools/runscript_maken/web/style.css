@@ -1771,14 +1771,27 @@ body {
   border: 0; border-radius: 7px; background: transparent;
 }
 #run-map-preview .top .tools button:hover { background: var(--soft); }
-#run-map-preview .form-content > h2 {
+#run-map-preview .settings-group > h2 {
   margin: 0 0 10px;
   color: var(--heading);
   font-size: 1.0625rem;
   font-weight: 600;
   line-height: 1.4;
 }
-#run-map-preview .form-content > .sep { margin: 16px 0 12px; }
+#run-map-preview .settings-group {
+  min-width: 0;
+  padding: 10px 12px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+#run-map-preview .settings-group + .settings-group { margin-top: 12px; }
+#run-map-preview .settings-group:has(#rm-layers) { padding: 0; }
+#run-map-preview #rm-layers-title { padding-inline: 12px; margin-bottom: 0; }
+#run-map-preview #rm-layers { border-top: 1px solid var(--line); }
+#run-map-preview #rm-layers .layer { padding-inline: 12px; }
+#run-map-preview #rm-layers .layer:last-child { border-radius: 0 0 9px 9px; }
+#run-map-preview #rm-layers .layer:has(input:checked) { background: var(--soft); }
 #run-map-preview .layer {
   display: grid; grid-template-columns: minmax(0, 1fr) 30px 112px;
   gap: 6px; align-items: center; min-height: 48px;
@@ -1867,7 +1880,7 @@ body {
   display: grid; grid-template-rows: minmax(0, 1fr) auto;
   padding: 0; min-height: 0; overflow: hidden;
 }
-#run-map-preview .form-content { min-height: 0; overflow-y: auto; padding: 18px; }
+#run-map-preview .form-content { min-height: 0; overflow-y: auto; padding: 10px; background: var(--soft); }
 #run-map-preview .form > .footer {
   align-items: stretch;
   display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px;
@@ -1897,16 +1910,11 @@ body {
 @media (min-width: 761px) {
   #run-map-preview .map-pane { grid-template-rows: auto minmax(0, 1fr) auto; }
   /* De gebiedskeuze en de laagtitel delen een rij boven kaart en lijst. */
-  #run-map-preview .form-content { padding-block: 10px; }
-  #run-map-preview .form-content > h2:first-child {
-    display: flex;
-    align-items: center;
-    min-height: 44px;
-  }
-  #run-map-preview #rm-layers { border-top: 1px solid var(--line); }
+  #run-map-preview #rm-layers-title { min-height: 53px; display: flex; align-items: center; }
 }
 @media (max-width: 760px) {
   #run-map-preview .form { min-height: 460px; }
+  #run-map-preview #rm-layers-title { padding-block: 10px; }
   #run-map-preview .map-pane,
   #run-map-preview .form-content,
   #run-map-preview .form > .footer { padding-inline: 12px; }
