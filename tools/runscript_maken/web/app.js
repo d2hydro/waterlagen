@@ -606,14 +606,22 @@ for (const [index, [key, name]] of layers.entries()) {
     }
   }
   if (key === "dem") {
-    for (const [flag, title] of [
-      ["building-initial-buffer-m", "Vloerpeil van gebouwen"],
-      ["interpolation-max-distance-m", "Ontbrekende terreinhoogtes aanvullen"],
-    ]) {
-      const heading = document.createElement("h4");
-      heading.textContent = title;
-      fields.querySelector(`[data-flag="${flag}"]`).closest("label").before(heading);
+    const floor = document.createElement("fieldset");
+    floor.className = "floor-settings";
+    const legend = document.createElement("legend");
+    legend.textContent = "Vloerpeil van gebouwen";
+    const grid = document.createElement("div");
+    grid.className = "floor-fields";
+    const buildingInputs = fields.querySelectorAll('[data-flag^="building-"]');
+    buildingInputs[0].closest("label").before(floor);
+    for (const input of buildingInputs) {
+      grid.append(input.closest("label"));
     }
+    floor.append(legend, grid);
+
+    const heading = document.createElement("h4");
+    heading.textContent = "Ontbrekende terreinhoogtes aanvullen";
+    fields.querySelector('[data-flag="interpolation-max-distance-m"]').closest("label").before(heading);
   }
   if (key === "afwateringseenheden") {
     groupDrainageOptions(fields);
