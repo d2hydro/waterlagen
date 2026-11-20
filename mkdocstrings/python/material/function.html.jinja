@@ -1,0 +1,9 @@
+{% extends "_base/function.html.jinja" %}
+
+{% block signature scoped %}
+  {% if function.parameters|length > 8 %}
+    <details><summary>Python-aanroep</summary>{{ super() }}</details>
+  {% else %}
+    {{ super() }}
+  {% endif %}
+{% endblock signature %}

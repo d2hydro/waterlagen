@@ -1,0 +1,62 @@
+# Verlaging in meters voor geïsoleerde HyDAMO-waterlopen en tertiaire waterlopen.
+geisoleerde_branddiepte_m = 10.0
+
+# Standaard hoogteverandering in meters voor aanvullende lagen. Negatief verlaagt.
+[defaults]
+brandwaarde = -10.0
+
+# Openbare bronnen. Elke gekozen laag wordt ingebrand, ook een niet-aangesloten duiker.
+[[lagen]]
+bron = "bgt_waterdelen"
+prioriteit = 2
+
+[[lagen]]
+bron = "top10nl_waterdeel_vlak"
+brandwaarde = -5.0
+prioriteit = 0
+
+[[lagen]]
+bron = "top10nl_waterdeel_lijn"
+brandwaarde = -5.0
+prioriteit = 0
+
+[[lagen]]
+bron = "bgt_duikers"
+prioriteit = 2
+
+[[lagen]]
+bron = "osm_duikers"
+prioriteit = 1
+
+[[lagen]]
+bron = "osm_canals"
+brandwaarde = -5.0
+prioriteit = 1
+
+[[lagen]]
+bron = "osm_ditches"
+brandwaarde = -5.0
+prioriteit = 1
+
+[[lagen]]
+bron = "osm_drains"
+brandwaarde = -5.0
+prioriteit = 1
+
+[[lagen]]
+bron = "osm_streams"
+brandwaarde = -5.0
+prioriteit = 1
+
+# BGT-wegdelen toevoegen? Activeer dit blok en kies de gewenste verhoging.
+# [[lagen]]
+# bron = "bgt_wegdelen"
+# brandwaarde = 2.0
+# prioriteit = 3
+
+# Eigen GeoPackage toevoegen? Activeer dit blok. Het pad begint bij dit TOML-bestand.
+# [[lagen]]
+# path = "eigen_brandlagen.gpkg"
+# layer = "correcties"
+# brandwaarde = 1.0
+# prioriteit = 3

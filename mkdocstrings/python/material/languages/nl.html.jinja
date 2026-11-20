@@ -1,0 +1,13 @@
+{% macro t(key) %}{{ {
+  "Returns:": "Wat krijgt u terug?",
+  "Parameters:": "Instellingen en invoer",
+  "Other Parameters:": "Overige instellingen",
+  "Raises:": "Mogelijke fouten",
+  "Name": "Naam",
+  "Type": "Type",
+  "Description": "Betekenis",
+  "Default": "Standaardwaarde",
+  "required": "Verplicht",
+  "Attributes:": "Kenmerken",
+  "Examples:": "Voorbeelden"
+}.get(key, "") }}{% endmacro %}
