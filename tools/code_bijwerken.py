@@ -6,14 +6,16 @@ import json
 import os
 import re
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
 import tomllib
+from collections.abc import Collection
 from contextlib import contextmanager
 from datetime import UTC, datetime
 from io import BytesIO
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 from zipfile import BadZipFile, ZipFile
@@ -35,33 +37,7 @@ BASE_FILES = (
     "scripts/functioneel_landgebruik.py",
     "scripts/inwoners.py",
 )
-RUNSCRIPT_FILES = (
-    "tools/runscript_maken/web/LUCIDE-LICENSE.txt",
-    "tools/runscript_maken/browser_app.py",
-    "tools/runscript_maken/browser_server.py",
-    "tools/runscript_maken/map_data.py",
-    "tools/runscript_maken/map_tiles.py",
-    "tools/runscript_maken/native_dialogs.py",
-    "tools/runscript_maken/web/app.js",
-    "tools/runscript_maken/web/appearance.json",
-    "tools/runscript_maken/web/D3-LICENSE.txt",
-    "tools/runscript_maken/web/d3.min.js",
-    "tools/runscript_maken/web/favicon.png",
-    "tools/runscript_maken/web/index.html",
-    "tools/runscript_maken/web/style.css",
-    "tools/runscript_maken.py",
-    "run-maken.bat",
-    "tools/runscript_maken/__init__.py",
-    "tools/runscript_maken/script.py",
-    "tools/runscript_maken/window.py",
-    "tools/runscript_maken/waterlagen.py",
-    "tools/runscript_maken/waterlagen_options.py",
-    "tools/runscript_maken/waterlagen_runfile.py",
-    "tools/runscript_maken/brandlagen.py",
-    "docs/reference/voorbeelden/brandlagen.toml",
-    "docs/icons/logo.png",
-    "docs/icons/favicon.png",
-)
+# Vaste softwarepaden; nieuwe Run Maker-bestanden komen uit het releasemanifest.
 MANAGED_FILES = (
     *BASE_FILES,
     *UPDATER_FILES,
@@ -70,9 +46,13 @@ MANAGED_FILES = (
     "runscript_maken.py",
     "runscript-maken.cmd",
     "runscript-maken.bat",
-    *RUNSCRIPT_FILES,
+    "tools/runscript_maken.py",
+    "run-maken.bat",
+    "docs/reference/voorbeelden/brandlagen.toml",
     METADATA,
 )
+MANAGED_DIRECTORIES = ("tools/runscript_maken", "docs/icons")
+HISTORICAL_FILES = {*BASE_FILES, *LEGACY_UPDATER_FILES}
 VERSION_PATTERN = (
     r"v?(?P<version>\d{4}\.\d{1,2}\.\d+(?:(?:a|b|rc)\d+)?(?:\.post\d+)?(?:\.dev\d+)?)"
 )
@@ -159,13 +139,82 @@ def _hashes(files: dict[str, bytes]) -> dict[str, str]:
     }
 
 
+def _validated_names(names: Collection[str]) -> set[str]:
+    """Begrens manifestnamen tot pakketsoftware, ook op Windows."""
+    seen = set()
+    result = set()
+    devices = {"con", "prn", "aux", "nul"}
+    devices.update(
+        f"{prefix}{number}" for prefix in ("com", "lpt") for number in range(1, 10)
+    )
+    for name in names:
+        if not isinstance(name, str):
+            raise ValueError("Een softwarepad moet tekst zijn")
+        path = PurePosixPath(name)
+        if (
+            not name
+            or path.is_absolute()
+            or str(path) != name
+            or ".." in path.parts
+            or re.search(r'[\\<>:"|?*\x00-\x1f]', name)
+            or any(
+                part.rstrip(" .") != part or part.split(".")[0].casefold() in devices
+                for part in path.parts
+            )
+        ):
+            raise ValueError(f"Ongeldig softwarepad: {name}")
+        if name not in MANAGED_FILES and not any(
+            path.is_relative_to(directory) and str(path) != directory
+            for directory in MANAGED_DIRECTORIES
+        ):
+            raise ValueError(f"Geen beheerd softwarebestand: {name}")
+        folded = name.casefold()
+        if folded in seen:
+            raise ValueError(f"Dubbel softwarepad: {name}")
+        seen.add(folded)
+        result.add(name)
+    for name in result:
+        if any(
+            str(parent).casefold() in seen for parent in PurePosixPath(name).parents
+        ):
+            raise ValueError(f"Softwarepad is ook een bovenliggende map: {name}")
+    return result
+
+
+def _metadata_files(content: bytes | str, version: str) -> dict[str, str]:
+    """Lees de versie en gecontroleerde softwarebestanden uit pakketmetadata."""
+    metadata = json.loads(content)
+    if not isinstance(metadata, dict) or metadata.get("version") != version:
+        raise ValueError("De releasegegevens passen niet bij de pakketversie")
+    files = metadata.get("files")
+    if not isinstance(files, dict):
+        raise ValueError("Ongeldige bestandslijst in de releasegegevens")
+    names = _validated_names(files)
+    if not set(BASE_FILES).issubset(names) or METADATA in names:
+        raise ValueError("Onvolledige bestandslijst in de releasegegevens")
+    if any(
+        not isinstance(value, str) or not re.fullmatch(r"[0-9a-f]{64}", value)
+        for value in files.values()
+    ):
+        raise ValueError("Ongeldige bestandscontrole in de releasegegevens")
+    return files
+
+
+def _has_updater(names: Collection[str]) -> bool:
+    return any(
+        set(required).issubset(names)
+        for required in (UPDATER_FILES, ROOT_UPDATER_FILES, LEGACY_UPDATER_FILES)
+    )
+
+
 def _bundle(tag: str) -> dict[str, bytes]:
     url = f"https://github.com/{REPOSITORY}/releases/download/{tag}/waterlagen-productie.zip"
     with ZipFile(BytesIO(_get(url))) as archive:
         entries = archive.infolist()
         names = [entry.filename for entry in entries]
-        if len(names) != len(set(names)) or set(names) - {*MANAGED_FILES, ".datastore"}:
-            raise ValueError("Onverwachte bestanden in het productiepakket")
+        _validated_names([name for name in names if name != ".datastore"])
+        if len(names) != len(set(names)) or any(entry.is_dir() for entry in entries):
+            raise ValueError("Dubbele bestanden of mappen in het productiepakket")
         if (
             not set(BASE_FILES).issubset(names)
             or sum(entry.file_size for entry in entries) > MAX_DOWNLOAD
@@ -176,21 +225,43 @@ def _bundle(tag: str) -> dict[str, bytes]:
     if _manifest_version(files["pixi.toml"]) != version:
         raise ValueError("De pakketversie wijkt af van de release")
     if METADATA in files:
-        metadata = json.loads(files[METADATA])
-        if metadata.get("version") != version or metadata.get("files") != _hashes(
-            files
-        ):
+        expected = _metadata_files(files[METADATA], version)
+        if expected != _hashes(files):
             raise ValueError("De bestandscontrole van de release klopt niet")
+        if not _has_updater(files):
+            raise ValueError("De release bevat geen volledige updater")
+    elif set(files) - HISTORICAL_FILES:
+        raise ValueError("Onbekende bestanden zonder releasegegevens")
     return files
 
 
-def _target(root: Path, name: str) -> Path:
-    if name not in MANAGED_FILES:
-        raise ValueError(f"Geen beheerd softwarebestand: {name}")
-    path = root / name
-    if not path.resolve().is_relative_to(root) or path.is_symlink():
-        raise ValueError(f"Bestand verwijst buiten het productiepakket: {name}")
+def _checked_path(root: Path, path: Path) -> Path:
+    """Sta geen symlink of junction toe tussen de projectmap en het doel."""
+    if (
+        not path.is_relative_to(root)
+        or ".." in path.relative_to(root).parts
+        or not path.resolve().is_relative_to(root)
+    ):
+        raise ValueError(f"Bestand verwijst buiten de projectmap: {path}")
+    current = path
+    while current != root:
+        try:
+            info = current.lstat()
+        except FileNotFoundError:
+            pass
+        else:
+            if current.is_symlink() or getattr(info, "st_reparse_tag", None) == getattr(
+                stat, "IO_REPARSE_TAG_MOUNT_POINT", -1
+            ):
+                raise ValueError(f"Softwarepad bevat een symlink of junction: {path}")
+        current = current.parent
     return path
+
+
+def _target(root: Path, name: str, managed_names: Collection[str]) -> Path:
+    if name not in managed_names:
+        raise ValueError(f"Geen beheerd softwarebestand: {name}")
+    return _checked_path(root, root / name)
 
 
 def _write(path: Path, content: bytes) -> None:
@@ -210,7 +281,7 @@ def _write(path: Path, content: bytes) -> None:
 @contextmanager
 def _update_lock(root: Path):
     """OS locks are released on exit, including after an interrupted updater."""
-    with (root / ".bijwerken.lock").open("a+b") as lock:
+    with _checked_path(root, root / ".bijwerken.lock").open("a+b") as lock:
         if lock.tell() == 0:
             lock.write(b"0")
             lock.flush()
@@ -270,21 +341,17 @@ def _check_idle(root: Path) -> None:
         )
 
 
-def _check_local_files(root: Path, current: str, new: dict[str, bytes]) -> None:
-    metadata_path = root / METADATA
+def _check_local_files(root: Path, current: str, new: dict[str, bytes]) -> set[str]:
+    metadata_path = _checked_path(root, root / METADATA)
     if metadata_path.exists():
-        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
-        if metadata.get("version") != current:
-            raise ValueError("De lokale releasegegevens passen niet bij de installatie")
-        expected = metadata["files"]
-        if not set(BASE_FILES).issubset(expected) or set(expected) - set(MANAGED_FILES):
-            raise ValueError("Ongeldige lokale releasegegevens")
+        expected = _metadata_files(metadata_path.read_bytes(), current)
     else:
         print("Oorspronkelijke softwarebestanden controleren...", flush=True)
         expected = _hashes(_bundle(_release(current)))
     changed = []
-    for name in set(expected) | set(new):
-        path = _target(root, name)
+    managed_names = _validated_names(set(expected) | set(new))
+    for name in sorted(managed_names):
+        path = _target(root, name, managed_names)
         if name == METADATA:
             continue
         if name in expected:
@@ -300,6 +367,7 @@ def _check_local_files(root: Path, current: str, new: dict[str, bytes]) -> None:
             "Lokaal aangepaste of ontbrekende softwarebestanden; niets vervangen: "
             + ", ".join(sorted(changed))
         )
+    return set(expected)
 
 
 def _checks(root: Path) -> None:
@@ -308,46 +376,48 @@ def _checks(root: Path) -> None:
 
 
 def _restore(root: Path) -> None:
-    state = json.loads((root / PENDING).read_text(encoding="utf-8"))
-    backup = (root / state["backup"]).resolve()
-    if not backup.is_relative_to(root / ".updates"):
+    state = json.loads(_checked_path(root, root / PENDING).read_bytes())
+    if (
+        not isinstance(state, dict)
+        or not isinstance(state.get("backup"), str)
+        or not isinstance(state.get("files"), dict)
+    ):
+        raise ValueError("Ongeldige herstelgegevens")
+    backup = _checked_path(root, root / state["backup"])
+    if (
+        not backup.resolve().is_relative_to(root / ".updates")
+        or backup.resolve() == root / ".updates"
+    ):
         raise ValueError("Ongeldig herstelpad")
+    managed_names = _validated_names(state["files"])
+    if any(not isinstance(value, bool) for value in state["files"].values()):
+        raise ValueError("Ongeldige herstelgegevens")
+    restoration = []
     for name, existed in state["files"].items():
-        target = _target(root, name)
-        if existed:
-            _write(target, (backup / name).read_bytes())
+        target = _target(root, name, managed_names)
+        content = _target(backup, name, managed_names).read_bytes() if existed else None
+        restoration.append((target, content))
+    for target, content in restoration:
+        if content is not None:
+            _write(target, content)
         else:
             target.unlink(missing_ok=True)
     _checks(root)
     (root / PENDING).unlink()
 
 
-def _apply(root: Path, files: dict[str, bytes]) -> None:
-    # Oude starters verdwijnen zodra hun vervangers zijn meegeleverd.
-    obsolete_names = set()
-    if set(UPDATER_FILES).issubset(files):
-        obsolete_names.update(LEGACY_UPDATER_FILES)
-        obsolete_names.update(("code_bijwerken.py", "code_bijwerken.cmd"))
-    elif set(ROOT_UPDATER_FILES).issubset(files):
-        obsolete_names.update(LEGACY_UPDATER_FILES)
-    if "tools/runscript_maken.py" in files:
-        obsolete_names.add("runscript_maken.py")
-    if "run-maken.bat" in files:
-        obsolete_names.update(("runscript-maken.cmd", "runscript-maken.bat"))
-    elif "runscript-maken.bat" in files:
-        obsolete_names.add("runscript-maken.cmd")
-    metadata = root / METADATA
-    previous_files = {}
-    if metadata.is_file():
-        previous_files = json.loads(metadata.read_text(encoding="utf-8"))["files"]
+def _apply(
+    root: Path, files: dict[str, bytes], previous_files: Collection[str]
+) -> None:
+    # Verwijder alleen software die aantoonbaar bij de vorige levering hoorde.
+    managed_names = _validated_names(set(previous_files) | set(files))
     obsolete = sorted(
         name
-        for name in obsolete_names
-        if name in previous_files and name not in files and _target(root, name).exists()
+        for name in previous_files
+        if name not in files and _target(root, name, managed_names).exists()
     )
-    backup_root = root / ".updates"
-    if not backup_root.resolve().is_relative_to(root):
-        raise ValueError("De herstelmap verwijst buiten de projectmap")
+    backup_root = _checked_path(root, root / ".updates")
+    _checked_path(root, root / PENDING)
     backup_root.mkdir(exist_ok=True)
     backup = Path(
         tempfile.mkdtemp(
@@ -356,7 +426,7 @@ def _apply(root: Path, files: dict[str, bytes]) -> None:
     )
     existed = {}
     for name in [*files, *obsolete]:
-        target = _target(root, name)
+        target = _target(root, name, managed_names)
         existed[name] = target.exists()
         if existed[name]:
             _write(backup / name, target.read_bytes())
@@ -364,9 +434,9 @@ def _apply(root: Path, files: dict[str, bytes]) -> None:
     _write(root / PENDING, json.dumps(state).encode())
     try:
         for name, content in files.items():
-            _write(_target(root, name), content)
+            _write(_target(root, name, managed_names), content)
         for name in obsolete:
-            _target(root, name).unlink()
+            _target(root, name, managed_names).unlink()
         _checks(root)
     except BaseException as error:
         print("Bijwerken mislukt. Vorige versie herstellen...", flush=True)
@@ -389,7 +459,7 @@ def update(root: Path, *, version: str | None = None, yes: bool = False) -> None
         raise RuntimeError(
             "Start de updater via code_bijwerken.bat of code_bijwerken.sh, buiten de productieomgeving"
         )
-    _manifest_version((root / "pixi.toml").read_bytes())
+    _manifest_version(_checked_path(root, root / "pixi.toml").read_bytes())
     with _update_lock(root):
         if (root / PENDING).exists():
             print("Een eerdere update is onderbroken. De vorige versie wordt hersteld.")
@@ -415,16 +485,12 @@ def update(root: Path, *, version: str | None = None, yes: bool = False) -> None
         _check_idle(root)
         print("Productiepakket downloaden...", flush=True)
         files = _bundle(tag)
-        has_updater = any(
-            set(names).issubset(files)
-            for names in (UPDATER_FILES, ROOT_UPDATER_FILES, LEGACY_UPDATER_FILES)
-        )
-        if not {*BASE_FILES, METADATA}.issubset(files) or not has_updater:
+        if not {*BASE_FILES, METADATA}.issubset(files) or not _has_updater(files):
             raise ValueError("Deze release ondersteunt automatisch bijwerken nog niet")
-        _check_local_files(root, current, files)
+        previous_files = _check_local_files(root, current, files)
         _check_idle(root)
-        _apply(root, files)
-        print(f"Bijwerken geslaagd: Waterlagen {latest}.")
+        _apply(root, files, previous_files)
+        print(f"Bijwerken geslaagd: Waterlagen {latest}. Projectmap: {root}")
 
 
 def main() -> int:
@@ -435,11 +501,18 @@ def main() -> int:
     parser.add_argument(
         "--ja", action="store_true", help="Bijwerken zonder bevestigingsvraag"
     )
+    parser.add_argument(
+        "--project-dir",
+        type=Path,
+        help="Bestaande productiemap bij een los opgehaalde updater",
+    )
     args = parser.parse_args()
     try:
-        project = Path(__file__).resolve().parent
-        if project.name == "tools":
-            project = project.parent
+        project = args.project_dir
+        if project is None:
+            project = Path(__file__).resolve().parent
+            if project.name == "tools":
+                project = project.parent
         update(project, version=args.versie, yes=args.ja)
     except (
         OSError,

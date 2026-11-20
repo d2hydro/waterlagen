@@ -27,6 +27,28 @@ def public_lock(version):
     )
 
 
+def test_builder_output_is_accepted_by_the_real_updater(tmp_path, monkeypatch):
+    from test_production_update import updater
+
+    def local_lock(command, *, cwd, check):
+        assert check
+        (cwd / "pixi.lock").write_text(public_lock("2026.11.1"))
+
+    monkeypatch.setattr(builder.subprocess, "run", local_lock)
+    archive_path = builder.build_bundle("2026.11.1", tmp_path / "output")
+    monkeypatch.setattr(updater, "_get", lambda url: archive_path.read_bytes())
+
+    files = updater._bundle("2026.11.1")
+    assert "tools/runscript_maken/dem_preview.py" in files
+    assert (
+        files["tools/code_bijwerken.py"]
+        == (REPOSITORY / "tools/code_bijwerken.py").read_bytes()
+    )
+    assert (archive_path.parent / "waterlagen-updater.py").read_bytes() == files[
+        "tools/code_bijwerken.py"
+    ]
+
+
 @pytest.mark.parametrize("tag", ["2026.9.0rc1", "v2026.9.0", "2026.7.0.dev0"])
 def test_bundle_is_standalone_and_contains_only_public_inputs(
     tmp_path, monkeypatch, tag
@@ -139,6 +161,36 @@ def test_bundle_is_standalone_and_contains_only_public_inputs(
     )
     assert result.returncode == 0, result.stderr
     assert "--area-file" in result.stdout
+    result = real_run(
+        [
+            sys.executable,
+            "-I",
+            str(archive_path.parent / "waterlagen-updater.py"),
+            "--help",
+        ],
+        cwd=unpacked,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    assert "--project-dir" in result.stdout
+    # dem_preview wordt pas bij de DEM-toelichting geïmporteerd, niet door --help.
+    result = real_run(
+        [
+            sys.executable,
+            "-I",
+            "-c",
+            "import sys; from pathlib import Path; "
+            "sys.path.insert(0, str(Path('tools').resolve())); "
+            "import runscript_maken.dem_preview",
+        ],
+        cwd=unpacked,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
 
 
 @pytest.mark.parametrize("tag", ["../2026.9.0", "2026.9.0/secret", "$(secret)", "main"])
@@ -175,6 +227,8 @@ def test_rejects_wrong_locked_waterlagen_version(tmp_path):
 def test_failed_lock_does_not_replace_existing_asset(tmp_path, monkeypatch):
     target = tmp_path / "waterlagen-productie.zip"
     target.write_bytes(b"previous valid asset")
+    standalone = tmp_path / "waterlagen-updater.py"
+    standalone.write_bytes(b"previous valid updater")
 
     def fail_lock(*args, **kwargs):
         raise subprocess.CalledProcessError(1, ["pixi", "lock"])
@@ -183,3 +237,36 @@ def test_failed_lock_does_not_replace_existing_asset(tmp_path, monkeypatch):
     with pytest.raises(subprocess.CalledProcessError):
         builder.build_bundle("2026.9.0rc1", tmp_path)
     assert target.read_bytes() == b"previous valid asset"
+    assert standalone.read_bytes() == b"previous valid updater"
+
+
+@pytest.mark.parametrize("existing", [False, True])
+def test_failed_artifact_replacement_keeps_the_previous_pair(
+    tmp_path, monkeypatch, existing
+):
+    archive = tmp_path / "waterlagen-productie.zip"
+    standalone = tmp_path / "waterlagen-updater.py"
+    if existing:
+        archive.write_bytes(b"previous package")
+        standalone.write_bytes(b"previous updater")
+
+    def local_lock(command, *, cwd, check):
+        (cwd / "pixi.lock").write_text(public_lock("2026.11.1"))
+
+    original_replace = Path.replace
+
+    def fail_updater_replacement(source, target):
+        if Path(target) == standalone:
+            raise PermissionError("updater destination locked")
+        return original_replace(source, target)
+
+    monkeypatch.setattr(builder.subprocess, "run", local_lock)
+    monkeypatch.setattr(Path, "replace", fail_updater_replacement)
+    with pytest.raises(PermissionError, match="destination locked"):
+        builder.build_bundle("2026.11.1", tmp_path)
+    if existing:
+        assert archive.read_bytes() == b"previous package"
+        assert standalone.read_bytes() == b"previous updater"
+    else:
+        assert not archive.exists()
+        assert not standalone.exists()

@@ -159,7 +159,9 @@ jobs:
       - uses: actions/upload-artifact@v7
         with:
           name: production-bundle
-          path: dist/waterlagen-productie.zip
+          path: |
+            dist/waterlagen-productie.zip
+            dist/waterlagen-updater.py
           if-no-files-found: error
 
   production-test:
@@ -191,6 +193,7 @@ jobs:
       - name: Unpack, install and check the release environment
         shell: bash
         run: |
+          python -I dist/waterlagen-updater.py --help
           python -m zipfile -e dist/waterlagen-productie.zip production
           cd production
           pixi install --locked
@@ -203,7 +206,7 @@ jobs:
           fi
 
   production-upload:
-    name: Attach tested production ZIP to the GitHub release
+    name: Attach tested production bundle and updater to the GitHub release
     needs: production-test
     if: ${{ !cancelled() && needs.production-test.result == 'success' }}
     runs-on: ubuntu-latest
@@ -218,4 +221,4 @@ jobs:
       - name: Upload release asset
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload "$RELEASE_TAG" dist/waterlagen-productie.zip --repo "$GITHUB_REPOSITORY"
+        run: gh release upload "$RELEASE_TAG" dist/waterlagen-productie.zip dist/waterlagen-updater.py --repo "$GITHUB_REPOSITORY"

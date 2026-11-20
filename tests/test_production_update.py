@@ -97,7 +97,7 @@ def test_update_adds_runscript_window_without_touching_user_scripts(
     private["runscript_maken.py"] = b"# Eigen startbestand\n"
     (root / "runscript_maken.py").write_bytes(private["runscript_maken.py"])
     files = release_files(NEW)
-    for name in updater.RUNSCRIPT_FILES:
+    for name in builder.RUNSCRIPT_FILES:
         source = REPOSITORY / (
             name if name.startswith(("tools/", "docs/")) else f"envs/{name}"
         )
@@ -107,7 +107,7 @@ def test_update_adds_runscript_window_without_touching_user_scripts(
     ).encode()
     monkeypatch.setattr(updater, "_bundle", lambda tag: files)
     updater.update(root, yes=True)
-    for name in updater.RUNSCRIPT_FILES:
+    for name in builder.RUNSCRIPT_FILES:
         assert (root / name).read_bytes() == files[name]
     assert_private_unchanged(root, private)
 
@@ -369,7 +369,7 @@ def test_root_python_files_move_to_tools_and_restore_on_failure(
     (root / "code_bijwerken.bat").unlink()
     install(root, old_files)
     new_files = release_files(NEW)
-    for name in updater.RUNSCRIPT_FILES:
+    for name in builder.RUNSCRIPT_FILES:
         source = REPOSITORY / (
             name if name.startswith(("tools/", "docs/")) else f"envs/{name}"
         )

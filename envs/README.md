@@ -50,3 +50,10 @@ Werk tussen producties bij naar een nieuwe release van Waterlagen. Hervat onderb
 - **Linux:** voer `sh ./code_bijwerken.sh` uit.
 
 Bevestig de update. Uw instellingen en gegevens blijven behouden.
+
+Heeft uw oude installatie nog `bijwerken.cmd` of `bijwerken.sh`? Gebruik eenmalig
+de [startopdracht voor bestaande installaties](https://d2hydro.github.io/waterlagen/produceren/installatie/#bijwerken-bestaande-installatie).
+Die haalt de losse updater van de release op en werkt dezelfde projectmap bij.
+Daarna gebruikt u de gewone starters hierboven. Vervang de oude updaterbestanden
+niet handmatig: de update controleert hun oorspronkelijke inhoud voordat zij
+binnen de normale back-up- en herstelprocedure worden vervangen.

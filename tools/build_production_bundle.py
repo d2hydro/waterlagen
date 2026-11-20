@@ -1,4 +1,4 @@
-"""Build a standalone Pixi production ZIP for an already published release."""
+"""Build a production ZIP and standalone updater for a published release."""
 
 import argparse
 import hashlib
@@ -49,6 +49,7 @@ RUNSCRIPT_FILES = (
     "docs/icons/logo.png",
     "docs/icons/favicon.png",
 )
+STANDALONE_UPDATER = "waterlagen-updater.py"
 
 
 def release_version(tag: str, repository: Path) -> str:
@@ -116,13 +117,15 @@ def validate_lock(lock_path: Path, version: str) -> None:
 def build_bundle(tag: str, output_dir: Path, repository: Path = REPO_ROOT) -> Path:
     """Create waterlagen-productie.zip with project files at the archive root.
 
-    Replace an existing ZIP only after locking and validation succeed.
+    Also write ``waterlagen-updater.py``, identical to the packaged updater.
+    Replace existing artifacts only after locking and validation succeed.
     """
     repository = repository.resolve()
     version = release_version(tag, repository)
     output_dir = output_dir.resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
     archive_path = output_dir / "waterlagen-productie.zip"
+    updater_path = output_dir / STANDALONE_UPDATER
 
     with tempfile.TemporaryDirectory(prefix="production-", dir=output_dir) as temporary:
         project_dir = Path(temporary) / "project"
@@ -198,7 +201,29 @@ def build_bundle(tag: str, output_dir: Path, repository: Path = REPO_ROOT) -> Pa
                     0o100755 if relative_path.endswith(".sh") else 0o100644
                 ) << 16
                 archive.writestr(info, (project_dir / relative_path).read_bytes())
-        temporary_zip.replace(archive_path)
+        temporary_updater = Path(temporary) / STANDALONE_UPDATER
+        shutil.copyfile(project_dir / "tools/code_bijwerken.py", temporary_updater)
+        # Houd beide releasebestanden bij dezelfde geslaagde pakketopbouw.
+        artifacts = {archive_path: temporary_zip, updater_path: temporary_updater}
+        previous = {
+            target: target.read_bytes() if target.exists() else None
+            for target in artifacts
+        }
+        replaced = []
+        try:
+            for target, prepared in artifacts.items():
+                prepared.replace(target)
+                replaced.append(target)
+        except OSError:
+            for target in reversed(replaced):
+                content = previous[target]
+                if content is None:
+                    target.unlink()
+                else:
+                    recovery = Path(temporary) / (target.name + ".restore")
+                    recovery.write_bytes(content)
+                    recovery.replace(target)
+            raise
     return archive_path
 
 

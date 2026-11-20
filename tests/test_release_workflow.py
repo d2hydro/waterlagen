@@ -8,6 +8,17 @@ from pathlib import Path
 import pytest
 
 
+def test_release_distributes_and_checks_the_standalone_updater():
+    workflow = (
+        Path(__file__).resolve().parents[1] / ".github/workflows/release.yml"
+    ).read_text("utf-8")
+    upload = workflow.split("      - name: Upload release asset\n", 1)[1]
+    assert "dist/waterlagen-productie.zip dist/waterlagen-updater.py" in upload
+    artifact = workflow.split("          name: production-bundle\n", 1)[1]
+    assert "            dist/waterlagen-updater.py\n" in artifact
+    assert "python -I dist/waterlagen-updater.py --help" in workflow
+
+
 @pytest.mark.skipif(shutil.which("bash") is None, reason="Release workflow uses Bash")
 @pytest.mark.parametrize(
     ("scenario", "expected_returncode", "expected_builds"),
