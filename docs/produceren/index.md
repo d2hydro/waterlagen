@@ -10,6 +10,14 @@ editorial_status: ai
 2. Kies **Waterschappen**, **Heel Nederland** of **Eigen gebied**. Vink daarna de gewenste basislagen aan.
 3. Kies **Opslaan en starten** om direct te rekenen, of **Alleen opslaan** om het `.bat`-bestand later te starten.
 
+U kunt de Run Maker ook vanuit een terminal in de projectmap starten:
+
+```console
+pixi run --locked run-maken
+```
+
+Laat de terminal open zolang u de Run Maker gebruikt.
+
 De resultaten staan in `data/processed_data/`. Kies uw kaartlaag voor de uitvoer en controles.
 
 - [Afwateringseenheden](afwateringseenheden.md)

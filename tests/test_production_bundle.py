@@ -92,6 +92,7 @@ def test_bundle_is_standalone_and_contains_only_public_inputs(
         )
         assert set(manifest["tasks"]) == {
             "controleer",
+            "run-maken",
             "autos",
             "inwoners",
             "afwateringseenheden",

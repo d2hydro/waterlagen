@@ -21,7 +21,7 @@ raster met GDAL, Rasterio en PCRaster. Er worden geen brongegevens gedownload.
 
 ## Een productie starten
 
-1. Dubbelklik op Windows in de projectmap op `run-maken.bat`. De Run Maker opent in uw browser.
+1. Dubbelklik op Windows in de projectmap op `run-maken.bat`, of voer in een terminal `pixi run --locked run-maken` uit. De Run Maker opent in uw browser. Laat bij starten vanuit de terminal dat venster open.
 2. Kies het gebied en de kaartlagen die u wilt maken. Bij **Extra opties** ziet u de instellingen voor de gekozen kaartlaag. De Run Maker zet uw keuzes om in een runscript.
 3. Kies **Opslaan en starten** om de berekening direct uit te voeren. Met **Alleen opslaan** bewaart u het script voor later. Dubbelklik dan op het opgeslagen `.bat`-bestand om de berekening te starten.
 
