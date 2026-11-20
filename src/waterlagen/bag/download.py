@@ -114,19 +114,19 @@ def get_bag_features_from_wfs(
 def download_bag_light(
     download_dir: Path = datastore.bag_dir, overwrite: bool = True
 ) -> Path:
-    """Download BAG for The Netherlands
+    """Download of hergebruik het landelijke BAG-light GeoPackage.
 
     Parameters
     ----------
-    download_dir : Path, optional
-        Download dir to store GeoPackages. By default datastore.bag_dir
-    overwrite : bool, optional
-        If not True BAG will only be downloaded if not existing. Default is True
+    download_dir : pathlib.Path
+        Map waarin bag-light.gpkg wordt opgeslagen.
+    overwrite : bool
+        Vervang het uitvoerbestand. Bij False wordt een geldig bestaand bestand hergebruikt.
 
     Returns
     -------
-    Path
-        Path to BAG GeoPackage
+    pathlib.Path
+        Het lokale pad naar bag-light.gpkg.
     """
     download_dir = Path(download_dir)
 
@@ -149,28 +149,25 @@ def get_bag_features(
     bag_light_gpkg: Union[Path, str] = datastore.bag_dir.joinpath("bag-light.gpkg"),
     wfs_crs: int = 28992,
 ) -> gpd.GeoDataFrame:
-    """Get BAG features
-
-    Use `source=wfs` to use the BAG wfs. Note (!) BAG only allows you to extract 50000 features. If your bbox is too large, you'll get an incomplete result
-    Use `source=bag-light` to extract from an existing bag-light GeoPackage. This file can be downloaded with the `download_bag_light` function in the `waterlagen.bag` module
+    """Selecteer BAG-objecten voor een rechthoekig gebied.
 
     Parameters
     ----------
-    bbox : tuple[float, float, float, float] | None, optional
-        Extent with (xmin, ymin, xmax, ymax). BAG will be downloaded for this extent only.
-    layer : Literal["pand", "verblijfsobject"], optional
-        Layer to extract/download, by default "pand"
-    source : Literal["bag-light", "wfs"], optional
-        Source to extract/download features from, by default "wfs"
-    bag_light_gpkg : Union[Path, str], optional
-        bag_light GeoPackage to extract features from with `source=bag-light`, by default it will be found in the datastore at `datastore.bag_dir.joinpath("bag-light.gpkg")`
-    wfs_crs : int, optional
-        CRS to use for extracting BAG features from WFS, by default 28992
+    bbox : tuple[float, float, float, float]
+        Gebiedsgrenzen als (xmin, ymin, xmax, ymax).
+    layer : Literal["pand", "verblijfsobject"]
+        Kies panden of verblijfsobjecten.
+    source : Literal["bag-light", "wfs"]
+        Lees uit het lokale GeoPackage of vraag de WFS op. Een grote WFS-selectie kan door de limiet van 50.000 objecten onvolledig zijn.
+    bag_light_gpkg : pathlib.Path | str
+        Lokaal BAG-light GeoPackage voor source='bag-light'.
+    wfs_crs : int
+        EPSG-code voor de gebiedsgrenzen en de geometrie bij gebruik van de WFS.
 
     Returns
     -------
-    gpd.GeoDataFrame
-        GeoDataFrame with BAG-features
+    geopandas.GeoDataFrame
+        De geselecteerde BAG-objecten met hun geometrie en attributen.
     """
     # Download bag via WFS
     if source == "wfs":

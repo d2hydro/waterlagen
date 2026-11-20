@@ -13,6 +13,7 @@ waterlagen = "==@VERSION@"
 
 [tasks]
 controleer = 'python -c "from waterlagen._environment import main; main()"'
+run-maken = "python tools/runscript_maken.py"
 afwateringseenheden = "python ./scripts/afwateringseenheden.py"
 autos = "python ./scripts/autos.py"
 dem = "python ./scripts/dem.py"

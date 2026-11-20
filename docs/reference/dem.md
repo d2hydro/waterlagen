@@ -2,15 +2,16 @@
 editorial_status: ai
 ---
 
-# DEM
+# Hoogtemodel (DEM)
 
-Zie [DEM (WSWO)](../bewerkte-lagen/dem.md) voor de functionele beschrijving
-en [DEM produceren](../produceren/dem.md) voor uitvoering per gebied.
+Start een [DEM-productie voor een gebied](productie.md#dem). Voor een eigen workflow kunt u de tegels of alleen de gebouwhoogten berekenen.
 
-::: waterlagen.dem
-    options:
-      docstring_style: numpy
+[Bekijk het voorbeeldscript](bewerkte-lagen-produceren.md#hoogtemodel){ .md-button }
 
-::: waterlagen.dem.gebouwen.calculate_building_elevations
-    options:
-      docstring_style: numpy
+??? info "DEM-tegels berekenen · `bouw_dem_tiles`"
+
+    ::: waterlagen.dem.bouw_dem_tiles
+
+??? info "Gebouwhoogten berekenen · `calculate_building_elevations`"
+
+    ::: waterlagen.dem.gebouwen.calculate_building_elevations

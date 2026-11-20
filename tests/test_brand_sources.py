@@ -19,6 +19,7 @@ from waterlagen.afwateringseenheden import (
 )
 from waterlagen.afwateringseenheden import brand_sources as module
 from waterlagen.afwateringseenheden.brandlagen import _brand_identity
+from waterlagen.areas import ProductionArea
 from waterlagen.bgt.duikers import prepare_bgt_culverts
 from waterlagen.datastore import DataStore
 from waterlagen.osm_waterlopen import WATERWAY_LAYERS
@@ -54,18 +55,21 @@ def write(path, layer, geometries=None, **attributes):
 
 
 def config(store, provider="osm", layer="osm_canals", path=None):
-    culvert = layer in {"bgt_duiker", "osm_culvert"}
-    role = "duiker" if culvert else "water"
-    if layer == "bgt_wegdeel":
-        role = "overig"
+    from waterlagen.afwateringseenheden._public_brand_sources import (
+        PUBLIC_BRAND_SOURCES,
+    )
+
+    source = next(
+        name
+        for name, spec in PUBLIC_BRAND_SOURCES.items()
+        if spec.provider == provider and spec.layer == layer
+    )
     return BrandlagenConfig(
         (
             Brandlaag(
                 path or store.source_data_dir / f"{layer}.gpkg",
                 layer,
-                rol=role,
-                bron=provider if culvert else None,
-                openbare_bron=provider,
+                bron=source,
             ),
         ),
         brandwaarde=-5,
@@ -75,8 +79,14 @@ def config(store, provider="osm", layer="osm_canals", path=None):
 
 def prepare(conf, store, bounds=(0, 0, 10, 10), **options):
     reuse_only = options.pop("reuse_only", False)
+    area = options.pop("area", None)
     return module.prepare_brand_sources(
-        conf, store, box(*bounds), SourcePreparation(**options), reuse_only=reuse_only
+        conf,
+        store,
+        box(*bounds),
+        SourcePreparation(**options),
+        reuse_only=reuse_only,
+        area=area,
     )
 
 
@@ -131,15 +141,62 @@ def test_schema_is_explicit_and_keeps_relative_paths(tmp_path):
     toml = tmp_path / "invoer" / "brandlagen.toml"
     toml.parent.mkdir()
     toml.write_text(
-        '[[lagen]]\npath="../data/osm.gpkg"\nlayer="osm_canals"\nrol="water"\nopenbare_bron="osm"\n'
+        '[[lagen]]\npath="../data/osm.gpkg"\nlayer="osm_canals"\n'
+        '[[lagen]]\nbron="bgt_duikers"\n'
     )
     parsed = read_brandlagen_config(toml)
     assert parsed.lagen[0].path == tmp_path / "data/osm.gpkg"
-    assert parsed.lagen[0].openbare_bron == "osm"
-    with pytest.raises(ValueError, match="niet-ondersteunde"):
-        replace(parsed.lagen[0], openbare_bron="bgt")
-    with pytest.raises(ValueError, match="duikers vereisen"):
-        replace(parsed.lagen[0], layer="osm_culvert")
+    assert parsed.lagen[0].openbare_bron is None
+    assert parsed.lagen[1].bron == "bgt_duikers"
+    assert parsed.lagen[1].path is None
+    assert parsed.lagen[1].layer == "bgt_duiker"
+    with pytest.raises(ValueError, match="Onbekende openbare"):
+        Brandlaag(bron="bgt")
+
+
+@pytest.mark.parametrize(
+    "extra, message",
+    [
+        ('rol="duiker"', "Verouderd brandlagenbestand"),
+        ('openbare_bron="bgt"', "Verouderd brandlagenbestand"),
+        ('path="duikers.gpkg"', "path en layer zijn voor lokale"),
+        ('layer="bgt_duiker"', "path en layer zijn voor lokale"),
+    ],
+)
+def test_public_config_rejects_legacy_and_local_options(tmp_path, extra, message):
+    toml = tmp_path / "brandlagen.toml"
+    toml.write_text('[[lagen]]\nbron="bgt_duikers"\n' + extra)
+    with pytest.raises(ValueError, match=message):
+        read_brandlagen_config(toml)
+
+
+def test_path_based_public_toml_is_rejected_without_changing_the_file(tmp_path):
+    path = tmp_path / "brandlagen.toml"
+    original = (
+        '[[lagen]]\npath="top10nl.gpkg"\nlayer="top10nl_waterdeel_vlak"\n'
+        'rol="water"\nbrandwaarde=-5.0\nprioriteit=0\nopenbare_bron="top10nl"\n'
+    ).encode()
+    path.write_bytes(original)
+    with pytest.raises(ValueError, match="Verouderd brandlagenbestand"):
+        read_brandlagen_config(path)
+    assert path.read_bytes() == original
+
+
+def test_public_source_without_path_is_resolved_and_reused(store, osm_download):
+    selected = BrandlagenConfig(
+        (Brandlaag(bron="osm_canals", brandwaarde=-5, prioriteit=1),)
+    )
+    with pytest.raises(ValueError, match="prepare_brand_sources"):
+        _brand_identity(selected)
+    area = ProductionArea("waterschap_38", box(0, 0, 10, 10), "EPSG:28992")
+    result = prepare(selected, store, area=area)
+    assert (
+        result.config.lagen[0].path
+        == store.source_data_dir / "osm/waterschap_38/osm_canals.gpkg"
+    )
+    assert result.config.lagen[0].bron == "osm_canals"
+    assert prepare(selected, store, area=area, offline=True).config == result.config
+    assert len(osm_download) == 1
 
 
 @pytest.mark.parametrize("layer", [*WATERWAY_LAYERS.values(), "osm_culvert"])
@@ -215,7 +272,7 @@ def test_national_top10_download_once_for_two_layers_and_refresh(store, monkeypa
         selected,
         lagen=(
             *selected.lagen,
-            replace(selected.lagen[0], layer="top10nl_waterdeel_lijn"),
+            replace(selected.lagen[0], layer=None, bron="top10nl_waterdeel_lijn"),
         ),
     )
     with pytest.raises(FileNotFoundError, match="offline"):
@@ -453,19 +510,13 @@ def test_bgt_refresh_downloads_archive_once_and_rebuilds_layer(
         prepare(selected, store, refresh=True, reuse_only=True)
 
 
-def test_road_toml_requires_ordinary_burn_role(tmp_path):
+def test_public_road_toml_requires_no_path_or_role(tmp_path):
     toml = tmp_path / "brandlagen.toml"
-    toml.write_text(
-        '[[lagen]]\npath="data/bgt_wegdeel.gpkg"\nlayer="bgt_wegdeel"\n'
-        'openbare_bron="bgt"\nbrandwaarde=2\nprioriteit=3\n'
-    )
+    toml.write_text('[[lagen]]\nbron="bgt_wegdelen"\nbrandwaarde=2\nprioriteit=3\n')
     layer = read_brandlagen_config(toml).lagen[0]
-    assert layer.rol == "overig"
+    assert layer.layer == "bgt_wegdeel"
     assert layer.brandwaarde == 2 and layer.prioriteit == 3
-    assert layer.path == tmp_path / "data/bgt_wegdeel.gpkg"
-    for role in ("water", "duiker"):
-        with pytest.raises(ValueError, match="wegdelen vereisen rol=overig"):
-            replace(layer, rol=role, bron="bgt")
+    assert layer.path is None
 
 
 def test_roads_require_cached_sources_offline_and_keep_own_input_local(store):
@@ -474,7 +525,7 @@ def test_roads_require_cached_sources_offline_and_keep_own_input_local(store):
         prepare(selected, store, offline=True)
     with pytest.raises(ValueError, match="nieuwe --run-id"):
         prepare(selected, store, reuse_only=True)
-    local = replace(selected.lagen[0], openbare_bron=None)
+    local = replace(selected.lagen[0], bron=None)
     with pytest.raises(FileNotFoundError, match="Eigen lokale"):
         prepare(BrandlagenConfig((local,)), store)
     write(local.path, local.layer, brandwaarde=[2.5], prioriteit=[4])
@@ -693,7 +744,9 @@ def test_production_prepares_full_tile_context_before_ahn_and_resume_is_read_onl
     monkeypatch.setattr(productie, "_prepare_brandlagen", lambda *args: None)
     bgt_calls = []
 
-    def prepare_bgt(data_store, selection, preparation, *, reuse_only):
+    def prepare_bgt(
+        data_store, selection, preparation, *, reuse_only, area, existing_path
+    ):
         bgt_calls.append((selection.bounds, reuse_only))
         return data_store.processed_data_dir / "bgt_signalen.gpkg"
 
@@ -717,13 +770,14 @@ def test_production_prepares_full_tile_context_before_ahn_and_resume_is_read_onl
         store.processed_data_dir / "afwateringseenheden" / area.value / "test/run.json"
     )
     metadata = json.loads(run.read_text())
-    assert metadata["parameters"]["openbare_brandbronnen"][0]["openbare_bron"] == "osm"
+    assert metadata["parameters"]["openbare_brandbronnen"] == [{"bron": "osm_canals"}]
     recorded = metadata["parameters"]["openbare_brandbron_metadata"][
         "brandbron_0_metadata"
     ]
-    assert recorded["path"] == str(selected.lagen[0].path.with_suffix(".json"))
+    cached_source = store.source_data_dir / "osm" / area.value / "osm_canals.gpkg"
+    assert recorded["path"] == str(cached_source.with_suffix(".json"))
     assert recorded["size"] > 0
-    before = selected.lagen[0].path.read_bytes()
+    before = cached_source.read_bytes()
     with pytest.raises(ValueError, match="vernieuwen"):
         productie.main(
             store,
@@ -733,4 +787,205 @@ def test_production_prepares_full_tile_context_before_ahn_and_resume_is_read_onl
             resume=True,
             refresh_sources=True,
         )
-    assert selected.lagen[0].path.read_bytes() == before
+    assert cached_source.read_bytes() == before
+
+
+@pytest.mark.parametrize(
+    "provider,layer",
+    [
+        ("osm", "osm_canals"),
+        ("osm", "osm_culvert"),
+        ("bgt", "bgt_waterdeel"),
+        ("bgt", "bgt_wegdeel"),
+        ("bgt", "bgt_duiker"),
+    ],
+)
+def test_area_sources_coexist_and_reuse_without_downloads(
+    store, monkeypatch, osm_download, bgt_requests, provider, layer
+):
+    def download(**kwargs):
+        kwargs["archive_path"].write_bytes(str(len(bgt_requests)).encode())
+
+    def convert_culverts(archive, target, *args, **kwargs):
+        return write(
+            target,
+            "bgt_kunstwerkdeel",
+            [LineString([(1, 1), (2, 2)])],
+            **{"plus-type": ["duiker"], "bgt-status": ["bestaand"]},
+        )
+
+    monkeypatch.setattr(module, "_download_validated_zip_archive", download)
+    monkeypatch.setattr(module, "_convert_bgt_zip_to_geopackage", convert_culverts)
+    monkeypatch.setattr(
+        module,
+        "prepare_surface_layer",
+        lambda archive, output_dir, feature_type: write(
+            output_dir / "layer.gpkg", f"bgt_{feature_type}"
+        ),
+    )
+    selected = config(store, provider, layer)
+    areas = [
+        ProductionArea("waterschap_38", box(0, 0, 10, 10), "EPSG:28992"),
+        ProductionArea("waterschap_30", box(20, 20, 30, 30), "EPSG:28992"),
+    ]
+    results = []
+    identities = []
+    for area in areas:
+        result = prepare(selected, store, area.geometry.bounds, area=area)
+        path = result.config.lagen[0].path
+        root = store.source_data_dir
+        assert path.parent == root / provider / area.value
+        results.append(result)
+        identities.append(_file_identity(path))
+        if provider == "bgt":
+            raw_name = "bgt_kunstwerkdeel" if layer == "bgt_duiker" else layer
+            archive = store.bgt_dir / area.value / f"{raw_name}.zip"
+            raw = archive.with_suffix(".gpkg") if layer == "bgt_duiker" else path
+            assert archive.is_file() and raw.is_file()
+            assert module._manifest(archive) != module._manifest(raw)
+            assert module._matching_coverage(
+                archive, f"{raw_name}_archive", area.geometry.bounds
+            )
+    assert len(osm_download) + len(bgt_requests) == 2
+    for area, result, identity in zip(areas, results, identities):
+        for reuse_only in (False, True):
+            reused = prepare(
+                selected,
+                store,
+                area.geometry.bounds,
+                area=area,
+                offline=True,
+                reuse_only=reuse_only,
+            )
+            assert reused.config == result.config
+            assert _file_identity(reused.config.lagen[0].path) == identity
+    prepare(selected, store, areas[1].geometry.bounds, area=areas[1], refresh=True)
+    assert _file_identity(results[0].config.lagen[0].path) == identities[0]
+    assert len(osm_download) + len(bgt_requests) == 3
+
+
+def test_named_area_reuses_legacy_osm_and_refreshes_into_area_directory(
+    store, osm_download
+):
+    selected = config(store, path=store.source_data_dir / "osm/osm_canals.gpkg")
+    legacy = prepare(selected, store)
+    original = _file_identity(legacy.config.lagen[0].path)
+    area = ProductionArea("waterschap_38", box(0, 0, 10, 10), "EPSG:28992")
+    assert prepare(selected, store, area=area, offline=True).config == legacy.config
+    fresh = prepare(selected, store, area=area, refresh=True)
+    assert (
+        fresh.config.lagen[0].path.parent == store.source_data_dir / "osm/waterschap_38"
+    )
+    assert _file_identity(legacy.config.lagen[0].path) == original
+    assert prepare(selected, store, area=area, offline=True).config == fresh.config
+    assert prepare(selected, store, area=area, reuse_only=True).config == legacy.config
+
+
+def test_top10nl_is_shared_across_areas(store, monkeypatch):
+    calls = []
+
+    def download(download_dir, **kwargs):
+        calls.append(download_dir)
+        return write(download_dir / module.TOP10NL_FILENAME, "top10nl_waterdeel_vlak")
+
+    monkeypatch.setattr(module, "download_top10nl", download)
+    selected = config(store, "top10nl", "top10nl_waterdeel_vlak")
+    area = ProductionArea("waterschap_38", box(0, 0, 10, 10), "EPSG:28992")
+    first = prepare(selected, store, area=area)
+    assert first.config.lagen[0].path == store.top10nl_dir / module.TOP10NL_FILENAME
+    other = ProductionArea("waterschap_30", box(20, 20, 30, 30), "EPSG:28992")
+    assert (
+        prepare(selected, store, other.geometry.bounds, area=other, offline=True).config
+        == first.config
+    )
+    assert len(calls) == 1
+
+
+def test_signal_source_keeps_recorded_legacy_path(store):
+    legacy = store.processed_data_dir / "brandlagen/openbaar/bgt_duikers.gpkg"
+    write(legacy, "bgt_duiker")
+    module._save_manifest(legacy, "bgt_duiker", (0, 0, 10, 10))
+    area = ProductionArea("waterschap_38", box(0, 0, 10, 10), "EPSG:28992")
+    assert (
+        module.prepare_bgt_signal_source(
+            store,
+            area.geometry,
+            SourcePreparation(offline=True),
+            reuse_only=True,
+            area=area,
+            existing_path=legacy,
+        )
+        == legacy
+    )
+    legacy.unlink()
+    with pytest.raises(ValueError, match="bestaande run"):
+        module.prepare_bgt_signal_source(
+            store,
+            area.geometry,
+            SourcePreparation(),
+            reuse_only=True,
+            area=area,
+            existing_path=legacy,
+        )
+
+
+def test_legacy_archive_metadata_is_reused_in_named_area(store):
+    archive = store.bgt_dir / "brandlagen/gebied/bgt_waterdeel.zip"
+    archive.parent.mkdir(parents=True)
+    archive.write_bytes(b"previous download")
+    module._save_manifest(archive, "bgt_waterdeel_archive", (0, 0, 10, 10))
+    module._manifest(archive).rename(archive.with_suffix(".brandbron.json"))
+    assert (
+        module._archive(
+            store,
+            SourcePreparation(offline=True),
+            "waterdeel",
+            (0, 0, 10, 10),
+            "waterschap_38",
+        )
+        == archive
+    )
+
+
+def test_production_resume_keeps_original_fallback_after_new_area_download(
+    store, monkeypatch, osm_download
+):
+    from waterlagen.afwateringseenheden import productie
+    from waterlagen.areas import area_from_bounds
+
+    area = area_from_bounds((184285, 392054, 185285, 393054))
+    context = (178000, 388000, 192000, 402000)
+    own = write(store.source_data_dir / "own.gpkg", "osm_canals")
+    selected = config(store, path=own)
+    monkeypatch.setattr(productie, "require_pcraster", lambda: None)
+    monkeypatch.setattr(productie, "_prepare_brandlagen", lambda *args: None)
+    monkeypatch.setattr(productie, "prepare_bgt_signal_source", lambda *args, **kw: own)
+
+    def stop(*args):
+        raise RuntimeError("stop before heavy sources")
+
+    def legacy_prepare(*args, **kwargs):
+        kwargs.pop("area")
+        return module.prepare_brand_sources(*args, **kwargs)
+
+    monkeypatch.setattr(productie, "ensure_land_boundary", stop)
+    monkeypatch.setattr(productie, "prepare_brand_sources", legacy_prepare)
+    with pytest.raises(RuntimeError, match="stop before heavy"):
+        productie.main(store, area=area, run_id="legacy", brandlagen=selected)
+    legacy = store.source_data_dir / "osm/brandlagen/osm_canals.gpkg"
+    original = _file_identity(legacy)
+    prepare(selected, store, context, area=area, refresh=True)
+    monkeypatch.setattr(
+        productie, "prepare_brand_sources", module.prepare_brand_sources
+    )
+    with pytest.raises(RuntimeError, match="stop before heavy"):
+        productie.main(
+            store,
+            area=area,
+            run_id="legacy",
+            brandlagen=selected,
+            resume=True,
+            offline=True,
+        )
+    assert _file_identity(legacy) == original
+    assert len(osm_download) == 2

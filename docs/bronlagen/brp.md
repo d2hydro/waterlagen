@@ -10,9 +10,11 @@ De Basisregistratie Gewaspercelen (BRP) bevat de ligging van landbouwpercelen
 en het daarbij geregistreerde gewas. Per jaar wordt een dataset met peildatum
 15 mei gemaakt.
 
-## Leverancier
+<span id="leverancier"></span>
 
-Rijksdienst voor Ondernemend Nederland (RVO), ontsloten via PDOK.
+## Herkomst
+
+De Rijksdienst voor Ondernemend Nederland (RVO) beheert de perceelregistratie. Gebruikers van landbouwpercelen geven jaarlijks hun percelen en gewassen op. De landelijke selectie is beschikbaar via PDOK.
 
 ## Dataset of service
 

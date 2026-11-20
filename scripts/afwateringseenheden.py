@@ -3,6 +3,7 @@
 from pathlib import Path
 
 from waterlagen._cli import production_parser, run_cli
+from waterlagen.areas import area_authority_codes
 from waterlagen.afwateringseenheden import read_brandlagen_config
 from waterlagen.afwateringseenheden._resampling import DEM_RESAMPLING_METHODS
 from waterlagen.afwateringseenheden.productie import main
@@ -12,9 +13,7 @@ from waterlagen.rijkswateren.download import RIJKSWATEREN_URL
 
 def _config(arguments: dict) -> dict:
     area = arguments["area"]
-    code = None
-    if isinstance(area, str) and area.startswith("waterschap_"):
-        code = area.removeprefix("waterschap_")
+    code = ",".join(area_authority_codes(area)) or None
     validate_authority_options(
         code, arguments["overige_waterschappen"], arguments["eigen_hydamo"]
     )
@@ -40,7 +39,7 @@ def cli() -> None:
     parser.add_argument(
         "--eigen-hydamo",
         type=Path,
-        help="GeoPackage ter vervanging van hydroobject, gemaal, stuw en duikersifonhevel van het gekozen waterschap",
+        help="GeoPackage ter vervanging van hydroobject, gemaal, stuw en duikersifonhevel van alle gekozen waterschappen",
     )
     parser.add_argument(
         "--rijkswateren-url",

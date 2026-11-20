@@ -2,174 +2,97 @@
 editorial_status: ai
 ---
 
-# Bewerkte lagen samenstellen met Python
+# Een kaartlaag berekenen met Python
 
-Gebruik deze voorbeelden om zelf bronnen, instellingen en bewerkingen te
-combineren. Elk script toont de stappen met publieke functies onder de
-productie-API. Volg eerst [Aan de slag](gebruik.md) voor installatie en uitvoering.
+Open het voorbeeld voor uw kaartlaag. Wijzigt u de invoer of instellingen? Kies dan in het script een nieuwe naam voor `EXPERIMENT`, zodat de resultaten apart worden opgeslagen. [Een script uitvoeren](gebruik.md#een-script-uitvoeren)
 
-Stel bovenaan het script `DATA_DIR`, `AREA` en `EXPERIMENT` in.
-Downloads worden hergebruikt. Een eigen bestand gebruiken kan door de
-downloadaanroep te vervangen door het betreffende pad; laag- en veldnamen
-moeten aansluiten op de [API-referentie](api.md).
-Tussenresultaten blijven beschikbaar om te bekijken of verder te bewerken.
+??? info "Afwateringseenheden"
 
-De uitvoer staat onder
-`data/processed_data/voorbeelden/alkmaar_centrum/<experiment>/`.
-Kies bij andere bronnen of instellingen een nieuwe experimentnaam. Losse
-functies kunnen eerder gemaakte bestanden hergebruiken zonder de gewijzigde
-instellingen toe te passen. Dit is geen automatisch beheerde productierun.
+    <span id="afwateringseenheden"></span>
 
-Landelijke bronbestanden blijven groot, ook voor Alkmaar-centrum.
-Bij de rastervoorbeelden zijn de instellingen onderdeel van de methode:
-een andere buffer, resolutie of indeling kan andere resultaten geven dan de
-[standaardproductie](../produceren/cli.md).
+    Berekent afwateringseenheden voor Alkmaar-centrum met een buffer van 2 km. De uitvoer wordt op het gebied geknipt. Controleer de duikerkoppelingen in `controle.gpkg`. Vanuit de broncoderepository gebruikt u de omgeving `afwateringseenheden` voor PCRaster.
 
-## BGT-vlakken
+    [Download voorbeeldscript](voorbeelden/produceer_afwateringseenheden.py){ .md-button .md-button--primary download="produceer_afwateringseenheden.py" }
 
-Dit voorbereidingsscript zet een al gedownloade landelijke BGT-ZIP om naar
-`data/source_data/bgt/bgt.gpkg`. Het roept de bestaande conversiefunctie
-`waterlagen.bgt.productie.main` aan en haalt geen brongegevens op.
-Zie [BGT-vlakken voorbereiden](../produceren/bgt-vlakken.md#voorbereiden)
-voor de locatie van de ZIP en de uitvoeropdracht.
+    ```python
+    --8<-- "docs/reference/voorbeelden/produceer_afwateringseenheden.py"
+    ```
 
-[Download het Python-script](voorbeelden/bereid_bgt_vlakken.py).
+    - [Betekenis van de laag](../bewerkte-lagen/afwateringseenheden.md)
+    - [API-referentie](afwateringseenheden.md)
 
-```python
---8<-- "docs/reference/voorbeelden/bereid_bgt_vlakken.py"
-```
+??? info "Functioneel landgebruik"
 
-## Afwateringseenheden
+    <span id="functioneel-landgebruik"></span>
 
-Lees de HYDAMO-objecten, selecteer primaire en secundaire watergangen en
-bereid de segmenten voor met `prepare_watersysteem`. Daarna berekent
-`calculate_afwateringseenheden_tiles` de afwateringseenheden.
+    Maakt een raster van 1 × 1 km voor Alkmaar-centrum. Sommige bronnen worden landelijk opgehaald. Gebruik voor een aansluitende DEM-berekening de standaardresolutie van 0,5 m en bewaar de gebouwgegevens.
 
-Instelbaar zijn onder meer de verbindingstolerantie, segmentlengte,
-tegelgrootte, buffer, rasterresolutie en inbranddiepte.
-Het voorbeeld gebruikt een kerntegel van 1 km met 2 km buffer; het
-samengevoegde resultaat wordt op Alkmaar-centrum geknipt. AHN en watersysteem
-worden ook voor de omgeving opgehaald. HYDAMO blijft een landelijke download.
-Gebruik de omgeving met PCRaster.
+    [Download voorbeeldscript](voorbeelden/produceer_functioneel_landgebruik.py){ .md-button .md-button--primary download="produceer_functioneel_landgebruik.py" }
 
-Met `BRANDLAGEN_CONFIG` kiest u een TOML-bestand; standaard is dit `None`.
-`prepare_brand_sources` haalt expliciet gekozen openbare brandbronnen op en
-bereidt ze voor. Eigen bestanden moeten al beschikbaar zijn. Daarna leest
-`read_brandlagen` de objecten en bereidt `prepare_waternet` de gezamenlijke
-waterloop- en duikeraansluitingen voor op alle rekenrasters.
-De tegelberekening krijgt dezelfde configuratie. Zie
-[TOML-instellingen](../produceren/afwateringseenheden.md#toml-configuratie)
-en [brandregels](../bewerkte-lagen/afwateringseenheden.md#optionele-brandlagen).
+    ```python
+    --8<-- "docs/reference/voorbeelden/produceer_functioneel_landgebruik.py"
+    ```
 
-Met `DUIKER_TOLERANCE_M` en `MAX_AANSLUITLENGTE_M` stelt u de duikerkoppeling
-en extra uitsluiting van aansluitdoelen in. De volledige primaire context en
-duikers worden vóór de tegelberekening voorbereid. Ook zonder extra
-aansluituitsluiting (`None`) verdwijnen gekoppelde duikertrajecten uit de
-primaire brandgeometrie en de doelen.
+    - [Betekenis van de laag](../bewerkte-lagen/functioneel-landgebruik.md)
+    - [API-referentie](functioneel_landgebruik.md)
 
-Uitvoer: `watersysteem.gpkg`, `controle.gpkg`, tegelbestanden en `afwateringseenheden.gpkg`.
-Beoordeel de laag `duikersifonhevel` in het controlebestand, ook na een
-succesvolle run; zie [controle in QGIS](../produceren/afwateringseenheden.md#controle-in-qgis).
-Bekijk ook de gemelde randproblemen en resterende gaten in het resultaat.
+??? info "Hoogtemodel"
 
-[Betekenis van de laag](../bewerkte-lagen/afwateringseenheden.md) ·
-[API-referentie](afwateringseenheden.md)
+    <span id="hoogtemodel"></span>
 
-[Download het Python-script](voorbeelden/produceer_afwateringseenheden.py).
+    Voer eerst het voorbeeld voor functioneel landgebruik uit. Kies die uitvoer met `LANDUSE_EXPERIMENT`. De gebouwcontext moet minstens de maximale zoekafstand voor gebouwhoogtes dekken. AHN en landgebruik moeten dezelfde resolutie en pixeluitlijning hebben.
 
-```python
---8<-- "docs/reference/voorbeelden/produceer_afwateringseenheden.py"
-```
+    [Download voorbeeldscript](voorbeelden/produceer_dem.py){ .md-button .md-button--primary download="produceer_dem.py" }
 
-## Auto's
+    ```python
+    --8<-- "docs/reference/voorbeelden/produceer_dem.py"
+    ```
 
-Haal BAG en CBS op en koppel de woon-VBO's aan buurten met `bouw_vbo_buurt`.
-Die voorbereiding is landelijk en wordt ook door het inwonersvoorbeeld gebruikt.
-`HERBOUW_VOORBEREIDING=True` vernieuwt de koppeling na een bronwijziging;
-het downloadt geen nieuwe bronversies.
+    - [Betekenis van de laag](../bewerkte-lagen/dem.md)
+    - [API-referentie](dem.md)
 
-Selecteer daarna de complete buurten die Alkmaar-centrum overlappen en behoud
-alle bijbehorende woon-VBO's, ook buiten het vierkant. Geef die GeoDataFrames
-aan `bereken_personenautos_per_vbo`. Het resultaat kan direct worden bekeken,
-met andere gegevens worden gecombineerd of worden opgeslagen in `autos.gpkg`.
-Verklein de VBO-selectie pas na de berekening; anders ontbreekt buurtcontext.
+??? info "Inwoners"
 
-[Betekenis van de laag](../bewerkte-lagen/autos.md) ·
-[API-referentie](autos.md) · [Gedeelde voorbereiding](vbo_buurt.md)
+    <span id="inwoners"></span>
 
-[Download het Python-script](voorbeelden/produceer_autos.py).
+    Verdeelt inwoners over verblijfsobjecten met woonfunctie volgens twee methoden. Het script gebruikt dezelfde landelijke BAG/CBS-voorbereiding als het autovoorbeeld en schrijft `inwoners.gpkg`.
 
-```python
---8<-- "docs/reference/voorbeelden/produceer_autos.py"
-```
+    [Download voorbeeldscript](voorbeelden/produceer_inwoners.py){ .md-button .md-button--primary download="produceer_inwoners.py" }
 
-## Hoogtemodel
+    ```python
+    --8<-- "docs/reference/voorbeelden/produceer_inwoners.py"
+    ```
 
-Voer eerst het landgebruikvoorbeeld uit. Kies met `LANDUSE_EXPERIMENT`
-welke uitsnede als invoer dient. Het bronraster, de gebouw-ID's en de
-voorbereide pandgeometrieën moeten bij die uitsnede blijven.
+    - [Betekenis van de laag](../bewerkte-lagen/inwoners.md)
+    - [API-referentie](inwoners.md)
+    - [Gedeelde voorbereiding](vbo_buurt.md)
 
-Stel met `DemConfig` de interpolatieafstand, gebouwzoekafstanden en het
-percentiel in. De maximale gebouwzoekafstand mag niet groter zijn dan de
-`BUILDING_CONTEXT_M` waarmee het landgebruik is voorbereid.
-`bouw_dem_tiles` berekent het DEM op hetzelfde rasterrooster. Het originele
-AHN en het landgebruik moeten dezelfde resolutie en pixeluitlijning hebben;
-er wordt niet automatisch herschaald.
+??? info "Auto's"
 
-Het voorbeeld haalt AHN op voor de uitsnede én de omgeving van volledige panden.
-Vervang het VRT-pad in de bouwstap om eigen AHN-invoer te gebruiken.
-Uitvoer: `dem/dem.tif`, de floatversie, bronrasters en controlebestanden.
+    <span id="autos"></span>
 
-[Betekenis van de laag](../bewerkte-lagen/dem.md) · [API-referentie](dem.md)
+    Verdeelt auto’s over verblijfsobjecten met woonfunctie. BAG en CBS worden landelijk voorbereid. Behoud bij de berekening alle woonverblijfsobjecten van elke geselecteerde buurt.
 
-[Download het Python-script](voorbeelden/produceer_dem.py).
+    [Download voorbeeldscript](voorbeelden/produceer_autos.py){ .md-button .md-button--primary download="produceer_autos.py" }
 
-```python
---8<-- "docs/reference/voorbeelden/produceer_dem.py"
-```
+    ```python
+    --8<-- "docs/reference/voorbeelden/produceer_autos.py"
+    ```
 
-## Functioneel landgebruik
+    - [Betekenis van de laag](../bewerkte-lagen/autos.md)
+    - [API-referentie](autos.md)
+    - [Gedeelde voorbereiding](vbo_buurt.md)
 
-De downloadstappen tonen alle gebruikte bronnen. Daarna worden LIWO-vlakken
-en een index van BAG-panden voorbereid. Met `FunctioneelLandgebruikSources`
-kiest u expliciet de invoer voor `bouw_functioneel_landgebruik`.
+## Bron voorbereiden
 
-Pas de resolutie, aanvulafstand of classificatietabel aan. Het voorbeeld maakt
-een rechthoek van 1 × 1 km; bij 0,5 m zijn dat 4 miljoen rastercellen, plus
-tijdelijke rekenruimte. De downloads en een deel van de bronvoorbereiding
-blijven landelijk. De BGT-download bevat hier de zes benodigde objecttypen;
-het kleine BGT-downloadvoorbeeld met alleen panden en water is hiervoor onvoldoende.
+??? info "BGT-vlakken"
 
-De pandindex en `BUILDING_CONTEXT_M` zorgen dat het resultaat ook voor het DEM
-kan worden gebruikt. Houd dan de resolutie op 0,5 m. Met `landgebied_path`
-wordt de landsgrens voor het aanvullen expliciet meegegeven.
+    <span id="bgt-vlakken"></span>
 
-Uitvoer: `functioneel_landgebruik/functioneel_landgebruik.tif`, met bronraster,
-gebouwgegevens, QGIS-stijl en controlebestand. Dit is een losse rasteruitsnede.
+    Zet een bestaande landelijke BGT-ZIP om naar `bgt.gpkg`. [Benodigde invoer](../produceren/bgt-vlakken.md#voorbereiden)
 
-[Betekenis van de laag](../bewerkte-lagen/functioneel-landgebruik.md) ·
-[API-referentie](functioneel_landgebruik.md)
+    [Download voorbeeldscript](voorbeelden/bereid_bgt_vlakken.py){ .md-button .md-button--primary download="bereid_bgt_vlakken.py" }
 
-[Download het Python-script](voorbeelden/produceer_functioneel_landgebruik.py).
-
-```python
---8<-- "docs/reference/voorbeelden/produceer_functioneel_landgebruik.py"
-```
-
-## Inwoners
-
-Dit voorbeeld gebruikt dezelfde landelijke BAG/CBS-koppeling en selectie
-van complete buurten als [Auto's](#autos).
-Met `bereken_inwoners_per_vbo` worden beide verdeelmethoden berekend.
-De uitkomst is een GeoDataFrame: bekijk de kolommen, voeg eigen analyses toe
-en kies zelf wat u opslaat. Het voorbeeld schrijft `inwoners.gpkg`.
-
-[Betekenis van de laag](../bewerkte-lagen/inwoners.md) ·
-[API-referentie](inwoners.md) · [Gedeelde voorbereiding](vbo_buurt.md)
-
-[Download het Python-script](voorbeelden/produceer_inwoners.py).
-
-```python
---8<-- "docs/reference/voorbeelden/produceer_inwoners.py"
-```
-
+    ```python
+    --8<-- "docs/reference/voorbeelden/bereid_bgt_vlakken.py"
+    ```

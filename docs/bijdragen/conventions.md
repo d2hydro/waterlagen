@@ -2,112 +2,39 @@
 editorial_status: ai
 ---
 
-# Conventies
+# Afspraken voor code en documentatie
 
-Deze afspraken gelden voor alle contributors, ongeacht of zij met of zonder AI
-werken.
+## Code wijzigen
 
-- Houd wijzigingen klein, leesbaar en gericht op het gevraagde gedrag.
-- Inspecteer bestaande implementatie, tests en documentatie voordat gedrag wijzigt.
-- Gebruik `pathlib.Path` voor paden en respecteer `overwrite=False`.
-- Houd CRS, rasterresolutie, NoData en uitvoerschema's expliciet; gebruik de
-  bestaande CRS- en rasterhelpers waar mogelijk.
-- Gebruik in pakketcode de projectlogger en voeg gerichte tests toe bij
-  gedragswijzigingen.
-- Werk functionele documentatie, broninformatie en productie-instructies bij
-  wanneer publiek gedrag verandert.
+- Bekijk eerst de bestaande code en tests. Houd de wijziging bij één onderwerp.
+- Gebruik `pathlib.Path` voor bestandspaden, respecteer `overwrite=False` en log via de projectlogger.
+- Maak CRS, rasterresolutie, NoData en uitvoerschema expliciet. Hergebruik de CRS- en rasterhelpers.
+- Test gewijzigd gedrag. De minimale testdekking is 90%, zowel voor het geheel als voor gewijzigde code in Codecov.
 
-De minimale testdekking is 90%. Dit geldt voor lokale coverage-runs en de totale
-dekking en wijzigingsdekking in Codecov.
+Gebruikt u een AI-assistent? [Geef de projectinstructies mee](ai-agents.md).
 
-De volledige operationele instructies voor coding agents staan in [AGENTS.md](https://github.com/d2hydro/waterlagen/blob/main/AGENTS.md).
+## Documentatie bijwerken
 
-## Tijdelijke ontwikkelwerkdocumenten voor het samenvoegen
+Werk de betreffende bronpagina, laagbeschrijving of productie-instructie bij wanneer de werking verandert. De API-referentie haalt parameters en resultaten uit de docstrings.
 
-De statuscheck `Temporary dev work documents` controleert bij pull requests naar
-`main` de volledige Git-index. Bewaar reviewrapporten en reproductiescripts in
-`dev-workdocs/reviews/` en implementatieplannen en grilling outcomes in
-`dev-workdocs/implementatieplannen/`. Reguliere projectdocumentatie blijft onder
-`docs/`; tijdelijke werkdocumenten staan daarbuiten en worden niet gepubliceerd.
-Alle getrackte bestanden onder `dev-workdocs/` blokkeren de check, ook
-ongewijzigde bestanden, indexpagina's en Python-reproductiescripts. Er zijn geen
-uitzonderingen voor bestaande bestanden. Niet-getrackte lokale bestanden blijven
-buiten de controle.
+??? info "Een Python-voorbeeld toevoegen"
 
-De controle staat in `scripts/check_dev_workdocs.py` en werkt zelfstandig met
-Python 3.11 of hoger en Git, zonder extra Python-pakketten of toegang tot andere
-repositories. Voer vanuit de repositoryroot uit:
+    Zet het script in `docs/reference/voorbeelden/`. Neem het met `pymdownx.snippets` op in de voorbeeldpagina en link naar hetzelfde bestand als download.
 
-```shell
-pixi run python -I scripts/check_dev_workdocs.py --repo .
-```
+    Zet de instellingen bovenaan en toon de publieke functies voor invoer, bewerking en uitvoer. Hergebruik bestaande bronbestanden. Gebruik waar mogelijk `alkmaar_centrum` en vermeld wanneer een landelijke download nodig is. Bescherm de uitvoering met `if __name__ == "__main__":` voor import en multiprocessing.
 
-Zonder pixi kan dezelfde opdracht met `python -I` worden uitgevoerd. Exitcode `0`
-betekent dat de index schoon is; `1` meldt de blokkerende bestanden en redenen;
-`2` betekent dat de controle niet kon worden voltooid. Met `--summary pad/naar/resultaat.md`
-kun je ook een Markdown-samenvatting bewaren. De GitHub Action gebruikt hiervoor
-`GITHUB_STEP_SUMMARY`, zodat de status, bestanden en opruiminstructie direct bij
-de workflowresultaten staan.
+    Voeg een offline test toe aan `tests/test_python_examples.py`. Draai dat testbestand en bouw de handleiding. Controleer ook de begeleidende tekst bij gewijzigde functies. Op menselijk beheerde pagina’s volgen alleen gegenereerde API-blokken en ingelezen voorbeelden automatisch hun bron.
 
-De workflow `.github/workflows/dev-workdocs.yml` gebruikt uitsluitend de
-meegeleverde controle en tests. Er zijn geen aanvullende tokens, private
-downloads of configuratievariabelen nodig. De workflow start uitsluitend bij
-pull requests naar `main`.
+## Vóór het samenvoegen
 
-Voer de tests met alleen Python uit:
+De GitHub-controle `Temporary dev work documents` vereist bij een pull request naar `main` dat er geen bestanden uit `dev-workdocs/` in de Git-index staan.
 
-```shell
-python -B -m unittest discover -s tests -p test_check_dev_workdocs.py -v
-```
+??? info "Werkdocumenten controleren en lokaal bewaren"
 
-Bewaar voor het samenvoegen relevante uitleg en besluiten in de reguliere
-documentatie en blijvend nuttige regressietests in `tests/`. Leg resterend werk
-vast in issues. Controleer eerst of plannen nog in gebruik zijn of onopgeloste
-besluiten bevatten. Haal daarna alleen afgeronde werkdocumenten uit Git:
-`git rm -- pad/naar/bestand` verwijdert ook de lokale kopie;
-`git rm --cached -- pad/naar/bestand` behoudt die lokaal. Alleen een bestand op
-schijf verwijderen of in `.gitignore` zetten haalt het niet uit de Git-index.
-Neem de gestagede verwijderingen mee in de PR en voer de controle opnieuw uit.
+    Bewaar tijdelijke reviews en reproductiescripts onder `dev-workdocs/reviews/` en plannen onder `dev-workdocs/implementatieplannen/`. Neem blijvende uitleg op in `docs/`, regressietests in `tests/` en openstaande punten in issues.
 
-Een beheerder kan de check `Temporary dev work documents` na een geslaagde
-uitvoering verplicht maken in de branch protection rule of ruleset voor `main`.
-Zonder die instelling geeft de workflow wel een foutstatus, maar blokkeert GitHub
-het samenvoegen niet automatisch. De integratie wijzigt deze instellingen niet.
-Als de check al verplicht was onder de vorige naam, moet een beheerder de
-vereiste statuscheck vervangen door `Temporary dev work documents`.
+    Controleer welke documenten nog in gebruik zijn. Haal alleen afgeronde bestanden uit Git met `git rm --cached -- <bestand>` om de lokale kopie te behouden. Neem de verwijdering uit Git mee in de pull request.
 
-## Python-voorbeelden en API-documentatie
-
-De uitvoerbare voorbeelden staan op één plek: `docs/reference/voorbeelden/`.
-Neem deze bestanden met `pymdownx.snippets` in de documentatie op en link naar
-hetzelfde `.py`-bestand om het te downloaden. Ontbrekende snippets laten de build
-falen. Kopieer de code niet naar losse Markdown-codeblokken.
-
-Gebruik `alkmaar_centrum` waar een gebiedsselectie mogelijk is. Vermeld bij
-landelijke bronnen expliciet dat ook voor dit voorbeeldgebied volledige
-bestanden nodig zijn. Toon publieke bouwstenen onder de productie-API, met
-instellingen bovenaan en zichtbare invoer, tussenresultaten en uitvoer.
-Gebruik geen productie-ingang als enige bewerkingsstap en voeg geen onnodige
-`main()`-verpakking toe. Het `__main__`-blok voorkomt uitvoering bij importeren
-en ondersteunt multiprocessing. Voorbeelden hergebruiken bestaande bronnen.
-
-API-blokken worden met `mkdocstrings` uit de functies en docstrings gegenereerd.
-Ook bij `editorial_status: human` mogen deze blokken en ingelezen voorbeelden
-automatisch hun bron volgen. De status beschermt de handgeschreven Markdown,
-toelichting en frontmatter; hij bevriest de gegenereerde inhoud niet.
-Verandert de betekenis van een functie, controleer dan ook de toelichting.
-Automatische generatie ontdekt geen inhoudelijk verouderde uitleg.
-
-Voer bij wijzigingen `pixi run pytest tests/test_python_examples.py` en
-`pixi run --environment docs docs-build` uit. De voorbeeldtests starten de
-scripts met nagebootste downloads en zware rasterbewerkingen die de echte
-functiesignaturen controleren. De buurtselectie en inwoners-/autoberekeningen
-draaien op kleine lokale GeoPackages. Controleer ook dat aangepaste instellingen
-worden doorgegeven en invoer de benodigde rekenomgeving dekt.
-De tests doen geen volledige productie en bewijzen geen beschikbaarheid
-of inhoudelijke kwaliteit van externe bronnen. Echte downloads worden bewust
-handmatig gestart; de documentatiebuild voert de voorbeelden niet uit.
-
-Nieuwe voorbeelden krijgen een vermelding op de voorbeeldpagina en in de
-testgevallen. Bij pull requests voert de workflow `Documentation checks`
-deze tests en een strikte documentatiebuild uit.
+    ```bash
+    pixi run python -I scripts/check_dev_workdocs.py --repo .
+    ```

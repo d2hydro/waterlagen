@@ -4,127 +4,95 @@ editorial_status: ai
 
 # Installatie
 
-!!! warning "Bijwerken bestaande installatie"
-    Voor het bijwerken van een betaande installatie, zie [bijwerken bestaande installatie](#bijwerken-bestaande-installatie)
-
-Met het **productiepakket** van een Waterlagen-release kunt u zelfstandig
-afwateringseenheden, functioneel landgebruik, inwoners en personenauto's produceren.
-Het pakket bevat Pixi-installatiebestanden en de bijbehorende Python-scripts.
-Toegang tot een private repository is niet nodig.
-
-Pixi installeert de Waterlagen-versie die bij het pakket hoort, Python en de
-GIS-bibliotheken, inclusief GDAL en PCRaster. U hoeft Git of Python niet apart
-te installeren. Het pakket ondersteunt Windows en Linux; hieronder gebruiken
-we Windows PowerShell.
-
 ## 1. Installeer Pixi
 
-Open de [installatiepagina van Pixi](https://pixi.prefix.dev/latest/installation/)
-en kies op Windows de **Windows Installer**. Voer de installer uit.
-Open daarna het Windows-startmenu, typ **PowerShell** en open **Windows PowerShell**.
-Dit is een venster waarin u opdrachten kunt typen of plakken.
-Werkt u in VS Code, start VS Code dan opnieuw na de installatie.
+Kies op Windows de **Windows Installer**.
 
-Typ of plak onderstaande opdracht in PowerShell en druk op **Enter**:
-
-```powershell
-pixi --version
-```
-
-Er verschijnt een versienummer. Hebt u Pixi al, dan kunt u deze installatiestap overslaan.
+[Pixi installeren](https://pixi.prefix.dev/latest/installation/){ .md-button }
 
 ## 2. Download het productiepakket
 
-1. Download [**waterlagen-productie.zip**](https://github.com/d2hydro/waterlagen/releases/latest/download/waterlagen-productie.zip)
-   van de nieuwste stabiele release.
-2. Pak de inhoud van de zip-file uit in een projectfolder naar keuze, bijvoorbeeld
-   `waterlagen-productie`. De bestanden en de map `scripts` staan direct in de zip,
-   zonder extra bovenliggende map. Kies een locatie met voldoende schijfruimte
-   voor de lagen die u wilt produceren.
+[Download het productiepakket](https://github.com/d2hydro/waterlagen/releases/latest/download/waterlagen-productie.zip){ .md-button .md-button--primary }
 
-!!! note "Versies en beschikbaarheid"
-    De downloadlink volgt de nieuwste stabiele release. Wilt u een andere versie, ga dan naar
-    [waterlagen releases](https://github.com/d2hydro/waterlagen/releases) en download`waterlagen-productie.zip` onder de `assets` van de juiste release. De productie is beschikbaar vanaf release 2026.9.0
-
-De projectfolder bevat de installatiebestanden en scripts al op de juiste plaats.
-U hoeft geen bestanden uit `envs` te kopiëren of scripts apart te downloaden:
-
-```text
-waterlagen-productie/
-├── README.md
-├── LICENSE
-├── pixi.toml
-├── pixi.lock
-├── .datastore
-└── scripts/
-    afwateringseenheden.py
-    functioneel_landgebruik.py
-    dem.py
-    inwoners.py
-    autos.py
-```
-
-De meegeleverde `.datastore` bevat `DATA_DIR=./data`. Laat dit bestand staan.
-Pixi maakt later de map `.pixi` aan; Waterlagen maakt `data` voor uw gegevens.
-De locatie van uw projectfolder kiest u zelf.
+Pak `waterlagen-productie.zip` uit in een map met voldoende ruimte voor de brongegevens en kaarten.
 
 ## 3. Installeer en controleer de omgeving
 
-Voer vanuit uw projectfolder de volgende opdracht uit. Pixi installeert bij de
-eerste uitvoering automatisch de omgeving in `.pixi`. Dit vereist internet en
-kan enkele minuten duren.
+Open de uitgepakte map in Windows Verkenner. Typ `cmd` in de adresbalk en druk op Enter. U kunt ook PowerShell of op Linux een terminal in die map openen. Voer één keer uit:
 
-```powershell
+```console
 pixi run --locked controleer
 ```
 
-!!! note "Waarom `--locked`?"
-    `--locked` voorkomt dat Pixi het meegeleverde `pixi.lock` wijzigt en stopt
-    als het ontbreekt of niet bij `pixi.toml` past. Zo blijven de pakketversies
-    behouden die bij de release zijn getest.
-
-De controle toont de geïnstalleerde releaseversie en de gegevensmap, importeert
-de scripts en test een klein raster met GDAL, Rasterio en PCRaster.
-Bij succes verschijnt **Imports en rastercontrole OK**.
-Er worden geen brongegevens gedownload en geen productieworkflows gestart.
-
-Gegevens komen standaard in `./data`, onder uw projectfolder. U hoeft niets in
-te stellen. Zie [Opslag van gegevens](configuratie.md) voor een andere locatie.
+Wacht op **Imports en rastercontrole OK**. De eerste installatie vereist internet.
 
 ## 4. Start een productie
 
-Kies één productie. Lees eerst de bijbehorende uitleg en controleer de
-[gedeelde opties](cli.md) voor uw toepassing:
+[Kaart maken met de Run Maker](index.md){ .md-button .md-button--primary }
 
-| Productie | Opdracht | Uitleg |
-|---|---|---|
-| Afwateringseenheden (landelijk) | `pixi run --locked afwateringseenheden` | [Afwateringseenheden](afwateringseenheden.md) |
-| Functioneel landgebruik (landelijk) | `pixi run --locked functioneel_landgebruik` | [Landgebruik](landgebruik.md) |
-| DEM | `pixi run --locked dem` | [DEM](dem.md) |
-| Inwoners per woon-VBO (landelijk) | `pixi run --locked inwoners` | [Inwoners en auto's](inwoners-personenautos.md) |
-| Personenauto's per woon-VBO (landelijk) | `pixi run --locked autos` | [Inwoners en auto's](inwoners-personenautos.md) |
+## Bijwerken bestaande installatie
 
-Dit zijn volledige producties die veel gegevens kunnen downloaden en veel
-rekentijd en schijfruimte kunnen vragen. Gebruik `--area alkmaar` voor een kleiner gebied. Beoordeel de resultaten voordat u ze gebruikt.
+Gebruik vóór een nieuwe productie `code_bijwerken.bat` (Windows) of `sh ./code_bijwerken.sh` (Linux) om een nieuwe release te installeren. Bevestig de update. Uw instellingen en gegevens blijven behouden. Rond lopende producties eerst af en hervat onderbroken runs met de oorspronkelijke versie.
 
-Voer ook bij een volgende sessie de opdrachten vanuit uw projectfolder uit.
-U hoeft de omgeving niet apart te activeren.
+??? info "Eenmalig overstappen vanaf 2026.11.0"
 
-##  Bijwerken bestaande installatie
-Stop lopende berekeningen en start `bijwerken.cmd` (Windows) of `sh ./bijwerken.sh` (Linux) vanuit uw projectfolder. Instellingen en data blijven behouden.
+    Oudere pakketten hebben nog `bijwerken.cmd` of `bijwerken.sh`. Die updater kan
+    het uitgebreide productiepakket niet installeren. Zodra een nieuwe release
+    met `waterlagen-updater.py` is gepubliceerd, kunt u onderstaande opdracht
+    eenmalig uitvoeren vanuit uw **bestaande projectmap**.
 
-Ontbreken de bijwerkbestanden? Download het Download [**waterlagen-productie.zip**](https://github.com/d2hydro/waterlagen/releases/latest/download/waterlagen-productie.zip) en kopieer `bijwerken.py` en het bijbehorende script (`.cmd` of `.sh`) naast `pixi.toml`. Bij volgende updates is dit niet meer nodig.
+    De opdracht haalt de nieuwe updater op naar een tijdelijke locatie. Bevestig
+    daarna de update van uw bestaande installatie. Instellingen, eigen bestanden
+    en gegevens blijven behouden. Bij een mislukte installatie wordt de vorige
+    versie hersteld. Gebruik na een geslaagde overstap de gewone
+    `code_bijwerken.bat` of `code_bijwerken.sh`.
 
-## Als een opdracht niet werkt
+    === "Windows (PowerShell)"
 
-| Melding | Wat u kunt doen |
-|---|---|
-| `pixi` wordt niet herkend | Open PowerShell opnieuw na installatie; herstart ook VS Code als u daarin werkt. |
-| Pixi kan geen projectbestand vinden | Open PowerShell in de uitgepakte map met `pixi.toml`. |
-| `pixi.lock` ontbreekt of past niet bij `pixi.toml` | Pak het productiepakket opnieuw uit in een nieuwe map; gebruik de bestanden van dezelfde release. |
-| Een productietaak ontbreekt | Controleer of u het productiepakket hebt gedownload en PowerShell in de juiste map hebt geopend. |
-| Geen toegang tot de datamap | Kies een schrijfbare [opslaglocatie](configuratie.md). |
-| Downloaden van bronbestanden lukt niet | Lees [wat u kunt doen bij HTTPS-certificaatproblemen](https-certificaatproblemen.md). |
+        Open PowerShell in de bestaande projectmap en voer dit blok uit:
 
-Voor tests en wijzigingen aan Waterlagen zelf, zie
-[Ontwikkelomgeving](../bijdragen/ontwikkelomgeving.md).
+        ```powershell
+        & {
+            $updaterRelease = Invoke-RestMethod -Uri 'https://api.github.com/repos/d2hydro/waterlagen/releases/latest' -ErrorAction Stop
+            $updaterPath = Join-Path ([IO.Path]::GetTempPath()) ('waterlagen-updater-' + [guid]::NewGuid().ToString('N') + '.py')
+            try {
+                Invoke-WebRequest -Uri "https://github.com/d2hydro/waterlagen/releases/download/$($updaterRelease.tag_name)/waterlagen-updater.py" -OutFile $updaterPath -ErrorAction Stop
+                pixi exec --spec "python=3.13" -- python $updaterPath --project-dir (Get-Location).Path --versie $updaterRelease.tag_name
+            } finally {
+                Remove-Item -LiteralPath $updaterPath -ErrorAction SilentlyContinue
+            }
+        }
+        ```
+
+    === "Linux"
+
+        Open een terminal in de bestaande projectmap en voer dit blok uit:
+
+        ```bash
+        pixi exec --spec "python=3.13" -- python -c '
+        import json
+        import subprocess
+        import sys
+        import tempfile
+        from pathlib import Path
+        from urllib.request import urlopen
+
+        with urlopen("https://api.github.com/repos/d2hydro/waterlagen/releases/latest", timeout=60) as response:
+            tag = json.load(response)["tag_name"]
+        with tempfile.TemporaryDirectory(prefix="waterlagen-updater-") as directory:
+            updater = Path(directory) / "waterlagen-updater.py"
+            url = f"https://github.com/d2hydro/waterlagen/releases/download/{tag}/waterlagen-updater.py"
+            with urlopen(url, timeout=60) as response:
+                updater.write_bytes(response.read())
+            raise SystemExit(subprocess.call([sys.executable, str(updater), "--project-dir", str(Path.cwd()), "--versie", tag]))
+        '
+        ```
+
+??? info "Als een opdracht niet werkt"
+
+    <span id="als-een-opdracht-niet-werkt"></span>
+
+    - **Pixi niet gevonden?** Open een nieuw terminalvenster na installatie.
+    - **Projectbestand ontbreekt?** Open de map waarin `pixi.toml` en `pixi.lock` samen staan.
+    - **Gegevensmap niet schrijfbaar?** Kies een [andere opslaglocatie](configuratie.md).
+    - **Download geblokkeerd door een certificaatfout?** Zie [HTTPS-certificaatproblemen](https-certificaatproblemen.md).

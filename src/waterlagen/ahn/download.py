@@ -303,6 +303,12 @@ def download_ahn(
         Mask to select ahn-tiles, by default None
     select_indices : list[str] | None, optional
         Indices to select, by default None
+    model : Literal["dtm", "dsm"]
+        Maaiveldmodel (dtm) of oppervlaktemodel inclusief objecten (dsm).
+    cell_size : Literal["05", "5"]
+        Celgrootte van 0,5 of 5 meter. PDOK ondersteunt alleen 0,5 meter.
+    ahn_version : int
+        AHN-generatie (3, 4, 5 of 6). Gebruik bij PDOK versie 4.
     service : Literal["ahn_pdok", "ahn_nl"], optional
         Switch for using pdok.nl or ahn.nl for downloading ahn_data
     missing_only : bool, optional
@@ -325,7 +331,7 @@ def download_ahn(
     Returns
     -------
     Path
-        Path to download dir or vrt_file, being a sub-directory of ahn_root_dir
+        Bij create_vrt=True het pad naar het VRT-mozaïek, anders de map met de gedownloade tegels.
     """
 
     _validate_retries(retries)

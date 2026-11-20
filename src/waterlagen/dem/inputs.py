@@ -13,6 +13,7 @@ import rasterio
 
 from waterlagen._crs import same_crs
 from waterlagen._production import ProductionRun, default_run_id
+from waterlagen._run_lock import run_is_locked
 from waterlagen._sources import SourcePreparation
 from waterlagen.areas import Area, ProductionArea, select_area_tiles
 from waterlagen.datastore import DataStore
@@ -50,8 +51,9 @@ def _creation_time(metadata: dict) -> datetime:
 
 
 def latest_run(directory: Path) -> Path | None:
-    """Find the newest recorded creation time, including unfinished runs."""
+    """Prefer the newest completed, unlocked run; otherwise check the latest."""
     candidates = []
+    completed = []
     if not directory.exists():
         return None
     for path in directory.iterdir():
@@ -64,8 +66,33 @@ def latest_run(directory: Path) -> Path | None:
             # Treat unrankable metadata as invalid, never silently use an older run.
             logger.warning("Invalid land-use metadata in %s: %s", path, error)
             return path
-        candidates.append((created, path.name, path))
+        candidate = (created, path.name, path)
+        candidates.append(candidate)
+        if metadata.get("status") == "complete" and not run_is_locked(path):
+            completed.append(candidate)
+    if completed:
+        selected = max(completed)[2]
+        if selected != max(candidates)[2]:
+            logger.info(
+                "Nieuwere landgebruikrun is onvoltooid of vergrendeld; afgeronde run kiezen: %s",
+                selected,
+            )
+        return selected
     return max(candidates)[2] if candidates else None
+
+
+class LanduseRunBusy(RuntimeError):
+    """De geselecteerde landgebruikrun is bezig of vergrendeld."""
+
+
+def _blocked_landuse(path: Path, reason: str) -> RuntimeError:
+    """Een oude vergrendeling bewijst niet dat de productie nog draait."""
+    return LanduseRunBusy(
+        f"Landgebruikrun '{path.name}' {reason}.\n"
+        "Deze run kan nog draaien of eerder zijn afgebroken.\n"
+        "Controleer de productie, of kies een afgeronde run met --landuse-run.\n"
+        f"Map: {path.resolve()}"
+    )
 
 
 def validate_landuse_run(
@@ -87,14 +114,17 @@ def validate_landuse_run(
     LanduseInput
         Selected cores on the production's original grid.
     """
-    if (path / ".run.lock").exists():
-        raise RuntimeError(f"Land-use production is running: {path}")
+    if run_is_locked(path):
+        raise _blocked_landuse(path, "is vergrendeld")
     metadata = json.loads((path / "run.json").read_text(encoding="utf-8"))
     if not isinstance(metadata, dict):
         # Invalid file content, rather than an incorrectly typed API argument.
         raise ValueError(f"Invalid land-use run metadata: {path}")  # noqa: TRY004
     if metadata.get("status") == "running":
-        raise RuntimeError(f"Land-use production is running: {path}")
+        raise ValueError(
+            f"Landgebruikrun '{path.name}' is onvoltooid. "
+            f"Hervat deze run of kies een afgeronde landgebruikrun. Map: {path.resolve()}"
+        )
     _creation_time(metadata)
     scopes = {area.value, Area.nederland.value}
     if (
@@ -159,6 +189,31 @@ def validate_landuse_run(
     return LanduseInput(path, selected, paths, resolution)
 
 
+def find_landuse_input(
+    store: DataStore, area: Area | ProductionArea, context_m: float
+) -> LanduseInput | None:
+    """Zoek geschikte lokale invoer zonder een productie te starten."""
+    root = store.processed_data_dir / "functioneel_landgebruik"
+    directories = sorted(root.iterdir()) if root.exists() else []
+    directories.sort(key=lambda path: path.name != area.value)
+    for directory in directories:
+        candidate = latest_run(directory)
+        if candidate is None:
+            continue
+        logger.info("Checking land-use production %s", candidate)
+        try:
+            return validate_landuse_run(candidate, area, context_m)
+        except LanduseRunBusy:
+            if directory.name == area.value:
+                raise
+            logger.info("Landgebruikrun uit ander gebied is bezig of vergrendeld, overslaan: %s", candidate)
+            continue
+        except (ValueError, KeyError, FileNotFoundError) as error:
+            logger.info("Land-use production cannot supply DEM: %s", error)
+            continue
+    return None
+
+
 def resolve_landuse(
     store: DataStore,
     run: ProductionRun,
@@ -182,8 +237,8 @@ def resolve_landuse(
                 json.loads(metadata_path.read_text()) if metadata_path.exists() else {}
             )
             if metadata.get("status") != "complete":
-                if (path / ".run.lock").exists():
-                    raise RuntimeError(f"Land-use production is running: {path}")
+                if run_is_locked(path):
+                    raise _blocked_landuse(path, "is vergrendeld")
                 landuse_production.main(
                     store,
                     area=area,
@@ -198,22 +253,8 @@ def resolve_landuse(
         result = validate_landuse_run(explicit, area, context_m)
     else:
         result = None
-        root = store.processed_data_dir / "functioneel_landgebruik"
-        directories = sorted(root.iterdir()) if root.exists() else []
-        directories.sort(key=lambda path: path.name != area.value)
-        if preparation is not None and preparation.refresh:
-            directories = []
-        for directory in directories:
-            candidate = latest_run(directory)
-            if candidate is None:
-                continue
-            logger.info("Checking land-use production %s", candidate)
-            try:
-                result = validate_landuse_run(candidate, area, context_m)
-            except (ValueError, KeyError, FileNotFoundError) as error:
-                logger.info("Land-use production cannot supply DEM: %s", error)
-                continue
-            break
+        if preparation is None or not preparation.refresh:
+            result = find_landuse_input(store, area, context_m)
     if result is not None:
         run.metadata["landuse_dependency"] = {
             "path": str(result.path.resolve()),

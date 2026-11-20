@@ -1,0 +1,7 @@
+{# Toon de terugkeerwaarde direct na de beschrijving, ook bij lange parameterlijsten. #}
+{% if obj.is_function and docstring_sections %}
+  {% set intro = docstring_sections[:1] if docstring_sections[0].kind.value == "text" else [] %}
+  {% set rest = docstring_sections[intro|length:] %}
+  {% set docstring_sections = intro + (rest|selectattr("kind.value", "equalto", "returns")|list) + (rest|rejectattr("kind.value", "equalto", "returns")|list) %}
+{% endif %}
+{% include "_base/docstring.html.jinja" %}

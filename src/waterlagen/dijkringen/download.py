@@ -86,7 +86,24 @@ def download_dijkringen(
     overwrite: bool = True,
     progress: bool = True,
 ) -> GeoPackageDownload:
-    """Download the historical Rijkswaterstaat dike-ring GeoPackage."""
+    """Haal de historische dijkringen uit 2012 op als GeoPackage.
+
+    Parameters
+    ----------
+    download_dir : pathlib.Path
+        Map waarin de download wordt opgeslagen.
+    target_path : pathlib.Path, optional
+        Pad voor het GeoPackage. Zonder pad wordt de standaardnaam in de downloadmap gebruikt.
+    overwrite : bool
+        Vervang het uitvoerbestand. Bij False wordt een geldig bestaand bestand hergebruikt.
+    progress : bool
+        Toon de voortgang van de download.
+
+    Returns
+    -------
+    GeoPackageDownload
+        Het bestand staat in target_path. source_url vermeldt de gebruikte dienst.
+    """
     if target_path is None:
         target_path = Path(download_dir) / DEFAULT_FILENAME
     else:
@@ -126,7 +143,24 @@ def download_dijkringen_historie(
     overwrite: bool = True,
     progress: bool = True,
 ) -> GeoPackageDownload:
-    """Download the historical Rijkswaterstaat dike-ring GeoPackage."""
+    """Haal de historische dijkringen uit 2012 op als GeoPackage.
+
+    Parameters
+    ----------
+    download_dir : pathlib.Path
+        Map waarin de download wordt opgeslagen.
+    target_path : pathlib.Path, optional
+        Pad voor het GeoPackage. Zonder pad wordt de standaardnaam in de downloadmap gebruikt.
+    overwrite : bool
+        Vervang het uitvoerbestand. Bij False wordt een geldig bestaand bestand hergebruikt.
+    progress : bool
+        Toon de voortgang van de download.
+
+    Returns
+    -------
+    GeoPackageDownload
+        Het bestand staat in target_path. source_url vermeldt de gebruikte dienst.
+    """
     return download_dijkringen(
         download_dir=download_dir,
         target_path=target_path,

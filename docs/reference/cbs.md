@@ -4,8 +4,14 @@ editorial_status: ai
 
 # CBS
 
-Zie het [downloadvoorbeeld](bronlagen-downloaden.md#cbs) voor de buurtkaart en kerncijfers.
+Gebruik de Wijk- en Buurtkaart voor de geometrie en de kerncijfers voor de gegevens per buurt.
 
-::: waterlagen.administratieve_gebieden.download_wijk_buurtkaart_2025
+[Bekijk het downloadvoorbeeld](bronlagen-downloaden.md#cbs){ .md-button }
 
-::: waterlagen.cbs
+??? info "Wijk- en Buurtkaart downloaden · `download_wijk_buurtkaart_2025`"
+
+    ::: waterlagen.administratieve_gebieden.download_wijk_buurtkaart_2025
+
+??? info "Kerncijfers per buurt downloaden · `download_buurtgegevens_2025`"
+
+    ::: waterlagen.cbs.download_buurtgegevens_2025

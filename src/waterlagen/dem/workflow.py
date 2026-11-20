@@ -69,7 +69,7 @@ def main(
         Override the DEM output location for Python callers. The CLI instead
         configures the datastore for both DEM and dependent productions.
     ahn_vrt : pathlib.Path, optional
-        Explicit AHN mosaic. Otherwise prepare the required cached AHN tiles.
+        Optional terrain-model VRT with ground elevations in metres relative to NAP. Otherwise prepare the required cached AHN tiles.
     workers, building_workers : int, optional
         Override configured counts for tile and building processes.
     config : DemConfig, optional

@@ -657,3 +657,54 @@ def test_category_overrides_authority_and_optional_priority(tmp_path):
     assert values[12, 15] == -95
     assert values[12, 5] == -95
     assert values[1, 1] == 12
+
+
+def test_multiple_authorities_keep_both_targets_and_rws_as_context(sources):
+    result = read_watersysteem_sources(
+        *sources, spatial_selection=box(-5, -5, 100, 100), waterbeheercode="38,30,30"
+    )
+    assert set(result.targets.waterbeheercode) == {"30", "38"}
+    assert set(result.points.waterbeheercode) == {"30", "38"}
+    assert set(result.primary.waterbeheercode) == {"30", "38", "80"}
+    assert result.targets.bron_id.is_unique
+
+
+def test_multiple_authorities_can_replace_their_joint_hydamo_delivery(
+    sources, tmp_path
+):
+    own = write_source(
+        tmp_path / "own-multiple.gpkg",
+        ["30", "38"],
+        ["primair", "primair"],
+        [LineString([(0, 50), (10, 50)]), LineString([(0, 60), (10, 60)])],
+    )
+    result = read_watersysteem_sources(
+        *sources,
+        spatial_selection=box(-5, -5, 100, 100),
+        waterbeheercode="38,30",
+        eigen_hydamo=own,
+    )
+    assert set(result.targets.waterbeheercode) == {"30", "38"}
+    assert set(result.targets.bronbestand) == {str(own)}
+    assert len(result.targets) == 2
+    assert set(result.points.waterbeheercode) == {"30", "38"}
+
+
+def test_multiple_authorities_reject_rws_and_unselected_own_objects(sources, tmp_path):
+    with pytest.raises(ValueError, match="Rijkswaterstaat"):
+        read_watersysteem_sources(
+            *sources, spatial_selection=box(-5, -5, 100, 100), waterbeheercode="30,80"
+        )
+    own = write_source(
+        tmp_path / "wrong-authority.gpkg",
+        ["12"],
+        ["primair"],
+        [LineString([(0, 50), (10, 50)])],
+    )
+    with pytest.raises(ValueError, match="nen3610id"):
+        read_watersysteem_sources(
+            *sources,
+            spatial_selection=box(-5, -5, 100, 100),
+            waterbeheercode="30,38",
+            eigen_hydamo=own,
+        )

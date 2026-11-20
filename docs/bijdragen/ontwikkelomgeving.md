@@ -4,47 +4,30 @@ editorial_status: ai
 
 # Ontwikkelomgeving
 
-Deze pagina is bedoeld voor ontwikkelaars die de broncode aanpassen of testen.
-Wilt u een Waterlagen-release gebruiken om datasets te maken? Volg dan de
-[installatiehandleiding voor het productiepakket](../produceren/installatie.md).
-Daarvoor hoeft u Git niet te installeren.
-
-Voor ontwikkeling: clone de repository en werk vanuit de repository-root. De projectomgeving wordt
-beheerd met [pixi](https://pixi.sh/):
+Installeer [Pixi](https://pixi.sh/) en open een terminal. Haal de code op en installeer de projectomgeving.
 
 ```bash
+git clone https://github.com/d2hydro/waterlagen.git
+cd waterlagen
 pixi install
 ```
 
-Voer gerichte tests uit met `pixi run pytest <test-file-or-node>`. Gebruik voor
-tests die PCRaster nodig hebben en voor de volledige testsuite de omgeving
-`afwateringseenheden`, net als de coverage- en releaseworkflows. De belangrijkste
-controles zijn:
+## Uw wijziging controleren
 
-```bash
-pixi run --environment afwateringseenheden test-cov
-pixi run ruff format <bestand>
-pixi run ruff check <bestand>
-pixi run --environment docs docs-build
-```
+| Taak | Opdracht |
+| --- | --- |
+| Eén testbestand draaien | `pixi run pytest tests/test_python_examples.py` |
+| Python-code opmaken | `pixi run ruff format <bestand>` |
+| Python-code controleren | `pixi run ruff check <bestand>` |
+| Handleiding bekijken | `pixi run --environment docs docs-serve` |
+| Handleiding controleren | `pixi run --environment docs docs-build` |
 
-De CI **Tests (Coverage)** draait twee testgroepen parallel: tests zonder externe
-diensten en online integratietests die AHN-, BAG- en BGT-gegevens downloaden.
-Beide groepen draaien bij iedere niet-concept-PR naar `main` en moeten slagen. Hun coverage wordt
-samengevoegd voordat de minimale dekking van 90% wordt gecontroleerd.
-De CI bewaart per groep de testtijden, JUnit-uitvoer en het geheugengebruik,
-ook als een test faalt.
+Vervang bij het testen het voorbeeldpad door uw testbestand. Gebruik voor tests met PCRaster `pixi run --environment afwateringseenheden pytest <testbestand>`.
 
-Gebruik lokaal dezelfde selectie met `-m "not online"` of `-m online`:
+Voor de Run Maker-bedieningstest hebt u Node.js nodig. Installeer de testpakketten met `npm ci --prefix tests/browser` en voer `pixi run pytest tests/test_runscript_dom.py` uit.
 
-```bash
-pixi run --environment afwateringseenheden pytest -m "not online" --durations=30
-pixi run --environment afwateringseenheden pytest -m online --durations=30
-```
+De volledige testsuite met dekkingscontrole draait met `pixi run --environment afwateringseenheden test-cov`.
 
-Zonder deze selectie blijven alle tests meelopen. De opdracht `test-cov` blijft
-de volledige suite inclusief online tests en de 90%-controle uitvoeren.
+Bij een pull request naar `main` draaien de offline en online tests zodra de PR klaar is voor beoordeling. Lokaal kiest u met `pytest -m "not online"` of `pytest -m online` dezelfde groepen. De online tests downloaden AHN-, BAG- en BGT-gegevens.
 
-Start de lokale documentatieserver met `pixi run --environment docs docs-serve`.
-De broncode staat in `src/waterlagen`, tests in `tests` en workflow-scripts in
-`scripts`.
+Werkt u aan parallel rekenen? Zie [tests en meetresultaten voor afwateringseenheden](afwateringseenheden-scaling.md).

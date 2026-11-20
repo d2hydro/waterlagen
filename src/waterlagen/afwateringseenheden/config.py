@@ -6,6 +6,8 @@ from math import isfinite
 from numbers import Real
 from pathlib import Path
 
+from ._public_brand_sources import PUBLIC_BRAND_SOURCES
+
 DEFAULT_TILE_SIZE_M = 10000
 
 
@@ -22,77 +24,58 @@ def _brand_number(value: object, *, priority: bool = False) -> float | int:
 
 @dataclass(frozen=True)
 class Brandlaag:
-    """One user-supplied GeoPackage layer with optional fallback values.
+    """One public source or local GeoPackage layer with burn defaults.
 
     Parameters
     ----------
-    path : pathlib.Path
-        Local GeoPackage path.
-    layer : str
-        Layer name containing lines and/or polygons.
+    path : pathlib.Path, optional
+        Local GeoPackage path. Public sources resolve their cache path during
+        preparation; callers normally specify only ``bron`` for those sources.
+    layer : str, optional
+        Local layer name containing lines and/or polygons. Public layer names
+        are determined by ``bron``.
     brandwaarde : float, optional
         Signed height change in metres for missing object values.
     prioriteit : int, optional
         Priority for missing object values; higher numbers win.
-    rol : str, optional
-        ``overig`` (ordinary burn), ``water`` or ``duiker`` for water-network processing.
     bron : str, optional
-        Culvert source: ``hydamo``, ``bgt`` or ``osm``. Required for culvert layers.
-    openbare_bron : str, optional
-        Explicit automatic preparation: ``bgt``, ``top10nl`` or ``osm``.
-        Without this option the path remains strictly local user input.
+        Public source name, such as ``bgt_duikers`` or ``bgt_waterdelen``.
+        Every configured geometry is burned subject to the overlap priorities;
+        culverts require no recognized water-network connections.
     """
 
-    path: Path
-    layer: str
+    path: Path | None = None
+    layer: str | None = None
     brandwaarde: float | None = None
     prioriteit: int | None = None
-    rol: str = "overig"
     bron: str | None = None
-    openbare_bron: str | None = None
 
     def __post_init__(self) -> None:
-        object.__setattr__(self, "path", Path(self.path).resolve())
+        if self.bron is not None:
+            if self.bron not in PUBLIC_BRAND_SOURCES:
+                raise ValueError(f"Onbekende openbare brandbron: {self.bron}")
+            specification = PUBLIC_BRAND_SOURCES[self.bron]
+            if self.layer is not None and self.layer != specification.layer:
+                raise ValueError("De laagnaam van een openbare bron ligt vast")
+            object.__setattr__(self, "layer", specification.layer)
+        elif self.path is None:
+            raise ValueError("Een lokale brandlaag vereist path en layer")
+        if self.path is not None:
+            object.__setattr__(self, "path", Path(self.path).resolve())
         if not isinstance(self.layer, str) or not self.layer.strip():
             raise ValueError("Brandlaag.layer must be a non-empty name")
         _validate_defaults(self.brandwaarde, self.prioriteit)
-        if self.rol not in {"overig", "water", "duiker"}:
-            raise ValueError("rol must be overig, water or duiker")
-        if self.rol == "duiker" and self.bron not in {"hydamo", "bgt", "osm"}:
-            raise ValueError("A duiker layer requires bron=hydamo, bgt or osm")
-        if self.openbare_bron is not None:
-            supported = {
-                "bgt": {"bgt_waterdeel", "bgt_wegdeel", "bgt_duiker"},
-                "top10nl": {"top10nl_waterdeel_vlak", "top10nl_waterdeel_lijn"},
-                "osm": {
-                    "osm_canals",
-                    "osm_ditches",
-                    "osm_drains",
-                    "osm_streams",
-                    "osm_culvert",
-                },
-            }
-            if (
-                self.openbare_bron not in supported
-                or self.layer not in supported[self.openbare_bron]
-            ):
-                raise ValueError(
-                    "Onbekende openbare_bron of niet-ondersteunde openbare laag"
-                )
-            culvert = self.layer in {"bgt_duiker", "osm_culvert"}
-            if culvert and (self.rol != "duiker" or self.bron != self.openbare_bron):
-                raise ValueError(
-                    "Openbare duikers vereisen rol=duiker en een passende bron"
-                )
-            road = self.layer == "bgt_wegdeel"
-            if road and self.rol != "overig":
-                raise ValueError("Openbare wegdelen vereisen rol=overig")
-            if not culvert and not road and self.rol != "water":
-                raise ValueError("Openbare waterlagen vereisen rol=water")
         if self.brandwaarde is not None:
             object.__setattr__(self, "brandwaarde", float(self.brandwaarde))
         if self.prioriteit is not None:
             object.__setattr__(self, "prioriteit", int(self.prioriteit))
+
+    @property
+    def openbare_bron(self) -> str | None:
+        """Provider selected by the public source name; never a user option."""
+        if self.bron is None:
+            return None
+        return PUBLIC_BRAND_SOURCES[self.bron].provider
 
 
 @dataclass(frozen=True)
@@ -154,17 +137,18 @@ def read_brandlagen_config(path: Path) -> BrandlagenConfig:
     ----------
     path : pathlib.Path
         TOML file with optional ``[defaults]`` (``brandwaarde``, ``prioriteit``)
-        and ``[[lagen]]`` entries (``path``, ``layer`` and optional defaults
+        and ``[[lagen]]`` entries (public ``bron`` or local ``path``/``layer``,
+        and optional defaults
         ``brandwaarde`` and ``prioriteit`` directly on each entry). The root key
         ``geisoleerde_branddiepte_m`` sets the isolated HYDAMO lowering depth.
-        Layer keys ``rol`` and ``bron`` identify water and culvert inputs.
-        ``openbare_bron`` opts into preparation by the production entry point
-        or an explicit call to ``prepare_brand_sources``.
+        Public sources are prepared by the production entry point or an explicit
+        call to ``prepare_brand_sources``.
 
     Returns
     -------
     BrandlagenConfig
-        Configuration with absolute source paths. No source data is read,
+        Configuration with absolute local paths and unresolved public sources.
+        No source data is read,
         downloaded or prepared by this function.
 
     Raises
@@ -195,6 +179,8 @@ def read_brandlagen_config(path: Path) -> BrandlagenConfig:
     for entry in entries:
         if not isinstance(entry, dict):
             raise TypeError("Each lagen entry must be a TOML table")
+        if "rol" in entry or "openbare_bron" in entry:
+            raise ValueError("Verouderd brandlagenbestand. Maak een nieuw bestand in de Run Maker.")
         _check_keys(
             entry,
             {
@@ -202,12 +188,25 @@ def read_brandlagen_config(path: Path) -> BrandlagenConfig:
                 "layer",
                 "brandwaarde",
                 "prioriteit",
-                "rol",
                 "bron",
-                "openbare_bron",
             },
             "laag",
         )
+        if "bron" in entry:
+            if "path" in entry or "layer" in entry:
+                raise ValueError(
+                    "Een openbare bron vereist alleen bron; path en layer zijn voor lokale invoer"
+                )
+            if not isinstance(entry["bron"], str) or not entry["bron"].strip():
+                raise ValueError("bron moet een openbare bronnaam zijn")
+            layers.append(
+                Brandlaag(
+                    bron=entry["bron"],
+                    brandwaarde=entry.get("brandwaarde"),
+                    prioriteit=entry.get("prioriteit"),
+                )
+            )
+            continue
         if not isinstance(entry.get("path"), str) or not entry["path"].strip():
             raise ValueError("Each laag requires a non-empty path")
         if "layer" not in entry:
@@ -218,9 +217,6 @@ def read_brandlagen_config(path: Path) -> BrandlagenConfig:
                 layer=entry["layer"],
                 brandwaarde=entry.get("brandwaarde"),
                 prioriteit=entry.get("prioriteit"),
-                rol=entry.get("rol", "overig"),
-                bron=entry.get("bron"),
-                openbare_bron=entry.get("openbare_bron"),
             )
         )
     return BrandlagenConfig(

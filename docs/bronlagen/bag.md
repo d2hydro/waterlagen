@@ -10,9 +10,11 @@ De Basisregistratie Adressen en Gebouwen (BAG) bevat gegevens over onder meer
 panden en verblijfsobjecten. Waterlagen leest voor zijn workflows deze twee
 objecttypen.
 
-## Leverancier
+<span id="leverancier"></span>
 
-Kadaster (Landelijke Voorziening BAG), ontsloten via PDOK.
+## Herkomst
+
+Gemeenten zijn bronhouder van de adressen en gebouwen. Het Kadaster beheert de Landelijke Voorziening BAG. De download loopt via PDOK. [Kadaster over de BAG](https://www.kadaster.nl/zakelijk/registraties/basisregistraties/bag/over-bag)
 
 ## Dataset of service
 

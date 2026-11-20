@@ -10,10 +10,11 @@ De laag `LIWO_Basis:Overstromingsgevoelige_gebieden_grote_en_regionale_wateren`
 onderscheidt overstromingsgevoelige gebieden vanuit grote en regionale wateren.
 De legenda bevat zeven waarden (0 tot en met 6).
 
-## Leverancier
+<span id="leverancier"></span>
 
-Landelijk Informatiesysteem Water en Overstromingen (LIWO), ontsloten via
-Basisinformatie Overstromingen.
+## Herkomst
+
+De kaart wordt aangeboden via LIWO, een product van het Watermanagementcentrum Nederland (WMCN). De oorspronkelijke maker van deze specifieke rasterlaag is niet vastgesteld. [Over LIWO](https://iplo.nl/thema/water/applicaties-modellen/berichtgeving-crisismanagement/liwo/)
 
 ## Dataset of service
 

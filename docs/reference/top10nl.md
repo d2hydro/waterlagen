@@ -4,4 +4,8 @@ editorial_status: ai
 
 # TOP10NL
 
-::: waterlagen.top10nl
+[Bekijk het downloadvoorbeeld](bronlagen-downloaden.md#top10nl){ .md-button }
+
+??? info "TOP10NL downloaden · `download_top10nl`"
+
+    ::: waterlagen.top10nl.download_top10nl

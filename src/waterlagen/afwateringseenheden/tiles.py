@@ -959,109 +959,97 @@ def calculate_afwateringseenheden_tiles(
     brandlagen: BrandlagenConfig | None = None,
     dem_resampling: str = "min",
 ) -> AfwateringseenhedenTilesResult:
-    """Calculate afwateringseenheden for every tile intersecting an area.
+    """Bereken per tegel welk gebied afwatert naar welk waterloopsegment.
 
     Parameters
     ----------
     gebied : shapely.geometry.base.BaseGeometry
-        Project-CRS input selection. Output is clipped only when clip_to_area is True.
-    clip_to_area : bool, optional
-        Clip merged results to the input area, default True for API compatibility.
-        Production workflows set False to retain complete tile cores.
+        Gebied in het project-CRS. Elke tegel die dit gebied raakt, telt mee.
     burn_depth_m : float
-        Burn depth passed to :func:`prepare_watersysteem_rasters`.
-    brandlagen : BrandlagenConfig, optional
-        Optional layers, validated once on the selected buffered calculation
-        grids. Workers read local selections from ``output_dir/brandlagen_voorbereid.gpkg``.
-        This function does not download sources. Resolve public inputs with
-        ``prepare_brand_sources`` first. Water and culvert roles require joint
-        ``prepare_waternet`` preparation on the same grids and watersysteem.
-        Changed sources, defaults or burn depth invalidate raster and tile reuse.
+        Inbranddiepte in meters bij het voorbereiden van de watersysteemrasters.
     ahn_vrt_path : Path, optional
-        AHN VRT used for every tile. Defaults to the datastore AHN DTM VRT.
+        AHN-terreinmodel als VRT. Standaard wordt de AHN-DTM uit de datastore gebruikt.
     landsgrens_path : Path, optional
-        Bestuurlijke gebieden GeoPackage with Dutch ``landgebied`` polygons.
-        Limits DEM interpolation and valid elevations to Nederland, including
-        tile buffers. None retains full source-extent coverage. No download
-        is performed. Changed boundary sources invalidate cached tile results.
+        GeoPackage met de laag ``landgebied``. Begrenst de geldige hoogtes en
+        de interpolatie, ook in de tegelbuffers. Zonder grens geldt de brondekking.
+        Een gewijzigde grens vereist nieuwe tegelresultaten.
     watersysteem_path : Path, optional
-        Prepared watersysteem GeoPackage. Defaults to the datastore output.
+        Voorbereid watersysteem als GeoPackage. Standaard afkomstig uit de datastore.
     output_dir : Path, optional
-        Root directory for per-tile folders. Defaults to
-        ``datastore.afwateringseenheden_path / 'tiles'``. The selected core
-        tiles are written to ``tiles.gpkg`` in this directory. Its ``tile_id``
-        values match the per-tile folder names.
+        Map voor de tegelresultaten. Standaard de map ``tiles`` onder
+        ``datastore.afwateringseenheden_path``. In ``tiles.gpkg`` staat per
+        kerntegel de ``tile_id``, tevens de naam van de bijbehorende map.
     merged_output_path : Path, optional
-        GeoPackage path for the dissolved merged result. When omitted, no
-        merged GeoPackage is written. An existing merged file is replaced
-        after success, independently of ``overwrite``; choose a new path
-        to retain previous merged results. Worker failures prevent merging.
-        Contains only the merged subcatchment layer. Gap additions and
-        unassigned areas are written to ``controle.gpkg`` beside this file,
-        including when all tiles are empty. Other inspection layers are retained.
+        Doelbestand voor de samengevoegde afwateringseenheden. Een geslaagde
+        berekening met vlakken vervangt dit bestand, ook bij ``overwrite=False``.
+        Daarnaast komen de lagen ``aanvulling_buurtegels`` en ``niet_toegewezen``
+        in ``controle.gpkg``, ook als alle tegels leeg zijn. Zonder dit pad
+        krijgt u de samengevoegde vlakken alleen als Python-resultaat.
     tiles_path : Path, optional
-        Existing tile-index GeoPackage. When omitted, a tile grid is generated
-        directly from ``gebied`` using ``tile_size_m`` and the configured origin.
+        GeoPackage met een bestaand tegelrooster. Zonder dit bestand wordt een
+        rooster gemaakt met ``tile_size_m``, ``origin_x`` en ``origin_y``.
     data_store : waterlagen.datastore.DataStore, optional
-        Datastore used for default input and output paths.
+        Datastore voor de standaardpaden van invoer en uitvoer.
     tile_ids : Collection[str], optional
-        Optional subset of selected tile IDs.
+        Bereken alleen deze tegels binnen de gebiedsselectie.
     tile_size_m : int, optional
-        Core tile width and height in metres, by default 10000, as in production.
-        An explicit value overrides this default when generating the tile grid.
+        Zijde van een kerntegel in meters bij het maken van een nieuw rooster.
     tile_buffer_m : float, optional
-        Buffer around each tile used for the hydrological calculation, by
-        default 2000. Boundary issues are reported without recalculating the tile.
-    origin_x, origin_y : int, optional
-        Origin of the generated tile grid, by default 0, 0.
-    dem_resampling : str, optional
-        DEM warp method, default bilinear. Supported: nearest, bilinear, cubic,
-        cubic_spline, lanczos, average, min, max, med, q1, q3. Cached tiles
-        require the same method; missing legacy metadata means bilinear.
+        Afstand in meters die rondom elke kerntegel wordt meegerekend.
+    origin_x : int, optional
+        X-coördinaat van de oorsprong van het nieuwe tegelrooster.
+    origin_y : int, optional
+        Y-coördinaat van de oorsprong van het nieuwe tegelrooster.
     resolution_m : float, optional
-        Raster resolution passed to :func:`prepare_watersysteem_rasters`.
+        Celgrootte van het rekenraster in meters.
     max_fill_depth_m : float, optional
-        Maximum PCRaster depression fill depth in metres.
+        Maximale diepte in meters tot waar PCRaster laagtes mag opvullen.
     overwrite : bool, optional
-        Whether to regenerate existing per-tile rasters and subcatchments.
-        Cached raster bounds must extend equally beyond all four core edges,
-        by a non-negative distance. This distance determines the reused buffer,
-        even when a different ``tile_buffer_m`` was requested. Choose a new
-        output directory to calculate with a changed buffer.
-        Cached CRS and resolution must match the requested grid.
-        Reusing a tile requires its ``subcatchments.tif`` alongside the GeoPackage.
+        Bereken bestaande tegelrasters en afwateringseenheden opnieuw.
+        Bij hergebruik gelden de buffer van het bestaande raster en dezelfde
+        resolutie en hetzelfde CRS. Voor hergebruik van afwateringseenheden
+        is naast het GeoPackage ook ``subcatchments.tif`` nodig.
+        Kies een nieuwe uitvoermap als u met een andere buffer wilt rekenen.
     engine : {"pcraster"}, optional
-        Flow-direction engine.
+        Rekenmethode voor de stroomrichting.
     workers : int, optional
-        Number of separate worker processes. The default of 1 runs serially.
-        Workers open their own inputs and write only to their tile folder,
-        using the caller's logging configuration. Results are merged in selection order.
-        Run parallel workflows from a script with a ``__main__`` guard.
+        Aantal gelijktijdige rekenprocessen. Met één proces worden tegels na
+        elkaar berekend. Start parallel rekenen vanuit een script met een
+        ``if __name__ == "__main__":``-blok.
+    clip_to_area : bool, optional
+        Knip het eindresultaat op ``gebied``. Met ``False`` blijven de hele
+        kerntegels behouden, zoals bij een productierun.
     random_seed : int, optional
-        Positive PCRaster seed reset before each fresh tile calculation.
-        Use the same seed for reproducible serial and parallel runs. The
-        default leaves PCRaster's random state unchanged; cached results
-        are reused independently of this setting when ``overwrite=False``.
+        Positief startgetal voor PCRaster. Gebruik hetzelfde getal om nieuwe
+        berekeningen te kunnen herhalen, ook bij meerdere workers. Een andere
+        seed dwingt bij ``overwrite=False`` geen nieuwe berekening af.
+    brandlagen : BrandlagenConfig, optional
+        Extra lagen om in te branden. Bereid openbare bronnen vooraf voor met
+        ``prepare_brand_sources`` en het HYDAMO-netwerk met ``prepare_waternet``
+        op dezelfde rekenrasters. De functie gebruikt lokale bestanden.
+        Gewijzigde brandbronnen, brandinstellingen of inbranddiepte vereisen
+        nieuwe rasters en tegelresultaten.
+    dem_resampling : str, optional
+        Methode om AHN-hoogtes om te zetten naar het rekenraster. Standaard
+        kiest ``min`` de laagste waarde. Andere opties zijn ``nearest``,
+        ``bilinear``, ``cubic``, ``cubic_spline``, ``lanczos``, ``average``,
+        ``max``, ``med``, ``q1`` en ``q3``. Hergebruik vereist dezelfde
+        methode. Oudere tegelbestanden zonder methode gelden als ``bilinear``.
 
     Returns
     -------
     AfwateringseenhedenTilesResult
-        Per-tile results, skipped tile IDs, boundary issue tile IDs, and the
-        in-memory merged GeoDataFrame.
+        ``merged_subcatchments`` bevat de afwateringsvlakken. Bekijk
+        ``gap_additions`` voor de aanvulling uit buurtegels en ``remaining_gaps``
+        voor de plekken die daarna nog open zijn. In ``boundary_issue_tile_ids``
+        staan de tegels met een randprobleem vóór het aanvullen.
 
     Notes
     -----
-    Tiles without hydroobject-segment cells on valid DEM elevations are skipped,
-    including tiles whose segments lie entirely outside the source coverage or
-    the supplied national boundary. Prepared rasters can still be reused.
-    Line and point remnants from clipping are removed. After merging the core
-    results, uncovered parts of selected tiles are filled from usable neighbour
-    buffer polygons. Polygons touching their calculation boundary are excluded.
-    Donors are ranked by coverage, distance from their outer boundary, and tile
-    ID. Existing assignments are retained. This step performs no new LDD work.
-    ``gap_additions`` and ``remaining_gaps`` report the changes and unfilled area
-    in memory. Only the merged subcatchments are written to the GeoPackage. Boundary issue
-    tile IDs still describe the original calculations, not the remaining gaps.
+    Een tegel wordt overgeslagen als er nergens een afwateringsdoel op een
+    rastercel met een geldige hoogte ligt. Bij het samenvoegen worden open
+    plekken waar mogelijk gevuld met al berekende vlakken uit buurtegels.
+    Vlakken die de buitenrand van hun rekengebied raken, vallen daarbij af.
     """
     _validate_dem_resampling(dem_resampling)
     if not isinstance(workers, int) or isinstance(workers, bool):
@@ -1086,19 +1074,6 @@ def calculate_afwateringseenheden_tiles(
         watersysteem_path or data_store.afwateringseenheden_path / "watersysteem.gpkg"
     )
     output_dir = Path(output_dir or data_store.afwateringseenheden_path / "tiles")
-    if (
-        brandlagen is not None
-        and any(layer.rol in {"water", "duiker"} for layer in brandlagen.lagen)
-        and not (
-            watersysteem_path.parent
-            / "berekening"
-            / "waterlopen_duikers"
-            / "manifest.json"
-        ).exists()
-    ):
-        raise ValueError(
-            "waternet requires joint preparation through the production workflow"
-        )
     output_dir.mkdir(parents=True, exist_ok=True)
 
     tiles = (

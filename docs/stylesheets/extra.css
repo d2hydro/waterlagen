@@ -1,11 +1,242 @@
-:root  > * {
-  --md-primary-fg-color: #007db8;
-  --md-primary-fg-color--light: #2e9fd0;
-  --md-primary-fg-color--dark: #006a9c;
+:root > * {
+  --md-text-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial;
+  --md-default-fg-color: #3a4f66;
+  --md-primary-fg-color: #4397c6;
+  --md-primary-fg-color--light: #78b5d7;
+  --md-primary-fg-color--dark: #26668b;
+  --md-typeset-a-color: var(--md-primary-fg-color--dark);
+  --md-accent-fg-color: #204f6a;
+  --waterlagen-heading-color: #192a3d;
+}
+
+.md-header,
+.md-tabs {
+  --md-primary-bg-color: var(--waterlagen-heading-color);
+  --md-primary-bg-color--light: #526070;
+  background-color: var(--md-default-bg-color);
+  color: var(--md-primary-bg-color);
+}
+
+.md-header {
+  border-top: .18rem solid var(--md-primary-fg-color);
+  box-shadow: 0 1px 3px #192a3d1a;
+}
+
+.md-header__button.md-logo {
+  background: var(--md-primary-fg-color);
+  border-radius: .25rem;
+}
+
+.md-tabs {
+  border-bottom: 1px solid #d1d5da;
+}
+
+.md-nav__link--active,
+.md-nav__link:is(:focus-visible, :hover) {
+  color: var(--md-typeset-a-color);
+}
+
+.md-tabs__item--active .md-tabs__link {
+  color: var(--md-typeset-a-color);
+  border-bottom: 2px solid var(--md-primary-fg-color);
+  padding-bottom: .35rem;
+}
+
+@media screen and (min-width: 60em) {
+  .md-search__form {
+    background: #f3f5f7;
+    border: 1px solid #d1d5da;
+    border-radius: .4rem;
+  }
+}
+
+.md-content__inner.md-typeset {
+  line-height: 1.65;
+}
+
+.md-typeset p > a:not([class]) {
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.md-typeset p > a:not([class]):is(:hover, :focus-visible) {
+  text-decoration: underline;
+  text-underline-offset: .15em;
+}
+
+.md-typeset a:focus-visible {
+  outline: 2px solid var(--md-primary-fg-color--dark);
+  outline-offset: 2px;
+}
+
+.md-typeset p:has(> .md-button) {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: .35rem .8rem;
+}
+
+.md-typeset .md-button {
+  max-width: 100%;
+  padding: .4em 1em;
+  border: 1px solid var(--md-primary-fg-color--dark);
+  border-radius: 2em;
+  color: var(--md-primary-fg-color--dark);
+  font-weight: 600;
+}
+
+.md-typeset .md-button--primary,
+.md-typeset .md-button:is(:hover, :focus-visible) {
+  background-color: var(--md-primary-fg-color--dark);
+  color: white;
+}
+
+.md-typeset .md-button:active {
+  background-color: var(--md-accent-fg-color);
+}
+
+.md-typeset .meerlink::after {
+  content: "";
+  display: inline-block;
+  width: .36em;
+  height: .36em;
+  margin-inline: .25em .1em;
+  border-block-start: 1.5px solid;
+  border-inline-end: 1.5px solid;
+  transform: translateY(-.12em) rotate(45deg);
+}
+
+.md-typeset .meerlink:is(:hover, :focus-visible) {
+  text-decoration: underline;
+  text-underline-offset: .15em;
+}
+
+/* Aanvullende uitleg blijft direct onder de aanklikbare titel staan. */
+@media screen {
+  .md-typeset details.info {
+    margin: .4rem 0;
+    padding: 0 .6rem;
+    border: 0;
+    border-bottom: 1px solid #d1d5da;
+    border-radius: 0;
+    box-shadow: none;
+    color: inherit;
+    font-size: .78rem;
+  }
+
+  .md-typeset details.info + details.info {
+    margin-top: -.4rem;
+  }
+
+  .md-typeset details.info > summary {
+    min-height: 44px;
+    padding: .55rem .6rem .55rem 1.65rem;
+    background: transparent;
+    color: var(--waterlagen-heading-color);
+    font-weight: 600;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+  }
+
+  .md-typeset details.info > summary::before {
+    content: none;
+  }
+
+  .md-typeset details.info > summary::after {
+    left: .3rem;
+    right: auto;
+    top: .67rem;
+    color: var(--md-primary-fg-color--dark);
+  }
+
+  .md-typeset details.info > summary:is(:hover, :focus-visible) {
+    background: #f2f7fa;
+  }
+
+  .md-typeset details.info > summary:focus-visible {
+    outline: 2px solid var(--md-primary-fg-color--dark);
+    outline-offset: -2px;
+  }
 }
 
 .md-typeset table td:first-child code {
   white-space: nowrap;
+}
+
+.md-typeset :is(h1, h2, h3, h4):not(.doc-heading) {
+  color: var(--waterlagen-heading-color);
+}
+
+.md-typeset > h1 {
+  margin-bottom: .6em;
+  font-size: clamp(1.75em, 1.45em + 1vw, 2.125em);
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -.015em;
+}
+
+.md-typeset h2:not(.doc-heading) {
+  margin: 1.4em 0 .45em;
+  font-size: 1.1875em;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: normal;
+}
+
+.md-typeset h3:not(.doc-heading) {
+  margin: 1.25em 0 .35em;
+  font-size: 1em;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.md-typeset :is(h2, h3) + :is(p, ul, ol) {
+  margin-top: .35em;
+}
+
+.md-typeset .toepassingen {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+  gap: .8rem;
+  margin: 1.3rem 0;
+}
+
+.md-typeset .toepassingen section {
+  border: 1px solid #d1d5da;
+  border-top: 3px solid var(--md-primary-fg-color);
+  border-radius: .25rem;
+  padding: .9rem 1rem;
+  box-shadow: 0 2px 5px #2228320c;
+}
+
+.md-typeset .toepassingen h2 {
+  margin: 0 0 .4rem;
+  font-size: 1.0625em;
+  text-wrap: balance;
+}
+
+.md-typeset .toepassingen ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.md-typeset .toepassingen ul > li {
+  margin: .25em 0;
+}
+
+.md-typeset .doc-heading {
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.md-typeset .doc-signature pre > code {
+  font-size: 0.75rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .md-typeset .editorial-status {
@@ -14,4 +245,56 @@
   font-size: 0.6rem;
   text-align: left;
   line-height: 1.5;
+}
+
+.md-typeset > p, .md-typeset > ol, .md-typeset > ul {
+  max-width: 72ch;
+}
+
+.md-typeset .laagoverzicht ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.md-typeset .laagoverzicht li {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  gap: .1em 1.25em;
+  align-items: baseline;
+  margin: 0;
+  padding: .55em 0;
+}
+
+.md-typeset .laagoverzicht li + li {
+  border-top: 1px solid #d1d5da;
+}
+
+.md-typeset .laagoverzicht a {
+  justify-self: start;
+  font-weight: 600;
+}
+
+@media screen and (max-width: 36em) {
+  .md-typeset .laagoverzicht li {
+    grid-template-columns: 1fr;
+  }
+}
+
+.md-typeset .bronindex ul {
+  columns: 2 12rem;
+}
+
+.md-typeset .bronindex li {
+  break-inside: avoid;
+}
+
+@media print {
+  .md-typeset .ingeklapt-bij-afdrukken, .md-footer { display: none; }
+  .md-container, .md-main, .md-main__inner, .md-content {
+    display: block;
+    min-height: 0;
+    margin: 0;
+  }
+  .md-content__inner { margin: 0; padding: 0; }
 }

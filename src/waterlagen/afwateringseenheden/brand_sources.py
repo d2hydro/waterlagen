@@ -15,6 +15,7 @@ from waterlagen._downloads import _temporary_path, validate_geopackage
 from waterlagen._filesystem import replace_file
 from waterlagen._production import _file_identity
 from waterlagen._sources import SourcePreparation
+from waterlagen.areas import ProductionArea, area_name
 from waterlagen.bgt.download import (
     DEFAULT_PREDEFINED_ARCHIVE,
     _convert_bgt_zip_to_geopackage,
@@ -35,6 +36,7 @@ from waterlagen.settings import settings
 from waterlagen.top10nl import download_top10nl
 from waterlagen.top10nl.download import TOP10NL_FILENAME
 
+from ._public_brand_sources import PUBLIC_BRAND_SOURCES
 from .config import Brandlaag, BrandlagenConfig
 
 logger = get_logger(__name__)
@@ -50,6 +52,14 @@ class PreparedBrandSources:
 
 
 def _manifest(path: Path) -> Path:
+    if path.suffix == ".zip":
+        manifest = path.with_name(path.name + ".brandbron.json")
+        legacy = path.with_suffix(".brandbron.json")
+        if not manifest.exists() and _read_json(legacy).get("dataset", "").endswith(
+            "_archive"
+        ):
+            return legacy
+        return manifest
     return path.with_suffix(".brandbron.json")
 
 
@@ -167,7 +177,15 @@ def _archive(
     preparation: SourcePreparation,
     feature_type: str,
     bounds: tuple,
+    scope: str | None = None,
 ) -> Path:
+    legacy = store.bgt_dir / "brandlagen" / "gebied" / f"bgt_{feature_type}.zip"
+    path = legacy if scope is None else store.bgt_dir / scope / legacy.name
+    dataset = f"bgt_{feature_type}_archive"
+    refreshed = preparation.refresh and path not in preparation.prepared
+    if not refreshed and _matching_coverage(path, dataset, bounds):
+        logger.info("Gebiedsgerichte BGT-bron hergebruiken: %s", path)
+        return path
     # Keep proven national archives usable, but acquire missing data by area.
     for national in (
         store.bgt_dir / DEFAULT_PREDEFINED_ARCHIVE,
@@ -178,12 +196,9 @@ def _archive(
         ):
             logger.info("Bestaande landelijke BGT-bron hergebruiken: %s", national)
             return national
-    path = store.bgt_dir / "brandlagen" / "gebied" / f"bgt_{feature_type}.zip"
-    dataset = f"bgt_{feature_type}_archive"
-    refreshed = preparation.refresh and path not in preparation.prepared
-    if not refreshed and _matching_coverage(path, dataset, bounds):
-        logger.info("Gebiedsgerichte BGT-bron hergebruiken: %s", path)
-        return path
+    if not preparation.refresh and _matching_coverage(legacy, dataset, bounds):
+        logger.info("Bestaande gebiedsgerichte BGT-bron hergebruiken: %s", legacy)
+        return legacy
     if path.exists() and not _owned(path, dataset):
         raise ValueError(
             f"Onbekend of gewijzigd bestand in beheerde BGT-broncache: {path}"
@@ -219,6 +234,7 @@ def _prepared_source(
     preparation: SourcePreparation,
     reuse_only: bool,
     bounds: tuple,
+    scope: str | None = None,
 ) -> Path:
     dataset = "top10nl" if layer.openbare_bron == "top10nl" else layer.layer
     fallback = (
@@ -233,12 +249,30 @@ def _prepared_source(
         else store.bgt_dir / "bgt.gpkg"
     )
     coverage = None if dataset == "top10nl" else bounds
-    for candidate in dict.fromkeys((layer.path, standard, fallback)):
+    target = layer.path
+    if scope is not None:
+        if dataset == "top10nl":
+            target = standard
+        else:
+            target = store.bgt_dir / scope / PUBLIC_BRAND_SOURCES[layer.bron].filename
+    candidates = [target, layer.path, standard, fallback]
+    candidates.append(store.source_data_dir / "brandlagen" / "bgt" / f"{dataset}.gpkg")
+    if scope is not None:
+        candidates.append(store.bgt_dir / scope / f"{dataset}.gpkg")
+    if reuse_only:
+        candidates.insert(0, layer.path)
+    if dataset == "top10nl":
+        candidates.append(store.top10nl_dir / "openbaar" / TOP10NL_FILENAME)
+    for candidate in dict.fromkeys(candidates):
         refreshed = preparation.refresh and candidate not in preparation.prepared
         if not refreshed and _reusable(candidate, dataset, layer.layer, coverage):
             logger.info("Openbare brandbron hergebruiken: %s", candidate)
             return candidate
-    target = _destination(layer.path, fallback, dataset)
+    if scope is not None:
+        fallback = target
+        if dataset == "top10nl":
+            fallback = store.top10nl_dir / "openbaar" / TOP10NL_FILENAME
+    target = _destination(target, fallback, dataset)
     _require_preparation(target, preparation, reuse_only, download=dataset == "top10nl")
     target.parent.mkdir(parents=True, exist_ok=True)
     if dataset == "top10nl":
@@ -253,7 +287,7 @@ def _prepared_source(
         upstream = ()
     else:
         feature_type = layer.layer.removeprefix("bgt_")
-        archive = _archive(store, preparation, feature_type, bounds)
+        archive = _archive(store, preparation, feature_type, bounds, scope)
         if _read_json(_manifest(archive)).get("coverage") == "national":
             coverage = None
         logger.info("BGT-laag %s voorbereiden uit %s", layer.layer, archive)
@@ -276,18 +310,37 @@ def _bgt_culverts(
     selection: BaseGeometry,
     preparation: SourcePreparation,
     reuse_only: bool,
+    scope: str | None = None,
 ) -> Path:
     dataset = "bgt_duiker"
     fallback = store.processed_data_dir / "brandlagen" / "openbaar" / "bgt_duikers.gpkg"
     bounds = selection.bounds
-    for candidate in dict.fromkeys((layer.path, fallback)):
+    target = layer.path
+    if scope is not None:
+        target = store.bgt_dir / scope / "bgt_duikers.gpkg"
+    candidates = [target, layer.path, fallback]
+    candidates.append(store.source_data_dir / "brandlagen" / "bgt" / "bgt_duikers.gpkg")
+    if scope is not None:
+        candidates.append(store.processed_data_dir / "bgt" / scope / "bgt_duikers.gpkg")
+    if reuse_only:
+        candidates.insert(0, layer.path)
+    for candidate in dict.fromkeys(candidates):
         refreshed = preparation.refresh and candidate not in preparation.prepared
         if not refreshed and _reusable(candidate, dataset, layer.layer, bounds):
             logger.info("BGT-duikerselectie hergebruiken: %s", candidate)
             return candidate
-    target = _destination(layer.path, fallback, dataset)
+    if scope is not None:
+        fallback = target
+    target = _destination(target, fallback, dataset)
     _require_preparation(target, preparation, reuse_only, download=False)
-    raw = store.bgt_dir / "brandlagen" / "bgt_kunstwerkdeel.gpkg"
+    legacy_raw = store.bgt_dir / "brandlagen" / "bgt_kunstwerkdeel.gpkg"
+    raw = legacy_raw if scope is None else store.bgt_dir / scope / legacy_raw.name
+    if (
+        not preparation.refresh
+        and not _reusable(raw, "bgt_kunstwerkdeel", "bgt_kunstwerkdeel", bounds)
+        and _reusable(legacy_raw, "bgt_kunstwerkdeel", "bgt_kunstwerkdeel", bounds)
+    ):
+        raw = legacy_raw
     if raw.exists() and not _owned(raw, "bgt_kunstwerkdeel"):
         raise ValueError(
             f"Onbekend of gewijzigd bestand in beheerde BGT-broncache: {raw}"
@@ -296,7 +349,7 @@ def _bgt_culverts(
     if refresh_raw or not _reusable(
         raw, "bgt_kunstwerkdeel", "bgt_kunstwerkdeel", bounds
     ):
-        archive = _archive(store, preparation, "kunstwerkdeel", bounds)
+        archive = _archive(store, preparation, "kunstwerkdeel", bounds, scope)
         if refresh_raw or not _reusable(
             raw, "bgt_kunstwerkdeel", "bgt_kunstwerkdeel", bounds
         ):
@@ -328,6 +381,8 @@ def prepare_bgt_signal_source(
     preparation: SourcePreparation,
     *,
     reuse_only: bool = False,
+    area: ProductionArea | None = None,
+    existing_path: Path | None = None,
 ) -> Path:
     """Prepare all BGT culverts for inspection without adding a burn layer.
 
@@ -341,20 +396,29 @@ def prepare_bgt_signal_source(
         Offline and refresh policy, shared with optional BGT burn sources.
     reuse_only : bool, optional
         Require a compatible existing source for resume or overwrite.
+    area : ProductionArea, optional
+        Store new sources by production area. Existing compatible sources are
+        reused in place. Without this argument, retain the legacy cache paths.
+    existing_path : Path, optional
+        Source recorded by an existing run. Reuse this exact file or fail.
 
     Returns
     -------
     Path
         Prepared ``bgt_duiker`` layer retaining original lines and polygons.
     """
+    if existing_path is not None:
+        if not _reusable(existing_path, "bgt_duiker", "bgt_duiker", selection.bounds):
+            raise ValueError(
+                "BGT-duikerbron van bestaande run ontbreekt of is gewijzigd"
+            )
+        return existing_path
+    scope = area_name(area) if area is not None else None
     layer = Brandlaag(
-        store.processed_data_dir / "brandlagen" / "openbaar" / "bgt_duikers.gpkg",
-        "bgt_duiker",
-        rol="duiker",
-        bron="bgt",
-        openbare_bron="bgt",
+        store.bgt_dir / (scope or "brandlagen") / "bgt_duikers.gpkg",
+        bron="bgt_duikers",
     )
-    return _bgt_culverts(layer, store, selection, preparation, reuse_only)
+    return _bgt_culverts(layer, store, selection, preparation, reuse_only, scope)
 
 
 def _osm_reusable(path: Path, layer: str, bounds: tuple) -> bool:
@@ -387,6 +451,7 @@ def _osm(
     bounds: tuple,
     preparation: SourcePreparation,
     reuse_only: bool,
+    scope: str | None = None,
 ) -> Path:
     standard = (
         store.source_data_dir
@@ -398,7 +463,13 @@ def _osm(
         )
     )
     fallback = standard.parent / "brandlagen" / standard.name
-    for candidate in dict.fromkeys((layer.path, standard, fallback)):
+    target = layer.path
+    if scope is not None:
+        target = standard.parent / scope / standard.name
+    candidates = [target, layer.path, standard, fallback]
+    if reuse_only:
+        candidates.insert(0, layer.path)
+    for candidate in dict.fromkeys(candidates):
         refreshed = preparation.refresh and candidate not in preparation.prepared
         if not refreshed and _osm_reusable(candidate, layer.layer, bounds):
             logger.info(
@@ -406,7 +477,8 @@ def _osm(
             )
             return candidate
     # Only replace an output whose native download metadata still matches.
-    target = layer.path
+    if scope is not None:
+        fallback = target
     if target.exists():
         meta = _read_json(target.with_suffix(".json"))
         own_bounds = meta.get("selection", {}).get("bounds")
@@ -456,6 +528,7 @@ def prepare_brand_sources(
     preparation: SourcePreparation,
     *,
     reuse_only: bool = False,
+    area: ProductionArea | None = None,
 ) -> PreparedBrandSources:
     """Resolve only explicitly requested public layers before calculating a run.
 
@@ -476,6 +549,10 @@ def prepare_brand_sources(
         or reuse-only operation.
     reuse_only : bool, optional
         Require existing compatible sources for resume or overwrite.
+    area : ProductionArea, optional
+        Store new BGT and OSM sources by production area and TOP10NL in its
+        source directory. Existing compatible files are reused in place.
+        Without this argument, retain explicit paths and legacy cache locations.
 
     Returns
     -------
@@ -486,6 +563,17 @@ def prepare_brand_sources(
         raise ValueError(
             "Bronnen vernieuwen vereist een nieuwe run zonder offline of hervatten"
         )
+    scope = area_name(area) if area is not None else None
+    resolved_layers = []
+    for layer in config.lagen:
+        if layer.bron is not None and layer.path is None:
+            specification = PUBLIC_BRAND_SOURCES[layer.bron]
+            directory = store.source_data_dir / specification.provider
+            if specification.provider != "top10nl":
+                directory = directory / (scope or "brandlagen")
+            layer = replace(layer, path=directory / specification.filename)
+        resolved_layers.append(layer)
+    config = replace(config, lagen=tuple(resolved_layers))
     for layer in config.lagen:
         if layer.openbare_bron is None and not layer.path.is_file():
             raise FileNotFoundError(
@@ -502,12 +590,16 @@ def prepare_brand_sources(
         if key in resolved:
             target = resolved[key]
         elif layer.openbare_bron == "osm":
-            target = _osm(layer, store, selection.bounds, preparation, reuse_only)
+            target = _osm(
+                layer, store, selection.bounds, preparation, reuse_only, scope
+            )
         elif layer.layer == "bgt_duiker":
-            target = _bgt_culverts(layer, store, selection, preparation, reuse_only)
+            target = _bgt_culverts(
+                layer, store, selection, preparation, reuse_only, scope
+            )
         else:
             target = _prepared_source(
-                layer, store, preparation, reuse_only, selection.bounds
+                layer, store, preparation, reuse_only, selection.bounds, scope
             )
         resolved[key] = target
         validate_geopackage(target)

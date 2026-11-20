@@ -2,14 +2,8 @@
 editorial_status: ai
 ---
 
-# AI coding agents
+# Werken met een AI-assistent
 
-AI coding agents kunnen contributors helpen bij code en documentatie. De
-contributor blijft verantwoordelijk voor de wijziging, review en validatie.
+Controleer of de assistent `AGENTS.md` uit uw werkmap leest. Geef het bestand zelf mee als uw tool het niet automatisch opent. Beoordeel en test de voorgestelde wijzigingen voordat u een pull request opent.
 
-Wie Codex, Copilot, Claude of een andere agent gebruikt, zorgt dat de agent de
-repository-instructies in [AGENTS.md](https://github.com/d2hydro/waterlagen/blob/main/AGENTS.md) ontvangt en volgt. Ga niet uit van
-automatische detectie: controleer dit voor de gebruikte tool of geef het bestand
-expliciet mee.
-
-De projectbrede toelichting op AI-gebruik staat op [AI-gebruik](../over/ai-gebruik.md).
+[Projectinstructies op GitHub](https://github.com/d2hydro/waterlagen/blob/main/AGENTS.md) · [Hoe het project AI gebruikt](../over/ai-gebruik.md)

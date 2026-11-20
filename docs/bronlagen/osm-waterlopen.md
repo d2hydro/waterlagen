@@ -7,19 +7,23 @@ editorial_status: ai
 ## Beschrijving
 
 OpenStreetMap bevat waterlijnen en duikertrajecten. Voor aanvullende brandlagen
-kunnen de volgende selecties worden aangeleverd:
+zijn kanalen, sloten, greppels, afvoerwatergangen, beken en duikers beschikbaar.
 
-| Selectie | OSM-kenmerk | Voorbeeldlaag |
-| --- | --- | --- |
-| Kanalen | `waterway=canal` | `osm_canals` |
-| Sloten en greppels | `waterway=ditch` | `osm_ditches` |
-| Afvoerwatergangen | `waterway=drain` | `osm_drains` |
-| Beken | `waterway=stream` | `osm_streams` |
-| Duikers | `tunnel=culvert` | `osm_culvert` |
+??? info "Selecties, OSM-kenmerken en laagnamen"
 
-## Leverancier
+    | Selectie | OSM-kenmerk | Voorbeeldlaag |
+    | --- | --- | --- |
+    | Kanalen | `waterway=canal` | `osm_canals` |
+    | Sloten en greppels | `waterway=ditch` | `osm_ditches` |
+    | Afvoerwatergangen | `waterway=drain` | `osm_drains` |
+    | Beken | `waterway=stream` | `osm_streams` |
+    | Duikers | `tunnel=culvert` | `osm_culvert` |
 
-OpenStreetMap-bijdragers.
+<span id="leverancier"></span>
+
+## Herkomst
+
+OpenStreetMap-bijdragers onderhouden de kaartobjecten. De selectie wordt opgehaald via de Overpass API.
 
 ## Dataset of service
 
@@ -30,11 +34,13 @@ De geometrie staat in het project-CRS.
 Per lijn worden OSM-ID, naam, tags, OSM-peildatum en bronvermelding bewaard.
 Een JSON-bestand naast het GeoPackage bewaart de selectie en downloadquery.
 
-De opgegeven grenzen bepalen de selectie. Kruisende lijnen blijven heel.
-De download van open waterlopen slaat trajecten met `tunnel` of `covered` anders dan `no` en
-`location=underground` over. Ontbrekende tags gelden als open trajecten.
-Duikers worden apart geselecteerd met `tunnel=culvert`, ongeacht het waterwaytype.
-Hetzelfde downloadscript haalt beide selecties op.
+??? info "Welke lijnen vallen binnen de selectie?"
+
+    De opgegeven grenzen bepalen de selectie. Kruisende lijnen blijven heel.
+    De download van open waterlopen slaat trajecten met `tunnel` of `covered` anders dan `no` en
+    `location=underground` over. Ontbrekende tags gelden als open trajecten.
+    Duikers worden apart geselecteerd met `tunnel=culvert`, ongeacht het waterwaytype.
+    Hetzelfde downloadscript haalt beide selecties op.
 
 De registratie geeft geen garantie dat lijnen hydraulisch verbonden zijn.
 

@@ -2,41 +2,46 @@
 editorial_status: ai
 ---
 
-# Productie-API
+# Een productie starten vanuit Python
 
-Zie [Python gebruiken](gebruik.md) voor voorbeelden en
-[productiecommando's](../produceren/cli.md) voor het gedeelde gedrag.
+Kies een kaartlaag voor de aanroep, de standaardinstellingen en de uitvoer.
 
-## Auto's
+[Bekijk de voorbeeldscripts](bewerkte-lagen-produceren.md){ .md-button }
 
-::: waterlagen.autos.productie.main
+<span id="autos"></span>
 
-## Inwoners
+??? info "Personenauto’s berekenen · `main`"
 
-::: waterlagen.inwoners.productie.main
+    ::: waterlagen.autos.productie.main
 
-## Afwateringseenheden
+<span id="inwoners"></span>
 
-::: waterlagen.afwateringseenheden.productie.main
+??? info "Inwoners berekenen · `main`"
 
-## Functioneel landgebruik
+    ::: waterlagen.inwoners.productie.main
 
-::: waterlagen.functioneel_landgebruik.productie.main
+<span id="afwateringseenheden"></span>
 
-## DEM
+??? info "Afwateringseenheden berekenen · `main`"
 
-::: waterlagen.dem.workflow.main
+    ::: waterlagen.afwateringseenheden.productie.main
+
+<span id="functioneel-landgebruik"></span>
+
+??? info "Landgebruik berekenen · `main`"
+
+    ::: waterlagen.functioneel_landgebruik.productie.main
+
+<span id="dem"></span>
+
+??? info "DEM berekenen · `main`"
+
+    ::: waterlagen.dem.workflow.main
 
 ## Gebieden
 
-::: waterlagen.areas.area_from_bounds
+Gebruik `area="alkmaar"` voor Alkmaar of maak een eigen rechthoek met `area_from_bounds`.
 
-::: waterlagen.areas.ProductionArea
+??? info "Gebied uit coördinaten · `area_from_bounds`"
 
-::: waterlagen.areas.resolve_area
-
-::: waterlagen.areas.Area
-
-## Logging
-
-::: waterlagen.logger.production_logging
+    ::: waterlagen.areas.area_from_bounds

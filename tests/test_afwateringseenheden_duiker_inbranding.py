@@ -15,7 +15,7 @@ from waterlagen.afwateringseenheden._duiker_inbranding import (
     _read_burn_counts,
 )
 from waterlagen.afwateringseenheden._signaalnetwerk import read_used_network
-from waterlagen.afwateringseenheden.config import BrandlagenConfig
+from waterlagen.afwateringseenheden.config import Brandlaag, BrandlagenConfig
 from waterlagen.afwateringseenheden.waternet import prepare_waternet
 from waterlagen.settings import settings
 
@@ -62,6 +62,12 @@ def calculate(tmp_path, data, *, extra=None, depth=10, boundary=None):
         "output_dir": tmp_path / "berekening" / "tegels" / "test",
         "landsgrens_path": boundary_path,
     }
+    if extra is not None:
+        path = tmp_path / "optional.gpkg"
+        extra.to_file(path, layer="objects")
+        options["brandlagen"] = BrandlagenConfig(
+            (Brandlaag(path, "objects", brandwaarde=-7, prioriteit=1),)
+        )
     result = prepare_watersysteem_rasters(box(0, 0, 40, 40), **options)
     return result, options
 
@@ -117,7 +123,7 @@ def test_zero_depth_is_not_actual_burning(tmp_path):
     assert counts["hydamo-0"]["toegepast"] == 0
 
 
-def test_optional_depth_priority_keeps_matching_object_identity(tmp_path):
+def test_optional_depth_priority_burns_without_network_classification(tmp_path):
     geometry = line((11, 21), (21, 21))
     extra = optional([geometry, geometry], ["duiker", "duiker"], ["bgt", "bgt"])
     # Both registrations belong to one source layer; high priority is first.
@@ -128,10 +134,28 @@ def test_optional_depth_priority_keeps_matching_object_identity(tmp_path):
     result, _ = calculate(tmp_path, data, extra=extra)
     counts, complete = _read_burn_counts([result.dem_path])
     assert complete
-    assert counts["optional.gpkg|objects|0"]["toegepast"] > 0
-    assert counts["optional.gpkg|objects|1"]["toegepast"] == 0
+    # Additional layers are represented by brandbron, not classified as HYDAMO.
+    assert counts == {}
     with rasterio.open(result.dem_path) as source:
         assert source.read(1)[cell(grid(), 15, 21)] == 93
+
+
+@pytest.mark.parametrize("polygon", [False, True])
+@pytest.mark.parametrize("primary_exclusion", [False, True])
+def test_explicit_optional_geometry_burns_even_without_connections(
+    tmp_path, polygon, primary_exclusion
+):
+    geometry = box(11, 20, 29, 22) if polygon else line((11, 21), (29, 21))
+    extra = optional([geometry], ["duiker"], ["bgt"])
+    data = sources(
+        primary=[line((1, 21), (39, 21))] if primary_exclusion else [],
+        culverts=[line((11, 21), (29, 21))] if primary_exclusion else [],
+    )
+    result, _ = calculate(tmp_path, data, extra=extra)
+    with rasterio.open(result.dem_path) as source:
+        assert source.read(1)[cell(grid(), 15, 21)] == 93
+    with rasterio.open(result.dem_path.with_name("brandbron.tif")) as source:
+        assert source.read(1)[cell(grid(), 15, 21)] == 3
 
 
 @pytest.mark.parametrize("damage", ["missing", "stale", "invalid"])

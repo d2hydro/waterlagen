@@ -151,20 +151,20 @@ def test_unconnected_culvert_is_control_only(tmp_path):
     assert not excluded.any()
 
 
-def test_bgt_polygon_connects_without_centerline_derivation(tmp_path):
+def test_optional_polygon_does_not_enter_network_classification(tmp_path):
     data = sources(secondary=[line((1, 21), (11, 21)), line((21, 21), (37, 21))])
     extra = optional([box(10, 20, 22, 22)], ["duiker"], ["bgt"])
-    classified = _classify_culverts(data, extra, grid())
-    assert classified.behandeling.tolist() == ["aanvoer"]
+    assert _classify_culverts(data, extra, grid()).empty
     network = prepare(tmp_path, data, extra)
-    treatment, _, excluded, _, _ = read_waternet(network, grid())
-    assert treatment[cell(grid(), 15, 21)] == 3
-    assert excluded[cell(grid(), 15, 21)]
+    treatment, codes, excluded, _, _ = read_waternet(network, grid())
+    assert treatment[cell(grid(), 15, 21)] == 0
+    assert codes[cell(grid(), 15, 21)] == 0
+    assert not excluded[cell(grid(), 15, 21)]
 
 
 @pytest.mark.parametrize("culvert_origin", ["bgt", "osm", "hydamo"])
 @pytest.mark.parametrize("polygon", [False, True])
-def test_culvert_between_optional_waterlines_is_shallow(
+def test_optional_connections_never_promote_the_core_network(
     tmp_path, culvert_origin, polygon
 ):
     geometry = box(10, 20, 22, 22) if polygon else line((11, 21), (21, 21))
@@ -174,18 +174,14 @@ def test_culvert_between_optional_waterlines_is_shallow(
         ["water", "water", "duiker"],
         ["osm", "osm", culvert_origin],
     )
-    extra["brandwaarde"] = -7.0
-    extra["prioriteit"] = 1
-    classified = _classify_culverts(data, extra, grid())
-    assert classified.behandeling.tolist() == ["aanvoer"]
-    assert not classified.diep_geschikt.any()
+    assert _classify_culverts(data, extra, grid()).empty
     network = prepare(tmp_path, data, extra)
-    treatment, codes, excluded, _, shallow = read_waternet(network, grid())
+    treatment, codes, excluded, _, _ = read_waternet(network, grid())
     middle = cell(grid(), 15, 21)
-    assert treatment[middle] == 3
-    assert codes[middle] == 5
-    assert shallow[middle] == 7.0
-    assert excluded[middle]
+    assert treatment[middle] == 0
+    assert codes[middle] == 0
+    assert not excluded[middle]
+    assert treatment[cell(grid(), 37, 21)] == 1
 
 
 @pytest.mark.parametrize("water_source", ["secondary", "primary", "optional"])
@@ -202,7 +198,7 @@ def test_crossing_line_does_not_activate_polygon_culvert(tmp_path, water_source)
             [crossing, box(10, 20, 32, 22)], ["water", "duiker"], ["osm", "bgt"]
         )
     classified = _classify_culverts(data, extra, grid())
-    assert classified.behandeling.tolist() == ["controle"]
+    assert classified.empty
     network = prepare(tmp_path, data, extra)
     treatment, _, excluded, _, _ = read_waternet(network, grid())
     assert treatment[cell(grid(), 15, 21)] == 0
@@ -222,18 +218,18 @@ def test_polygon_culvert_accepts_multipart_water_and_surface_contacts(surface_wa
         ["osm"] * len(water) + ["bgt"],
     )
     classified = _classify_culverts(sources(), extra, grid())
-    assert classified.behandeling.tolist() == ["aanvoer"]
+    assert classified.empty
     assert not classified.diep_geschikt.any()
     extra.loc[extra.rol.eq("water"), "rol"] = "overig"
     classified = _classify_culverts(sources(), extra, grid())
-    assert classified.behandeling.tolist() == ["controle"]
+    assert classified.empty
 
 
 def test_polygon_culvert_does_not_count_duplicate_endpoints_twice():
     data = sources(secondary=[line((1, 21), (11, 21)), line((1, 22), (11, 21))])
     extra = optional([box(10, 20, 22, 22)], ["duiker"], ["bgt"])
     classified = _classify_culverts(data, extra, grid())
-    assert classified.behandeling.tolist() == ["controle"]
+    assert classified.empty
 
 
 def test_old_contact_policy_is_rejected_and_rebuilt(tmp_path, monkeypatch):
@@ -263,13 +259,8 @@ def test_source_preference_retains_provenance_and_does_not_merge_crossings():
         ["bgt", "osm", "osm"],
     )
     classified = _classify_culverts(data, extra, grid())
-    assert classified.behandeling.tolist() == [
-        "primair_primair",
-        "dubbel",
-        "dubbel",
-        "controle",
-    ]
-    assert classified.voorkeur_id.tolist()[1:3] == ["hydamo-0", "hydamo-0"]
+    assert classified.behandeling.tolist() == ["primair_primair"]
+    assert classified.bron_id.tolist() == ["hydamo-0"]
 
 
 def test_components_connect_across_overlapping_tile_buffers(tmp_path):
@@ -289,7 +280,7 @@ def test_overlap_water_is_shallow_with_isolated_hydamo(tmp_path):
     network = prepare(tmp_path, data, extra)
     treatment, _, _, _, _ = read_waternet(network, grid())
     assert treatment[cell(grid(), 5, 21)] == 3
-    assert treatment[cell(grid(), 5, 19)] == 3
+    assert treatment[cell(grid(), 5, 19)] == 0
 
 
 def test_connected_additional_water_and_tertiary_remain_shallow(tmp_path):
@@ -303,7 +294,7 @@ def test_connected_additional_water_and_tertiary_remain_shallow(tmp_path):
     treatment, codes, _, _, shallow = read_waternet(network, grid())
     assert treatment[cell(grid(), 5, 21)] == 2
     assert codes[cell(grid(), 5, 21)] == 2
-    assert treatment[cell(grid(), 5, 19)] == 3
+    assert treatment[cell(grid(), 5, 19)] == 0
     assert treatment[cell(grid(), 5, 11)] == 3
     assert treatment[cell(grid(), 37, 21)] == 1
     assert np.all(shallow == 10)
@@ -318,8 +309,8 @@ def test_connected_additional_culvert_remains_shallow(tmp_path, origin):
     extra = optional([line((11, 21), (21, 21))], ["duiker"], [origin])
     network = prepare(tmp_path, data, extra)
     treatment, _, excluded, _, _ = read_waternet(network, grid())
-    assert treatment[cell(grid(), 15, 21)] == 3
-    assert excluded[cell(grid(), 15, 21)]
+    assert treatment[cell(grid(), 15, 21)] == 0
+    assert not excluded[cell(grid(), 15, 21)]
     # A shallow connection cannot turn an otherwise isolated secondary into
     # a 100 m depression whose only exit has been lowered by just 10 m.
     assert treatment[cell(grid(), 5, 21)] == 3
@@ -334,7 +325,7 @@ def test_optional_water_does_not_promote_isolated_hydamo_to_deep(tmp_path):
     network = prepare(tmp_path, data, extra)
     treatment, _, _, _, _ = read_waternet(network, grid())
     assert treatment[cell(grid(), 5, 21)] == 3
-    assert treatment[cell(grid(), 23, 21)] == 3
+    assert treatment[cell(grid(), 23, 21)] == 0
 
 
 @pytest.mark.parametrize("origin", ["bgt", "osm"])
@@ -360,10 +351,10 @@ def test_shallow_culvert_cannot_overwrite_deep_hydamo_connection(tmp_path, origi
     assert treatment[cell(grid(), 21, 21)] == 2
     assert codes[cell(grid(), 21, 21)] == 5  # HYDAMO culvert, after optional codes.
     assert excluded[cell(grid(), 21, 21)]
-    assert treatment[cell(grid(), 21, 15)] == 3
-    assert codes[cell(grid(), 21, 15)] == 3
+    assert treatment[cell(grid(), 21, 15)] == 0
+    assert codes[cell(grid(), 21, 15)] == 0
     assert treatment[cell(grid(), 5, 21)] == 2
-    assert treatment[cell(grid(), 5, 19)] == 3
+    assert treatment[cell(grid(), 5, 19)] == 0
 
 
 def test_secondary_tertiary_hydamo_culvert_is_not_deep(tmp_path):
@@ -395,7 +386,7 @@ def test_configured_shallow_depths_and_hydamo_precedence(tmp_path):
     network = prepare(tmp_path, data, extra)
     treatment, _, _, _, depths = read_waternet(network, grid())
     assert depths[cell(grid(), 5, 17)] == 10
-    assert depths[cell(grid(), 25, 17)] == 5
+    assert depths[cell(grid(), 25, 17)] == 10
     assert treatment[cell(grid(), 5, 21)] == 2
     assert treatment[cell(grid(), 25, 21)] == 2
 
@@ -515,15 +506,12 @@ def test_culvert_preserves_crossing_allowed_primary_and_secondary(
     assert codes[cell(grid(), 15, 21)] != 0
 
 
-def test_waternet_config_roles(tmp_path):
+def test_waternet_config_public_source_without_roles(tmp_path):
     path = tmp_path / "config.toml"
-    path.write_text(
-        "geisoleerde_branddiepte_m = 10\n"
-        '[[lagen]]\npath="bgt.gpkg"\nlayer="duikers"\nrol="duiker"\nbron="bgt"\n'
-    )
+    path.write_text('geisoleerde_branddiepte_m = 10\n[[lagen]]\nbron="bgt_duikers"\n')
     config = read_brandlagen_config(path)
     assert config.geisoleerde_branddiepte_m == 10
-    assert config.lagen[0].bron == "bgt"
+    assert config.lagen[0].bron == "bgt_duikers"
 
 
 @pytest.mark.parametrize("value", ["true", "false"])
@@ -579,7 +567,7 @@ def test_production_always_prepares_waternet(tmp_path, monkeypatch, additional_s
         path = tmp_path / "bgt.gpkg"
         frame([box(15, 1, 19, 5)]).to_file(path, layer="water")
         config = BrandlagenConfig(
-            (Brandlaag(path, "water", brandwaarde=-10, prioriteit=1, rol="water"),)
+            (Brandlaag(path, "water", brandwaarde=-10, prioriteit=1),)
         )
 
     def calculate(gebied, **kwargs):
@@ -595,7 +583,7 @@ def test_production_always_prepares_waternet(tmp_path, monkeypatch, additional_s
         assert treatment[cell(grid(), 35, 3)] == 3  # isolated secondary
         assert treatment[cell(grid(), 5, 37)] == 3  # tertiary
         if additional_sources:
-            assert treatment[cell(grid(), 17, 3)] == 3
+            assert treatment[cell(grid(), 17, 3)] == 0
         target = kwargs["merged_output_path"]
         areas = frame([box(0, 0, 10, 40), box(10, 0, 40, 40)])
         areas["segment_key"] = ["primary-0", "primary-1"]
@@ -669,12 +657,15 @@ def test_side_connection_reaches_primary_target_through_burned_culvert(tmp_path)
     extra["brandwaarde"] = [-10.0, -5.0]
     extra["prioriteit"] = [2, 1]
     prepare_waternet(data, extra, [grid()], network, BrandlagenConfig())
+    extra_path = tmp_path / "extra.gpkg"
+    extra.to_file(extra_path, layer="water")
     rasters = prepare_watersysteem_rasters(
         box(0, 0, 40, 40),
         burn_depth_m=100,
         ahn_vrt_path=ahn,
         watersysteem_path=network,
         output_dir=tmp_path / "result",
+        brandlagen=BrandlagenConfig((Brandlaag(extra_path, "water"),)),
     )
     result = calculate_subcatchments(rasters, watersysteem_path=network)
     with rasterio.open(result.subcatchments_path) as source:
@@ -686,3 +677,100 @@ def test_side_connection_reaches_primary_target_through_burned_culvert(tmp_path)
         assert elevations[cell(grid(), 5, 31)] == 0  # BGT: 10 - 10.
         assert elevations[cell(grid(), 33, 31)] == 5  # TOP10NL: 10 - 5.
         assert elevations[cell(grid(), 25, 31)] == -90  # Protected HYDAMO.
+
+
+def burn_optional(tmp_path, features):
+    from waterlagen.afwateringseenheden.brandlagen import (
+        BRAND_LAYER,
+        _optional_burn_raster,
+        _PreparedBrandlagen,
+    )
+
+    path = tmp_path / "brandlagen.gpkg"
+    features.to_file(path, layer=BRAND_LAYER)
+    return _optional_burn_raster(_PreparedBrandlagen(path, "test"), grid())
+
+
+@pytest.mark.parametrize("priorities,winner", [([2, 9], 1), ([9, 2], 0), ([2, 2], 1)])
+def test_optional_duplicate_uses_priority_and_then_burn_value(
+    tmp_path, priorities, winner
+):
+    geometry = line((11, 21), (29, 21))
+    data = sources(secondary=[line((1, 21), (11, 21)), line((29, 21), (39, 21))])
+    extra = optional([geometry, geometry], ["duiker", "duiker"], ["bgt", "osm"])
+    extra["prioriteit"] = priorities
+    extra["brandwaarde"] = [-3.0, -7.0]
+    assert _classify_culverts(data, extra, grid()).empty
+    burned = burn_optional(tmp_path, extra)
+    point = cell(grid(), 21, 21)
+    assert burned.sources[point] == int(extra.iloc[winner].broncode)
+    assert burned.values[point] == extra.iloc[winner].brandwaarde
+
+
+@pytest.mark.parametrize("origins", [["bgt", "osm"], ["osm", "bgt"], [None, None]])
+def test_crossing_optional_culverts_use_priority(tmp_path, origins):
+    data = sources(
+        secondary=[
+            line((1, 21), (11, 21)),
+            line((29, 21), (39, 21)),
+            line((21, 1), (21, 11)),
+            line((21, 29), (21, 39)),
+        ]
+    )
+    extra = optional(
+        [line((11, 21), (29, 21)), line((21, 11), (21, 29))],
+        ["duiker", "duiker"],
+        origins,
+    )
+    extra["prioriteit"] = [2, 9]
+    extra["brandwaarde"] = [-3.0, -7.0]
+    classified = _classify_culverts(data, extra, grid())
+    assert classified.empty
+    burned = burn_optional(tmp_path, extra)
+    point = cell(grid(), 21, 21)
+    assert burned.sources[point] == 4
+    assert burned.values[point] == -7
+
+
+@pytest.mark.parametrize("source_file", ["hydamo.gpkg", "rijkswateren.gpkg"])
+def test_hydamo_and_rws_duplicates_always_precede_optional_priority(source_file):
+    geometry = line((11, 21), (29, 21))
+    data = sources(
+        secondary=[line((1, 21), (11, 21)), line((29, 21), (39, 21))],
+        culverts=[geometry],
+    )
+    data.culverts["bronbestand"] = source_file
+    extra = optional([geometry], ["duiker"], ["osm"])
+    extra["prioriteit"] = 2**63 - 1
+    extra["brandwaarde"] = -50.0
+    classified = _classify_culverts(data, extra, grid())
+    winner = classified.loc[classified.behandeling.eq("aanvoer")].iloc[0]
+    assert len(classified) == 1
+    assert winner.bronbestand == source_file
+
+
+def test_own_culvert_without_source_uses_object_priority(tmp_path):
+    from waterlagen.afwateringseenheden.brandlagen import read_brandlagen
+
+    geometry = line((11, 21), (29, 21))
+    path = tmp_path / "eigen.gpkg"
+    objects = frame([geometry, geometry])
+    objects["prioriteit"] = [9, 2]
+    objects["brandwaarde"] = [-7.0, -3.0]
+    objects.to_file(path, layer="duikers")
+    config = BrandlagenConfig((Brandlaag(path, "duikers", -1.0, 100),))
+    extra = read_brandlagen(config)
+    burned = burn_optional(tmp_path, extra)
+    point = cell(grid(), 21, 21)
+    assert burned.sources[point] == 3
+    assert burned.values[point] == -7
+
+
+def test_standard_hydamo_registrations_keep_their_own_connections():
+    geometry = line((11, 21), (29, 21))
+    data = sources(
+        secondary=[line((1, 21), (11, 21)), line((29, 21), (39, 21))],
+        culverts=[geometry, geometry],
+    )
+    classified = _classify_culverts(data, optional(), grid())
+    assert classified.behandeling.tolist() == ["aanvoer", "aanvoer"]

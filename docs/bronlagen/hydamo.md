@@ -9,11 +9,11 @@ editorial_status: ai
 De GKW HYDAMO-download bevat een landelijke GeoPackage met HyDAMO-lagen,
 waaronder hydroobjecten, puntobjecten en duikers, sifons en hevels.
 
-## Leverancier
+<span id="leverancier"></span>
 
-De repository identificeert deze bron als GKW HYDAMO. Het package-endpoint bevat
-geen afzonderlijke leveranciersmetadata; bevestig eigenaar, versie en
-gebruiksvoorwaarden bij een inhoudelijke publicatie.
+## Herkomst
+
+De waterschappen leveren hun objectgegevens aan het Gegevensknooppunt waterschappen (GkW). Het Nederlands Hydrologisch Instrumentarium (NHI) stelt het HyDAMO-pakket beschikbaar. [Aanlevering per waterschap](https://datastromen.hetwaterschapshuis.nl/hydamo)
 
 ## Dataset of service
 

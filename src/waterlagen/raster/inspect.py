@@ -51,7 +51,18 @@ def _add_metadata(lines: list[str], title: str, metadata: dict[str, str]) -> Non
 
 
 def inspect_raster(file: Path) -> None:
-    """Log lazy GDAL raster metadata for debugging."""
+    """Toon onder meer rasterafmetingen, bandtypen en overzichten in het log.
+
+    Parameters
+    ----------
+    file : pathlib.Path
+        Pad naar het te inspecteren raster.
+
+    Returns
+    -------
+    None
+        De rasterkenmerken verschijnen in het log.
+    """
     file = Path(file)
     if not file.exists():
         raise FileNotFoundError(f"Raster file does not exist: {file}")

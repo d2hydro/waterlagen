@@ -6,6 +6,7 @@ import pytest
 from shapely.geometry import box
 
 from waterlagen._production import production_run
+from waterlagen._run_lock import production_lock
 from waterlagen.areas import Area, area_from_bounds, resolve_workers, select_area_tiles
 from waterlagen.dem import inputs
 
@@ -52,12 +53,124 @@ def fake_input(path, area):
     return inputs.LanduseInput(path, select_area_tiles(grid(), area), [], 0.5)
 
 
-def test_latest_uses_creation_not_folder_name_and_does_not_hide_running(tmp_path):
+def test_latest_uses_creation_not_folder_name(tmp_path):
     old = record(tmp_path, "nederland", "zzz")
-    new = record(tmp_path, "nederland", "aaa", "2026-02-01T00:00:00+00:00", "running")
+    new = record(tmp_path, "nederland", "aaa", "2026-02-01T00:00:00+00:00")
     assert inputs.latest_run(old.parent) == new
-    with pytest.raises(RuntimeError, match="running"):
-        inputs.validate_landuse_run(new, Area.nederland, 5)
+
+
+@pytest.mark.parametrize(
+    "status,locked",
+    [("running", True), ("running", False), ("failed", False), ("complete", True)],
+)
+def test_latest_prefers_completed_unlocked_run(tmp_path, status, locked):
+    completed = record(tmp_path, "nederland", "afgerond")
+    unfinished = record(
+        tmp_path, "nederland", "later-gestart", "2026-02-01T00:00:00+00:00", status
+    )
+    if locked:
+        (unfinished / ".run.lock").touch()
+    assert inputs.latest_run(completed.parent) == completed
+    assert (unfinished / ".run.lock").exists() == locked
+
+
+def test_active_same_area_run_still_blocks_automatic_production(tmp_path):
+    path = record(tmp_path, "alkmaar", "proef", status="running")
+    store = SimpleNamespace(processed_data_dir=tmp_path)
+    with (
+        production_lock(path),
+        pytest.raises(inputs.LanduseRunBusy, match="is vergrendeld"),
+    ):
+        inputs.find_landuse_input(store, Area.alkmaar, 5)
+
+
+def test_dem_produces_landuse_beside_interrupted_run_with_same_name(
+    tmp_path, monkeypatch
+):
+    interrupted = record(tmp_path, "alkmaar", "proef", status="running")
+    (interrupted / ".run.guard").touch()
+    (interrupted / ".run.lock").write_bytes(b"waterlagen-run-lock-v2\n")
+    files = {p: p.read_bytes() for p in interrupted.iterdir()}
+    store = SimpleNamespace(processed_data_dir=tmp_path)
+    validate = inputs.validate_landuse_run
+    produced = []
+
+    def produce(store, *, area, run_id, **kwargs):
+        produced.append(record(store.processed_data_dir, area.value, run_id))
+
+    def validate_input(path, area, context):
+        if path in produced:
+            return fake_input(path, area)
+        return validate(path, area, context)
+
+    monkeypatch.setattr(inputs.landuse_production, "main", produce)
+    monkeypatch.setattr(inputs, "validate_landuse_run", validate_input)
+    with production_run(
+        tmp_path, "dem", "alkmaar", run_id="proef", parameters={}
+    ) as run:
+        result = inputs.resolve_landuse(store, run, Area.alkmaar, 5)
+
+    assert produced == [result.path]
+    assert result.path != interrupted
+    assert run.metadata["landuse_dependency"]["created_by_dem"] is True
+    assert {p: p.read_bytes() for p in interrupted.iterdir()} == files
+
+
+def test_dem_reuses_completed_landuse_beside_abandoned_run(tmp_path, monkeypatch):
+    completed = record(tmp_path, "alkmaar", "afgerond")
+    abandoned = record(
+        tmp_path, "alkmaar", "afgebroken", "2026-02-01T00:00:00+00:00", "running"
+    )
+    (abandoned / ".run.lock").touch()
+    checked = []
+
+    def validate(path, area, context):
+        checked.append(path)
+        assert path == completed
+        return fake_input(path, area)
+
+    monkeypatch.setattr(inputs, "validate_landuse_run", validate)
+    monkeypatch.setattr(
+        inputs.landuse_production,
+        "main",
+        lambda *args, **kwargs: pytest.fail("Onnodige landgebruikproductie"),
+    )
+    with production_run(
+        tmp_path, "dem", "alkmaar", run_id="proef", parameters={}
+    ) as run:
+        result = inputs.resolve_landuse(
+            SimpleNamespace(processed_data_dir=tmp_path), run, Area.alkmaar, 5
+        )
+    assert result.path == completed
+    assert checked == [completed]
+    assert run.metadata["landuse_dependency"] == {
+        "path": str(completed.resolve()),
+        "created_by_dem": False,
+    }
+
+
+@pytest.mark.parametrize("locked", [False, True])
+def test_blocked_landuse_explains_possible_interruption_and_next_step(tmp_path, locked):
+    path = record(tmp_path, "nederland", "afgebroken", status="running")
+    lock = path / ".run.lock"
+    if locked:
+        lock.touch()
+    original = (path / "run.json").read_bytes()
+
+    with pytest.raises(inputs.LanduseRunBusy if locked else ValueError) as error:
+        inputs.validate_landuse_run(path, Area.nederland, 5)
+
+    message = str(error.value)
+    assert "afgebroken" in message
+    assert str(path) in message
+    if locked:
+        assert "is vergrendeld" in message
+        assert "afgeronde run met --landuse-run" in message
+    else:
+        assert "is onvoltooid" in message
+        assert "Hervat deze run" in message
+    assert (path / "run.json").read_bytes() == original
+    assert lock.exists() == locked
 
 
 @pytest.mark.parametrize(
@@ -224,3 +337,25 @@ def test_explicit_invalid_dependency_does_not_fallback(tmp_path, monkeypatch):
             5,
             tmp_path / "explicit",
         )
+
+
+@pytest.mark.parametrize("locked", [True, False])
+def test_automatic_search_skips_busy_other_scope(tmp_path, monkeypatch, locked):
+    other = record(tmp_path, "waterschappen_12_25", "proef", status="running")
+    if locked:
+        (other / ".run.lock").touch()
+    store = SimpleNamespace(processed_data_dir=tmp_path)
+    area = Area.alkmaar
+    assert inputs.find_landuse_input(store, area, 5) is None
+    with pytest.raises(inputs.LanduseRunBusy if locked else ValueError):
+        inputs.validate_landuse_run(other, area, 5)
+    later = record(tmp_path, "waterschappen_2_12_59", "klaar")
+    original = inputs.validate_landuse_run
+
+    def validate(path, selected, context):
+        if path == later:
+            return fake_input(path, selected)
+        return original(path, selected, context)
+
+    monkeypatch.setattr(inputs, "validate_landuse_run", validate)
+    assert inputs.find_landuse_input(store, area, 5).path == later

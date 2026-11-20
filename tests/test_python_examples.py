@@ -448,16 +448,19 @@ def test_afwatering_example_connects_steps_and_passes_settings(
     ]
     if source_kind != "none":
         hydro.to_file(tmp_path / "brandlagen.gpkg", layer="osm_canals", driver="GPKG")
-        public_option = 'openbare_bron = "osm"\n' if source_kind == "public" else ""
+        source_option = (
+            'bron = "osm_canals"\n'
+            if source_kind == "public"
+            else 'path = "requested.gpkg"\nlayer = "osm_canals"\n'
+        )
         (tmp_path / "brandlagen.toml").write_text(
             "[defaults]\nbrandwaarde = -3.0\nprioriteit = 2\n"
-            '[[lagen]]\npath = "requested.gpkg"\nlayer = "osm_canals"\n'
-            'rol = "water"\n' + public_option,
+            "[[lagen]]\n" + source_option,
             encoding="utf-8",
         )
         prepare_sources.return_value = PreparedBrandSources(
             BrandlagenConfig(
-                (Brandlaag(tmp_path / "brandlagen.gpkg", "osm_canals", rol="water"),),
+                (Brandlaag(tmp_path / "brandlagen.gpkg", "osm_canals"),),
                 brandwaarde=-3.0,
                 prioriteit=2,
             ),
@@ -503,7 +506,8 @@ def test_afwatering_example_connects_steps_and_passes_settings(
     if source_kind != "none":
         prepare_sources.assert_called_once()
         requested = prepare_sources.call_args.args[0].lagen[0]
-        assert requested.path == tmp_path / "requested.gpkg"
+        expected_path = None if source_kind == "public" else tmp_path / "requested.gpkg"
+        assert requested.path == expected_path
         assert requested.openbare_bron == ("osm" if source_kind == "public" else None)
         assert len(waternet.call_args.args[1]) == 2
         assert arguments["brandlagen"].brandwaarde == -3.0

@@ -4,8 +4,7 @@ editorial_status: human
 
 # Bronlagen
 
-Deze pagina's geven een beschrijving van externe datasets en services
-die kunnen worden gedownload. Voor datasets die uit bronnen worden afgeleid zie: [bewerkte lagen](../bewerkte-lagen/index.md).
+Kies een bron voor gegevens over inhoud, herkomst en download. Afgeleide kaarten staan bij [Bewerkte lagen](../bewerkte-lagen/index.md).
 
 - [AHN](ahn.md)
 - [BAG](bag.md)
@@ -17,6 +16,8 @@ die kunnen worden gedownload. Voor datasets die uit bronnen worden afgeleid zie:
 - [GKW HYDAMO](hydamo.md)
 - [LIWO overstromingsgevoelige gebieden](liwo.md)
 - [OSM-drinkwaterlocaties](osm-drinkwater.md)
+- [OSM-waterlopen](osm-waterlopen.md)
+- [Rijkswateren](rijkswateren.md)
 - [TOP10NL](top10nl.md)
 - [Waterketen DAMO](waterketen-damo.md)
 - [Waterschapsgrenzen](waterschapsgrenzen.md)

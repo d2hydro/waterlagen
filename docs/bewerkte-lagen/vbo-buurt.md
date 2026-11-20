@@ -23,43 +23,28 @@ woonfunctie, de CBS-buurt waarin ieder VBO ligt en het aantal woon-VBO's per buu
 
 ### Selectie en buurtkoppeling
 
-Waterlagen selecteert alleen BAG-VBO's met status `Verblijfsobject in gebruik`
-waarbij `woonfunctie` een van de gebruiksdoelen is. Een gecombineerd
-gebruiksdoel, bijvoorbeeld `woonfunctie,kantoorfunctie`, blijft dus behouden.
-De oorspronkelijke VBO-geometrie blijft de geometrie van het resultaat.
-
-Daarna wordt ieder VBO met een ruimtelijke koppeling aan precies één CBS-buurt
-gekoppeld. VBO's zonder buurt en VBO's met meerdere buurten worden gelogd en
-leiden tot een fout; de bewerking kiest niet willekeurig een buurt.
-
-Ten slotte telt Waterlagen de geselecteerde woon-VBO's per `buurtcode`. Dit
-aantal wordt aan de CBS-buurtpolygonen toegevoegd, niet aan ieder afzonderlijk
-VBO.
+Selecteer verblijfsobjecten met status `Verblijfsobject in gebruik` en `woonfunctie` als een van de gebruiksdoelen. Behoud de oorspronkelijke puntgeometrie. Koppel elk punt aan precies één buurt. Bij nul of meerdere matches stopt de berekening met een melding. Tel de punten per `buurtcode` en voeg het aantal toe aan de buurtpolygonen.
 
 ### Ruimtelijke sortering
 
-Voor toekomstig cloudgebruik berekent Waterlagen vervolgens een technische
-`_hilbert`-kolom uit de oorspronkelijke VBO-punten en schrijft de VBO's in
-oplopende Hilbert-volgorde. Hiervoor gebruikt Waterlagen de vaste landelijke
-RD New-extent `(-7000, 289000, 300000, 629000)` in `EPSG:28992` en Hilbert-
-level 16 (een grid van 65.536 bij 65.536 cellen). De vaste extent zorgt dat
-de ruimtelijke volgorde niet verandert wanneer een datasetversie of selectie
-een andere totale omvang heeft.
+??? info "Hoe werkt de Hilbert-sorteersleutel?"
 
-Zie voor de Hilbert-volgorde en de betekenis van de begrenzing en het detailniveau de [toelichting op Hilbert-afstanden](https://dask-geopandas.readthedocs.io/en/stable/docs/reference/api/dask_geopandas.GeoSeries.hilbert_distance.html).
+    De VBO-punten worden ruimtelijk gesorteerd op hun `_hilbert`-waarde. De berekening gebruikt in `EPSG:28992` een vaste landelijke begrenzing `(-7000, 289000, 300000, 629000)` en niveau 16 (65.536 × 65.536 cellen). Daardoor houdt een punt dezelfde sorteersleutel bij een andere gebiedsselectie of datasetversie. Zie de [toelichting op Hilbert-afstanden](https://dask-geopandas.readthedocs.io/en/stable/docs/reference/api/dask_geopandas.GeoSeries.hilbert_distance.html).
 
 ## Uitvoer
 
-De bewerking schrijft twee GeoPackages onder `processed_data/vbo_buurt/`:
+De woon-VBO’s en de buurtpolygonen staan in `bag_vbo.gpkg` en `cbs_buurt.gpkg` onder `processed_data/vbo_buurt/`.
 
-- `bag_vbo.gpkg`, laag `bag_vbo`, met `identificatie`,
-  `pand_identificatie` wanneer beschikbaar, `status`, `gebruiksdoel`,
-  `buurtcode`, `_hilbert` en de oorspronkelijke VBO-geometrie;
-- `cbs_buurt.gpkg`, laag `cbs_buurt`, met de oorspronkelijke CBS-
-  buurtpolygonen, `aantal_woonvbo`, `aantal_inwoners` en
-  `aantal_huishoudens`, en `personenautos_totaal`.
+??? info "GeoPackages en velden"
 
-Deze tussenbestanden bevatten nog geen verdeelde inwoners- of personenautowaarden per VBO.
+    - `bag_vbo.gpkg`, laag `bag_vbo`, met `identificatie`,
+      `pand_identificatie` wanneer beschikbaar, `status`, `gebruiksdoel`,
+      `buurtcode`, `_hilbert` en de oorspronkelijke VBO-geometrie;
+    - `cbs_buurt.gpkg`, laag `cbs_buurt`, met de oorspronkelijke CBS-
+      buurtpolygonen, `aantal_woonvbo`, `aantal_inwoners` en
+      `aantal_huishoudens`, en `personenautos_totaal`.
+
+    Deze tussenbestanden bevatten nog geen verdeelde inwoners- of personenautowaarden per VBO.
 
 ## Zelf produceren
 

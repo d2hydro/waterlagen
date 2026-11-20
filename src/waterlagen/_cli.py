@@ -7,7 +7,7 @@ from pathlib import Path
 
 from waterlagen._production import add_run_arguments, validate_run_options
 from waterlagen._run_logging import production_logging
-from waterlagen.areas import NAMED_AREAS, area_from_bounds, area_name
+from waterlagen.areas import NAMED_AREAS, area_from_bounds, area_from_file, area_name
 from waterlagen.datastore import DataStore
 from waterlagen.logger import get_logger
 from waterlagen.settings import settings
@@ -47,8 +47,17 @@ def production_parser(
         help=f"Rechthoekige invoerselectie in project-CRS {settings.crs}; uitvoer wordt niet afgeknipt",
     )
     selection.add_argument(
+        "--area-file",
+        type=Path,
+        help="Polygoonbestand (GeoPackage of GeoJSON) als invoergebied; uitvoer wordt niet afgeknipt",
+    )
+    parser.add_argument(
+        "--area-layer",
+        help="Laag in --area-file; vereist bij meerdere polygoonlagen",
+    )
+    selection.add_argument(
         "--waterbeheercode",
-        help="Waterschapscode als gebiedsselectie; bij afwateringseenheden ook selectie van doelen",
+        help="Eén of meer waterschapscodes met komma's, bijvoorbeeld 12,13; samen één gebied en bij afwateringseenheden ook selectie van doelen",
     )
     parser.add_argument(
         "--data-dir", type=Path, help="Gegevensmap; standaard uit DataStore/.datastore"
@@ -97,8 +106,14 @@ def run_cli(
     output_root = arguments.pop("output_root")
     try:
         bounds = arguments.pop("bounds")
+        area_file = arguments.pop("area_file")
+        area_layer = arguments.pop("area_layer")
         authority = arguments.pop("waterbeheercode")
-        if bounds is not None:
+        if area_layer is not None and area_file is None:
+            raise ValueError("--area-layer vereist --area-file")
+        if area_file is not None:
+            arguments["area"] = area_from_file(area_file, layer=area_layer)
+        elif bounds is not None:
             arguments["area"] = area_from_bounds(bounds)
         else:
             arguments["area"] = area_name(authority or arguments["area"])
@@ -127,7 +142,7 @@ def run_cli(
     with production_logging(debug=debug):
         try:
             result = workflow(data_store=DataStore(**options), **arguments)
-        except Exception:  # noqa: BLE001 - application boundary reports errors with a nonzero exit
-            get_logger(__name__).exception("Productie mislukt")
+        except Exception as error:  # noqa: BLE001 - application boundary reports errors with a nonzero exit
+            get_logger(__name__).error("Productie gestopt: %s", error, exc_info=debug)
             raise SystemExit(1) from None
         get_logger(__name__).info("Productie voltooid: %s", result)

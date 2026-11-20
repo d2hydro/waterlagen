@@ -11,9 +11,11 @@ StatLine-kerncijfers voor die gebieden. Waterlagen gebruikt voor de inwoners-
 en personenautoanalyse uitsluitend de buurtgeometrie en drie kerncijfers op
 buurtniveau.
 
-## Leverancier
+<span id="leverancier"></span>
 
-Centraal Bureau voor de Statistiek (CBS).
+## Herkomst
+
+Het CBS publiceert de kaart en de kerncijfers. De buurtgrenzen volgen de opgave van gemeenten. De gemeentegrenzen komen uit de Basisregistratie Kadaster. Het CBS en het Kadaster zijn samen rechthebbenden op de Wijk- en Buurtkaart. [Gebruiksvoorwaarden van de Wijk- en Buurtkaart](https://www.cbs.nl/nl-nl/longread/diversen/2025/toelichting-wijk-en-buurtkaart-2023-2024-en-2025?onepage=true)
 
 ## Dataset of service
 
@@ -39,16 +41,14 @@ metadata van het JSON-bestand.
 
 ## Belangrijke kenmerken en beperkingen
 
-De buurtcodes zijn CBS-codes met prefix `BU`. De kaart en StatLine-tabel horen
-bij dezelfde indeling van 2025. De functie
-`validate_buurtcode_systematiek` controleert expliciet of beide gedownloade
-bronnen unieke CBS-buurtcodes gebruiken en of iedere StatLine-code in de
-buurtgeometrie voorkomt. De kaart kan daarnaast buurtgeometrieën bevatten
-waarvoor de StatLine-tabel geen rij bevat; die worden als afzonderlijk aantal
-gerapporteerd.
+??? info "Hoe worden buurtcodes gecontroleerd?"
 
-De buurtgeometrieën worden ook gebruikt voor de ruimtelijke koppeling van
-[woon-VBO's per CBS-buurt](../bewerkte-lagen/vbo-buurt.md). In die bewerking
-worden `aantal_inwoners`, `aantal_huishoudens` en `personenautos_totaal` uit
-StatLine op de CBS-buurtpolygonen bewaard, samen met het afgeleide aantal
-woon-VBO's. Andere StatLine-kerncijfers worden daar niet aan toegevoegd.
+    De buurtcodes zijn CBS-codes met prefix `BU`. De kaart en StatLine-tabel horen
+    bij dezelfde indeling van 2025. De functie
+    `validate_buurtcode_systematiek` controleert expliciet of beide gedownloade
+    bronnen unieke CBS-buurtcodes gebruiken en of iedere StatLine-code in de
+    buurtgeometrie voorkomt. De kaart kan daarnaast buurtgeometrieën bevatten
+    waarvoor de StatLine-tabel geen rij bevat; die worden als afzonderlijk aantal
+    gerapporteerd.
+
+De [woon-VBO’s per CBS-buurt](../bewerkte-lagen/vbo-buurt.md) gebruiken de buurtgeometrieën en deze drie kerncijfers.

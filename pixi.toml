@@ -5,6 +5,7 @@ platforms = ["win-64", "linux-64"]
 
 [dependencies]
 python = ">=3.11"
+pillow = "*"
 gdal = "*"
 geopandas = "*"
 pydantic = ">=2"
@@ -28,6 +29,7 @@ ruff = "*"
 
 [feature.dev.tasks]
 controleer = 'python -c "from waterlagen._environment import main; main()"'
+run-maken = "python tools/runscript_maken.py"
 test-cov = "pytest --cov=src/waterlagen --cov-report=term-missing"
 functioneel_landgebruik = "python scripts/functioneel_landgebruik.py"
 dem = "python scripts/dem.py"

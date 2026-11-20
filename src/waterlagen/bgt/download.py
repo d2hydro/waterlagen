@@ -769,11 +769,31 @@ def download_bgt(
     chunk_size: int = 1024 * 1024,
     timeout: int = 30,
 ) -> BgtDownload:
-    """Download or reuse the national BGT GML Light ZIP and convert layers.
+    """Zet de gekozen objecttypen uit de landelijke BGT-download om naar een GeoPackage.
 
-    The predefined ZIP is treated as a local cache. A valid existing archive is
-    reused; missing or invalid archives are replaced only after a temporary
-    download has been validated as a readable ZIP containing GML files.
+    Parameters
+    ----------
+    download_dir : pathlib.Path
+        Map voor het landelijke ZIP-bestand en, standaard, het GeoPackage.
+    featuretypes : Iterable[str]
+        BGT-objecttypen om uit de ZIP naar lagen te converteren.
+    target_path : pathlib.Path, optional
+        Pad voor het GeoPackage. Zonder pad wordt de standaardnaam in de downloadmap gebruikt.
+    overwrite : bool
+        Maak het GeoPackage opnieuw. Een geldige ZIP wordt ook dan hergebruikt.
+    url : str
+        Adres van de landelijke GML Light-ZIP.
+    progress : bool
+        Toon de voortgang van de download.
+    chunk_size : int
+        Aantal bytes per downloadblok.
+    timeout : int
+        HTTP-time-out in seconden.
+
+    Returns
+    -------
+    BgtDownload
+        Het GeoPackage staat in target_path. archive_path verwijst naar de ZIP en layer_count geeft het aantal lagen.
     """
     download_dir = Path(download_dir)
     download_dir.mkdir(exist_ok=True, parents=True)
@@ -832,27 +852,25 @@ def bgt_custom_download(
     overwrite: bool = True,
     poll_interval_s: int = 5,
 ) -> BgtCustomDownload:
-    """Download BGT features as GeoPackages.
+    """Download geselecteerde BGT-objecttypen voor een gebied.
 
     Parameters
     ----------
-    download_dir : Path, optional
-        Download dir to store GeoPackages. By default datastore.bgt_dir.
-    featuretypes : Iterable[str], optional
-        BGT feature-types, by default ("waterdeel", "pand").
-    poly_mask : shape | None, optional
-        Optional polygon-mask to use as geofilter. If not Polygon, shape-bounding box will be used.
-        By default None
-    overwrite : bool, optional
-        If not True BGT will only be downloaded if all expected output files already exist.
-        Default is True.
-    poll_interval_s : int, optional
-        Interval to poll the BGT download status in seconds, by default 5.
+    download_dir : pathlib.Path
+        Map voor de GeoPackages van de aangevraagde objecttypen.
+    featuretypes : Iterable[str]
+        BGT-objecttypen om op te vragen, bijvoorbeeld waterdeel en pand.
+    poly_mask : BaseGeometry, optional
+        Polygoon voor het gebied. Bij andere geometrieën wordt de omsluitende rechthoek gebruikt. Zonder masker geldt geen gebiedsfilter.
+    overwrite : bool
+        Vraag de objecttypen opnieuw op. Bij False wordt de download overgeslagen als alle verwachte bestanden al bestaan.
+    poll_interval_s : int
+        Wachttijd in seconden tussen statuscontroles van de aanvraag.
 
     Returns
     -------
     BgtCustomDownload
-        Metadata for the BGT download.
+        download_dir verwijst naar de uitvoermap. Bij een nieuwe aanvraag bevat het resultaat ook request_id en download_url.
     """
     featuretypes = tuple(featuretypes)
     download_dir = Path(download_dir)

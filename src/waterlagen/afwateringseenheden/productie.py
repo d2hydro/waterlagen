@@ -1,6 +1,7 @@
 """Complete afwateringseenheden production for a shared input area."""
 
 import json
+from dataclasses import replace
 from pathlib import Path
 
 from shapely.ops import unary_union
@@ -40,6 +41,7 @@ from waterlagen.areas import (
     Area,
     ProductionArea,
     area_name,
+    area_authority_codes,
     ensure_land_boundary,
     resolve_area,
     resolve_workers,
@@ -155,8 +157,7 @@ def main(
         Combined afwateringseenheden GeoPackage.
     """
     _validate_dem_resampling(dem_resampling)
-    name = area_name(area)
-    code = name.removeprefix("waterschap_") if name.startswith("waterschap_") else None
+    code = ",".join(area_authority_codes(area)) or None
     validate_authority_options(code, overige_waterschappen, eigen_hydamo)
     validate_complex_length(max_complex_routelengte)
     _validate_culvert_options(duiker_tolerance, max_aansluitlengte)
@@ -195,15 +196,38 @@ def main(
     brandlagen = brandlagen or BrandlagenConfig()
     requested_public_sources = [
         {
-            "path": str(layer.path),
-            "layer": layer.layer,
-            "openbare_bron": layer.openbare_bron,
+            "bron": layer.bron,
         }
         for layer in brandlagen.lagen
         if layer.openbare_bron is not None
     ]
+    previous_run = {}
+    metadata_path = (
+        store.processed_data_dir
+        / "afwateringseenheden"
+        / selected.value
+        / str(run_id)
+        / "run.json"
+    )
+    if (resume or overwrite) and metadata_path.is_file():
+        previous_run = json.loads(metadata_path.read_text(encoding="utf-8"))
+        previous_layers = (
+            previous_run.get("parameters", {}).get("brandlagen", {}).get("lagen", [])
+        )
+        layers = list(brandlagen.lagen)
+        for index, layer in enumerate(layers):
+            if layer.openbare_bron is not None and index < len(previous_layers):
+                recorded_path = previous_layers[index].get("source", {}).get("path")
+                if recorded_path is not None:
+                    layers[index] = replace(layer, path=Path(recorded_path))
+        brandlagen = replace(brandlagen, lagen=tuple(layers))
     public_sources = prepare_brand_sources(
-        brandlagen, store, context, preparation, reuse_only=resume or overwrite
+        brandlagen,
+        store,
+        context,
+        preparation,
+        reuse_only=resume or overwrite,
+        area=selected,
     )
     brandlagen = public_sources.config
     parameters = {
@@ -252,11 +276,7 @@ def main(
             name: _file_identity(path) for name, path in public_sources.inputs.items()
         }
     run_parameters = _compatible_run_parameters(
-        store.processed_data_dir
-        / "afwateringseenheden"
-        / selected.value
-        / str(run_id)
-        / "run.json",
+        metadata_path,
         parameters,
         reuse=resume or overwrite,
     )
@@ -282,7 +302,14 @@ def main(
             run.path / "berekening" / "tegels" / "brandlagen_voorbereid.gpkg",
         )
         bgt_duikers = prepare_bgt_signal_source(
-            store, context, preparation, reuse_only=resume or overwrite
+            store,
+            context,
+            preparation,
+            reuse_only=resume or overwrite,
+            area=selected,
+            existing_path=Path(previous_run["inputs"]["bgt_duikers"]["path"])
+            if previous_run.get("inputs", {}).get("bgt_duikers", {}).get("path")
+            else None,
         )
         boundary = ensure_land_boundary(store, preparation)
         hydamo = store.source_data_dir / "hydamo" / "hydamo.gpkg"

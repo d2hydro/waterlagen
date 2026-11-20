@@ -2,10 +2,14 @@
 editorial_status: ai
 ---
 
-# Woon-VBO's per CBS-buurt
+# Woonverblijfsobjecten per CBS-buurt
 
-Zie de [voorbeelden voor auto's en inwoners](bewerkte-lagen-produceren.md#autos)
-voor het gebruik van deze gedeelde voorbereiding. De
-[functionele beschrijving](../bewerkte-lagen/vbo-buurt.md) legt de koppeling uit.
+Gebruik `bouw_vbo_buurt` om woonverblijfsobjecten aan CBS-buurten te koppelen. Dit is de gedeelde invoer voor [inwoners en personenauto’s](../produceren/inwoners-personenautos.md).
 
-::: waterlagen.vbo_buurt
+??? info "Woonverblijfsobjecten per buurt samenstellen · `bouw_vbo_buurt`"
+
+    ::: waterlagen.vbo_buurt.bouw_vbo_buurt
+
+## Verdelingen controleren
+
+Met `waterlagen.vbo_buurt.statistiek.lees_verdelingstatistieken` vergelijkt u de berekende aantallen inwoners en auto's met de CBS-totalen. De functie telt alle buurten uit `data_store.cbs_buurt_path` mee. Gebruik voor een regionale vergelijking de CBS-totalen van dezelfde buurten als in de uitvoer.

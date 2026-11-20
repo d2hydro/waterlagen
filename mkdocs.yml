@@ -4,6 +4,7 @@ repo_name: d2hydro/waterlagen
 
 theme:
   name: material
+  font: false
   custom_dir: overrides
   language: nl
   logo: icons/logo.png
@@ -11,12 +12,34 @@ theme:
   highlightjs: true
   features:
     - navigation.tabs
+    - navigation.indexes
     - content.code.copy
   palette:
     primary: custom
 
 nav:
   - Over Waterlagen: index.md
+  - Bewerkte lagen:
+      - Overzicht: bewerkte-lagen/index.md
+      - Afwateringseenheden: bewerkte-lagen/afwateringseenheden.md
+      - Auto's: bewerkte-lagen/autos.md
+      - Functioneel landgebruik: bewerkte-lagen/functioneel-landgebruik.md
+      - Hoogtemodel (DEM, WSWO): bewerkte-lagen/dem.md
+      - Inwoners: bewerkte-lagen/inwoners.md
+  - Zelf produceren:
+      - Aan de slag: produceren/index.md
+      - Installatie: produceren/installatie.md
+      - Per kaartlaag:
+          - Afwateringseenheden: produceren/afwateringseenheden.md
+          - Functioneel landgebruik: produceren/landgebruik.md
+          - Hoogtemodel (DEM): produceren/dem.md
+          - Inwoners en personenauto’s: produceren/inwoners-personenautos.md
+      - Hulp en naslag:
+          - Terminal: produceren/cli.md
+          - Opslag: produceren/configuratie.md
+          - BGT-vlakken voor QGIS: produceren/bgt-vlakken.md
+          - Waterketen DAMO downloaden: produceren/waterketen-damo.md
+          - Certificaatproblemen: produceren/https-certificaatproblemen.md
   - Bronlagen:
       - Overzicht: bronlagen/index.md
       - AHN: bronlagen/ahn.md
@@ -34,60 +57,16 @@ nav:
       - TOP10NL: bronlagen/top10nl.md
       - Waterketen DAMO: bronlagen/waterketen-damo.md
       - Waterschapsgrenzen: bronlagen/waterschapsgrenzen.md
-  - Bewerkte lagen:
-      - Overzicht: bewerkte-lagen/index.md
-      - Afwateringseenheden: bewerkte-lagen/afwateringseenheden.md
-      - Auto's: bewerkte-lagen/autos.md
-      - Functioneel landgebruik: bewerkte-lagen/functioneel-landgebruik.md
-      - Hoogtemodel: bewerkte-lagen/dem.md
-      - Inwoners: bewerkte-lagen/inwoners.md
-  - Zelf produceren:
-      - Overzicht: produceren/index.md
-      - Installatie: produceren/installatie.md
-      - HTTPS-certificaatproblemen: produceren/https-certificaatproblemen.md
-      - Productiecommando's: produceren/cli.md
-      - Opslag van gegevens: produceren/configuratie.md
-      - Afwateringseenheden: produceren/afwateringseenheden.md
-      - Functioneel landgebruik: produceren/landgebruik.md
-      - DEM: produceren/dem.md
-      - BGT-vlakken voor QGIS: produceren/bgt-vlakken.md
-      - Waterketen DAMO downloaden: produceren/waterketen-damo.md
-      - Inwoners en personenauto's: produceren/inwoners-personenautos.md
   - Python:
       - Aan de slag: reference/gebruik.md
-      - Bronlagen downloaden: reference/bronlagen-downloaden.md
-      - Bewerkte lagen samenstellen: reference/bewerkte-lagen-produceren.md
-      - API-referentie:
-          - Overzicht: reference/api.md
-          - Productie-ingangen: reference/productie.md
-          - AHN: reference/ahn.md
-          - DEM: reference/dem.md
-          - BAG: reference/bag.md
-          - BGT: reference/bgt.md
-          - BRP: reference/brp.md
-          - CBS: reference/cbs.md
-          - TOP10NL: reference/top10nl.md
-          - Dijkringen: reference/dijkringen.md
-          - Administratieve gebieden: reference/administratieve_gebieden.md
-          - Afwateringseenheden: reference/afwateringseenheden.md
-          - Auto's: reference/autos.md
-          - Functioneel landgebruik: reference/functioneel_landgebruik.md
-          - Inwoners: reference/inwoners.md
-          - Woon-VBO's per buurt: reference/vbo_buurt.md
-          - HYDAMO: reference/hydamo.md
-          - Rijkswateren: reference/rijkswateren.md
-          - LIWO: reference/liwo.md
-          - OSM-drinkwaterlocaties: reference/osm_drinkwater.md
-          - OSM-waterlopen: reference/osm_waterlopen.md
-          - Waterketen DAMO: reference/waterketen_damo.md
-          - DataStore: reference/datastore.md
-          - Rasters: reference/raster.md
+      - Voorbeeldscripts:
+          - Een bron downloaden: reference/bronlagen-downloaden.md
+          - Een kaartlaag berekenen: reference/bewerkte-lagen-produceren.md
+      - API-referentie: reference/api.md
   - Bijdragen:
       - Overzicht: bijdragen/index.md
       - Ontwikkelomgeving: bijdragen/ontwikkelomgeving.md
-      - Afwateringseenheden-benchmark: bijdragen/afwateringseenheden-scaling.md
-      - Conventies: bijdragen/conventions.md
-      - AI coding agents: bijdragen/ai-agents.md
+      - Afspraken: bijdragen/conventions.md
 
 plugins:
   - search
@@ -97,13 +76,21 @@ plugins:
       # Skip API Markdown before Jupytext interprets mkdocstrings' ::: directives.
       ignore: ["*.md"]
   - mkdocstrings:
+      custom_templates: overrides/mkdocstrings
       handlers:
         python:
           options:
+            show_root_heading: true
+            show_root_full_path: true
+            annotations_path: source
+            members: false
             show_source: false
+            separate_signature: true
             docstring_style: numpy
 
 markdown_extensions:
+  - md_in_html
+  - attr_list
   - admonition
   - pymdownx.superfences
   - pymdownx.details
@@ -116,3 +103,6 @@ markdown_extensions:
 
 extra_css:
   - stylesheets/extra.css
+
+extra_javascript:
+  - javascripts/afdrukken.js

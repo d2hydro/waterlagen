@@ -35,7 +35,25 @@ PERSONENAUTOS_COLUMN = "personenautos"
 
 @dataclass(frozen=True)
 class AutosBuild:
-    """Summary of one personenauto's per woon-VBO processing run."""
+    """Samenvatting van de berekening per woonverblijfsobject.
+
+    Attributes
+    ----------
+    target_path : pathlib.Path
+        Pad naar het GeoPackage.
+    vbo_count : int
+        Aantal woonverblijfsobjecten in de uitvoer.
+    buurt_count : int
+        Aantal buurten in de uitvoer.
+    vbos_with_missing_cbs_data : int
+        Aantal woonverblijfsobjecten met ontbrekende CBS-waarden bij de berekening.
+    buurten_without_control : int
+        Aantal buurten waarvoor de somcontrole per woon-VBO niet mogelijk was.
+    reused : bool
+        True als de bestaande uitvoer is hergebruikt. De foutentellers zijn dan niet opnieuw bepaald.
+    geoparquet_path : pathlib.Path, optional
+        Pad naar de GeoParquet-uitvoer als die is aangevraagd.
+    """
 
     target_path: Path
     vbo_count: int
@@ -135,10 +153,21 @@ def bereken_personenautos_per_vbo(
     bag_vbo: gpd.GeoDataFrame,
     cbs_buurten: pd.DataFrame,
 ) -> tuple[gpd.GeoDataFrame, int, int]:
-    """Distribute CBS personenauto totals vectorized over woon-VBO's.
+    """Verdeel personenauto’s over de woonverblijfsobjecten per CBS-buurt.
 
-    The source total is retained for traceability. Missing source values and
-    zero woon-VBO denominators result in missing ``personenautos`` values.
+    Ontbrekende CBS-waarden en een noemer van nul geven een ontbrekende uitkomst.
+
+    Parameters
+    ----------
+    bag_vbo : geopandas.GeoDataFrame
+        Woonverblijfsobjecten met geometrie, identificatie, buurtcode en Hilbert-volgorde (_hilbert).
+    cbs_buurten : pandas.DataFrame
+        Eén rij per buurt met buurtcode, aantal woon-VBO’s en het totale aantal personenauto’s.
+
+    Returns
+    -------
+    tuple[geopandas.GeoDataFrame, int, int]
+        Achtereenvolgens de verdeling per woon-VBO, het aantal VBO’s met ontbrekende CBS-waarden en het aantal buurten waarvoor de somcontrole per woon-VBO niet mogelijk was.
     """
     _require_columns(bag_vbo, (VBO_ID_COLUMN, CBS_BUURTCODE_COLUMN, HILBERT_COLUMN))
     if bag_vbo.crs is None:
@@ -267,7 +296,34 @@ def bouw_autos(
     overwrite: bool = True,
     write_geoparquet: bool = False,
 ) -> AutosBuild:
-    """Build personenauto's per woon-VBO without a new spatial join."""
+    """Schrijf de verdeling van personenauto’s per woonverblijfsobject naar een GeoPackage.
+
+    Parameters
+    ----------
+    bag_vbo_path : pathlib.Path
+        GeoPackage met de voorbereide woonverblijfsobjecten.
+    cbs_buurt_path : pathlib.Path
+        GeoPackage met de voorbereide CBS-buurten en hun aantallen woonverblijfsobjecten.
+    cbs_buurtgegevens_path : pathlib.Path
+        CBS-buurtgegevens met het totale aantal personenauto’s per buurt.
+    target_path : pathlib.Path
+        Uitvoerpad voor het GeoPackage.
+    geoparquet_path : pathlib.Path
+        Uitvoerpad bij schrijven naar GeoParquet.
+    bag_vbo_layer : str
+        Laagnaam van de woonverblijfsobjecten in het BAG-bestand.
+    cbs_buurt_layer : str
+        Laagnaam van de buurten in het CBS-bestand.
+    overwrite : bool
+        Bereken de verdeling opnieuw. Bij False wordt de bestaande uitvoer hergebruikt als die aanwezig is.
+    write_geoparquet : bool
+        Schrijf naast het GeoPackage ook een GeoParquet-bestand.
+
+    Returns
+    -------
+    AutosBuild
+        Samenvatting met het uitvoerpad (target_path), aantallen VBO’s en buurten, en de hergebruikstatus (reused).
+    """
     bag_vbo_path = Path(bag_vbo_path)
     cbs_buurt_path = Path(cbs_buurt_path)
     cbs_buurtgegevens_path = Path(cbs_buurtgegevens_path)

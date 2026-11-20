@@ -1,4 +1,4 @@
-"""Build a standalone Pixi production ZIP for an already published release."""
+"""Build a production ZIP and standalone updater for a published release."""
 
 import argparse
 import hashlib
@@ -20,7 +20,36 @@ PRODUCTION_SCRIPTS = (
     "functioneel_landgebruik.py",
     "inwoners.py",
 )
-UPDATER_FILES = ("bijwerken.py", "bijwerken.cmd", "bijwerken.sh")
+UPDATER_FILES = ("tools/code_bijwerken.py", "code_bijwerken.bat", "code_bijwerken.sh")
+RUNSCRIPT_FILES = (
+    "tools/runscript_maken/web/LUCIDE-LICENSE.txt",
+    "tools/runscript_maken/browser_app.py",
+    "tools/runscript_maken/dem_preview.py",
+    "tools/runscript_maken/browser_server.py",
+    "tools/runscript_maken/map_data.py",
+    "tools/runscript_maken/map_tiles.py",
+    "tools/runscript_maken/native_dialogs.py",
+    "tools/runscript_maken/web/app.js",
+    "tools/runscript_maken/web/appearance.json",
+    "tools/runscript_maken/web/D3-LICENSE.txt",
+    "tools/runscript_maken/web/d3.min.js",
+    "tools/runscript_maken/web/favicon.png",
+    "tools/runscript_maken/web/index.html",
+    "tools/runscript_maken/web/style.css",
+    "tools/runscript_maken.py",
+    "run-maken.bat",
+    "tools/runscript_maken/__init__.py",
+    "tools/runscript_maken/script.py",
+    "tools/runscript_maken/window.py",
+    "tools/runscript_maken/waterlagen.py",
+    "tools/runscript_maken/waterlagen_options.py",
+    "tools/runscript_maken/waterlagen_runfile.py",
+    "tools/runscript_maken/brandlagen.py",
+    "docs/reference/voorbeelden/brandlagen.toml",
+    "docs/icons/logo.png",
+    "docs/icons/favicon.png",
+)
+STANDALONE_UPDATER = "waterlagen-updater.py"
 
 
 def release_version(tag: str, repository: Path) -> str:
@@ -88,13 +117,15 @@ def validate_lock(lock_path: Path, version: str) -> None:
 def build_bundle(tag: str, output_dir: Path, repository: Path = REPO_ROOT) -> Path:
     """Create waterlagen-productie.zip with project files at the archive root.
 
-    Replace an existing ZIP only after locking and validation succeed.
+    Also write ``waterlagen-updater.py``, identical to the packaged updater.
+    Replace existing artifacts only after locking and validation succeed.
     """
     repository = repository.resolve()
     version = release_version(tag, repository)
     output_dir = output_dir.resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
     archive_path = output_dir / "waterlagen-productie.zip"
+    updater_path = output_dir / STANDALONE_UPDATER
 
     with tempfile.TemporaryDirectory(prefix="production-", dir=output_dir) as temporary:
         project_dir = Path(temporary) / "project"
@@ -121,12 +152,18 @@ def build_bundle(tag: str, output_dir: Path, repository: Path = REPO_ROOT) -> Pa
                 raise ValueError(f"Source must be a repository file: {relative_path}")
             shutil.copyfile(source, project_dir / relative_path)
         included.extend(f"scripts/{name}" for name in PRODUCTION_SCRIPTS)
-        for name in UPDATER_FILES:
-            source = repository / "envs" / name
+        for name in (*UPDATER_FILES, *RUNSCRIPT_FILES):
+            relative_path = (
+                name if name.startswith(("tools/", "docs/")) else f"envs/{name}"
+            )
+            source = repository / relative_path
             if source.is_symlink() or not source.resolve().is_relative_to(repository):
-                raise ValueError(f"Source must be a repository file: envs/{name}")
-            shutil.copyfile(source, project_dir / name)
+                raise ValueError(f"Source must be a repository file: {relative_path}")
+            target = project_dir / name
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(source, target)
         included.extend(UPDATER_FILES)
+        included.extend(RUNSCRIPT_FILES)
 
         # This runs after PyPI publication: no local wheel or editable dependency.
         subprocess.run(
@@ -164,7 +201,29 @@ def build_bundle(tag: str, output_dir: Path, repository: Path = REPO_ROOT) -> Pa
                     0o100755 if relative_path.endswith(".sh") else 0o100644
                 ) << 16
                 archive.writestr(info, (project_dir / relative_path).read_bytes())
-        temporary_zip.replace(archive_path)
+        temporary_updater = Path(temporary) / STANDALONE_UPDATER
+        shutil.copyfile(project_dir / "tools/code_bijwerken.py", temporary_updater)
+        # Houd beide releasebestanden bij dezelfde geslaagde pakketopbouw.
+        artifacts = {archive_path: temporary_zip, updater_path: temporary_updater}
+        previous = {
+            target: target.read_bytes() if target.exists() else None
+            for target in artifacts
+        }
+        replaced = []
+        try:
+            for target, prepared in artifacts.items():
+                prepared.replace(target)
+                replaced.append(target)
+        except OSError:
+            for target in reversed(replaced):
+                content = previous[target]
+                if content is None:
+                    target.unlink()
+                else:
+                    recovery = Path(temporary) / (target.name + ".restore")
+                    recovery.write_bytes(content)
+                    recovery.replace(target)
+            raise
     return archive_path
 
 
