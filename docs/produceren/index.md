@@ -4,29 +4,26 @@ editorial_status: ai
 
 # Zelf produceren
 
-[Eerste keer? Installeer het productiepakket](installatie.md){ .md-button .md-button--primary }
+[Installeer het productiepakket](installatie.md){ .md-button .md-button--primary }
 
-1. Open in de uitgepakte map **`run-maken.bat`**.
-2. Kies **Waterschappen**, **Heel Nederland** of **Eigen gebied**. Vink daarna de gewenste basislagen aan.
-3. Kies **Opslaan en starten** om direct te rekenen, of **Alleen opslaan** om het `.bat`-bestand later te starten.
+## Een productie starten
 
-U kunt de Run Maker ook vanuit een terminal in de projectmap starten:
+1. Dubbelklik op **run-maken.bat**. Controleer de getoonde **datastore** of klik op **Datastore openen…**. Klik op **Runmaker openen**.
+2. Kies het gebied en vink de gewenste kaartlagen aan.
+3. Vul de **Runnaam** in. Kies zo nodig een andere uitvoermap met **Resultatenmap kiezen…**.
+4. Klik op **Opslaan en starten**. Kies **Alleen opslaan** om het `.bat`-bestand later te starten.
 
-```console
-pixi run --locked run-maken
-```
+Vanuit de terminal: voer `pixi run --locked run-maken` uit in de projectmap en laat de terminal open.
 
-Laat de terminal open zolang u de Run Maker gebruikt.
+## Bronnen en resultaten
 
-De resultaten staan in `data/processed_data/`. Kies uw kaartlaag voor de uitvoer en controles.
+| Map | Inhoud |
+| --- | --- |
+| `source_data/` | Gedownloade bronbestanden voor hergebruik. |
+| `processed_data/<laag>/<gebied>/<runnaam>/` | Resultaten van de run. Bij een eigen resultatenmap komt `<laag>/<gebied>/<runnaam>/` onder die map. |
 
-- [Afwateringseenheden](afwateringseenheden.md)
-- [Functioneel landgebruik](landgebruik.md)
-- [Hoogtemodel (DEM)](dem.md)
-- [Inwoners en personenauto’s](inwoners-personenautos.md)
+Bekijk de uitvoer per laag: [Afwateringseenheden](afwateringseenheden.md), [Functioneel landgebruik](landgebruik.md), [Hoogtemodel (DEM)](dem.md) en [Inwoners en personenauto’s](inwoners-personenautos.md).
 
 ## Hulp en naslag
 
-- [Werken via de terminal of op Linux](cli.md)
-- [Hulp bij installatie](installatie.md#als-een-opdracht-niet-werkt)
-- [Probleem melden](https://github.com/d2hydro/waterlagen/issues)
+[Opslag instellen](configuratie.md) · [Terminal en Linux](cli.md) · [Installatiehulp](installatie.md#als-een-opdracht-niet-werkt) · [Probleem melden](https://github.com/d2hydro/waterlagen/issues)

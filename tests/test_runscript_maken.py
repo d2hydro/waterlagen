@@ -52,7 +52,7 @@ def test_preview_is_only_readable_commands(options):
     commands = generator._commands(options)
     assert commands == [
         "pixi run --locked functioneel_landgebruik --waterbeheercode 12 --run-id hhnk-proef --workers 8",
-        "pixi run --locked dem --waterbeheercode 12 --run-id hhnk-proef --workers 8",
+        "pixi run --locked dem --waterbeheercode 12 --run-id hhnk-proef --ahn-version latest --workers 8",
         "pixi run --locked inwoners --waterbeheercode 12 --run-id hhnk-proef",
         "pixi run --locked autos --waterbeheercode 12 --run-id hhnk-proef",
         "pixi run --locked afwateringseenheden --waterbeheercode 12 --run-id hhnk-proef --workers 8",

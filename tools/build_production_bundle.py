@@ -14,6 +14,7 @@ from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PRODUCTION_SCRIPTS = (
+    "_datastore_select.py",
     "afwateringseenheden.py",
     "autos.py",
     "dem.py",
@@ -22,9 +23,21 @@ PRODUCTION_SCRIPTS = (
 )
 UPDATER_FILES = ("tools/code_bijwerken.py", "code_bijwerken.bat", "code_bijwerken.sh")
 RUNSCRIPT_FILES = (
+    "tools/runscript_maken/datastore_window.py",
+    "tools/runscript_maken/desktop/LICENSE.txt",
+    "tools/runscript_maken/desktop/NOTICE.txt",
+    "tools/runscript_maken/desktop/Microsoft.Web.WebView2.Core.dll",
+    "tools/runscript_maken/desktop/Microsoft.Web.WebView2.WinForms.dll",
+    "tools/runscript_maken/desktop/WebView2Loader.dll",
+    "tools/runscript_maken/desktop/Waterlagen.Runmaker.exe",
+    "tools/runscript_maken/desktop/Runmaker.cs",
+    "tools/runscript_maken/desktop/Runmaker.manifest",
+    "tools/runscript_maken/desktop/build.cmd",
+    "tools/runscript_maken/web/waterlagen.ico",
     "tools/runscript_maken/web/LUCIDE-LICENSE.txt",
     "tools/runscript_maken/browser_app.py",
     "tools/runscript_maken/dem_preview.py",
+    "tools/runscript_maken/ahn_preview.py",
     "tools/runscript_maken/browser_server.py",
     "tools/runscript_maken/map_data.py",
     "tools/runscript_maken/map_tiles.py",

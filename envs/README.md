@@ -1,59 +1,32 @@
-# Waterlagen @VERSION@ produceren
+# Waterlagen produceren
 
-Dit pakket hoort bij release **@TAG@**. Het installeert Waterlagen **@VERSION@**
-uit PyPI en bevat de bijbehorende openbare productiescripts. Een Git-checkout of
-toegang tot een private repository is niet nodig.
+Pakketversie: @VERSION@
 
-Installeer [Pixi](https://pixi.prefix.dev/latest/installation/) en pak de ZIP uit
-in een map naar keuze. De bestanden staan direct
-in de ZIP, zonder extra bovenliggende map. De gekozen map met `pixi.toml`,
-`pixi.lock` en `scripts` is uw **projectfolder**.
+## Eenmalig installeren
 
-Open de projectmap in Windows Verkenner. Typ `cmd` (opdrachtprompt) of `powershell` in de adresbalk en druk op Enter. Open op Linux een terminal in de projectmap. Voer beide opdrachten één voor één uit:
+1. Installeer [Pixi](https://pixi.prefix.dev/latest/installation/) en pak de ZIP uit.
+2. Open een terminal in de uitgepakte map met `pixi.toml` en voer uit:
 
-```text
-pixi install --locked
+```console
 pixi run --locked controleer
 ```
 
-De controle toont de Waterlagen-versie, importeert de scripts en test een klein
-raster met GDAL, Rasterio en PCRaster. Er worden geen brongegevens gedownload.
+De installatie is klaar bij **Imports en rastercontrole OK**.
 
-## Een productie starten
+## Een kaart maken
 
-1. Dubbelklik op Windows in de projectmap op `run-maken.bat`, of voer in een terminal `pixi run --locked run-maken` uit. De Run Maker opent in uw browser. Laat bij starten vanuit de terminal dat venster open.
-2. Kies het gebied en de kaartlagen die u wilt maken. Bij **Extra opties** ziet u de instellingen voor de gekozen kaartlaag. De Run Maker zet uw keuzes om in een runscript.
-3. Kies **Opslaan en starten** om de berekening direct uit te voeren. Met **Alleen opslaan** bewaart u het script voor later. Dubbelklik dan op het opgeslagen `.bat`-bestand om de berekening te starten.
+1. Dubbelklik op **run-maken.bat**. Bij de eerste start zet Pixi zo nodig de omgeving klaar. Kies daarna je datastore. Klik op het mapicoon naast een pad om de locatie te wijzigen.
+2. Klik op **Runmaker openen**. De kaart opent op Windows in een eigen venster met het Waterlagen-logo. Kies het gebied en de kaartlagen.
+3. Vul de **Runnaam** in. Kies zo nodig een andere uitvoermap met **Resultatenmap kiezen…**.
+4. Klik op **Opslaan en starten**. Met **Alleen opslaan** bewaar je het runscript voor later.
 
-Voor Linux of geautomatiseerde runs kunt u de [Pixi-productiecommando’s](https://d2hydro.github.io/waterlagen/produceren/cli/) gebruiken.
+## Resultaten vinden
 
-## Bronnen en resultaten
+| Waar | Wat staat er? |
+| --- | --- |
+| `source_data/` | Gedownloade bronbestanden voor hergebruik. |
+| `processed_data/<laag>/<gebied>/<runnaam>/` | De kaart, `run.json` met de runstatus en `productie.log` met het rekenverloop. |
 
-De productie hergebruikt beschikbare bronnen en haalt ontbrekende gegevens op. Ook voor een klein gebied kan een landelijke download nodig zijn. Het gebied bepaalt welke invoer wordt gebruikt. De resultaten kunnen buiten die grens vallen.
+Bij een eigen resultatenmap staat de run onder `<resultatenmap>/<laag>/<gebied>/<runnaam>/`.
 
-Elke runmap bevat `productie.log` en `run.json`. Controleer de resultaten voordat u ze gebruikt.
-
-De meegeleverde `.datastore` bevat `DATA_DIR=./data`. Daardoor staan downloads en
-resultaten onder `data` in uw projectfolder. Pas alleen deze instelling aan als
-u een andere opslaglocatie wilt. Bewaar ook dit bestand bij het verplaatsen van
-de projectfolder. Start opdrachten vanuit de map met `pixi.toml`.
-
-Bewaar `pixi.toml` en `pixi.lock` samen en gebruik `--locked`: het lockbestand legt
-de dependencyversies voor Windows en Linux vast. Internet is nodig voor de eerste
-installatie en voor het downloaden van brongegevens.
-
-## Code bijwerken
-
-Werk tussen producties bij naar een nieuwe release van Waterlagen. Hervat onderbroken runs eerst met de oorspronkelijke versie.
-
-- **Windows:** dubbelklik op `code_bijwerken.bat`.
-- **Linux:** voer `sh ./code_bijwerken.sh` uit.
-
-Bevestig de update. Uw instellingen en gegevens blijven behouden.
-
-Heeft uw oude installatie nog `bijwerken.cmd` of `bijwerken.sh`? Gebruik eenmalig
-de [startopdracht voor bestaande installaties](https://d2hydro.github.io/waterlagen/produceren/installatie/#bijwerken-bestaande-installatie).
-Die haalt de losse updater van de release op en werkt dezelfde projectmap bij.
-Daarna gebruikt u de gewone starters hierboven. Vervang de oude updaterbestanden
-niet handmatig: de update controleert hun oorspronkelijke inhoud voordat zij
-binnen de normale back-up- en herstelprocedure worden vervangen.
+[Werken via de terminal of op Linux](https://d2hydro.github.io/waterlagen/produceren/cli/) · [Waterlagen bijwerken](https://d2hydro.github.io/waterlagen/produceren/installatie/#bijwerken-bestaande-installatie)

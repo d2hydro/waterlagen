@@ -92,6 +92,8 @@ def test_all_layer_cli_options_are_available_and_commands_parse(
         "area-layer",
         "waterbeheercode",
         "data-dir",
+        "datastore",
+        "ahn-download-dir",
         "output-root",
         "refresh-sources",
         "offline",
@@ -109,8 +111,14 @@ def test_all_layer_cli_options_are_available_and_commands_parse(
     } - common
     assert {option.flag for option in options.EXTRA_OPTIONS[layer]} == flags
 
+    # Exercise the custom VRT here; the fixed version is mutually exclusive.
+    tested = [
+        option
+        for option in options.EXTRA_OPTIONS[layer]
+        if option.flag != "ahn-version"
+    ]
     choices = []
-    for option in options.EXTRA_OPTIONS[layer]:
+    for option in tested:
         if option.kind == "boolean":
             value = True
         elif option.kind in {"number", "integer"}:
@@ -135,18 +143,14 @@ def test_all_layer_cli_options_are_available_and_commands_parse(
         ]
     )
     assert parsed.waterbeheercode == "12"
-    assert all(
-        "--" + option.flag in arguments for option in options.EXTRA_OPTIONS[layer]
-    )
+    assert all("--" + option.flag in arguments for option in tested)
     commands = generator._commands(
         generator.RunSettings(
             (layer,), ("--waterbeheercode", "12"), "test", extra_options=tuple(choices)
         )
     )
     assert len(commands) == 1
-    assert all(
-        "--" + option.flag in commands[0] for option in options.EXTRA_OPTIONS[layer]
-    )
+    assert all("--" + option.flag in commands[0] for option in tested)
 
 
 @pytest.mark.parametrize(

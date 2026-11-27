@@ -8,8 +8,10 @@
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
-    <div id="loading" role="status">
-      Run maken wordt geladen. Lokale gebiedsgrenzen worden opgezocht…
+    <div id="loading">
+      <span class="startup-spinner" aria-hidden="true"></span>
+      <span id="rm-startup-message" role="status">Gebiedsgrenzen opzoeken in de datastore…</span>
+      <small id="rm-startup-time" aria-hidden="true"></small>
     </div>
     <div id="run-map-preview" hidden>
       <header class="top">
@@ -187,6 +189,17 @@
                 <div class="run-field">
                   <div class="run-caption"><label for="rm-run-name">Runnaam</label><button class="info" type="button" aria-label="Uitleg over runnaam" aria-controls="rm-run-name-help" aria-expanded="false"></button></div>
                   <input id="rm-run-name" type="text" value="" />
+                  <div class="results-folder">
+                    <button id="rm-output-browse" type="button">Resultatenmap kiezen…</button>
+                    <button id="rm-output-reset" type="button" hidden>Standaard herstellen</button>
+                    <details><summary>Gedeelde AHN-bron gebruiken</summary>
+                      <button id="rm-download-browse" type="button">Lokale downloads toestaan…</button>
+                      <button id="rm-download-reset" type="button" hidden>Toestemming intrekken</button>
+                      <output id="rm-download-path"></output>
+                    </details>
+                    <button id="rm-ahn-result" type="button">AHN-resultaat bekijken</button>
+                    <output id="rm-output-path" aria-label="Resultatenmap"></output>
+                  </div>
                   <p id="rm-run-name-help" hidden>De naam van de uitvoermap voor deze run. Gebruik dezelfde naam om een bestaande run te hervatten.</p>
                 </div>
                 <div class="run-field">

@@ -57,6 +57,43 @@ def application(tmp_path, monkeypatch):
     return app.RunApplication(tmp_path, Dialogs(tmp_path / "run.bat"))
 
 
+def test_startup_status_follows_bootstrap(application, monkeypatch):
+    def read_boundaries(names, progress):
+        progress("Waterschapsgrenzen downloaden…")
+        assert (
+            application.dispatch("startup_status", {})["message"]
+            == "Waterschapsgrenzen downloaden…"
+        )
+        return {}
+
+    monkeypatch.setattr(app, "map_boundaries", read_boundaries)
+    assert "datastore" in application.dispatch("startup_status", {})["message"]
+    application.bootstrap()
+
+
+def test_output_root_is_saved_loaded_and_used_for_resume(application, values, tmp_path):
+    output = tmp_path / "gekozen resultaten"
+    layer = output / "dem/waterschappen_12_13/kaartproef"
+    layer.mkdir(parents=True)
+    (layer / "run.json").write_text("{}")
+    values["output_root"] = str(output)
+    commands = application.commands(values)
+    assert all(
+        "--output-root" in command and str(output) in command for command in commands
+    )
+    assert "--resume" not in commands[0]
+    assert "--resume" in commands[1]
+    application.dispatch("save", values)
+    loaded = application.dispatch("run_load", {})
+    assert loaded["output_root"] == str(output)
+    assert application.commands(loaded) == commands
+    values["output_root"] = ""
+    assert all(
+        "--output-root" not in cmd and "--resume" not in cmd
+        for cmd in application.commands(values)
+    )
+
+
 def test_main_opens_real_browser_layout(monkeypatch, tmp_path):
     (tmp_path / "pixi.toml").touch()
     monkeypatch.chdir(tmp_path)
@@ -75,8 +112,6 @@ def test_main_opens_real_browser_layout(monkeypatch, tmp_path):
 
 
 def test_failure_to_open_browser_closes_server(monkeypatch, tmp_path):
-    import tkinter as tk
-
     def unexpected_mainloop():
         pytest.fail("A failed browser launch should not start the main loop")
 
@@ -93,7 +128,9 @@ def test_failure_to_open_browser_closes_server(monkeypatch, tmp_path):
         shutdown=lambda: calls.append("shutdown"),
         server_close=lambda: calls.append("close"),
     )
-    monkeypatch.setattr(tk, "Tk", lambda: root)
+    native = importlib.import_module("runscript_tool_tests.native_dialogs")
+    monkeypatch.setattr(native, "create_run_window", lambda: root)
+    monkeypatch.setattr(server_module, "sys", SimpleNamespace(platform="linux"))
     monkeypatch.setattr(server_module, "create_server", lambda *_: server)
     monkeypatch.setattr(server_module.webbrowser, "open", lambda *_, **__: False)
     with pytest.raises(RuntimeError, match="browser kon niet worden geopend"):

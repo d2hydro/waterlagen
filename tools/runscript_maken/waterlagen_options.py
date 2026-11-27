@@ -107,6 +107,17 @@ EXTRA_OPTIONS = {
             "directory",
         ),
         ExtraOption(
+            "ahn-version",
+            "Hoogtebron",
+            HelpText(
+                "Kies de nieuwste geldige hoogte per cel of één vaste AHN-versie.",
+                "dem",
+                "hoogtebron",
+            ),
+            "choice",
+            choices=("", "6", "5", "4"),
+        ),
+        ExtraOption(
             "ahn-vrt",
             "Eigen DTM (.vrt)",
             HelpText(
@@ -494,6 +505,8 @@ def extra_arguments(
         if not is_default or option.flag == "building-workers":
             arguments.extend(["--" + option.flag, argument])
     if layer == "dem":
+        if "--ahn-version" in arguments and "--ahn-vrt" in arguments:
+            raise ValueError("Kies één hoogtebron voor het DEM.")
         if dem_numbers.get(
             "building_initial_buffer_m", DEM.building_initial_buffer_m
         ) > dem_numbers.get(

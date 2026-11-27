@@ -1,7 +1,19 @@
 """Start het Waterlagen-keuzevenster vanuit de broncode of het productiepakket."""
 
+import os
 import sys
 from pathlib import Path
+
+
+def choose_datastore(project: Path) -> bool:
+    """Open de gekozen datastore voordat Waterlagen wordt geladen."""
+    from tools.runscript_maken.datastore_window import choose_profile
+
+    path = choose_profile(project)
+    if path is None:
+        return False
+    os.environ["WATERLAGEN_DATASTORE"] = str(path.resolve())
+    return True
 
 
 def main() -> int:
@@ -9,6 +21,12 @@ def main() -> int:
     if not (project / "tools/runscript_maken").is_dir():
         project = project.parent
     sys.path.insert(0, str(project))
+    # Waterlagen opens its datastore on import. Ask before loading the package.
+    if not sys.argv[1:]:
+        if not choose_datastore(Path.cwd()):
+            return 0
+        print("Waterlagen laden...", flush=True)
+
     from tools.runscript_maken.waterlagen import main as open_runscript
 
     return open_runscript()

@@ -6,17 +6,20 @@ editorial_status: ai
 
 ## Beginnen zonder instellingen
 
-Standaard staan downloads in `data/source_data/` en resultaten in `data/processed_data/` onder de projectmap.
+Standaard staan downloads in `data/source_data/` en resultaten in `data/processed_data/` onder de projectmap. Opslagmappen mogen leeg zijn. Waterlagen maakt de benodigde mappen aan en haalt openbare brondata op zodra een run ze nodig heeft. Kies je zelf een GeoPackage, dan moet dat bestand op het ingestelde pad staan.
 
 ## Gegevens ergens anders bewaren
 
-Open `.datastore` naast `pixi.toml` in een teksteditor. Vervang `./data` door uw eigen map, bijvoorbeeld:
+Open **Datastore kiezen** en kies een `.datastore`. Controleer de paden, wijzig zo nodig een bron en klik op **Runmaker openen**. Gebruik **Opslaan als…** voor een eigen bestand. Relatieve paden beginnen bij de map van het datastorebestand.
 
 ```text
-DATA_DIR=D:/waterdata
+DATA_DIR=./data
+AHN_DATA_DIR=E:/Hoogtedata/AHN
+AHN4_DATA_DIR=P:/Archief/AHN4/dtm_05
+TOP10NL_FILE=P:/Basisdata/mijn_top10nl.gpkg
 ```
 
-Sla op als UTF-8 zonder BOM en start de volgende productie. Om bestaande gegevens te blijven gebruiken, moet u ze zelf naar de nieuwe locatie verplaatsen. Met `SOURCE_DATA_DIR` en `PROCESSED_DATA_DIR` kunt u bron en uitvoer apart instellen. Gelijknamige omgevingsvariabelen hebben voorrang.
+Onder **Basisbronnen** kies je per bron de opslagmap. Klap **AHN** open voor de tegelmappen van AHN6, AHN5 en AHN4. Klap **BAG**, **BGT**, **BRP** of **TOP10NL** open om een eigen GeoPackage te kiezen. **Resultatenmap kiezen…** bij de runnaam geldt voor één run.
 
 ## Productiemappen
 
