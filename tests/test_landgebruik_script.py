@@ -6,6 +6,7 @@ import pytest
 from shapely.geometry import box
 
 from waterlagen import _production
+from waterlagen.datastore import DataStore
 from waterlagen.areas import ProductionArea
 from waterlagen.functioneel_landgebruik import FunctioneelLandgebruikSources
 
@@ -144,14 +145,10 @@ def test_landgebruik_script_builds_tiles_vrt_and_cog_in_order(
         )
         return raster_path
 
-    data_store = SimpleNamespace(
+    data_store = DataStore(
         data_dir=data_dir_root,
         processed_data_dir=processed_dir,
         source_data_dir=tmp_path / "source",
-        bgt_dir=tmp_path / "source/bgt",
-        bag_dir=tmp_path / "source/bag",
-        brp_dir=tmp_path / "source/brp",
-        top10nl_dir=tmp_path / "source/top10nl",
     )
     monkeypatch.setattr(landgebruik.settings, "functioneel_landgebruik_workers", 2)
     original_read_info = landgebruik.pyogrio.read_info
@@ -176,7 +173,7 @@ def test_landgebruik_script_builds_tiles_vrt_and_cog_in_order(
     monkeypatch.setattr(landgebruik, "create_landuse_cog", fake_create_landuse_cog)
 
     default_bgt = data_store.bgt_dir / landgebruik.BGT_BESTAND
-    default_bgt.parent.mkdir(parents=True)
+    default_bgt.parent.mkdir(parents=True, exist_ok=True)
     default_bgt.touch()
     bgt_path = None
     if prepared_bgt:

@@ -203,7 +203,7 @@ def _download_osm_lines(
     if isinstance(timeout, bool) or not isfinite(timeout) or timeout <= 0:
         raise ValueError("timeout moet positief en eindig zijn")
     store = data_store or DataStore()
-    target = Path(target_path or store.source_data_dir / "osm" / f"{filename}.gpkg")
+    target = Path(target_path or store.source_folder("osm") / f"{filename}.gpkg")
     west, south, east, north = Transformer.from_crs(
         settings.crs, "EPSG:4326", always_xy=True
     ).transform_bounds(*bounds, densify_pts=21)

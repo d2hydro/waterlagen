@@ -44,9 +44,10 @@ tag-pattern = '^v?(?P<version>\d{4}\.\d{1,2}\.\d+(?:(?:a|b|rc)\d+)?(?:\.post\d+)
 version_scheme = "no-guess-dev"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/waterlagen"]
+packages = ["src/waterlagen", "src/waterlagen_paths.py"]
 include = [
   "src/waterlagen/styles/*.qml",
+  "src/waterlagen/ahn/bladindex/*",
   "src/waterlagen/functioneel_landgebruik/*.csv",
   "src/waterlagen/functioneel_landgebruik/drinkwater_beoordelingen.json",
 ]

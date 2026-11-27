@@ -97,7 +97,13 @@ def build_batch_script(
     ]
     for command in commands:
         words = read_commands(command.removeprefix("& "))[0]
-        lines.append(" ".join(_batch_argument(word) for word in words))
+        encoded = [_batch_argument(word) for word in words]
+        if path is not None and "--datastore" in words:
+            index = words.index("--datastore") + 1
+            profile = Path(words[index]).resolve()
+            if profile.parent == path.parent.resolve():
+                encoded[index] = '"%~dp0' + profile.name.replace("%", "%%") + '"'
+        lines.append(" ".join(encoded))
         lines.append("if errorlevel 1 goto einde")
     lines.extend(
         [
@@ -136,6 +142,7 @@ def start_batch(path: Path, project: Path) -> subprocess.Popen:
     if sys.platform != "win32":
         raise OSError("Start een BAT-bestand op Windows.")
     environment = os.environ.copy()
+    environment["WATERLAGEN_INTERACTIVE_DOWNLOAD"] = "1"
     environment["RUNSCRIPT_FILE"] = str(path.resolve())
     return subprocess.Popen(
         'cmd.exe /d /s /c ""%RUNSCRIPT_FILE%""',
@@ -246,7 +253,19 @@ def read_batch_commands(text: str) -> list[list[str]]:
                 raise ValueError(
                     "Gebruik losse pixi-commando's zonder extra batchcode."
                 )
-            words.append(_read_batch_word(match.group("word")))
+            word = match.group("word")
+            if (
+                words[-1:] == ["--datastore"]
+                and word.startswith('"%~dp0')
+                and word.endswith('"')
+            ):
+                word = '"' + word[6:]
+                value = _read_batch_word(word)
+                if Path(value).name != value:
+                    raise ValueError("Ongeldige datastore naast het runscript.")
+                words.append("%~dp0" + value)
+            else:
+                words.append(_read_batch_word(word))
             position = match.end()
         commands.append(words)
     if not commands:

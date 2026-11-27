@@ -1,5 +1,6 @@
 """Verbind het kaartvenster met de bestaande Pixi-opdrachten."""
 
+import os
 from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
@@ -11,8 +12,10 @@ from waterlagen.areas import (
     area_from_file,
     parse_authority_codes,
 )
+from waterlagen.datastore import DataStore
 from waterlagen.settings import settings
 
+from .ahn_preview import CoveragePreview
 from .map_data import map_boundaries, map_feature, save_polygon
 from .script import build_batch_script, save_script
 from .waterlagen import (
@@ -21,6 +24,7 @@ from .waterlagen import (
     LAYERS,
     RunSettings,
     _existing_layers,
+    _scope,
     _start_code_update,
     _validate,
     _window_commands,
@@ -32,8 +36,8 @@ if TYPE_CHECKING:
     from .native_dialogs import NativeDialogs
 
 
-def run_settings(values: dict) -> RunSettings:
-    """Controleer formulierkeuzes vóór het maken van een commando."""
+def area_arguments(values: dict, *, validate_file: bool = True) -> tuple[str, ...]:
+    """Lees uitsluitend de gebiedskeuze, onafhankelijk van overige formuliervelden."""
     mode = values.get("mode")
     if mode == "authorities":
         codes = parse_authority_codes(",".join(values.get("authorities", [])))
@@ -51,10 +55,17 @@ def run_settings(values: dict) -> RunSettings:
             raise ValueError("Sla de getekende polygoon eerst op als GeoPackage.")
         path = Path(values.get("area_file", "")).resolve()
         layer = values.get("area_layer", "")
-        area_from_file(path, layer=layer)
+        if validate_file:
+            area_from_file(path, layer=layer)
         area = ("--area-file", str(path), "--area-layer", layer)
     else:
         raise ValueError("Kies een gebied.")
+    return area
+
+
+def run_settings(values: dict) -> RunSettings:
+    """Controleer formulierkeuzes vóór het maken van een commando."""
+    area = area_arguments(values)
     requested = values.get("layers", [])
     if any(layer not in LAYERS for layer in requested):
         raise ValueError("Onbekende basislaag.")
@@ -76,6 +87,15 @@ def run_settings(values: dict) -> RunSettings:
         refresh_sources=bool(values.get("refresh_sources")),
         debug=bool(values.get("debug")),
         extra_options=choices,
+        download_root=Path(values["download_root"]).resolve()
+        if values.get("download_root")
+        else None,
+        datastore_file=Path(os.environ["WATERLAGEN_DATASTORE"])
+        if os.getenv("WATERLAGEN_DATASTORE")
+        else None,
+        output_root=Path(values["output_root"]).resolve()
+        if values.get("output_root")
+        else None,
     )
     _validate(options)
     return options
@@ -98,6 +118,8 @@ def form_values(run: RunSettings) -> dict:
         "area_layer": arguments[2] if mode == "file" else "",
         "layers": run.layers,
         "run_id": run.run_id,
+        "download_root": str(run.download_root) if run.download_root else "",
+        "output_root": str(run.output_root) if run.output_root else "",
         "workers": run.workers,
         "refresh_sources": run.refresh_sources,
         "debug": run.debug,
@@ -113,16 +135,20 @@ class RunApplication:
         self.project = project
         self.dialogs = dialogs
         self.boundaries = None
+        self.startup_message = "Gebiedsgrenzen opzoeken in de datastore…"
+        self.coverage = CoveragePreview()
 
     def bootstrap(self) -> dict:
         if self.boundaries is None:
             self.boundaries = map_boundaries(
-                {code: name for name, code in AUTHORITIES.items()}
+                {code: name for name, code in AUTHORITIES.items()},
+                self._startup_progress,
             )
         return {
             **self.boundaries,
             "layers": list(LAYERS.items()),
             "project": str(self.project),
+            "default_output_root": str(DataStore().processed_data_dir.resolve()),
             "crs": str(settings.crs),
             "run_id": datetime.now().strftime("proef-%Y%m%d-%H%M%S"),
             "options": {
@@ -135,10 +161,32 @@ class RunApplication:
             },
         }
 
+    def _startup_progress(self, message: str) -> None:
+        self.startup_message = message
+
     def commands(self, values: dict) -> list[str]:
         from dataclasses import replace
 
         options = run_settings(values)
+        fixed = next(
+            (
+                item.value
+                for item in options.extra_options
+                if item.layer == "dem" and item.flag == "ahn-version" and item.value
+            ),
+            None,
+        )
+        if fixed:
+            result = self.coverage.status(options.area_arguments)
+            available, total = result["counts"][fixed]
+            if (
+                (fixed == "6" and result["phase"] != "ready")
+                or not total
+                or available != total
+            ):
+                raise ValueError(
+                    f"AHN{fixed} heeft geen bevestigde volledige dekking voor dit gebied."
+                )
         existing = _existing_layers(options)
         if existing and values.get("run_mode") not in {"resume", "overwrite"}:
             raise ValueError("Deze run bestaat al. Kies hervatten of overschrijven.")
@@ -151,8 +199,44 @@ class RunApplication:
         return _window_commands(options)
 
     def dispatch(self, action: str, values: dict) -> dict:
+        if action == "startup_status":
+            return {"message": self.startup_message}
         if action == "bootstrap":
             return self.bootstrap()
+        if action == "ahn_result":
+            import webbrowser
+
+            run = run_settings(values)
+            report = (
+                run.results_directory
+                / "dem"
+                / _scope(run.area_arguments)
+                / run.run_id
+                / "ahn_overzicht.html"
+            )
+            if not report.is_file():
+                raise ValueError("Er is nog geen AHN-overzicht voor deze run.")
+            webbrowser.open(report.resolve().as_uri())
+            return {}
+        if action == "choose_download_root":
+            path = self.dialogs.directory(
+                "Sta ontbrekende AHN-tegels toe in deze map",
+                initialdir=DataStore().source_data_dir,
+            )
+            return {"path": str(path)} if path else {"cancelled": True}
+        if action == "choose_output_root":
+            initial = (
+                Path(values["current"])
+                if values.get("current")
+                else DataStore().processed_data_dir
+            )
+            path = self.dialogs.directory("Kies de resultatenmap", initialdir=initial)
+            return {"path": str(path)} if path else {"cancelled": True}
+        if action == "ahn_coverage":
+            return self.coverage.status(
+                area_arguments(values, validate_file=False),
+                force=values.get("force") is True,
+            )
         if action == "preview":
             return {"commands": self.commands(values)}
         if action == "dem_landuse":
@@ -166,6 +250,15 @@ class RunApplication:
                 return {"state": "error", "message": str(error), "path": ""}
             return asdict(result)
         if action == "save":
+            store = DataStore()
+            layers = set(values.get("layers", []))
+            sources = {"bag"} if layers.intersection({"inwoners", "autos"}) else set()
+            if "functioneel_landgebruik" in layers:
+                sources.update({"bag", "brp", "bgt", "top10nl"})
+            for key in sorted(sources):
+                explicit = getattr(store, key + "_file")
+                if explicit and not explicit.is_file():
+                    raise ValueError(f"{key.upper()}-bestand ontbreekt: {explicit}. Kies een ander bestand in de datastore.")
             commands = self.commands(values)
             path = self.dialogs.save("Run opslaan", ".bat", values["run_id"] + ".bat")
             if path is None:
@@ -181,7 +274,14 @@ class RunApplication:
             path = self.dialogs.open("Run laden", "*.bat *.ps1")
             if path is None:
                 return {"cancelled": True}
-            result = form_values(read_runfile(path, self.project))
+            run = read_runfile(path, self.project)
+            if run.datastore_file and str(run.datastore_file) != os.getenv(
+                "WATERLAGEN_DATASTORE"
+            ):
+                raise ValueError(
+                    f"Open de Runmaker met de datastore van dit script: {run.datastore_file}"
+                )
+            result = form_values(run)
             result["path"] = str(path)
             return result
         if action == "polygon_file":

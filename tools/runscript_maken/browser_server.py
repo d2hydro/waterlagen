@@ -4,6 +4,8 @@ import json
 import mimetypes
 import re
 import secrets
+import subprocess
+import sys
 import threading
 import time
 import webbrowser
@@ -143,12 +145,11 @@ def create_server(
 
 def open_browser(project: Path) -> None:
     """Open dezelfde kaartindeling als het ontwerp, met echte lokale functies."""
-    import tkinter as tk
     from waterlagen.datastore import DataStore
     from .browser_app import RunApplication
-    from .native_dialogs import NativeDialogs
+    from .native_dialogs import NativeDialogs, create_run_window
 
-    root = tk.Tk()
+    root = create_run_window()
     root.withdraw()
     dialogs = NativeDialogs(root, project)
     application = RunApplication(project, dialogs)
@@ -159,20 +160,44 @@ def open_browser(project: Path) -> None:
     thread.start()
     print(f"Run maken: {server.url}", flush=True)
 
+    desktop = None
+
     def check_closed() -> None:
-        if server.closing or (
-            not server.active_requests and time.monotonic() - server.last_seen > 120
-        ):
+        if desktop is not None:
+            closed = desktop.poll() is not None
+        else:
+            closed = (
+                not server.active_requests and time.monotonic() - server.last_seen > 120
+            )
+        if server.closing or closed:
             root.quit()
         else:
             root.after(1000, check_closed)
 
     try:
-        if not webbrowser.open(server.url, new=1):
+        if sys.platform == "win32":
+            # Pixi starts hidden. Show the independent map window normally.
+            startup = subprocess.STARTUPINFO()
+            startup.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+            startup.wShowWindow = 1  # SW_SHOWNORMAL
+            desktop = subprocess.Popen(
+                [
+                    Path(__file__).with_name("desktop") / "Waterlagen.Runmaker.exe",
+                    server.url,
+                ],
+                startupinfo=startup,
+            )
+        elif not webbrowser.open(server.url, new=1):
             raise RuntimeError("De browser kon niet worden geopend.")
         root.after(1000, check_closed)
         root.mainloop()
+        if desktop is not None and desktop.poll() not in (None, 0):
+            raise RuntimeError("Het Waterlagen-venster is met een fout gesloten.")
     finally:
+        if desktop is not None and desktop.poll() is None:
+            desktop.terminate()
+            desktop.wait()
+
         server.shutdown()
         server.server_close()
         root.destroy()

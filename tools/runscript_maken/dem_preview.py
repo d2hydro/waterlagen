@@ -32,6 +32,8 @@ def preview_landuse(options: RunSettings, run_mode: str) -> LandusePreview:
     if "dem" not in options.layers:
         return LandusePreview("hidden", "")
     store = DataStore()
+    if options.output_root is not None:
+        store = store.model_copy(update={"processed_data_dir": options.output_root})
     scope = _scope(options.area_arguments)
     values = {
         item.flag: item.value for item in options.extra_options if item.layer == "dem"

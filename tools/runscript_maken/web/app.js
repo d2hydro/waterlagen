@@ -2,6 +2,7 @@ const { extent, geoMercator, geoPath } = window.d3;
 const root = document.getElementById("run-map-preview");
 const q = (s) => root.querySelector(s);
 const data = await loadApplication();
+let outputRoot = "";
 let filePath = "",
   fileLayer = "",
   fileFeature = null,
@@ -498,6 +499,7 @@ function toggleOptions(key) {
     closeAreaPopovers();
     closeSelectionPopup();
     panel.hidden = false;
+    if (key === "dem") scheduleCoverage();
     optionButtons.get(key).setAttribute("aria-expanded", "true");
     panel.querySelector("header button").focus();
   }
@@ -551,7 +553,7 @@ for (const [index, [key, name]] of layers.entries()) {
       for (const value of option.choices) {
         const choice = document.createElement("option");
         choice.value = value;
-        choice.textContent = value;
+        choice.textContent = option.flag === "ahn-version" ? (value ? "AHN" + value : "Nieuwste beschikbare AHN") : value;
         input.append(choice);
       }
     } else {
@@ -584,9 +586,25 @@ for (const [index, [key, name]] of layers.entries()) {
     }
     fields.append(label);
     addOptionActions(label, input, option, key);
-    if (ownDtm) {
-      addOptionGroup(fields, option.label, [option.flag]);
+    if (option.flag === "ahn-version") {
+      const custom = document.createElement("option");
+      custom.value = "vrt";
+      custom.textContent = "Eigen DTM (.vrt)";
+      input.append(custom);
+      input.id = "rm-ahn-source";
+      label.classList.add("option-wide");
+      const status = document.createElement("div");
+      status.className = "option-wide ahn-status";
+      status.innerHTML = '<span role="status"></span> <button type="button">Nu verversen</button>';
+      status.querySelector("button").onclick = () => scheduleCoverage(true);
+      const hint = document.createElement("div");
+      hint.id = "rm-ahn-provenance";
+      hint.className = "hint option-wide";
+      hint.textContent = "Na de run toont ahn_versie.tif per cel de bron: AHN6, AHN5 of AHN4. Code 0 betekent geen bronhoogte.";
+      fields.append(status, hint);
+      input.onchange = () => updateDtmField();
     }
+    if (ownDtm) label.hidden = true;
     if (option.hint) {
       const hint = document.createElement("div");
       hint.className = "hint";
@@ -644,6 +662,7 @@ function render() {
   renderDrawingControls();
   updateSelectionDetails();
   scheduleLandusePreview();
+  scheduleCoverage();
 }
 
 const selectionOutline = svgElement("g", { "pointer-events": "none", "aria-hidden": "true" }, geo);
@@ -1133,6 +1152,23 @@ async function api(action, values = {}) {
 
 async function loadApplication() {
   setInterval(() => api("heartbeat").catch(() => {}), 15000);
+  const label = document.getElementById("rm-startup-message");
+  const elapsed = document.getElementById("rm-startup-time");
+  const start = performance.now();
+  let pending = false;
+  const clock = setInterval(async () => {
+    elapsed.textContent = Math.floor((performance.now() - start) / 1000) + " s";
+    if (pending) return;
+    pending = true;
+    try {
+      const status = await api("startup_status");
+      if (status.message && label.textContent !== status.message) label.textContent = status.message;
+    } catch {
+      // Bootstrap reports connection failures and offers a retry.
+    } finally {
+      pending = false;
+    }
+  }, 1000);
   try {
     const [settings, appearance] = await Promise.all([
       api("bootstrap"),
@@ -1147,6 +1183,8 @@ async function loadApplication() {
     retry.onclick = () => location.reload();
     loading.append(retry);
     throw error;
+  } finally {
+    clearInterval(clock);
   }
 }
 
@@ -1181,7 +1219,7 @@ function drawingIsSaved() {
   return finished && drawingPath && savedDrawing === JSON.stringify(points);
 }
 
-function collectValues() {
+function collectArea() {
   if (mode === "custom") {
     throw new Error("Kies hoe je het eigen gebied wilt opgeven.");
   }
@@ -1195,8 +1233,18 @@ function collectValues() {
   if (mode === "file" && !fileFeature) {
     throw new Error("Kies een polygoonbestand en een laag.");
   }
+  return {
+    mode, authorities: [...selected], bounds, area_file: mode === "draw" ? drawingPath : filePath,
+    area_layer: mode === "draw" ? "gebied" : fileLayer, drawing_saved: !!drawingIsSaved(),
+  };
+}
+
+function collectValues() {
+  const area = collectArea();
   const extra_options = [];
   for (const input of root.querySelectorAll("[data-flag]")) {
+    if (input.dataset.flag === "ahn-version" && input.value === "vrt") continue;
+    if (input.dataset.flag === "ahn-vrt" && q("#rm-ahn-source")?.value !== "vrt") continue;
     if (!input.disabled) {
       extra_options.push({
         layer: input.dataset.layer,
@@ -1206,14 +1254,11 @@ function collectValues() {
     }
   }
   return {
-    mode,
-    authorities: [...selected],
-    bounds,
-    area_file: mode === "draw" ? drawingPath : filePath,
-    area_layer: mode === "draw" ? "gebied" : fileLayer,
-    drawing_saved: !!drawingIsSaved(),
+    ...area,
     layers: [...q("#rm-layers").querySelectorAll("input:checked")].map((input) => input.value),
     run_id: q("#rm-run-name").value,
+    output_root: outputRoot,
+    download_root: q("#rm-download-path").textContent,
     workers: q("#rm-workers").value,
     run_mode: q("#rm-run-mode").value,
     refresh_sources: q("#rm-refresh").checked,
@@ -1483,6 +1528,108 @@ function addOptionActions(label, input, option, layer) {
   }
 }
 
+function updateDtmField() {
+  const select = q("#rm-ahn-source");
+  const path = q('[data-flag="ahn-vrt"]');
+  if (!select || !path) return;
+  path.closest("label").hidden = select.value !== "vrt";
+  const hint = q("#rm-ahn-provenance");
+  if (hint) hint.hidden = select.value !== "";
+}
+
+let coverageKey = null, coverageRevision = 0, coverageTimer, coverageClock, coverageExpires = 0;
+function scheduleCoverage(force = false) {
+  const select = q("#rm-ahn-source");
+  if (!select) return;
+  const panel = optionPanels.get("dem");
+  if (panel?.hidden && !q('#rm-layers input[value="dem"]').checked) return;
+  const status = q(".ahn-status");
+  const message = status.querySelector("span");
+  const retry = status.querySelector("button");
+  let area;
+  try {
+    area = collectArea();
+    if (area.mode === "authorities" && !area.authorities.length) area = null;
+  } catch {
+    area = null;
+  }
+  const key = JSON.stringify(area);
+  if (!force && key === coverageKey && Date.now() < coverageExpires) return;
+  const sameArea = key === coverageKey;
+  coverageKey = key;
+  coverageExpires = Infinity;
+  const revision = ++coverageRevision;
+  clearTimeout(coverageTimer);
+  clearInterval(coverageClock);
+  for (const option of select.options) {
+    if (["4", "5", "6"].includes(option.value) && (!sameArea || option.value === "6")) {
+      option.disabled = true;
+      option.textContent = "AHN" + option.value;
+    }
+  }
+  if (!area) {
+    message.textContent = "Kies eerst een gebied.";
+    status.classList.remove("checking");
+    retry.hidden = true;
+    return;
+  }
+  const start = Date.now();
+  let phase = "checking";
+  const showProgress = () => {
+    const seconds = Math.floor((Date.now() - start) / 1000);
+    const label = phase === "download" ? "Nieuwe AHN6-dekkingslijst downloaden" :
+      seconds >= 3 ? "Wachten op het AHN-portaal" : "AHN6-dekking controleren";
+    message.textContent = label + (seconds >= 3 ? "… " + seconds + " s" : "…");
+  };
+  retry.hidden = true;
+  status.classList.add("checking");
+  showProgress();
+  coverageClock = setInterval(showProgress, 1000);
+  async function check(refresh) {
+    if (revision !== coverageRevision) return;
+    try {
+      const result = await api("ahn_coverage", { ...area, force: refresh });
+      if (revision !== coverageRevision) return;
+      phase = result.phase;
+      for (const option of select.options) {
+        const counts = result.counts[option.value];
+        if (!counts) continue;
+        const [available, total] = counts;
+        const unknown = option.value === "6" && phase !== "ready";
+        option.disabled = unknown || !total || available !== total;
+        const reason = !total ? "geen tegels" : (total - available) + " van " + total + " ontbreken";
+        option.textContent = "AHN" + option.value + (unknown || !option.disabled ? "" : " · " + reason);
+      }
+      if (phase === "checking" || phase === "download") {
+        showProgress();
+        coverageTimer = setTimeout(() => check(false), 700);
+        return;
+      }
+      if (phase === "error") throw new Error(result.error);
+      const [available, total] = result.counts["6"];
+      const when = new Date(result.checked * 1000).toLocaleString("nl-NL", {day:"numeric", month:"short", hour:"2-digit", minute:"2-digit"});
+      message.textContent = "AHN6 · " + available + " van " + total + " tegels beschikbaar · gecontroleerd " + when;
+      if (["4", "5", "6"].every(version => select.querySelector('option[value="' + version + '"]').disabled)) {
+        message.textContent += ". Voor de hele gebiedsgrens is geen vaste versie compleet. Kies ‘Nieuwste beschikbare AHN’ om AHN6, AHN5 en AHN4 te combineren.";
+      }
+      coverageExpires = (result.checked + 86400) * 1000;
+    } catch (error) {
+      if (revision !== coverageRevision) return;
+      if (phase !== "error") phase = "failed";
+      message.textContent = "Dekking onbekend. " + (phase === "error" ? "AHN-portaal niet bereikbaar." : error.message);
+      retry.textContent = "Opnieuw controleren";
+    } finally {
+      if (revision === coverageRevision && !["checking", "download"].includes(phase)) {
+        clearInterval(coverageClock);
+        status.classList.remove("checking");
+        retry.hidden = false;
+        if (phase === "ready") retry.textContent = "Nu verversen";
+      }
+    }
+  }
+  coverageTimer = setTimeout(() => check(force), 120);
+}
+
 let landuseTimer;
 let landuseRequest = 0;
 let landuseSignature = "";
@@ -1650,6 +1797,9 @@ async function loadRun() {
   q("#rm-methods").hidden = true;
   selected = new Set(run.authorities);
   q("#rm-run-name").value = run.run_id;
+  setOutputRoot(run.output_root || "");
+  q("#rm-download-path").textContent = run.download_root || "";
+  q("#rm-download-reset").hidden = !run.download_root;
   q("#rm-workers").value = run.workers;
   q("#rm-run-mode").value = run.run_mode;
   q("#rm-refresh").checked = run.refresh_sources;
@@ -1668,6 +1818,10 @@ async function loadRun() {
       input.dispatchEvent(new Event("input"));
     }
   }
+  if (run.extra_options.some((field) => field.flag === "ahn-vrt" && field.value)) {
+    q("#rm-ahn-source").value = "vrt";
+  }
+  updateDtmField();
   for (const group of root.querySelectorAll("details.option-group")) {
     group.open = [...group.querySelectorAll("[data-flag]")].some((input) => {
       const value = input.type === "checkbox" ? String(input.checked) : input.value;
@@ -1693,8 +1847,16 @@ async function loadRun() {
   render();
 }
 
+function runValues() {
+  const values = collectValues();
+  if (values.layers.includes("dem") && q("#rm-ahn-source").value === "vrt" && !q('[data-flag="ahn-vrt"]').value.trim()) {
+    throw new Error("Kies een VRT-bestand voor de eigen DTM.");
+  }
+  return values;
+}
+
 async function saveRun(start) {
-  const result = await api("save", { ...collectValues(), start });
+  const result = await api("save", { ...runValues(), start });
   if (!result.cancelled) {
     showRunNotice(
       result.started ? "Opgeslagen en gestart" : "Opgeslagen",
@@ -1704,11 +1866,46 @@ async function saveRun(start) {
   }
 }
 
+function setOutputRoot(path) {
+  outputRoot = path;
+  q("#rm-output-path").textContent = path || "Standaard: " + data.default_output_root;
+  q("#rm-output-reset").hidden = !path;
+}
+
 function initializeForm() {
   root.addEventListener("input", () => scheduleLandusePreview());
   root.addEventListener("change", () => scheduleLandusePreview());
-  window.addEventListener("focus", () => scheduleLandusePreview(true));
+  root.addEventListener("change", () => scheduleCoverage());
+  window.addEventListener("focus", () => { scheduleLandusePreview(true); scheduleCoverage(); });
   q("#rm-run-name").value = data.run_id;
+  setOutputRoot("");
+  const browseOutput = q("#rm-output-browse");
+  const browseLabel = browseOutput.textContent;
+  addFileIcon(browseOutput, browseLabel);
+  browseOutput.append(browseLabel);
+  browseOutput.onclick = () => act(browseOutput, async () => {
+    const result = await api("choose_output_root", { current: outputRoot });
+    if (!result.cancelled) {
+      setOutputRoot(result.path);
+      scheduleLandusePreview();
+    }
+  });
+  q("#rm-ahn-result").onclick = () => act(q("#rm-ahn-result"), () => api("ahn_result", runValues()));
+  q("#rm-download-browse").onclick = () => act(q("#rm-download-browse"), async () => {
+    const result = await api("choose_download_root");
+    if (result.path) {
+      q("#rm-download-path").textContent = result.path;
+      q("#rm-download-reset").hidden = false;
+    }
+  });
+  q("#rm-download-reset").onclick = () => {
+    q("#rm-download-path").textContent = "";
+    q("#rm-download-reset").hidden = true;
+  };
+  q("#rm-output-reset").onclick = () => {
+    setOutputRoot("");
+    scheduleLandusePreview();
+  };
   q("#rm-file-demo").onclick = () => act(q("#rm-file-demo"), choosePolygon);
   q("#rm-file-layer").onchange = () => act(null, () => showFileLayer(q("#rm-file-layer").value));
   q("#rm-load").onclick = () => act(q("#rm-load"), loadRun);
@@ -1725,7 +1922,7 @@ function initializeForm() {
   });
   previewButton.onclick = () =>
     act(previewButton, async () => {
-      const result = await api("preview", collectValues());
+      const result = await api("preview", runValues());
       q("#rm-message").hidden = true;
       preview.querySelector("pre").textContent = result.commands.join("\n\n");
       preview.showModal();

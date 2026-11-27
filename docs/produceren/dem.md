@@ -17,7 +17,11 @@ DEM gebruikt het landgebruik voor de tegelindeling en de ligging van gebouwen. K
 
 ## Hoogtebron
 
-Standaard wordt AHN gebruikt. Voor eigen maaiveldhoogtes opent u bij **DEM → Laagopties** de rij **Eigen DTM (.vrt)** en kiest u uw VRT-bestand.
+Standaard wordt per cel de nieuwste beschikbare AHN-maaiveldhoogte op 0,5 m gekozen in de volgorde AHN6, AHN5, AHN4. De selectie vindt vóór interpolatie en gebouwbewerking plaats. Met `--ahn-version latest` kiest u expliciet de nieuwste hoogte per cel. Met `--ahn-version 4`, `5` of `6` kunt u één versie vastzetten. In `ahn_versie.tif` staan de gebruikte generaties (4, 5 of 6) vóór interpolatie. Cellen zonder geldige oorspronkelijke AHN-hoogte hebben code 0 (NoData). Kies in de Runmaker bij **DEM → Laagopties → Hoogtebron** voor **Nieuwste beschikbare AHN**, één AHN-versie of **Eigen DTM (.vrt)**. Een vaste versie vereist alle benodigde tegels binnen de gekozen grens. Een tegel mag lege cellen bevatten. De Runmaker controleert AHN4 en AHN5 lokaal. Voor AHN6 wordt de lijst na 24 uur bijgewerkt. Tijdens het wachten of downloaden toont de Runmaker de voortgang. Met **Nu verversen** controleert u direct opnieuw.
+
+Gedownloade GeoTIFF-tegels blijven in `source_data/ahn/` van de datastore. AHN4 staat in `dtm_05/`, AHN5 in `ahn5/dtm_05/` en AHN6 in `ahn6/dtm_05/`. Volgende runs gebruiken dezelfde bestanden.
+
+Bekijk na afloop **AHN-resultaat bekijken** in de Runmaker of open `ahn_overzicht.html` in de resultatenmap voor de verdeling binnen het gebied. Open na een run met **Nieuwste beschikbare AHN** de laag `ahn_versie.tif` naast het DEM. Klik op een rastercel voor de gebruikte generatie. De laag `dem_bron.tif` laat zien waar de eindhoogte uit het maaiveld, een gebouwbewerking of interpolatie komt.
 
 Gebruik één rasterband met hoogtes in meters ten opzichte van NAP. Het raster moet hetzelfde coördinatenstelsel, dezelfde celgrootte en dezelfde celuitlijning hebben als het landgebruik. Zorg voor dekking van de volledige tegels én de zoekruimte eromheen.
 

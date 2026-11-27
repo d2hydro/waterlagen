@@ -22,17 +22,20 @@ def read(tmp_path, script):
 
 
 @pytest.mark.parametrize("extension", [".ps1", ".bat"])
-def test_all_selected_options_survive_saving_and_loading(tmp_path, extension):
+@pytest.mark.parametrize("height_source", ["ahn-version", "ahn-vrt"])
+def test_all_selected_options_survive_saving_and_loading(tmp_path, extension, height_source):
     choices = []
     for layer, options in options_module.EXTRA_OPTIONS.items():
         for option in options:
+            if option.flag in {"ahn-version", "ahn-vrt"} and option.flag != height_source:
+                continue
             value = option.default
             if option.kind == "boolean":
                 value = True
             elif option.kind in {"file", "directory", "toml"}:
                 value = str(make_input(tmp_path, option))
             elif option.kind == "choice":
-                value = "average"
+                value = "6" if option.flag == "ahn-version" else "average"
             choices.append(options_module.OptionValue(layer, option.flag, value))
     original = generator.RunSettings(
         tuple(generator.LAYERS),

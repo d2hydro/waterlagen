@@ -78,24 +78,22 @@ class FunctioneelLandgebruikSources:
     """Input GeoPackage paths for the functional land-use build workflow."""
 
     bgt_gpkg: Path = field(
-        default_factory=lambda: default_datastore.bgt_dir / "bgt.gpkg"
+        default_factory=lambda: default_datastore.source_file("bgt", "bgt.gpkg")
     )
     bag_gpkg: Path = field(
-        default_factory=lambda: default_datastore.bag_dir / "bag-light.gpkg"
+        default_factory=lambda: default_datastore.source_file("bag", "bag-light.gpkg")
     )
     brp_gpkg: Path = field(
         default_factory=lambda: (
-            default_datastore.brp_dir / "brpgewaspercelen_definitief_2025.gpkg"
+            default_datastore.source_file(
+                "brp", "brpgewaspercelen_definitief_2025.gpkg"
+            )
         )
     )
-    top10nl_gpkg: Path = field(
-        default_factory=lambda: default_datastore.top10nl_dir / "top10nl_Compleet.gpkg"
-    )
+    top10nl_gpkg: Path = field(default_factory=lambda: default_datastore.top10nl_path)
     buitendijks_gpkg: Path = field(
         default_factory=lambda: (
-            default_datastore.source_data_dir
-            / "liwo"
-            / "buitendijks_gebied_uit_liwo.gpkg"
+            default_datastore.source_folder("liwo") / "buitendijks_gebied_uit_liwo.gpkg"
         )
     )
     rwzi_gpkg: Path | None = None
@@ -105,26 +103,25 @@ class FunctioneelLandgebruikSources:
     @classmethod
     def from_datastore(cls, data_store: DataStore) -> "FunctioneelLandgebruikSources":
         """Create source paths rooted in an explicitly supplied datastore."""
-        gemalen_gpkg = data_store.source_data_dir / "hydamo" / "hydamo.gpkg"
+        gemalen_gpkg = data_store.source_folder("hydamo") / "hydamo.gpkg"
         if not gemalen_gpkg.is_file():
             gemalen_gpkg = None
-        rwzi_gpkg = (
-            data_store.source_data_dir / "waterketen_damo" / "waterketen_damo.gpkg"
-        )
+        rwzi_gpkg = data_store.source_folder("waterketen_damo") / "waterketen_damo.gpkg"
         if not rwzi_gpkg.is_file():
             rwzi_gpkg = None
         drinking_water_gpkg = (
-            data_store.source_data_dir / "osm" / "drinkwaterlocaties.gpkg"
+            data_store.source_folder("osm") / "drinkwaterlocaties.gpkg"
         )
         if not drinking_water_gpkg.is_file():
             drinking_water_gpkg = None
         return cls(
-            bgt_gpkg=data_store.bgt_dir / "bgt.gpkg",
-            bag_gpkg=data_store.bag_dir / "bag-light.gpkg",
-            brp_gpkg=data_store.brp_dir / "brpgewaspercelen_definitief_2025.gpkg",
-            top10nl_gpkg=data_store.top10nl_dir / "top10nl_Compleet.gpkg",
-            buitendijks_gpkg=data_store.source_data_dir
-            / "liwo"
+            bgt_gpkg=data_store.source_file("bgt", "bgt.gpkg"),
+            bag_gpkg=data_store.source_file("bag", "bag-light.gpkg"),
+            brp_gpkg=data_store.source_file(
+                "brp", "brpgewaspercelen_definitief_2025.gpkg"
+            ),
+            top10nl_gpkg=data_store.top10nl_path,
+            buitendijks_gpkg=data_store.source_folder("liwo")
             / "buitendijks_gebied_uit_liwo.gpkg",
             drinking_water_gpkg=drinking_water_gpkg,
             gemalen_gpkg=gemalen_gpkg,

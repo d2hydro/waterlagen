@@ -10,6 +10,27 @@ from threading import Lock
 from tkinter import filedialog
 
 
+def create_run_window() -> tk.Tk:
+    """Gebruik het Waterlagen-logo voor het venster en de bijbehorende dialogen."""
+    if sys.platform == "win32":
+        import ctypes
+
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(
+            "Waterlagen.Runmaker"
+        )
+    root = tk.Tk()
+    assets = Path(__file__).with_name("web")
+    if sys.platform == "win32":
+        icon = str(assets / "waterlagen.ico")
+        root.iconbitmap(default=icon)
+        root.iconbitmap(icon)
+    else:
+        from .window import _scaled_image
+
+        root.iconphoto(True, _scaled_image(assets / "favicon.png", 48, root))
+    return root
+
+
 class NativeDialogs:
     """Laat HTTP-verzoeken veilig een lokaal bestandsvenster openen."""
 
@@ -65,7 +86,10 @@ class NativeDialogs:
                     parent=owner,
                     title=title,
                     initialdir=self.project,
-                    filetypes=[("; ".join(pattern.split()), pattern), ("Alle bestanden", "*")],
+                    filetypes=[
+                        ("; ".join(pattern.split()), pattern),
+                        ("Alle bestanden", "*"),
+                    ],
                 ),
             )
         )
@@ -87,11 +111,11 @@ class NativeDialogs:
         )
         return Path(value).resolve() if value else None
 
-    def directory(self, title: str) -> Path | None:
+    def directory(self, title: str, *, initialdir: Path | None = None) -> Path | None:
         value = self._call(
             lambda: self._file_dialog(
                 lambda owner: filedialog.askdirectory(
-                    parent=owner, title=title, initialdir=self.project
+                    parent=owner, title=title, initialdir=initialdir or self.project
                 ),
             )
         )

@@ -37,6 +37,9 @@ def read_runfile(path: Path, project: Path) -> RunSettings:
         extra = {option.flag: option for option in EXTRA_OPTIONS[layer]}
         lengths = {
             "run-id": 1,
+            "output-root": 1,
+            "datastore": 1,
+            "ahn-download-dir": 1,
             "workers": 1,
             "resume": 0,
             "overwrite": 0,
@@ -119,9 +122,19 @@ def read_runfile(path: Path, project: Path) -> RunSettings:
             if flag not in values:
                 continue
             value = True if option.kind == "boolean" else values[flag][0]
+            if flag == "ahn-version" and value == "latest":
+                continue
             if option.kind in {"file", "directory", "toml"}:
                 value = str((project / value).resolve())
             choices.append(OptionValue(layer, flag, value))
+        profile = None
+        if "datastore" in values:
+            value = values["datastore"][0]
+            profile = (
+                path.parent / value[5:]
+                if value.startswith("%~dp0")
+                else project / value
+            ).resolve()
         run = RunSettings(
             (layer,),
             area_arguments,
@@ -132,13 +145,36 @@ def read_runfile(path: Path, project: Path) -> RunSettings:
             refresh_sources="refresh-sources" in values,
             debug="debug" in values,
             extra_options=tuple(choices),
+            datastore_file=profile,
+            download_root=(project / values["ahn-download-dir"][0]).resolve()
+            if "ahn-download-dir" in values
+            else None,
+            output_root=(project / values["output-root"][0]).resolve()
+            if "output-root" in values
+            else None,
         )
         _validate(run)
         runs.append(run)
     first = runs[0]
     if any(
-        (run.area_arguments, run.run_id, run.debug, run.refresh_sources)
-        != (first.area_arguments, first.run_id, first.debug, first.refresh_sources)
+        (
+            run.area_arguments,
+            run.run_id,
+            run.debug,
+            run.refresh_sources,
+            run.output_root,
+            run.datastore_file,
+            run.download_root,
+        )
+        != (
+            first.area_arguments,
+            first.run_id,
+            first.debug,
+            first.refresh_sources,
+            first.output_root,
+            first.datastore_file,
+            first.download_root,
+        )
         for run in runs
     ):
         raise ValueError(

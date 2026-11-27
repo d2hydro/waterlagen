@@ -1,5 +1,7 @@
 """Lees kaartgebieden uit dezelfde bronnen als de productie."""
 
+from collections.abc import Callable
+
 import geopandas as gpd
 from shapely.geometry import Polygon, mapping
 from shapely.ops import orient
@@ -28,15 +30,18 @@ def map_feature(area: ProductionArea) -> dict:
     }
 
 
-def map_boundaries(names: dict[str, str]) -> dict:
+def map_boundaries(names: dict[str, str], progress: Callable[[str], None]) -> dict:
     """Hergebruik lokale grenzen; haal alleen ontbrekende grensbestanden op."""
     store = DataStore()
     preparation = SourcePreparation()
     source = store.administratieve_gebieden_dir / WATERSCHAPSGRENZEN_FILENAME
-    preparation.ensure(
-        source,
-        lambda: download_waterschapsgrenzen(download_dir=source.parent, progress=False),
-    )
+
+    def download() -> None:
+        progress("Waterschapsgrenzen downloaden…")
+        download_waterschapsgrenzen(download_dir=source.parent, progress=False)
+
+    preparation.ensure(source, download)
+    progress("Waterschapsgrenzen inlezen en tekenen…")
     frame = normaliseer_waterschapsgrenzen(
         read_waterschapsgrenzen_layer(path=source)
     ).to_crs(settings.crs)
@@ -54,6 +59,7 @@ def map_boundaries(names: dict[str, str]) -> dict:
                     "geometry": mapping(orient(row.geometry, sign=-1)),
                 }
             )
+    progress("Landsgrens voor de kaart laden…")
     country = resolve_area("nederland", store, preparation)
     return {
         "authorities": {"type": "FeatureCollection", "features": features},

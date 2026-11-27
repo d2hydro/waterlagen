@@ -989,3 +989,18 @@ def test_production_resume_keeps_original_fallback_after_new_area_download(
         )
     assert _file_identity(legacy) == original
     assert len(osm_download) == 2
+
+
+def test_configured_top10nl_file_must_contain_selected_layer(store, tmp_path):
+    selected = config(store, "top10nl", "top10nl_waterdeel_vlak")
+    store.top10nl_file = tmp_path / "team.gpkg"
+    with pytest.raises(FileNotFoundError, match="team.gpkg"):
+        prepare(selected, store, offline=True)
+    write(store.top10nl_file, "overige")
+    with pytest.raises(ValueError, match="top10nl_waterdeel_vlak"):
+        prepare(selected, store, offline=True)
+    write(store.top10nl_file, "top10nl_waterdeel_vlak")
+    assert (
+        prepare(selected, store, offline=True).config.lagen[0].path
+        == store.top10nl_file
+    )

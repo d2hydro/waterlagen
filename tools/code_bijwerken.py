@@ -39,6 +39,7 @@ BASE_FILES = (
 )
 # Vaste softwarepaden; nieuwe Run Maker-bestanden komen uit het releasemanifest.
 MANAGED_FILES = (
+    "scripts/_datastore_select.py",
     *BASE_FILES,
     *UPDATER_FILES,
     *LEGACY_UPDATER_FILES,

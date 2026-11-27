@@ -33,9 +33,13 @@ window.fetch=async(url,init)=>{
  const values=init?JSON.parse(init.body):{};
  window.requests.push({action,values});
  let result={};
- if(action==='bootstrap'){result=bootstrap;}
+ if(action==='bootstrap'){await new Promise(resolve=>{window.finishBootstrap=resolve;});result=bootstrap;}
+ else if(action==='startup_status'){result={message:'Waterschapsgrenzen downloaden…'};}
  else if(action==='appearance.json'){result=appearance;}
  else if(action==='preview'){result={commands:['pixi run --locked dem --waterbeheercode 12']};}
+ else if(action==='ahn_coverage'){
+  result={phase:'ready',checked:Date.now()/1000,counts:{4:[4,4],5:[4,4],6:[2,4]},...window.ahnResult};
+ }
  else if(action==='dem_landuse'){
   if(window.deferLanduse){
    window.deferLanduse=false;
@@ -57,6 +61,7 @@ window.fetch=async(url,init)=>{
  }
  else if(action==='draw_save'){result={path:'D:\\eigen-gebied.gpkg',layer:'gebied',feature};}
  else if(action==='bounds'){result={feature};}
+ else if(action==='choose_output_root'){result=window.outputChoice||{path:'D:/resultaten proef'};}
  else if(action==='save'){result={path:'D:\\proef.bat',started:!!values.start};}
  else if(action==='run_load'){result=window.loadedRun||{mode:'authorities',authorities:['38'],layers:['inwoners'],run_id:'aa-en-maas',workers:16,run_mode:'overwrite',extra_options:[],debug:true,refresh_sources:false,path:'D:\\vorige.bat'};}
  else if(action==='browse' && window.deferBrowse){
@@ -85,6 +90,13 @@ const checks=`
  assert(q('#rm-area-menu').hidden);
  assert.equal(q('#rm-workers').value,'8');
  assert.equal(q('#rm-run-name').value,'kaartproef');
+ assert.equal(collectValues().output_root,'');
+ assert.equal(q('#rm-output-browse').textContent,'Resultatenmap kiezen…');
+ q('#rm-output-browse').click();await settle();assert.equal(collectValues().output_root,'D:/resultaten proef');
+ assert(!q('#rm-output-reset').hidden && q('#rm-output-path').textContent==='D:/resultaten proef');
+ window.outputChoice={cancelled:true};
+ q('#rm-output-browse').click();await settle();assert.equal(collectValues().output_root,'D:/resultaten proef');
+ q('#rm-output-reset').click();assert.equal(collectValues().output_root,'');assert(q('#rm-output-reset').hidden);
  assert.equal(root.querySelectorAll('[data-flag]').length,Object.values(data.options).flat().length);
  assert.equal(q('#rm-layers').children.length,5);
  assert.equal(q('#rm-background').getAttribute('aria-label'),'Luchtfoto tonen');
@@ -110,8 +122,29 @@ const checks=`
  assert(!folderButton.disabled && folderButton.querySelector('svg'));
  assert(!q('#rm-dem-landuse-mode'));
  const dtmInput=q('[data-flag="ahn-vrt"]');
- const dtmGroup=dtmInput.closest('details.option-group');
- assert.equal(dtmGroup.querySelector('summary').textContent,'Eigen DTM (.vrt)');
+ const source=q('#rm-ahn-source');
+ const dtmField=dtmInput.closest('label');
+ assert.equal(source.options[0].textContent,'Nieuwste beschikbare AHN');
+ assert(dtmField.hidden);
+ await new Promise(r=>setTimeout(r,250));
+ assert(source.querySelector('option[value="6"]').disabled);
+ assert(source.querySelector('option[value="6"]').textContent.includes('2 van 4'));
+ window.ahnResult={phase:'checking'};
+ scheduleCoverage(true);
+ await new Promise(r=>setTimeout(r,3250));
+ assert(q('.ahn-status').textContent.includes('Wachten op het AHN-portaal'));
+ assert(!source.querySelector('option[value="5"]').disabled);
+ window.ahnResult={phase:'download'};
+ await new Promise(r=>setTimeout(r,850));
+ assert(q('.ahn-status').textContent.includes('downloaden'));
+ window.ahnResult={phase:'error',error:'timeout'};
+ await new Promise(r=>setTimeout(r,850));
+ assert(q('.ahn-status').textContent.includes('Dekking onbekend'));
+ window.ahnResult={counts:{4:[4,4],5:[4,4],6:[4,4]}};
+ q('.ahn-status button').click();await new Promise(r=>setTimeout(r,300));
+ assert(!source.querySelector('option[value="6"]').disabled);
+ source.value='6';source.dispatchEvent(new Event('change'));
+ assert(collectValues().extra_options.some(o=>o.flag==='ahn-version' && o.value==='6'));
  await updateLandusePreview();
  assert.equal(landuseStatus.textContent,'Automatisch: landgebruikrun afgerond');
  for(const state of ['error','create','planned','unknown']){
@@ -177,12 +210,14 @@ const checks=`
  assert.equal(terrainSettings.querySelector('summary').textContent,'Ontbrekende terreinhoogtes aanvullen');
  assert.equal(terrainSettings.querySelector('input').dataset.flag,'interpolation-max-distance-m');
  assert(!floorSettings.open && !terrainSettings.open);
- assert(!landuseField.closest('details') && !dtmGroup.open);
- dtmGroup.querySelector('summary').click();assert(dtmGroup.open && !floorSettings.open);
+ assert(!landuseField.closest('details') && dtmField.hidden);
+ source.value='vrt';source.dispatchEvent(new Event('change'));assert(!dtmField.hidden && !floorSettings.open);
  dtmInput.value='D:/terrein.vrt';
- dtmGroup.querySelector('summary').click();assert(!dtmGroup.open);
+ assert(!collectValues().extra_options.some(o=>o.flag==='ahn-version'));
  assert(collectValues().extra_options.some(o=>o.flag==='ahn-vrt' && o.value==='D:/terrein.vrt'));
  dtmInput.value='';
+ assert.throws(()=>runValues(),/Kies een VRT-bestand/);
+ source.value='';source.dispatchEvent(new Event('change'));
  terrainSettings.querySelector('summary').click();assert(terrainSettings.open && !floorSettings.open);
  terrainSettings.querySelector('summary').click();assert(!terrainSettings.open);
  floorSettings.querySelector('summary').click();assert(floorSettings.open);
@@ -430,12 +465,12 @@ const checks=`
  q('#rm-load').click();await settle();
  assert(!landuseField.closest('label').hidden);
  assert.equal(landuseField.value,'D:/afgerond');
- assert(dtmGroup.open && dtmInput.value==='D:/terrein.vrt');
+ assert(source.value==='vrt' && !dtmField.hidden && dtmInput.value==='D:/terrein.vrt');
  assert(collectValues().extra_options.some(o=>o.flag==='landuse-run'&&o.value==='D:/afgerond'));
  window.loadedRun={...window.loadedRun,extra_options:[]};
  q('#rm-load').click();await settle();
  assert.equal(landuseField.value,'');assert(!landuseField.disabled);
- assert(!dtmGroup.open && dtmInput.value==='');
+ assert(source.value==='' && dtmField.hidden && dtmInput.value==='');
  const duiker=q('[data-flag="duiker-tolerance"]');
  const rekeninstellingen=duiker.closest('details');
  const bronnen=q('[data-flag="rijkswateren-url"]').closest('details');
@@ -453,6 +488,16 @@ const checks=`
  window.result='Geslaagd: selectie, extra opties, run laden, commando, opslaan/starten, tekenen, GPKG-laag, rechthoek en diep zoomen';
 `;
 (async()=>{
- try{await window.eval('(async()=>{'+script+'\n'+checks+'})()');console.log(window.result);}
+ try{
+  const running=window.eval('(async()=>{'+script+'\n'+checks+'})()');
+  assert(window.document.querySelector('#loading .startup-spinner'));
+  await new Promise(r=>setTimeout(r,1250));
+  assert.equal(window.document.querySelector('#rm-startup-message').textContent,'Waterschapsgrenzen downloaden…');
+  assert.match(window.document.querySelector('#rm-startup-time').textContent,/\d+ s/);
+  window.finishBootstrap();
+  await running;
+  assert(!window.document.querySelector('#loading'));
+  console.log(window.result);
+ }
  finally{window.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});

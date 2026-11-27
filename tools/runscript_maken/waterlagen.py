@@ -95,6 +95,14 @@ class RunSettings:
     extra_options: tuple[OptionValue, ...] = ()
     overwrite: bool = False
     debug: bool = False
+    output_root: Path | None = None
+    datastore_file: Path | None = None
+    download_root: Path | None = None
+
+    @property
+    def results_directory(self) -> Path:
+        """Geef de gekozen resultatenmap of de standaardmap van Waterlagen."""
+        return self.output_root or DataStore().processed_data_dir
 
 
 def _scope(arguments: tuple[str, ...]) -> str:
@@ -153,23 +161,23 @@ def _existing_layers(options: RunSettings) -> tuple[str, ...]:
     """Zoek alleen bij de geselecteerde lagen en het gekozen gebied."""
     validate_run_options(options.run_id, resume=False, overwrite=False)
     scope = _scope(options.area_arguments)
-    store = DataStore()
+    output_root = options.results_directory
     return tuple(
         layer
         for layer in options.layers
-        if (store.processed_data_dir / layer / scope / options.run_id).exists()
+        if (output_root / layer / scope / options.run_id).exists()
     )
 
 
 def _window_commands(options: RunSettings) -> list[str]:
     """Hervat of vervang bestaande lagen; ontbrekende lagen beginnen nieuw."""
     existing = _existing_layers(options)
-    store = DataStore()
+    output_root = options.results_directory
     scope = _scope(options.area_arguments)
     commands = []
     for layer in options.layers:
         present = layer in existing
-        target = store.processed_data_dir / layer / scope / options.run_id
+        target = output_root / layer / scope / options.run_id
         if present and not (target / "run.json").is_file():
             raise ValueError(
                 f"De map voor {LAYERS[layer]} bestaat, maar bevat geen run.json. "
@@ -234,6 +242,17 @@ def _start_code_update(project: Path) -> subprocess.Popen:
 def _layer_flags(layer: str, options: RunSettings, *, resume: bool) -> list[str | Path]:
     """Gebruik dezelfde productieopties voor een opgeslagen script en een directe start."""
     arguments: list[str | Path] = []
+    if options.download_root:
+        arguments.extend(["--ahn-download-dir", options.download_root])
+    if options.datastore_file:
+        arguments.extend(["--datastore", options.datastore_file])
+    if layer == "dem" and not any(
+        item.layer == "dem" and item.flag in {"ahn-version", "ahn-vrt"} and item.value
+        for item in options.extra_options
+    ):
+        arguments.extend(["--ahn-version", "latest"])
+    if options.output_root is not None:
+        arguments.extend(["--output-root", options.output_root.resolve()])
     if layer in WORKER_LAYERS:
         arguments.extend(["--workers", str(options.workers)])
     if resume:
@@ -287,12 +306,12 @@ def _start(options: RunSettings, project: Path) -> int:
     """Hervat alleen bestaande runs; de bestaande CLI bewaakt compatibiliteit."""
     _validate(options)
     scope = _scope(options.area_arguments)
-    store = DataStore()
+    output_root = options.results_directory
     for layer in options.layers:
-        target = store.processed_data_dir / layer / scope / options.run_id
+        target = output_root / layer / scope / options.run_id
         resume = options.resume and target.exists()
         validate_run_target(
-            store.processed_data_dir,
+            output_root,
             layer,
             scope,
             options.run_id,
@@ -326,6 +345,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, allow_abbrev=False)
     parser.add_argument("--start", choices=LAYERS)
     parser.add_argument("--run-id")
+    parser.add_argument("--output-root", type=Path)
     parser.add_argument("--workers", type=int, default=8)
     parser.add_argument("--resume", action="store_true")
     parser.add_argument("--overwrite", action="store_true")
@@ -373,6 +393,7 @@ def main() -> int:
                 args.brandlagen_config,
                 overwrite=args.overwrite,
                 debug=args.debug,
+                output_root=args.output_root,
             ),
             project,
         )
