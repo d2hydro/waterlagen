@@ -1,5 +1,10 @@
 """Produceer inwoners met volledige CBS-buurtcontext."""
 
+if __name__ == "__main__":
+    from _datastore_select import select_datastore
+
+    select_datastore()
+
 from waterlagen._cli import production_parser, run_cli
 from waterlagen.inwoners.productie import main
 

@@ -7,6 +7,9 @@ from pydantic import BaseModel
 
 from waterlagen._http import get as http_get
 
+AHN6_ROOT_URL = "https://basisdata.nl/hwh-ahn/AHN6/"
+AHN6_DTM_URL = AHN6_ROOT_URL + "02a_DTM_50cm/"
+
 DEFAULT_HTTP_TIMEOUT = 60.0
 
 
@@ -139,39 +142,21 @@ class AHNService(BaseModel):
                     gdf = gpd.read_file(
                         io.BytesIO(response.content), layer="bladindeling_aoi"
                     )
-                root_url = "https://fsn1.your-objectstorage.com/hwh-ahn/AHN6/"
-                gdf["dtm_05"] = (
-                    root_url
-                    + "02a_DTM_50cm/AHN"
-                    + str(ahn_version)
-                    + "_2025_M_"
-                    + gdf["bladnaam"]
-                    + ".TIF"
-                )
-                gdf["dtm_5"] = (
-                    root_url
-                    + "02b_DTM_5m/AHN"
-                    + str(ahn_version)
-                    + "_2025_M5_"
-                    + gdf["bladnaam"]
-                    + ".TIF"
-                )
-                gdf["dsm_05"] = (
-                    root_url
-                    + "03a_DSM_50cm/AHN"
-                    + str(ahn_version)
-                    + "_2025_R_"
-                    + gdf["bladnaam"]
-                    + ".TIF"
-                )
-                gdf["dsm_5"] = (
-                    root_url
-                    + "03b_DSM_5m/AHN"
-                    + str(ahn_version)
-                    + "_2025_R5_"
-                    + gdf["bladnaam"]
-                    + ".TIF"
-                )
+                years = gdf["jaar"].astype("Int64").astype("string")
+                sheets = gdf["bladnaam"].astype("string")
+                # The publisher removed leading zeroes from the X coordinate
+                # in the file names starting with the 2026 publication.
+                names = sheets.where(gdf["jaar"] == 2025, sheets.str.lstrip("0"))
+                prefix = f"AHN{ahn_version}_" + years + "_"
+                for field, (folder, code) in {
+                    "dtm_05": ("02a_DTM_50cm", "M"),
+                    "dtm_5": ("02b_DTM_5m", "M5"),
+                    "dsm_05": ("03a_DSM_50cm", "R"),
+                    "dsm_5": ("03b_DSM_5m", "R5"),
+                }.items():
+                    gdf[field] = (
+                        AHN6_ROOT_URL + folder + "/" + prefix + code + "_" + names + ".TIF"
+                    )
                 gdf.set_index("bladnaam", inplace=True)
 
         gdf.index.name = "kaart_index"

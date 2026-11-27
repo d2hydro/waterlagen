@@ -2,6 +2,11 @@
 
 from pathlib import Path
 
+if __name__ == "__main__":
+    from _datastore_select import select_datastore
+
+    select_datastore()
+
 from waterlagen._cli import production_parser, run_cli
 from waterlagen.areas import area_authority_codes
 from waterlagen.afwateringseenheden import read_brandlagen_config

@@ -33,26 +33,36 @@ def prepare_sources(
     """Prepare the standard sources; never silently omit optional cached datasets."""
     ensure_land_boundary(store, preparation)
     paths = FunctioneelLandgebruikSources.from_datastore(store)
-    preparation.ensure(
-        paths.bag_gpkg,
-        lambda: download_bag_light(
-            download_dir=store.bag_dir, overwrite=preparation.refresh
-        ),
-    )
-    preparation.ensure(
-        paths.brp_gpkg,
-        lambda: download_brp(
-            download_dir=store.brp_dir,
-            filename=paths.brp_gpkg.name,
-            overwrite=preparation.refresh,
-        ),
-    )
-    preparation.ensure(
-        paths.top10nl_gpkg,
-        lambda: download_top10nl(
-            download_dir=store.top10nl_dir, overwrite=preparation.refresh
-        ),
-    )
+    if not store.bag_file:
+        preparation.ensure(
+            paths.bag_gpkg,
+            lambda: download_bag_light(
+                download_dir=store.bag_dir, overwrite=preparation.refresh
+            ),
+        )
+    if not store.brp_file:
+        preparation.ensure(
+            paths.brp_gpkg,
+            lambda: download_brp(
+                download_dir=store.brp_dir,
+                filename=paths.brp_gpkg.name,
+                overwrite=preparation.refresh,
+            ),
+        )
+    if store.top10nl_file:
+        if not store.top10nl_file.is_file():
+            raise FileNotFoundError(
+                f"TOP10NL-bestand ontbreekt: {store.top10nl_file}. Kies een ander bestand in de datastore."
+            )
+    else:
+        preparation.ensure(
+            paths.top10nl_gpkg,
+            lambda: download_top10nl(
+                download_dir=store.top10nl_dir, overwrite=preparation.refresh
+            ),
+        )
+    if bgt_path is None and store.bgt_file:
+        bgt_path = store.source_file("bgt", "bgt.gpkg")
     if bgt_path is None:
         archive = store.bgt_dir / DEFAULT_PREDEFINED_ARCHIVE
         # An existing prepared BGT is sufficient until a source refresh is requested.
@@ -75,7 +85,7 @@ def prepare_sources(
             )
     elif not Path(bgt_path).is_file():
         raise FileNotFoundError(f"Opgegeven BGT-bestand ontbreekt: {bgt_path}")
-    raster = store.source_data_dir / "liwo" / FILENAME
+    raster = store.source_folder("liwo") / FILENAME
     if preparation.refresh or raster.exists() or not paths.buitendijks_gpkg.exists():
         preparation.ensure(
             raster,
@@ -88,21 +98,21 @@ def prepare_sources(
             {"raster": raster},
             lambda: polygonize_selected(raster, paths.buitendijks_gpkg),
         )
-    hydamo = store.source_data_dir / "hydamo" / "hydamo.gpkg"
+    hydamo = store.source_folder("hydamo") / "hydamo.gpkg"
     preparation.ensure(
         hydamo,
         lambda: download_hydamo(
             download_dir=hydamo.parent, overwrite=preparation.refresh, progress=False
         ),
     )
-    rwzi = store.source_data_dir / "waterketen_damo" / "waterketen_damo.gpkg"
+    rwzi = store.source_folder("waterketen_damo") / "waterketen_damo.gpkg"
     preparation.ensure(
         rwzi,
         lambda: download_waterketen_damo(
             target_path=rwzi, overwrite=preparation.refresh, progress=False
         ),
     )
-    drinking = store.source_data_dir / "osm" / "drinkwaterlocaties.gpkg"
+    drinking = store.source_folder("osm") / "drinkwaterlocaties.gpkg"
     preparation.ensure(
         drinking,
         lambda: download_osm_drinkwater(

@@ -96,17 +96,18 @@ def produce(
             "write_geoparquet": write_geoparquet,
         },
     ) as run:
-        bag = store.bag_dir / "bag-light.gpkg"
+        bag = store.source_file("bag", "bag-light.gpkg")
         buurt = wijk_buurtkaart_2025_path(
             download_dir=store.administratieve_gebieden_dir
         )
         cbs = buurtgegevens_2025_path(store.cbs_dir)
-        preparation.ensure(
-            bag,
-            lambda: download_bag_light(
-                download_dir=store.bag_dir, overwrite=preparation.refresh
-            ),
-        )
+        if not store.bag_file:
+            preparation.ensure(
+                bag,
+                lambda: download_bag_light(
+                    download_dir=store.bag_dir, overwrite=preparation.refresh
+                ),
+            )
         preparation.ensure(
             buurt,
             lambda: download_wijk_buurtkaart_2025(

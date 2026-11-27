@@ -190,24 +190,22 @@ def main(
 
     data_store = data_store or DataStore()
     if stap >= 6:
-        damo_path = (
-            data_store.source_data_dir / "waterketen_damo" / "waterketen_damo.gpkg"
-        )
+        damo_path = data_store.source_folder("waterketen_damo") / "waterketen_damo.gpkg"
         default_drinking_water = (
-            data_store.source_data_dir / "osm" / "drinkwaterlocaties.gpkg"
+            data_store.source_folder("osm") / "drinkwaterlocaties.gpkg"
         )
         special_sources = special_sources or SpecialBuildingSources(
-            top10nl_gpkg=data_store.top10nl_dir / "top10nl_Compleet.gpkg",
+            top10nl_gpkg=data_store.top10nl_path,
             rwzi_gpkg=damo_path if damo_path.is_file() else None,
             drinking_water_gpkg=(
                 default_drinking_water if default_drinking_water.is_file() else None
             ),
         )
-        default_gemalen = data_store.source_data_dir / "hydamo" / "hydamo.gpkg"
+        default_gemalen = data_store.source_folder("hydamo") / "hydamo.gpkg"
         if gemalen_gpkg is None and default_gemalen.is_file():
             gemalen_gpkg = default_gemalen
     layers = FunctioneelLandgebruikLayers()
-    bag_path = data_store.bag_dir / "bag-light.gpkg"
+    bag_path = data_store.source_file("bag", "bag-light.gpkg")
     output_dir = data_store.processed_data_dir / "functioneel_landgebruik" / "controle"
     filename = "bag_controle.gpkg"
     if bounds is not None:

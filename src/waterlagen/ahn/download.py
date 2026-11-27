@@ -113,6 +113,11 @@ def _write_ahn_tile(temporary_path: Path, data_bytes: bytes) -> None:
         profile.update(dtype=np.int16, nodata=nodata)
     else:
         scales = (1.0,)
+        invalid = ~np.isfinite(data)
+        if invalid.any():
+            nodata = source_nodata if source_nodata is not None else np.nan
+            profile.update(nodata=nodata)
+            data[invalid] = nodata
 
     profile.update(compress="deflate", predictor=2, tiled=True)
     with rasterio.open(temporary_path, "w", **profile) as destination:
@@ -227,7 +232,7 @@ def array_float_m_to_cm_int(
     out_no_data = np.iinfo(np.int16).min
 
     # define nodata mask
-    mask = data == nodata
+    mask = ~np.isfinite(data) | (data == nodata)
 
     # scale data to cm
     scaled = np.empty_like(data, dtype=np.float32)
@@ -284,6 +289,7 @@ def download_ahn(
     save_tiles_index: bool = False,
     *,
     tile_index: gpd.GeoDataFrame | None = None,
+    tile_directory: Path | None = None,
     retries: int = 10,
     timeout: float = DEFAULT_HTTP_TIMEOUT,
 ) -> Path:
@@ -358,7 +364,7 @@ def download_ahn(
         tiles_gdf = tile_index.copy()
 
     # make download dir if not existing
-    download_dir = Path(ahn_dir).joinpath(f"{model}_{cell_size}")
+    download_dir = tile_directory or Path(ahn_dir).joinpath(f"{model}_{cell_size}")
     download_dir.mkdir(exist_ok=True, parents=True)
 
     # save index tiles

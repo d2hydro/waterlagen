@@ -409,9 +409,7 @@ def download_osm_drinkwater(
         BAG matching uses the existing Waterlagen representative-point rule.
     """
     store = data_store or DataStore()
-    target = Path(
-        target_path or store.source_data_dir / "osm" / "drinkwaterlocaties.gpkg"
-    )
+    target = Path(target_path or store.source_folder("osm") / "drinkwaterlocaties.gpkg")
     if target.is_file() and not overwrite:
         validate_geopackage(target)
         info = pyogrio.read_info(target, layer=DRINKWATER_LAYER)

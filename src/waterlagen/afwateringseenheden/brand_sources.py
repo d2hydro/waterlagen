@@ -237,16 +237,21 @@ def _prepared_source(
     scope: str | None = None,
 ) -> Path:
     dataset = "top10nl" if layer.openbare_bron == "top10nl" else layer.layer
+    if dataset == "top10nl" and store.top10nl_file:
+        if not store.top10nl_file.is_file():
+            raise FileNotFoundError(f"TOP10NL-bestand ontbreekt: {store.top10nl_file}")
+        if not _layer_exists(store.top10nl_file, layer.layer):
+            raise ValueError(f"Laag {layer.layer} ontbreekt in {store.top10nl_file}")
+        return store.top10nl_file
     fallback = (
-        store.source_data_dir
-        / "brandlagen"
+        store.source_folder("brandlagen")
         / dataset
         / (TOP10NL_FILENAME if dataset == "top10nl" else f"{dataset}.gpkg")
     )
     standard = (
         store.top10nl_dir / TOP10NL_FILENAME
         if dataset == "top10nl"
-        else store.bgt_dir / "bgt.gpkg"
+        else store.source_file("bgt", "bgt.gpkg")
     )
     coverage = None if dataset == "top10nl" else bounds
     target = layer.path
@@ -256,7 +261,7 @@ def _prepared_source(
         else:
             target = store.bgt_dir / scope / PUBLIC_BRAND_SOURCES[layer.bron].filename
     candidates = [target, layer.path, standard, fallback]
-    candidates.append(store.source_data_dir / "brandlagen" / "bgt" / f"{dataset}.gpkg")
+    candidates.append(store.source_folder("brandlagen") / "bgt" / f"{dataset}.gpkg")
     if scope is not None:
         candidates.append(store.bgt_dir / scope / f"{dataset}.gpkg")
     if reuse_only:
@@ -319,7 +324,7 @@ def _bgt_culverts(
     if scope is not None:
         target = store.bgt_dir / scope / "bgt_duikers.gpkg"
     candidates = [target, layer.path, fallback]
-    candidates.append(store.source_data_dir / "brandlagen" / "bgt" / "bgt_duikers.gpkg")
+    candidates.append(store.source_folder("brandlagen") / "bgt" / "bgt_duikers.gpkg")
     if scope is not None:
         candidates.append(store.processed_data_dir / "bgt" / scope / "bgt_duikers.gpkg")
     if reuse_only:
@@ -454,8 +459,7 @@ def _osm(
     scope: str | None = None,
 ) -> Path:
     standard = (
-        store.source_data_dir
-        / "osm"
+        store.source_folder("osm")
         / (
             "osm_culverts.gpkg"
             if layer.layer == "osm_culvert"
@@ -568,7 +572,7 @@ def prepare_brand_sources(
     for layer in config.lagen:
         if layer.bron is not None and layer.path is None:
             specification = PUBLIC_BRAND_SOURCES[layer.bron]
-            directory = store.source_data_dir / specification.provider
+            directory = store.source_folder(specification.provider)
             if specification.provider != "top10nl":
                 directory = directory / (scope or "brandlagen")
             layer = replace(layer, path=directory / specification.filename)

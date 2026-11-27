@@ -2,12 +2,19 @@
 
 from pathlib import Path
 
+if __name__ == "__main__":
+    from _datastore_select import select_datastore
+
+    select_datastore()
+
 from waterlagen._cli import positive_int, production_parser, run_cli
 from waterlagen.dem import DemConfig
 from waterlagen.dem.workflow import main
 
 
 def _config(arguments: dict) -> dict:
+    version = arguments.get("ahn_version")
+    arguments["ahn_version"] = None if version in (None, "latest") else int(version)
     values = {
         name: arguments.pop(name)
         for name in DemConfig.__dataclass_fields__
@@ -23,7 +30,15 @@ def cli() -> None:
     parser.add_argument(
         "--landuse-run", type=Path, help="Expliciete bestaande landgebruikrun"
     )
-    parser.add_argument("--ahn-vrt", type=Path, help="Eigen maaiveldmodel (.vrt), standaard AHN")
+    sources = parser.add_mutually_exclusive_group()
+    sources.add_argument(
+        "--ahn-vrt", type=Path, help="Eigen maaiveldmodel (.vrt), standaard AHN"
+    )
+    sources.add_argument(
+        "--ahn-version",
+        choices=("latest", "4", "5", "6"),
+        help="Nieuwste per cel of vaste AHN-versie",
+    )
     parser.add_argument(
         "--building-workers", type=positive_int, help="Werkprocessen voor gebouwhoogten"
     )

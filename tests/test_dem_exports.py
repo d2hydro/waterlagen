@@ -196,3 +196,20 @@ def test_dem_vrt_adds_nap_without_changing_horizontal_grid(tmp_path, crs):
         assert result.transform == original.transform
         assert result.nodata == original.nodata
         np.testing.assert_array_equal(result.read(1), original.read(1))
+
+
+def test_ahn_summary_matches_version_counts(tmp_path, monkeypatch):
+    import json
+
+    import numpy as np
+
+    from waterlagen._production import ProductionRun
+    from waterlagen.dem.workflow import _write_ahn_summary
+
+    monkeypatch.setenv("WATERLAGEN_DATASTORE", str(tmp_path / "gebied.datastore"))
+    _write_ahn_summary(ProductionRun(tmp_path, {}), np.array([1, 0, 0, 0, 0, 0, 3]), None)
+    summary = json.loads((tmp_path / "run.json").read_text("utf-8"))["ahn_herkomst"]
+    assert summary["cellen_binnen_gebied"] == 4
+    assert summary["verdeling"]["6"] == {"cellen": 3, "percentage": 75.0}
+    page = (tmp_path / "ahn_overzicht.html").read_text("utf-8")
+    assert "gebied.datastore" in page and "AHN6 75%" in page

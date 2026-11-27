@@ -1,25 +1,36 @@
 """Produceer een DEM voor Nederland (standaard) of Alkmaar."""
 
 import json
+import html
+import os
 from dataclasses import asdict
 from math import ceil
 from pathlib import Path
 
 import numpy as np
 import rasterio
+from rasterio.features import geometry_mask
+from rasterio.windows import bounds as window_bounds
+from shapely.prepared import prep
 from shapely.geometry import box
 from shapely.ops import unary_union
 from tqdm.auto import tqdm
 
 from waterlagen import _geopandas as wgpd
 from waterlagen._geopackage import write_geopackage_layer_atomically
-from waterlagen._production import production_run, validate_run_target
+from waterlagen._production import ProductionRun, production_run, validate_run_target
 from waterlagen._sources import SourcePreparation, source_options
 from waterlagen.administratieve_gebieden import (
     DEFAULT_BESTUURLIJKE_GEBIEDEN_YEAR,
     bestuurlijke_gebieden_path,
 )
-from waterlagen.ahn.productie import prepare_ahn
+from waterlagen.ahn import dekking
+from waterlagen.ahn.productie import (
+    AHNVersion,
+    LATEST_AHN,
+    export_ahn_versions,
+    prepare_ahn,
+)
 from waterlagen.areas import (
     Area,
     ProductionArea,
@@ -45,6 +56,7 @@ def main(
     data_store: DataStore | None = None,
     output_root: Path | None = None,
     ahn_vrt: Path | None = None,
+    ahn_version: AHNVersion | None = None,
     workers: int | None = None,
     building_workers: int | None = None,
     config: DemConfig | None = None,
@@ -69,7 +81,9 @@ def main(
         Override the DEM output location for Python callers. The CLI instead
         configures the datastore for both DEM and dependent productions.
     ahn_vrt : pathlib.Path, optional
-        Optional terrain-model VRT with ground elevations in metres relative to NAP. Otherwise prepare the required cached AHN tiles.
+        Optional terrain-model VRT with ground elevations in metres relative to NAP. Otherwise use the newest valid AHN height per cell.
+    ahn_version : {4, 5, 6}, optional
+        Pin the run to one AHN version. Cannot be combined with ahn_vrt.
     workers, building_workers : int, optional
         Override configured counts for tile and building processes.
     config : DemConfig, optional
@@ -89,6 +103,11 @@ def main(
     pathlib.Path
         Validated DEM GeoTIFF. A Float32 companion is also produced.
     """
+    if ahn_version is not None and ahn_version not in LATEST_AHN:
+        raise ValueError("De AHN-versie moet 4, 5 of 6 zijn")
+    if ahn_version is not None and ahn_vrt is not None:
+        raise ValueError("Kies een AHN-versie of een eigen VRT")
+    versions = LATEST_AHN if ahn_version is None else (ahn_version,)
     store = data_store or DataStore()
     validate_run_target(
         output_root or store.processed_data_dir,
@@ -117,7 +136,9 @@ def main(
         resume=resume,
         overwrite=overwrite,
         parameters={
-            "workflow_version": 4,
+            "workflow_version": 4 if ahn_vrt else 5,
+            **({"datastore": os.environ["WATERLAGEN_DATASTORE"]} if os.getenv("WATERLAGEN_DATASTORE") else {}),
+            **({} if ahn_vrt else {"ahn_versions": list(versions)}),
             "area": area.identity,
             "config": json.loads(json.dumps(asdict(config))),
             "landuse_override": str(landuse_run.resolve()) if landuse_run else None,
@@ -125,6 +146,16 @@ def main(
         },
     ) as run:
         logger = get_logger(__name__)
+        if ahn_version is not None and not (
+            resume and (run.path / "input/ahn_versie.vrt").exists()
+        ):
+            dekking.check_version(
+                area.geometry,
+                area.crs,
+                ahn_version,
+                store.ahn_cache(),
+                offline=preparation.offline,
+            )
         dependency = resolve_landuse(
             store,
             run,
@@ -162,10 +193,12 @@ def main(
                 path
             )
         run.record_inputs(inputs)
+        version_vrt = None
         if ahn_vrt is None:
             # Keep a pinned VRT on resume; download_ahn validates/reuses its cache.
             ahn_vrt = run.path / "input" / "ahn.vrt"
-            if not ahn_vrt.exists():
+            version_vrt = ahn_vrt.with_name("ahn_versie.vrt")
+            if not ahn_vrt.exists() or not version_vrt.exists():
                 margins = [
                     geometry.buffer(
                         config.interpolation_max_distance_m + dependency.resolution_m
@@ -183,7 +216,14 @@ def main(
                                 + dependency.resolution_m
                             )
                         )
-                prepare_ahn(store, unary_union(margins), ahn_vrt, preparation)
+                prepare_ahn(
+                    store,
+                    unary_union(margins),
+                    ahn_vrt,
+                    preparation,
+                    versions=versions,
+                    include_version_raster=True,
+                )
         ensure_land_boundary(store, preparation)
         result = bouw_dem_tiles(
             run.path,
@@ -199,7 +239,13 @@ def main(
             ),
         )
         validate_float_dem(result, run.path / "dem_float.tif")
-        for name in ("dem", "dem_bron", "ahn_bron"):
+        names = ["dem", "dem_bron", "ahn_bron"]
+        if version_vrt is not None:
+            export_ahn_versions(version_vrt, paths, run.path)
+            names.append("ahn_versie")
+        counts = np.zeros(7, dtype=np.int64)
+        boundary = prep(area.geometry)
+        for name in names:
             with (
                 rasterio.open(run.path / f"{name}.vrt") as vrt,
                 rasterio.open(run.path / f"{name}.tif") as cog,
@@ -230,11 +276,63 @@ def main(
                     desc=f"Controle {name}.vrt / {name}.tif",
                     unit="blok",
                 ):
+                    values = cog.read(1, window=window)
+                    if name == "ahn_versie":
+                        extent = box(*window_bounds(window, cog.transform))
+                        if boundary.intersects(extent):
+                            inside = values.ravel()
+                            if not boundary.covers(extent):
+                                mask = geometry_mask(
+                                    [area.geometry],
+                                    values.shape,
+                                    cog.window_transform(window),
+                                    invert=True,
+                                )
+                                inside = values[mask]
+                            counts += np.bincount(inside.astype("uint8"), minlength=7)
                     if not np.array_equal(
                         vrt.read(1, window=window),
-                        cog.read(1, window=window),
+                        values,
                         equal_nan=True,
                     ):
                         raise ValueError(f"VRT/COG pixels wijken af: {name}")
+        if version_vrt is not None:
+            _write_ahn_summary(run, counts, ahn_version)
         logger.info("DEM %s voltooid: identieke VRT/COG-pixels", area)
         return result
+
+
+def _write_ahn_summary(run: ProductionRun, counts: np.ndarray, version: AHNVersion | None) -> None:
+    """Save cell counts and percentages per AHN generation inside the selected area."""
+    total = int(counts.sum())
+    profile = os.getenv("WATERLAGEN_DATASTORE") or str(
+        Path.cwd() / ".datastore"
+    )
+    choice = f"AHN{version}" if version else "Nieuwste beschikbare AHN"
+    shares = {
+        str(v): {
+            "cellen": int(counts[v]),
+            "percentage": round(100 * int(counts[v]) / total, 3)
+            if total
+            else 0,
+        }
+        for v in (6, 5, 4, 0)
+    }
+    run.metadata["ahn_herkomst"] = {
+        "datastore": profile,
+        "keuze": choice,
+        "cellen_binnen_gebied": total,
+        "verdeling": shares,
+    }
+    run._save()
+    headline = f"{Path(profile).name} · {choice}"
+    summary = " · ".join(
+        f"{'Geen bronhoogte' if v == '0' else 'AHN' + v} {stats['percentage']:g}%"
+        for v, stats in shares.items()
+    )
+    get_logger(__name__).info("%s | %s", headline, summary)
+    (run.path / "ahn_overzicht.html").write_text(
+        '<!doctype html><meta charset="utf-8"><title>AHN-herkomst</title><style>body{font:18px system-ui;margin:3rem;color:#153446}</style>'
+        + f'<p title="{html.escape(profile, quote=True)}"><b>{html.escape(headline)}</b></p><p>{html.escape(summary)} · <a href="ahn_versie.tif">Open versiekaart</a></p>',
+        encoding="utf-8",
+    )

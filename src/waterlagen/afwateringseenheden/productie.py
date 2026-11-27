@@ -312,7 +312,7 @@ def main(
             else None,
         )
         boundary = ensure_land_boundary(store, preparation)
-        hydamo = store.source_data_dir / "hydamo" / "hydamo.gpkg"
+        hydamo = store.source_folder("hydamo") / "hydamo.gpkg"
         preparation.ensure(
             hydamo,
             lambda: download_hydamo(

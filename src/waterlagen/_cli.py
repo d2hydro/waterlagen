@@ -22,7 +22,7 @@ def positive_int(value: str) -> int:
 
 
 def production_parser(
-    description: str, *, workers: bool = False
+    description: str, *, workers: bool = False, clip_outputs: bool = False
 ) -> argparse.ArgumentParser:
     """Build shared help, area, storage, source and run options."""
     parser = argparse.ArgumentParser(
@@ -30,13 +30,16 @@ def production_parser(
         allow_abbrev=False,
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
+    clip_help = (
+        "uitvoer wordt afgeknipt" if clip_outputs else "uitvoer wordt niet afgeknipt"
+    )
     selection = parser.add_mutually_exclusive_group()
     selection.add_argument(
         "--area",
         default="nederland",
         help=(
             f"Invoergebied: nederland, {', '.join(NAMED_AREAS)} of waterschap_CODE; "
-            "uitvoer wordt niet afgeknipt"
+            f"{clip_help}"
         ),
     )
     selection.add_argument(
@@ -44,12 +47,12 @@ def production_parser(
         nargs=4,
         type=float,
         metavar=("XMIN", "YMIN", "XMAX", "YMAX"),
-        help=f"Rechthoekige invoerselectie in project-CRS {settings.crs}; uitvoer wordt niet afgeknipt",
+        help=f"Rechthoekige invoerselectie in project-CRS {settings.crs}; {clip_help}",
     )
     selection.add_argument(
         "--area-file",
         type=Path,
-        help="Polygoonbestand (GeoPackage of GeoJSON) als invoergebied; uitvoer wordt niet afgeknipt",
+        help=f"Polygoonbestand (GeoPackage of GeoJSON) als invoergebied; {clip_help}",
     )
     parser.add_argument(
         "--area-layer",
@@ -64,6 +67,14 @@ def production_parser(
     )
     parser.add_argument(
         "--output-root", type=Path, help="Productiemap; standaard processed_data_dir"
+    )
+    parser.add_argument(
+        "--datastore", type=Path, help="Bestand met de bron- en resultaatpaden"
+    )
+    parser.add_argument(
+        "--ahn-download-dir",
+        type=Path,
+        help="Sta lokale downloads uit een alleen-lezen AHN-bron toe in deze map",
     )
     sources = parser.add_mutually_exclusive_group()
     sources.add_argument(
@@ -101,6 +112,7 @@ def run_cli(
     """Validate before I/O, configure logging explicitly, then invoke the Python API."""
     freeze_support()
     arguments = vars(parser.parse_args(argv))
+    profile = arguments.pop("datastore", None)
     debug = arguments.pop("debug")
     data_dir = arguments.pop("data_dir")
     output_root = arguments.pop("output_root")
@@ -131,6 +143,13 @@ def run_cli(
     except ValueError as error:
         parser.error(str(error))
     options = {}
+    download_dir = arguments.pop("ahn_download_dir", None)
+    if download_dir:
+        options["ahn_download_dir"] = download_dir.resolve()
+    if profile is not None:
+        if not profile.is_file():
+            parser.error(f"Datastorebestand ontbreekt: {profile}")
+        options["_env_file"] = (profile.resolve(),)
     if data_dir is not None:
         options.update(
             data_dir=data_dir,
