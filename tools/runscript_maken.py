@@ -1,5 +1,6 @@
 """Start het Waterlagen-keuzevenster vanuit de broncode of het productiepakket."""
 
+import gc
 import os
 import sys
 from pathlib import Path
@@ -10,6 +11,8 @@ def choose_datastore(project: Path) -> bool:
     from tools.runscript_maken.datastore_window import choose_profile
 
     path = choose_profile(project)
+    # Release cycles left by Tk callbacks on their owning thread before HTTP workers start.
+    gc.collect()
     if path is None:
         return False
     os.environ["WATERLAGEN_DATASTORE"] = str(path.resolve())

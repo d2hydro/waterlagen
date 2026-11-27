@@ -1,8 +1,13 @@
 """Controleer de datastorekeuze, gedeelde scripts en opslagpaden."""
 
+import json
 import runpy
+import subprocess
+import sys
+import textwrap
 from pathlib import Path
 
+import pytest
 from dotenv import dotenv_values
 from waterlagen.datastore import DataStore
 
@@ -103,3 +108,105 @@ def test_shared_ahn_requires_explicit_consent(tmp_path,monkeypatch):
     store.ahn_download_dir=downloads
     assert storage.download_target(store,source,6,3)==downloads/"AHN6"
     assert list(source.iterdir())==[]
+
+
+@pytest.mark.parametrize("confirm", [True, False], ids=["open", "cancel"])
+def test_datastore_window_releases_tk_before_background_collection(tmp_path, confirm):
+    profile = tmp_path / ".datastore"
+    profile.write_text("DATA_DIR=./data\n", encoding="utf-8")
+    script = textwrap.dedent(
+        """
+        import gc
+        import json
+        import os
+        import runpy
+        import sys
+        import threading
+        import tkinter as tk
+        import weakref
+        from pathlib import Path
+        from tkinter import ttk
+
+        launcher = Path(sys.argv[1])
+        project = Path(sys.argv[2])
+        confirm = sys.argv[3] == "open"
+        sys.path.insert(0, str(launcher.parents[1]))
+        os.environ["LOCALAPPDATA"] = str(project / "preferences")
+        if sys.platform == "win32":
+            import ctypes
+
+            ctypes.windll.kernel32.SetErrorMode(0x0002)
+
+        from tools.runscript_maken import datastore_window
+
+        roots = []
+        errors = []
+        sys.unraisablehook = lambda error: errors.append(str(error.exc_value))
+        gc.disable()
+
+        def hidden_window():
+            try:
+                root = tk.Tk()
+            except tk.TclError as error:
+                if "display" in str(error).lower():
+                    print("TK_UNAVAILABLE: " + str(error), flush=True)
+                    raise SystemExit(0)
+                raise
+            root.withdraw()
+            roots.append(weakref.ref(root))
+
+            def finish():
+                if not confirm:
+                    root.tk.call(root.protocol("WM_DELETE_WINDOW"))
+                    return
+                pending = list(root.winfo_children())
+                while pending:
+                    widget = pending.pop()
+                    pending.extend(widget.winfo_children())
+                    if isinstance(widget, ttk.Button) and widget.cget("text") == "Runmaker openen":
+                        widget.invoke()
+                        return
+                raise AssertionError("Runmaker openen was not found")
+
+            root.after(0, finish)
+            root.after(5000, root.quit)
+            return root
+
+        datastore_window.create_run_window = hidden_window
+        selected = runpy.run_path(str(launcher))["choose_datastore"](project)
+        worker = threading.Thread(target=gc.collect)
+        worker.start()
+        worker.join(timeout=15)
+        assert not worker.is_alive(), "Background collection did not finish"
+        print(json.dumps({
+            "selected": selected,
+            "roots_released": all(reference() is None for reference in roots),
+            "cleanup_errors": errors,
+        }), flush=True)
+        """
+    )
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            script,
+            str(LAUNCHER),
+            str(tmp_path),
+            "open" if confirm else "cancel",
+        ],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    if result.stdout.startswith("TK_UNAVAILABLE:"):
+        pytest.skip(result.stdout.strip())
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert json.loads(result.stdout) == {
+        "selected": confirm,
+        "roots_released": True,
+        "cleanup_errors": [],
+    }
+    assert "Tcl_AsyncDelete" not in result.stderr
+    assert "main thread is not in main loop" not in result.stderr
+    assert profile.read_text(encoding="utf-8") == "DATA_DIR=./data\n"
