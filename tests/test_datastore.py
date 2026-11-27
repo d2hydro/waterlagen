@@ -90,3 +90,39 @@ def test_repo_datastore_is_used_when_cwd_has_none(tmp_path, monkeypatch):
         assert datastore.data_dir == tmp_path / "repo-data"
     finally:
         repo_datastore.unlink()
+
+
+def test_named_profile_uses_relative_shared_folders_and_file(tmp_path, monkeypatch):
+    import pytest
+
+    names = (
+        "ahn",
+        "bag",
+        "bgt",
+        "top10nl",
+        "brp",
+        "cbs",
+        "hydamo",
+        "waterketen_damo",
+        "dijkringen",
+        "administratieve_gebieden",
+    )
+    profile = tmp_path / "team.datastore"
+    monkeypatch.setenv("WATERLAGEN_DATASTORE", str(profile))
+    with pytest.raises(FileNotFoundError, match="team.datastore"):
+        DataStore()
+    profile.write_text(
+        "DATA_DIR=local\nBAG_FILE=shared/buildings.gpkg\n"
+        + "".join(f"{name.upper()}_DATA_DIR=shared/{name}\n" for name in names),
+        encoding="utf-8",
+    )
+    store = DataStore()
+    for name in names:
+        assert getattr(store, f"{name}_dir") == tmp_path / "shared" / name
+    with pytest.raises(FileNotFoundError, match="buildings.gpkg"):
+        store.source_file("bag", "default.gpkg")
+    store.bag_file.parent.mkdir(exist_ok=True)
+    store.bag_file.touch()
+    assert (
+        store.source_file("bag", "default.gpkg") == tmp_path / "shared/buildings.gpkg"
+    )

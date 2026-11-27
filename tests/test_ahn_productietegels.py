@@ -102,3 +102,33 @@ def test_download_uses_actual_publication_url_and_year(tmp_path, monkeypatch, ti
     paths = productie._prepare_version(store, area, SourcePreparation(), 6)
     assert paths == [store.ahn_tiles(6) / f"{name}.tif"]
     assert paths[0].is_file()
+
+
+def test_unpublished_ahn6_stays_unavailable_offline(tmp_path, monkeypatch):
+    store = DataStore(data_dir=tmp_path)
+    name = "AHN6_2025_M_12000_377000"
+    area = select_tile(monkeypatch, "dtm_05", f"https://example.invalid/{name}.tif")
+    empty = dekking.Publication(0, "", "", frozenset())
+    monkeypatch.setattr(dekking, "refresh", lambda *args: empty)
+    monkeypatch.setattr(dekking, "publication", lambda cache: empty)
+    assert productie._prepare_version(store, area, SourcePreparation(), 6) == []
+    assert (
+        productie._prepare_version(store, area, SourcePreparation(offline=True), 6)
+        == []
+    )
+
+
+def test_offline_shared_source_reuses_local_tile(tmp_path, monkeypatch, tile):
+    shared = tmp_path / "shared"
+    shared.mkdir()
+    store = DataStore(
+        data_dir=tmp_path, ahn_data_dir=shared, ahn_download_dir=tmp_path / "local"
+    )
+    area = select_tile(monkeypatch, "url", "https://example.invalid/M_01.tif")
+    cached = store.ahn_download_dir / "AHN4/M_01.tif"
+    cached.parent.mkdir(parents=True)
+    tile.rename(cached)
+    assert productie._prepare_version(store, area, SourcePreparation(), 4) == [cached]
+    cached.unlink()
+    with pytest.raises(FileNotFoundError, match="offline"):
+        productie._prepare_version(store, area, SourcePreparation(offline=True), 4)

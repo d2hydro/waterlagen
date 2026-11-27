@@ -71,3 +71,18 @@ def test_changed_catalogue_is_saved_after_download(tmp_path: Path, monkeypatch):
     assert phases == ["download"]
     assert updated.tiles == {Path(filename).stem}
     assert dekking.publication(tmp_path) == updated
+
+
+def test_pinned_version_requires_current_and_complete_coverage(tmp_path, monkeypatch):
+    area = box(111000, 515000, 112000, 516000)
+    original = dekking.publication(tmp_path)
+    monkeypatch.setattr(
+        dekking.time, "time", lambda: original.checked + dekking.MAX_AGE + 1
+    )
+    with pytest.raises(ValueError, match="dekking onbekend"):
+        dekking.check_version(area, "EPSG:28992", 6, tmp_path, offline=True)
+    fresh = replace(original, checked=dekking.time.time(), tiles=frozenset())
+    monkeypatch.setattr(dekking, "refresh", lambda cache, progress: fresh)
+    with pytest.raises(ValueError, match="0 van 1"):
+        dekking.check_version(area, "EPSG:28992", 6, tmp_path, offline=False)
+    dekking.check_version(area, "EPSG:28992", 4, tmp_path, offline=True)
